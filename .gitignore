@@ -1,0 +1,45 @@
+# --- Python (backend) ---
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Node / Next.js (web, admin) ---
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- Expo (mobile) ---
+.expo/
+.expo-shared/
+dist/
+web-build/
+mobile/.export-check/
+mobile/android/
+mobile/ios/
+
+# --- Ortam ve gizli bilgiler (asla commit edilmez) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# --- Çalışma verisi ve günlükler ---
+backend/var/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Editör ve yerel ayarlar ---
+.claude/settings.local.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

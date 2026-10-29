@@ -1,0 +1,24 @@
+# Yerel geliştirme altyapısı: PostgreSQL + PostGIS ve Redis.
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: getaway
+      POSTGRES_PASSWORD: getaway
+      POSTGRES_DB: getaway
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U getaway"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:

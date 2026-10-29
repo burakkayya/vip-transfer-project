@@ -1,0 +1,194 @@
+{
+  // Getaway geliştirme görevleri. Ctrl+Shift+P → "Tasks: Run Task".
+  // "Getaway: Tümünü başlat" tüm servisleri sırayla açar; ekranlar için docs/test_senaryolari.md.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Getaway: Tümünü başlat",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Getaway: Veritabanı ve Redis (Docker)",
+        "Getaway: Backend API",
+        "Getaway: İş kuyruğu (ARQ)",
+        "Getaway: Web sitesi",
+        "Getaway: Admin paneli",
+        "Getaway: Mobil müşteri (web önizleme)",
+        "Getaway: Mobil sürücü (web önizleme)"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Getaway: Veritabanı ve Redis (Docker)",
+      "type": "shell",
+      "command": "docker compose up -d --wait",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "Getaway: Veritabanını hazırla (migration + seed + demo)",
+      "type": "shell",
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "windows": {
+        "command": ".venv\\Scripts\\alembic upgrade head; if ($?) { .venv\\Scripts\\python -m app.cli seed }; if ($?) { .venv\\Scripts\\python -m app.cli seed-demo }"
+      },
+      "command": ".venv/bin/alembic upgrade head && .venv/bin/python -m app.cli seed && .venv/bin/python -m app.cli seed-demo",
+      "problemMatcher": []
+    },
+    {
+      "label": "Getaway: Backend API",
+      "type": "shell",
+      "isBackground": true,
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "windows": { "command": ".venv\\Scripts\\uvicorn app.main:app --reload --host 0.0.0.0 --port 8000" },
+      "command": ".venv/bin/uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+      "problemMatcher": {
+        "owner": "getaway",
+        "pattern": { "regexp": "^__hic_eslesmez__$" },
+        "background": { "activeBegin": "Will watch for changes|Started reloader", "activeEnd": "Application startup complete" }
+      },
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: İş kuyruğu (ARQ)",
+      "type": "shell",
+      "isBackground": true,
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "windows": { "command": ".venv\\Scripts\\arq app.worker.WorkerSettings" },
+      "command": ".venv/bin/arq app.worker.WorkerSettings",
+      "problemMatcher": {
+        "owner": "getaway",
+        "pattern": { "regexp": "^__hic_eslesmez__$" },
+        "background": { "activeBegin": "Starting worker", "activeEnd": "Starting worker|redis_version" }
+      },
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Web sitesi",
+      "type": "shell",
+      "isBackground": true,
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "command": "npm run dev",
+      "problemMatcher": {
+        "owner": "getaway",
+        "pattern": { "regexp": "^__hic_eslesmez__$" },
+        "background": { "activeBegin": "Next.js", "activeEnd": "Ready in" }
+      },
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Admin paneli",
+      "type": "shell",
+      "isBackground": true,
+      "options": { "cwd": "${workspaceFolder}/admin" },
+      "command": "npm run dev",
+      "problemMatcher": {
+        "owner": "getaway",
+        "pattern": { "regexp": "^__hic_eslesmez__$" },
+        "background": { "activeBegin": "Next.js", "activeEnd": "Ready in" }
+      },
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Mobil müşteri (web önizleme)",
+      "type": "shell",
+      "isBackground": true,
+      "options": { "cwd": "${workspaceFolder}/mobile", "env": { "CI": "1" } },
+      "command": "npm run web",
+      "problemMatcher": {
+        "owner": "getaway",
+        "pattern": { "regexp": "^__hic_eslesmez__$" },
+        "background": { "activeBegin": "Starting Metro|Starting project", "activeEnd": "Waiting on http://localhost:8081|Web is waiting on" }
+      },
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Mobil sürücü (web önizleme)",
+      "type": "shell",
+      "isBackground": true,
+      "options": { "cwd": "${workspaceFolder}/mobile", "env": { "CI": "1" } },
+      "command": "npm run web:driver",
+      "problemMatcher": {
+        "owner": "getaway",
+        "pattern": { "regexp": "^__hic_eslesmez__$" },
+        "background": { "activeBegin": "Starting Metro|Starting project", "activeEnd": "Waiting on http://localhost:8082|Web is waiting on" }
+      },
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Android emülatörünü aç",
+      "detail": "Pixel 7 sanal cihazı (getaway_pixel7). İlk açılış 1-2 dakika sürer.",
+      "type": "shell",
+      "isBackground": true,
+      "windows": {
+        "command": "& \"$env:LOCALAPPDATA\\Android\\Sdk\\emulator\\emulator.exe\" -avd getaway_pixel7 -no-snapshot-save -gpu auto"
+      },
+      "command": "$ANDROID_HOME/emulator/emulator -avd getaway_pixel7 -no-snapshot-save -gpu auto",
+      "problemMatcher": {
+        "owner": "getaway",
+        "pattern": { "regexp": "^__hic_eslesmez__$" },
+        "background": { "activeBegin": "Android emulator version|INFO", "activeEnd": "Successfully loaded snapshot|boot completed|Boot completed|INFO\\s+\\|\\s+OnSwitch" }
+      },
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Mobil müşteri (Android emülatör)",
+      "detail": "Emülatör bilgisayara 10.0.2.2 üzerinden ulaşır. Kod değişince uygulama kendiliğinden yenilenir.",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/mobile",
+        "env": {
+          "ANDROID_HOME": "${env:LOCALAPPDATA}\\Android\\Sdk",
+          "GETAWAY_API_URL": "http://10.0.2.2:8000",
+          "GETAWAY_WEB_URL": "http://10.0.2.2:3000"
+        }
+      },
+      "command": "npx expo start --android --port 8083",
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Mobil sürücü (Android emülatör)",
+      "detail": "Müşteri uygulamasıyla aynı emülatörde çalışır; Expo Go'daki Recent history'den aralarında geçilir.",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}/mobile",
+        "env": {
+          "ANDROID_HOME": "${env:LOCALAPPDATA}\\Android\\Sdk",
+          "APP_VARIANT": "driver",
+          "GETAWAY_API_URL": "http://10.0.2.2:8000",
+          "GETAWAY_WEB_URL": "http://10.0.2.2:3000"
+        }
+      },
+      "command": "npx expo start --android --port 8084",
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "group": "getaway" }
+    },
+    {
+      "label": "Getaway: Mobil (telefonda Expo Go)",
+      "detail": "Telefon ile bilgisayar aynı ağda olmalı. GETAWAY_API_URL bilgisayarın yerel IP'si olmalı (mobile/README.md).",
+      "type": "shell",
+      "options": { "cwd": "${workspaceFolder}/mobile" },
+      "command": "npx expo start",
+      "problemMatcher": []
+    },
+    {
+      "label": "Getaway: Backend testleri",
+      "type": "shell",
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "windows": { "command": ".venv\\Scripts\\python -m pytest -q" },
+      "command": ".venv/bin/python -m pytest -q",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Getaway: Tip denetimi (web, admin, mobil)",
+      "type": "shell",
+      "windows": {
+        "command": "npm --prefix web run typecheck; if ($?) { npm --prefix admin run typecheck }; if ($?) { npm --prefix mobile run typecheck }"
+      },
+      "command": "npm --prefix web run typecheck && npm --prefix admin run typecheck && npm --prefix mobile run typecheck",
+      "group": "test",
+      "problemMatcher": ["$tsc"]
+    }
+  ]
+}
