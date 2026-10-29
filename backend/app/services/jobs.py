@@ -1,0 +1,102 @@
+"""Zamanlanmış görevler. Her fonksiyon tek işlemde çalışır ve etkilenen kayıt sayısını döner.
+
+ARQ worker'ı (app/worker.py) bunları periyodik çağırır.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from app.localtime import local_date
+from app.models import Booking, Document, Driver, FlightInfo, OtpChallenge, Vehicle
+from app.models.enums import (
+    BookingStatus,
+    DocumentOwner,
+    DocumentStatus,
+    DriverStatus,
+    LegStatus,
+    VehicleStatus,
+)
+from app.services import audit, dispatch, system_settings
+
+
+def purge_flight_data(db: Session, now: datetime) -> int:
+    """K-18: uçuş bilgisi yolculuktan 24 saat sonra silinir."""
+    result = db.execute(delete(FlightInfo).where(FlightInfo.purge_at <= now))
+    return result.rowcount or 0
+
+
+def expire_documents(db: Session, now: datetime) -> int:
+    """Süresi dolan belgeyi işaretler; zorunlu belgesi düşen sürücü/araç pasife alınır."""
+    today = local_date(now)
+    docs = list(
+        db.scalars(
+            select(Document).where(
+                Document.status == DocumentStatus.APPROVED, Document.valid_until < today
+            )
+        )
+    )
+    for doc in docs:
+        doc.status = DocumentStatus.EXPIRED
+        audit.record(db, actor_id=None, action="document.expired", entity_type="document", entity_id=doc.id)
+    db.flush()
+
+    for owner_type in (DocumentOwner.DRIVER, DocumentOwner.VEHICLE):
+        owner_ids = {d.owner_id for d in docs if d.owner_type is owner_type}
+        for owner_id in owner_ids:
+            if not dispatch.missing_documents(db, owner_type, owner_id, today):
+                continue
+            if owner_type is DocumentOwner.DRIVER:
+                driver = db.get(Driver, owner_id)
+                if driver and driver.status is DriverStatus.APPROVED:
+                    driver.status = DriverStatus.PASSIVE
+                    driver.is_online = False
+                    audit.record(db, actor_id=None, action="driver.auto_passive",
+                                 entity_type="driver", entity_id=driver.id)
+            else:
+                vehicle = db.get(Vehicle, owner_id)
+                if vehicle and vehicle.status is VehicleStatus.ACTIVE:
+                    vehicle.status = VehicleStatus.PASSIVE
+                    audit.record(db, actor_id=None, action="vehicle.auto_passive",
+                                 entity_type="vehicle", entity_id=vehicle.id)
+    return len(docs)
+
+
+def cancel_unpaid_bookings(db: Session, now: datetime) -> int:
+    minutes = int(system_settings.get(db, "pending_payment_minutes"))
+    bookings = list(
+        db.scalars(
+            select(Booking).where(
+                Booking.status == BookingStatus.PENDING_PAYMENT,
+                Booking.created_at < now - timedelta(minutes=minutes),
+            )
+        )
+    )
+    for b in bookings:
+        b.status = BookingStatus.CANCELLED
+        b.cancelled_at = now
+        b.cancel_reason = "ödeme süresi doldu"
+        for leg in b.legs:
+            leg.status = LegStatus.CANCELLED
+    return len(bookings)
+
+
+def purge_otp_challenges(db: Session, now: datetime) -> int:
+    result = db.execute(delete(OtpChallenge).where(OtpChallenge.created_at < now - timedelta(days=1)))
+    return result.rowcount or 0
+
+
+def expire_dispatch_offers(db: Session, now: datetime) -> int:
+    return dispatch.expire_offers(db, now)
+
+
+ALL_JOBS = (
+    purge_flight_data,
+    expire_documents,
+    cancel_unpaid_bookings,
+    purge_otp_challenges,
+    expire_dispatch_offers,
+)
