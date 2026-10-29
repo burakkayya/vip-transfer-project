@@ -1,0 +1,564 @@
+/* Getaway Admin — web sitesiyle aynı dil: siyah-beyaz, sade, yoğun veri için okunaklı. */
+:root {
+  --ink: #0b0b0c;
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --soft: #f3f3f1;
+  --text: #0b0b0c;
+  --muted: #6b6b70;
+  --line: #e8e7e3;
+  --line-strong: #d6d5d0;
+  --accent: #a8875a;
+  --danger: #c0261d;
+  --ok: #18794e;
+  --warn: #8a6100;
+  --font-sans: system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--ink);
+}
+
+h1 {
+  font-size: 1.6rem;
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: 1.08rem;
+  margin: 0 0 12px;
+  letter-spacing: -0.015em;
+}
+
+h3 {
+  font-size: 0.95rem;
+  margin: 0 0 8px;
+}
+
+p {
+  margin: 0 0 8px;
+}
+
+/* --- Kabuk ------------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 18px;
+  color: var(--ink);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.brand-name {
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  font-size: 0.92rem;
+}
+
+.brand-sub {
+  font-size: 0.56rem;
+  letter-spacing: 0.38em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.nav-group {
+  padding: 6px 0;
+}
+
+.nav-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  padding: 8px 10px 4px;
+}
+
+.sidebar a {
+  display: block;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.sidebar a:hover {
+  background: var(--soft);
+}
+
+.sidebar a.active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding: 14px 10px 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-foot a {
+  padding: 4px 0;
+}
+
+.sidebar-foot a.active {
+  background: none;
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.content {
+  padding: 28px 32px 56px;
+  min-width: 0;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+/* --- Bileşenler ---------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stack > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 14px;
+}
+
+.cols-2 {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.cols-4 {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.row.end {
+  align-items: flex-end;
+}
+
+.spread {
+  justify-content: space-between;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font-weight: 400;
+}
+
+.hint {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 8px 11px;
+  border: 1.5px solid transparent;
+  border-radius: 9px;
+  background: var(--soft);
+  color: var(--text);
+  min-width: 0;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  background: #ecebe8;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+  background: #fff;
+}
+
+input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--ink);
+}
+
+textarea {
+  width: 100%;
+}
+
+.btn {
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 15px;
+  border-radius: 9px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: #222;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn.secondary {
+  background: var(--soft);
+  border-color: var(--soft);
+  color: var(--ink);
+}
+
+.btn.secondary:hover:not(:disabled) {
+  background: #e9e8e4;
+}
+
+.btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn.small {
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  border-radius: 7px;
+}
+
+.btn.link {
+  background: none;
+  border: none;
+  color: var(--ink);
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+}
+
+.alert {
+  border-radius: 10px;
+  padding: 10px 13px;
+  border: 1px solid;
+}
+
+.alert.error {
+  color: var(--danger);
+  background: #fdf2f1;
+  border-color: #f4cdc9;
+}
+
+.alert.ok {
+  color: var(--ok);
+  background: #eff8f3;
+  border-color: #c6e6d4;
+}
+
+.alert.info {
+  color: var(--warn);
+  background: #fbf7ee;
+  border-color: #eedfbd;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: var(--soft);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.badge.ok {
+  background: #e7f4ec;
+  color: var(--ok);
+}
+
+.badge.warn {
+  background: #f8f0dc;
+  color: var(--warn);
+}
+
+.badge.danger {
+  background: #fbe6e4;
+  color: var(--danger);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+tbody tr:hover {
+  background: #fafaf8;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.stat {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.pager {
+  margin-top: 10px;
+}
+
+dl.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+dl.kv dt {
+  color: var(--muted);
+}
+
+dl.kv dd {
+  margin: 0;
+}
+
+/* --- Giriş ------------------------------------------------------------- */
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--surface);
+}
+
+.login-visual {
+  background: #111 center / cover no-repeat;
+  position: relative;
+}
+
+.login-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.1));
+}
+
+.login {
+  width: 100%;
+  max-width: 380px;
+  margin: auto;
+  padding: 32px 20px;
+}
+
+.login h1 {
+  font-size: 1.8rem;
+  margin: 18px 0 4px;
+}
+
+.qr {
+  display: block;
+  margin: 8px auto;
+  width: 200px;
+  height: 200px;
+}
+
+pre.json {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.76rem;
+  max-width: 480px;
+}
+
+.doc-preview {
+  max-width: 100%;
+  max-height: 520px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+@media (max-width: 900px) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+  .login-visual {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  /* Telefonda kenar çubuğu yatay kaydırılan üst menüye dönüşür. */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    overflow-x: auto;
+    padding: 10px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+  }
+  .sidebar .brand {
+    padding: 0 8px 0 0;
+    flex: none;
+  }
+  .sidebar .brand-text,
+  .nav-title,
+  .sidebar-foot .muted {
+    display: none;
+  }
+  .nav-group {
+    display: flex;
+    flex: none;
+    padding: 0;
+  }
+  .sidebar a {
+    white-space: nowrap;
+  }
+  .sidebar-foot {
+    flex-direction: row;
+    align-items: center;
+    flex: none;
+    margin: 0;
+    padding: 0 0 0 8px;
+    border-top: none;
+    gap: 10px;
+  }
+  .content {
+    padding: 20px 16px 48px;
+  }
+  td {
+    white-space: nowrap;
+  }
+}
