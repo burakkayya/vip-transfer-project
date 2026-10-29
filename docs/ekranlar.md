@@ -1,0 +1,57 @@
+# Ekranlar
+
+## Müşteri web sitesi (çok dilli)
+
+1. Ana sayfa ve hizmet anlatımı
+2. Fiyat hesaplama: rota, araç tipi, tek yön veya gidiş-dönüş, anlık fiyat
+3. Rezervasyon: rota ve tarih, uçuş bilgisi (opsiyonel), yolcu ve bagaj, garanti seçimi
+4. Telefon ile OTP doğrulama (hızlı üyelik)
+5. KVKK aydınlatma ve onay ekranı, mesafeli satış ön bilgilendirme
+6. Ödeme (PayTR, yedek iyzico)
+7. Rezervasyon onayı ve özet
+8. Rezervasyon sorgulama (kod ve telefon ile giriş)
+9. Rezervasyon detayı, değişiklik ve iptal
+10. Sabit sayfalar: iptal ve iade politikası, KVKK aydınlatma, çerez, veri talep formu
+
+## Müşteri mobil uygulaması (iOS ve Android)
+
+1. Giriş: telefon ile OTP
+2. Rezervasyonlarım ve detaylar
+3. Yeni rezervasyon (web ile aynı akış)
+4. Aktif yolculukta sürücü canlı takibi
+5. Rezervasyon iptali ve değişikliği
+6. Profil, bildirim tercihleri, veri talebi
+
+## Sürücü mobil uygulaması
+
+1. Kayıt ve belge yükleme
+2. Onay bekleme ve belge durumu
+3. Ana ekran: çevrimiçi ve çevrimdışı geçişi, yaklaşan işler
+4. İş teklifi kabul veya red
+5. Yolculuk akışı: yola çıktım, vardım, yolcu alındı, tamamlandı
+6. Navigasyon bağlantısı ve yolcu karşılama bilgisi
+7. Kazanç özeti ve hakediş geçmişi
+8. Belge takibi ve süre uyarıları
+9. Canlı konum paylaşımı (aktif yolculukta)
+
+## Admin paneli (web)
+
+1. Giriş ve 2FA
+2. Genel panel: bugünkü rezervasyonlar, canlı harita, açık eşleştirmeler, ödeme durumu
+3. Rezervasyonlar: liste, detay, durum değişikliği, manuel atama
+4. Eşleştirme: bekleyen işler ve uygun sürücüler
+5. Sürücüler: başvuru kuyruğu, onay ve red, belge inceleme, askıya alma
+6. Araçlar ve araç tipleri
+7. Belge takibi: süresi yaklaşanlar ve dolanlar
+8. Bölgeler: ilçe ve havalimanı yönetimi
+9. Fiyatlandırma: fiyat kuralları, gidiş-dönüş indirimi, iptal politikaları
+10. Komisyon kuralları
+11. Ödemeler ve iadeler
+12. Sürücü hakedişleri ve ödeme dosyaları
+13. Faturalar
+14. Müşteriler (hassas alanlar maskeli)
+15. Bildirim şablonları
+16. KVKK veri talepleri
+17. Kullanıcılar ve roller
+18. Denetim kayıtları (filtrelenebilir)
+19. Sistem ayarları

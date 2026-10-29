@@ -1,0 +1,65 @@
+# Açık Konular
+
+Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
+
+## Ödeme
+
+- [ ] PayTR: EUR tahsilatının EUR olarak şirket hesabına geçtiğinin yazılı teyidi.
+- [ ] PayTR: alt üye işyeri veya dağıtım (split) özelliğinin açılma koşulları ve sürücülere TL aktarım modeli.
+- [ ] iyzico: yedek olarak hangi para birimlerini desteklediği ve kesinti senaryosunda davranışı.
+- [ ] Yurt dışı kart komisyonları ve iade komisyonları.
+
+## Hukuki
+
+- [ ] TÜRSAB üyeliği ile hizmetin satış modelinin doğrulanması.
+- [ ] Sürücü ve araç yetki belgelerinin sisteme bağlanma şekli.
+- [ ] Tam iade garantisinin sigorta mevzuatı kapsamında değerlendirilmesi.
+- [ ] Cayma hakkı istisnası ile iptal kademelerinin uyumu.
+- [ ] Uçuş verisinin 24 saat saklama süresinin KVKK açısından teyidi.
+- [ ] Pasaport bilgisinin hangi kurumlara, hangi durumda iletileceği.
+- [ ] Veri saklama süreleri (bkz. yasal_ve_guvenlik.md).
+
+## Ürün
+
+- [ ] MVP'de günlük araç kiralamanın olup olmayacağı.
+- [ ] Diller: MVP'de dört dil mi, yoksa on dil mi.
+- [ ] Yuvarlama 5 € adımıyla uygulanacak, son fiyat ekranda nasıl gösterilecek.
+- [ ] Gidiş-dönüş indiriminin yüzde mi sabit tutar mı olacağı.
+- [ ] Araç tipleri ve çarpanları (minivan, VIP van, minibüs).
+
+## Teknik
+
+- [ ] Yurt dışı servislerde veri bölgesi (Sentry, e-posta).
+- [ ] Uçuş takip API'sinin seçimi ve maliyeti.
+- [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı.
+
+## Geliştirme sırasında ortaya çıkanlar
+
+Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
+
+- [ ] TRY fiyatı: kur kaynağı (manuel mi, TCMB mi) ve TRY yuvarlama adımı. Şimdilik kur admin panelinden elle giriliyor, yuvarlama 10 TL (`try_rounding_step` ayarı).
+- [ ] Sürücü hakedişinde EUR→TRY kuru: iş tamamlandığı andaki kur mu, ödeme günündeki kur mu? Şimdilik tamamlanma anındaki kur kullanılıyor.
+- [ ] Zorunlu belge listesi: sürücü için sürücü belgesi, SRC ve adli sicil; araç için ruhsat, sigorta, muayene ve turizm taşımacılığı yetki belgesi. Liste `system_settings` üzerinden değiştirilebilir, hukukçuyla teyit edilmeli.
+- [ ] Gazipaşa-Alanya Havalimanı (GZP), K-06 kapsamında aktif olarak eklendi. is_modeli.md'de yalnızca üç havalimanı geçiyor.
+- [ ] Araç tipleri ve çarpanları yer tutucu: minivan 1,30, VIP van 1,60, minibüs 2,00. Sedan hizmetten kaldırıldı (2026-10-29), eski kayıtlar için pasif tutuluyor.
+- [ ] Gidiş-dönüş indirimi tanımlanmadı. Admin panelinden yüzde veya sabit tutar olarak eklenebilir.
+- [ ] PayTR imza formülleri test mağazasında doğrulanmalı (iFrame token, bildirim hash'i, iade).
+- [ ] iyzico yedek sağlayıcısı henüz kodlanmadı. Para birimi desteği teyit edilince eklenecek.
+- [ ] Netgsm API'si güncel belgeyle doğrulanmalı, uluslararası SMS yetkisi kontrol edilmeli.
+- [ ] FCM servis hesabı açılınca push bildirimi devreye alınacak. Şimdilik konsola yazılıyor.
+- [ ] e-Arşiv entegratörü seçimi. Fatura kaydı oluşuyor ancak kesim yapılmıyor.
+- [ ] Belge depolama: şimdilik yerel diskte şifreli tutuluyor, Türkiye'deki S3 uyumlu depolamaya geçilecek.
+- [ ] Müşteri silme talebinde rezervasyon ve fatura kayıtlarının saklama süresi. Şimdilik kişisel alanlar siliniyor, kayıtlar saklanıyor.
+- [ ] Web yasal metinleri (KVKK aydınlatma, mesafeli satış ön bilgilendirme, iptal, çerez) taslak. Şirket unvanı, adres, TÜRSAB ve MERSİS no `web/lib/site.ts` içinde yer tutucu. Hukukçu onayından sonra sayfalardaki "taslak" uyarısı kaldırılacak.
+- [ ] Google Maps API anahtarı (Places API New + Routes API) açılmalı, IP ile kısıtlanmalı ve bütçe uyarısı konmalı. Anahtar gelene kadar geliştirme sahte adres listesiyle çalışır (`GETAWAY_PLACES_PROVIDER=fake`).
+- [ ] Adres aramasında kullanıcının yazdığı adres metni Google'a (yurt dışı) gider. Aydınlatma metninde belirtilmeli, KVKK açısından hukukçuyla teyit edilmeli.
+- [ ] İlçe bazlı fiyatta büyük ilçelerde (Alanya, Kaş, Fethiye) ilçe merkezine uzak adresler için ek mesafe kuralı gerekip gerekmediği.
+- [ ] Sürücü uygulamasında push yok, teklifler yoklama ile alınıyor. Konum yalnızca yolculuk ekranı açıkken paylaşılıyor, arka plan konumu için mağaza izin gerekçesi hazırlanmalı.
+- [ ] Mobil uygulama Expo SDK 58'e yükseltildi. Mağaza yayını için EAS hesabı açılmalı, `eas.json` eklenmeli.
+- [ ] Admin paneli için üretimde ayrı alt alan adı ve Cloudflare Access veya IP kısıtı.
+
+## Operasyon
+
+- [ ] İlk admin kullanıcıların listesi.
+- [ ] Sürücü onboarding süreci ve belge kontrol sorumluluğu.
+- [ ] Cloudflare'e DNS taşıma zamanı.

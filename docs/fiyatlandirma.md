@@ -1,0 +1,69 @@
+# Fiyatlandırma
+
+## Temel formül
+
+```
+ham_fiyat = mesafe_km x 1,10 x araç_tipi_çarpanı
+ham_fiyat = max(ham_fiyat, 30)          # minimum 30 €
+indirimli = ham_fiyat - gidiş_dönüş_indirimi (varsa)
+fiyat = 5'in katına yukarı yuvarlama(indirimli)
+```
+
+Örnek: 167,30 → 170 €. Minimum fiyat 30 € olduğu için yuvarlama ile çakışmaz.
+
+## Parametreler
+
+| Parametre | Değer | Değiştirilebilir |
+|---|---|---|
+| Km birim fiyatı | 1,10 € | Evet (`pricing_rules`) |
+| Minimum ücret | 30 € | Evet |
+| Yuvarlama adımı | 5 | Evet |
+| Gidiş-dönüş indirimi | Yüzde veya sabit tutar | Evet (`round_trip_discounts`) |
+| Araç tipi çarpanı | Araç tipine göre | Evet (`vehicle_types`) |
+
+## Adres ve ilçe (K-28)
+
+- Müşteri alış ve bırakış adresini Google Places ile arar (otel, adres veya havalimanı).
+- Backend, seçilen adresin ilçesini (`administrative_area_level_2`) bulur ve hizmet bölgesine eşler. Havalimanı olarak işaretli yerler 8 km içindeki havalimanı bölgesine eşlenir. İlçe adı gelmezse en yakın ilçe merkezi seçilir.
+- Antalya ve Muğla dışındaki adresler reddedilir (`region_not_served`).
+- Backend çözdüğü bölge ve koordinatı imzalı bir **adres jetonu** ile döner. Fiyat teklifi bu jetonla istenir, böylece istemci ilçeyi değiştirip fiyatı düşüremez.
+- Havalimanı veya ilçe doğrudan da seçilebilir (adres araması olmadan, bölge merkezi kullanılır).
+
+## Mesafe
+
+- **Farklı ilçeler arasında** fiyat mesafesi, iki ilçenin (veya havalimanının) merkezleri arasındaki karayolu mesafesidir. Aynı iki ilçe arasındaki her transfer aynı fiyatı alır.
+- **Aynı ilçe içinde** gerçek alış ve bırakış noktaları arasındaki mesafe kullanılır (çoğunlukla minimum fiyat). 300 m'den yakın noktalar aynı yer sayılır.
+- Karayolu mesafesi Google Routes API ile hesaplanır, ilçe merkezleri arası rotalar önbelleğe alınır.
+- Google'a yalnızca koordinat gönderilir. Adres aramasında kullanıcının yazdığı metin gider, kimlik bilgisi gitmez.
+- Gerçek adres ve koordinat sürücünün navigasyonu için rezervasyonda saklanır.
+- Hesaplanan mesafe ve fiyat rezervasyonla birlikte kaydedilir (`quoted_price`, `distance_km`).
+
+## Para birimi
+
+| Müşteri ülkesi | Gösterilen ve tahsil edilen para birimi |
+|---|---|
+| Türkiye | TRY |
+| Avrupa ülkeleri | EUR |
+| Diğer ülkeler | EUR |
+
+Ödeme sağlayıcısı müşteriye gösterilen para biriminde tahsilat yapar. Şirket hesabına geçiş ayrıntısı için bkz. odeme.md.
+
+## İptal ve iade
+
+| Kalkışa kalan süre | İade oranı |
+|---|---|
+| 48 saat ve üzeri | %100 |
+| 24 ile 48 saat arası | %50 |
+| 24 saatten az | %0 |
+
+- Politika rezervasyon anında dondurulur. Sonradan yapılan değişiklikler mevcut rezervasyonları etkilemez.
+- İade tutarı `bookings` üzerindeki politikaya göre hesaplanır.
+- İade, PayTR iade API'si ile yapılır. Her iade `refunds` tablosunda kayıt altına alınır.
+
+## Tam iade garantisi (ürün)
+
+- Rezervasyona isteğe bağlı ek kalem olarak eklenir. Ücret 5 € veya 10 € gibi 5'in katıdır.
+- Garanti seçilirse iptal politikası devre dışı kalır ve tam iade yapılır.
+- Garanti ücreti iade edilmez, iade yalnızca yolculuk fiyatı üzerinden hesaplanır.
+- Hukuki yapı doğrulanmadan satışa açılmaz (bkz. yasal_ve_guvenlik.md).
+- Muhasebe karşılığı (gelir mi, prim mi) muhasebeci ile netleştirilir.
