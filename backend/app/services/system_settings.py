@@ -17,7 +17,7 @@ DEFAULTS: dict[str, Any] = {
     "scheduled_min_lead_hours": 2,
     # Ödenmeyen rezervasyon kaç dakika sonra iptal edilir.
     "pending_payment_minutes": 30,
-    "try_rounding_step": 10,
+    "try_rounding_step": 5,
     "kvkk_disclosure_version": "1.0",
     "distance_sales_version": "1.0",
     # Açık konu: sürücü ve araç yetki belgelerinin listesi hukukçu ile teyit edilecek.

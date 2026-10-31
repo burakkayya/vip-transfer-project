@@ -8,6 +8,9 @@ Bu klasör, proje kapsamı netleştirme görüşmelerinde alınan kararları iç
 
 | Dosya | İçerik |
 |---|---|
+| proje_rehberi.md | Tek yerden genel özet: parçalar, akış, hesaplar, durum matrisi (buradan başlayın) |
+| degisiklik_gunlugu.md | Tarihli değişiklik kaydı |
+| test_senaryolari.md | Ekrandan test senaryoları ve test hesapları |
 | kararlar.md | Alınan tüm iş ve teknik kararların kaydı |
 | is_modeli.md | Hizmet modeli, roller, komisyon, sürücü ve araç kuralları |
 | fiyatlandirma.md | Fiyat formülü, minimum ücret, gidiş-dönüş, iptal ve iade politikası |

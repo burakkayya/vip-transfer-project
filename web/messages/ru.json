@@ -10,7 +10,8 @@
     "language": "Язык",
     "services": "Услуги",
     "fleet": "Автопарк",
-    "faq": "Вопросы"
+    "faq": "Вопросы",
+    "menu": "Меню"
   },
   "home": {
     "heroTitle": "Ваш водитель готов. Цена фиксирована.",
@@ -68,7 +69,24 @@
     "group3": "Встреча с табличкой в аэропорту",
     "group4": "Туда и обратно в одном бронировании",
     "routesTitle": "Популярные маршруты",
-    "faqLead": "О бронировании, оплате и отмене."
+    "faqLead": "О бронировании, оплате и отмене.",
+    "colorWhite": "Белый",
+    "colorBlack": "Чёрный",
+    "statAirports": "аэропорта",
+    "statDistricts": "районов и курортов",
+    "statHoursUnit": " ч",
+    "statCancel": "до подачи — бесплатная отмена",
+    "cardTitle": "Куда едем?",
+    "cardText": "Выберите маршрут и сразу увидите фиксированную цену.",
+    "flightTag": "Отслеживание рейса · без доплаты за задержку",
+    "servicesEyebrow": "Услуги",
+    "fleetEyebrow": "Автопарк",
+    "howEyebrow": "3 шага",
+    "groupEyebrow": "Семьи и группы",
+    "groupPill": "от 6 до 14 пассажиров",
+    "groupImageAlt": "Чёрный Mercedes-Benz Vito, вид сбоку",
+    "airportsEyebrow": "Аэропорты",
+    "faqEyebrow": "Вопросы"
   },
   "trip": {
     "from": "Откуда",

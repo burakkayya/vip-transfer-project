@@ -56,7 +56,7 @@ Fiyat ve komisyon geçmişi tutulur, eski rezervasyonların hangi kuralla hesapl
 | dispatch_offers | id, booking_leg_id, driver_id, status (gönderildi, kabul, red, süre_doldu), offered_at, responded_at |
 | trip_events | id, booking_leg_id, event_type (atandı, yola_çıktı, vardı, başladı, bitti), occurred_at |
 
-- `flight_infos.purge_at` yolculuk bitiminden 24 saat sonrasına ayarlanır, zamanlanmış görev siler.
+- `flight_infos.purge_at` yolculuk tamamlandığında şimdiye ayarlanır (K-31), saatlik zamanlanmış görev siler. Yolculuk hiç tamamlanmazsa rezervasyon sırasındaki yedek süre geçerlidir.
 - Canlı sürücü konumu PostgreSQL'de tutulmaz. Redis'te kısa süreli saklanır.
 
 ## Ödeme, iade, finans
@@ -94,7 +94,7 @@ Kod (`backend/app/models/`) yukarıdaki şemayı izler. Aşağıdaki farklar uyg
 | `otp_challenges` | Yeni tablo. SMS kodunun kendisi değil HMAC özeti, deneme sayısı ve geçerlilik süresi tutulur. |
 | `sessions` | `refresh_token_hash` eklendi. Yenileme jetonu her kullanımda değişir. |
 | İptal politikası | `cancellation_policies` başlık tablosu, kademeler `cancellation_policy_tiers` tablosunda. Rezervasyon tek bir politika kimliğini dondurur. |
-| `exchange_rates` | Yeni tablo. EUR/TRY kuru burada tutulur, TRY rezervasyonda `bookings.exchange_rate_id` ile dondurulur. |
+| `exchange_rates` | Yeni tablo. EUR/TRY kuru burada tutulur (kaynak `tcmb`, saatlik görev otomatik yazar, K-33), TRY rezervasyonda `bookings.exchange_rate_id` ile dondurulur. |
 | `bookings` dondurulan alanlar | `pricing_rule_id`, `round_trip_discount_id`, `commission_rule_id`, `commission_rate`, `exchange_rate_id`, `price_eur`, `total_amount`. |
 | `booking_legs` | Durum (`status`), atanan sürücü ve araç, koordinatlar ve süre eklendi. |
 | `payments.merchant_oid` | Sağlayıcıya gönderilen sipariş numarası. Her ödeme denemesinde yeni üretilir. |

@@ -3,11 +3,11 @@
 | Kapsam | MVP | Tam sürüm |
 |---|---|---|
 | Araç | 1 araç, 1 sürücü ile başlangıç, sistem çoklu araç destekli kurulur | Çoklu araç ve sürücü ağı |
-| Rezervasyon | Planlı transfer, tek yön ve gidiş-dönüş, anlık eşleştirme | Günlük araç kiralama (MVP'ye alınıp alınmayacağı açık) |
+| Rezervasyon | Planlı transfer, tek yön ve gidiş-dönüş (%5 indirim), anlık eşleştirme, günlük araç kiralama (K-29) | Rezervasyon türü çeşitlendirme |
 | Bölge | Antalya ve Muğla ilçeleri, havalimanları, şehirlerarası transfer | Ek bölgeler, optimizasyon |
 | Ödeme | Kart ile ön ödeme, PayTR, iyzico yedek | Otomatik sürücü ödemesi (split), hakediş dosyaları |
 | Garanti ürünü | Hukuki teyit sonrası | Ürün çeşitlendirme |
-| Diller | Türkçe, İngilizce, Almanca, Rusça (öncelikli dört) | Fransızca, İspanyolca, İtalyanca, Çince, Japonca, Arapça |
+| Diller | On dilin tamamı: tr, en, de, ru, fr, es, it, zh, ja, ar (K-34) | Ek diller |
 | Platform | Web sitesi, admin paneli, müşteri mobil, sürücü mobil | Gelişmiş müşteri özellikleri |
 | Admin | Rezervasyon, ödeme, sürücü, araç, belge, fiyat yönetimi | Gelişmiş raporlama, otomatik fiyat kuralları |
 

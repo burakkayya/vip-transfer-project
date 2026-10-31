@@ -10,7 +10,8 @@
     "language": "Sprache",
     "services": "Leistungen",
     "fleet": "Fahrzeuge",
-    "faq": "FAQ"
+    "faq": "FAQ",
+    "menu": "Menü"
   },
   "home": {
     "heroTitle": "Ihr Fahrer wartet. Ihr Preis steht fest.",
@@ -68,7 +69,24 @@
     "group3": "Empfang mit Namensschild am Flughafen",
     "group4": "Hin- und Rückfahrt in einer Buchung",
     "routesTitle": "Beliebte Strecken",
-    "faqLead": "Zu Buchung, Zahlung und Stornierung."
+    "faqLead": "Zu Buchung, Zahlung und Stornierung.",
+    "colorWhite": "Weiß",
+    "colorBlack": "Schwarz",
+    "statAirports": "Flughäfen",
+    "statDistricts": "Bezirke und Urlaubsorte",
+    "statHoursUnit": " Std.",
+    "statCancel": "vor Abholung kostenlos stornierbar",
+    "cardTitle": "Wohin geht die Reise?",
+    "cardText": "Route wählen und den Festpreis sofort sehen.",
+    "flightTag": "Flugverfolgung aktiv · keine Zusatzkosten bei Verspätung",
+    "servicesEyebrow": "Leistungen",
+    "fleetEyebrow": "Flotte",
+    "howEyebrow": "3 Schritte",
+    "groupEyebrow": "Familien und Gruppen",
+    "groupPill": "6 bis 14 Fahrgäste",
+    "groupImageAlt": "Schwarzer Mercedes-Benz Vito in Seitenansicht",
+    "airportsEyebrow": "Flughäfen",
+    "faqEyebrow": "FAQ"
   },
   "trip": {
     "from": "Von",

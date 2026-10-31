@@ -52,17 +52,21 @@ cd ../mobile && npm install && npm run web       # ya da: npm run start:driver /
 
 Geliştirmede SMS kodları backend konsoluna yazılır ve uygulamalarda ekranda gösterilir; ödemeler sahte sağlayıcıyla yapılır.
 
-## Durum (2026-10-30)
+Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik_gunlugu.md`.
+
+## Durum (2026-10-31)
 
 | Alan | Durum |
 |---|---|
-| Backend | Tamamlandı; 77 test geçiyor. Adres (Google Places, şimdilik örnek veri), ilçe bazlı fiyat (K-28), PayTR (test mağazası bekliyor) |
-| Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu |
+| Backend | Tamamlandı; 78 test geçiyor. Kur TCMB'den otomatik, gidiş-dönüş %5, fiyatlar 5'in katı. Adres (Google Places, şimdilik örnek veri), ilçe bazlı fiyat (K-28), PayTR (test mağazası bekliyor) |
+| Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu. 2026-10-31: yeni tasarım, Motion/Lenis animasyonları, 4 araçlı filo (VIP Minibüs, K-35) |
 | Admin paneli | Tamamlandı; 19 ekran, 2FA, rol bazlı menü, parola değiştirme |
-| Mobil (müşteri + sürücü) | Tamamlandı; Android emülatöründe test edildi. Push bildirim (FCM) ve mağaza derlemesi bekliyor |
+| Mobil (müşteri + sürücü) | Tamamlandı; 2026-10-31 Uber tarzı yeni tasarım (Reanimated, SVG harita). Gerçek harita, push bildirim (FCM) ve mağaza derlemesi bekliyor |
 | Yasal metinler | Taslak; hukukçu onayı bekliyor (`web/lib/site.ts` içinde yer tutucular) |
 
 Araç tipleri: Minivan, VIP Van, Minibüs. Sedan hizmetten kaldırıldı.
+
+Kararı verilmiş, geliştirmesi bekleyen: günlük araç kiralama (K-29) ve on dil (K-34).
 
 ## Mimari notlar
 

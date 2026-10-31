@@ -12,8 +12,8 @@ from decimal import Decimal
 from app.models.enums import Currency
 from app.pricing import round_up_to_step
 
-# Açık konu: TRY yuvarlama adımı belgede yok, 10 TL varsayıldı (acik_konular.md).
-DEFAULT_TRY_ROUNDING_STEP = Decimal("10")
+# K-32: tüm para birimlerinde fiyatlar 5'in katına yukarı yuvarlanır.
+DEFAULT_TRY_ROUNDING_STEP = Decimal("5")
 
 
 def currency_for_country(country_code: str | None) -> Currency:

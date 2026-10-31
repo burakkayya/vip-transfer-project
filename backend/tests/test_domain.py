@@ -116,3 +116,11 @@ class CurrencyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_tcmb_eur_try_parse():
+    from app.providers.fx import parse_tcmb_eur_try
+
+    xml = ('<Tarih_Date><Currency CurrencyCode="USD"><ForexSelling>40.1</ForexSelling></Currency>'
+           '<Currency CurrencyCode="EUR"><ForexSelling>47.3250</ForexSelling></Currency></Tarih_Date>')
+    assert parse_tcmb_eur_try(xml) == D("47.3250")

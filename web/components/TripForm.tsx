@@ -66,6 +66,7 @@ export default function TripForm(props: { regions: Region[]; initial: Trip; onSu
       </div>
 
       <div className="route-row">
+        <span className="route-rail" aria-hidden><i /><b /><i /></span>
         <AddressField id="from" label={t("from")} icon="plane" regions={regions} value={trip.from} onChange={(v) => set("from", v)} />
         <button type="button" className="swap" aria-label={t("swap")} title={t("swap")}
           onClick={() => setTrip((s) => ({ ...s, from: s.to, to: s.from }))}>
@@ -75,7 +76,7 @@ export default function TripForm(props: { regions: Region[]; initial: Trip; onSu
       </div>
 
       <div className="details-row">
-        <div className="field">
+        <div className="field when">
           <label htmlFor="at">{t("pickupAt")}</label>
           <div className="with-icon">
             <Icon name="calendar" />
@@ -84,7 +85,7 @@ export default function TripForm(props: { regions: Region[]; initial: Trip; onSu
           <span className="hint">{t("pickupHint")}</span>
         </div>
         {trip.roundTrip && (
-          <div className="field">
+          <div className="field ret">
             <label htmlFor="ret">{t("returnAt")}</label>
             <div className="with-icon">
               <Icon name="calendar" />

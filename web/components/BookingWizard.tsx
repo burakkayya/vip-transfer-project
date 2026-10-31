@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { dateTime, localInputToIso, money } from "@/lib/format";
 import { useApiError, useSession } from "@/lib/hooks";
@@ -200,6 +200,18 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
     });
   }
 
+  // Adım değişince formun başı görünür olsun (uzun sayfada alt kısımda kalmasın).
+  const top = useRef<HTMLDivElement>(null);
+  const firstStep = useRef(true);
+  useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
+    const el = top.current;
+    if (el && el.getBoundingClientRect().top < 0) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 96, behavior: "smooth" });
+  }, [step]);
+
   if (!ready) return null;
 
   if (editing) {
@@ -218,7 +230,7 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   const stepIndex = visibleSteps.indexOf(step);
 
   return (
-    <div className="wizard">
+    <div className="wizard" ref={top}>
       <div className="wizard-main">
         <ol className="stepper-bar">
           {visibleSteps.map((s, i) => (
@@ -245,6 +257,7 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
                     key={vt.code}
                     className={`vehicle-card ${vehicle === vt.code ? "selected" : ""}`}
                     disabled={!ok}
+                    aria-busy={!q && loadingQuotes}
                     onClick={() => {
                       setVehicle(vt.code);
                       setFinalQuote(null);
@@ -285,6 +298,8 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
                           <span className="hint">{t("perTrip")}</span>
 
                         </>
+                      ) : !q && loadingQuotes ? (
+                        <span className="skeleton" aria-label={t("loading")} />
                       ) : (
                         <span className="hint">{t("unavailable")}</span>
                       )}

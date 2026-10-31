@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "env": { "GETAWAY_API_URL": "http://10.0.2.2:8000" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "GETAWAY_API_URL": "https://api.getawaytransfers.com", "GETAWAY_WEB_URL": "https://getawaytransfers.com" }
+    },
+    "preview-driver": {
+      "extends": "preview",
+      "env": {
+        "APP_VARIANT": "driver",
+        "GETAWAY_API_URL": "https://api.getawaytransfers.com",
+        "GETAWAY_WEB_URL": "https://getawaytransfers.com"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": { "GETAWAY_API_URL": "https://api.getawaytransfers.com", "GETAWAY_WEB_URL": "https://getawaytransfers.com" }
+    },
+    "production-driver": {
+      "extends": "production",
+      "env": {
+        "APP_VARIANT": "driver",
+        "GETAWAY_API_URL": "https://api.getawaytransfers.com",
+        "GETAWAY_WEB_URL": "https://getawaytransfers.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {},
+    "production-driver": {}
+  }
+}

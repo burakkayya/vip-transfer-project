@@ -18,7 +18,7 @@ fiyat = 5'in katına yukarı yuvarlama(indirimli)
 | Km birim fiyatı | 1,10 € | Evet (`pricing_rules`) |
 | Minimum ücret | 30 € | Evet |
 | Yuvarlama adımı | 5 | Evet |
-| Gidiş-dönüş indirimi | Yüzde veya sabit tutar | Evet (`round_trip_discounts`) |
+| Gidiş-dönüş indirimi | %5 (K-30), yüzde veya sabit tutar olarak değiştirilebilir | Evet (`round_trip_discounts`) |
 | Araç tipi çarpanı | Araç tipine göre | Evet (`vehicle_types`) |
 
 ## Adres ve ilçe (K-28)

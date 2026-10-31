@@ -52,6 +52,6 @@ export default function Icon(props: { name: IconName; size?: number; className?:
 
 /** Araç tipi koduna göre ikon. */
 export function vehicleIcon(code: string): IconName {
-  if (code === "minibus") return "bus";
+  if (code === "minibus" || code === "vip_minibus") return "bus";
   return "van";
 }

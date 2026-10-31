@@ -10,7 +10,8 @@
     "language": "Dil",
     "services": "Hizmetler",
     "fleet": "Filo",
-    "faq": "SSS"
+    "faq": "SSS",
+    "menu": "Menü"
   },
   "home": {
     "heroTitle": "Şoförünüz hazır. Yolculuğunuz sabit fiyatlı.",
@@ -68,7 +69,24 @@
     "group3": "Havalimanında isimli karşılama",
     "group4": "Gidiş ve dönüş tek rezervasyonda",
     "routesTitle": "Popüler rotalar",
-    "faqLead": "Rezervasyon, ödeme ve iptal hakkında."
+    "faqLead": "Rezervasyon, ödeme ve iptal hakkında.",
+    "colorWhite": "Beyaz",
+    "colorBlack": "Siyah",
+    "statAirports": "havalimanı",
+    "statDistricts": "ilçe ve bölge",
+    "statHoursUnit": " sa",
+    "statCancel": "öncesine kadar ücretsiz iptal",
+    "cardTitle": "Nereye gidiyorsunuz?",
+    "cardText": "Rotanızı seçin, sabit fiyatı anında görün.",
+    "flightTag": "Uçuş takibi açık · gecikmede ek ücret yok",
+    "servicesEyebrow": "Hizmetler",
+    "fleetEyebrow": "Filo",
+    "howEyebrow": "3 adım",
+    "groupEyebrow": "Aileler ve gruplar",
+    "groupPill": "6 ila 14 yolcu",
+    "groupImageAlt": "Yandan görünen siyah Mercedes-Benz Vito",
+    "airportsEyebrow": "Havalimanları",
+    "faqEyebrow": "SSS"
   },
   "trip": {
     "from": "Nereden",
