@@ -1,9 +1,10 @@
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useState } from "react";
-import { Modal, Platform, Pressable, Text, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Modal, Platform, Pressable, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { wallClockLabel } from "@/lib/format";
-import { Button, colors, s } from "./ui";
+import { Button, T, colors, s } from "./ui";
 
 /** Tarih ve saat seçimi. Android'de önce tarih sonra saat sorulur; iOS'ta tek seçici açılır. */
 export default function DateTimeField(props: { label: string; value: Date; onChange: (d: Date) => void; minimumDate?: Date }) {
@@ -36,9 +37,11 @@ export default function DateTimeField(props: { label: string; value: Date; onCha
 
   return (
     <View style={s.field}>
-      <Text style={s.label}>{props.label}</Text>
-      <Pressable style={s.input} onPress={openPicker}>
-        <Text style={{ color: colors.text }}>{wallClockLabel(props.value)}</Text>
+      {props.label ? <T style={s.label}>{props.label}</T> : null}
+      <Pressable style={s.inputWrap} onPress={openPicker}>
+        <Ionicons name="calendar-outline" size={18} color={colors.muted} style={{ marginRight: 10 }} />
+        <T style={[s.inputText, { fontWeight: "600" }]}>{wallClockLabel(props.value)}</T>
+        <Ionicons name="chevron-down" size={18} color={colors.muted} />
       </Pressable>
       {Platform.OS === "ios" && (
         <Modal visible={open} transparent animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={() => setOpen(false)}>

@@ -18,7 +18,7 @@ Bu dosya hukuki danışmanlık değildir. Maddeler bir hukukçuyla doğrulanmal�
 ## Veri güvenliği
 
 - Pasaport bilgisi sistemde tutulmaz, yalnızca yetkili kurumlara iletilir (K-17).
-- Uçuş verisi yolculuktan 24 saat sonra silinir (K-18).
+- Uçuş verisi yolculuk tamamlanınca silinir (K-31). Kuruma bildirim gerekiyorsa bildirimden sonra silinir.
 - Kart verisi tutulmaz, ödeme sağlayıcının sayfası kullanılır.
 - Hassas alanlar (telefon, e-posta, belge yolu, 2FA sırrı) alan düzeyinde şifrelenir. Anahtarlar KMS ile yönetilir.
 - Her erişim (admin dahil) `audit_logs` tablosuna yazılır. Log kayıtları değiştirilemez.
@@ -31,7 +31,7 @@ Bu dosya hukuki danışmanlık değildir. Maddeler bir hukukçuyla doğrulanmal�
 
 | Veri | Süre |
 |---|---|
-| Uçuş bilgisi | Yolculuk bitimi + 24 saat |
+| Uçuş bilgisi | Yolculuk tamamlanınca (bildirim gerekiyorsa bildirimden sonra) |
 | Müşteri hesabı | Son rezervasyondan itibaren belirlenen süre (hukukçu teyidi) |
 | Rezervasyon ve fatura kayıtları | Vergi mevzuatına göre (hukukçu teyidi) |
 | Sürücü belgeleri | Sürücü aktif olduğu süre + yasal saklama süresi |

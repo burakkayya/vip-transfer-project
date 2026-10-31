@@ -1,18 +1,42 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Linking, Text, View } from "react-native";
-import { Alert, Badge, Button, Card, H2, Info, Loading, P, Row, Screen, Timeline, colors, s, statusTone } from "@/components/ui";
+import { Image, Linking, Pressable, View } from "react-native";
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import MapCanvas from "@/components/MapCanvas";
+import MapSheet from "@/components/MapSheet";
+import {
+  Alert, Avatar, Badge, Button, Card, H2, IconButton, Info, Loading, P, ProgressSegments, RouteStops, Row, Screen, T,
+  Timeline, colors, s, statusTone,
+} from "@/components/ui";
 import { accessToken, api, wsUrl } from "@/lib/api";
 import { reachable } from "@/lib/config";
 import { dateTime, money } from "@/lib/format";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
 import type { Booking, DriverLocation, RefundQuote } from "@/lib/types";
+import { VEHICLE_IMAGE } from "@/lib/vehicles";
 
 const TRACKABLE = ["yolda", "vardi", "basladi"];
 const CANCELLABLE = ["odeme_bekliyor", "onaylandi", "atandi"];
 const LEG_FLOW = ["beklemede", "atandi", "yolda", "vardi", "basladi", "bitti"];
+
+/** Sürücü aranırken dönen halka. */
+function Searching() {
+  const r = useSharedValue(0);
+  useEffect(() => {
+    r.value = withRepeat(withTiming(1, { duration: 1400 }), -1, false);
+  }, [r]);
+  const st = useAnimatedStyle(() => ({ transform: [{ scale: 0.6 + r.value * 0.8 }], opacity: 1 - r.value }));
+  return (
+    <View style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+      <Animated.View style={[{ position: "absolute", width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent }, st]} />
+      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name="car" size={16} color="#fff" />
+      </View>
+    </View>
+  );
+}
 
 /** Müşteri ekranları 2, 4, 5: rezervasyon detayı, ödeme, canlı takip, iptal. */
 export default function BookingScreen() {
@@ -108,86 +132,148 @@ export default function BookingScreen() {
     }
   }
 
-  if (!booking) return <Screen>{error ? <Alert text={error} /> : <Loading />}</Screen>;
+  if (!booking) {
+    return (
+      <Screen>
+        <View style={{ height: 40 }} />
+        {error ? <Alert text={error} /> : <Loading />}
+      </Screen>
+    );
+  }
+
   const fmt = (a: string) => money(a, booking.currency, LOCALE);
+  const leg = booking.legs.find((l) => !["bitti", "iptal"].includes(l.status)) ?? booking.legs[0];
+  const legIdx = LEG_FLOW.indexOf(leg.status);
+  // Sürücü atanana kadar rezervasyon durumu, sonra yolculuk adımı başlık olur.
+  const headline = leg.status === "beklemede" || ["odeme_bekliyor", "iptal", "tamamlandi"].includes(booking.status)
+    ? statusLabel("status", booking.status)
+    : statusLabel("leg", leg.status);
+  const mapMode = tracking ? "driver" : booking.status === "iptal" ? "idle" : "route";
+  const progress = leg.status === "vardi" ? 0 : undefined;
 
   return (
-    <Screen refreshing={false} onRefresh={load}>
-      <Stack.Screen options={{ title: booking.booking_code }} />
-      <Alert text={error} />
-      <Alert text={notice} tone="ok" />
-      <Card elevated>
-        <Row spread>
-          <View>
-            <Text style={s.hint}>{booking.vehicle_type.name} · {booking.passenger_count} · {booking.luggage_count}</Text>
-            <Text style={[s.h1, { letterSpacing: 2 }]}>{booking.booking_code}</Text>
+    <MapSheet
+      map={<MapCanvas seed={booking.booking_code} mode={mapMode} progress={progress} focusTop={0.55} />}
+      mapRatio={0.42}
+      refreshing={false}
+      onRefresh={load}
+      overlay={
+        <>
+          <IconButton icon="arrow-back" label={t("back")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/bookings"))} />
+          <View style={{ backgroundColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
+            <T style={{ color: "#fff", fontWeight: "700", letterSpacing: 1.5, fontSize: 13 }}>{booking.booking_code}</T>
+          </View>
+        </>
+      }
+      bottom={booking.status === "odeme_bekliyor" ? (
+        <Button title={`${t("bookings.payNow")} · ${fmt(booking.total_amount)}`} icon="card" onPress={startPayment} />
+      ) : undefined}
+    >
+      <Animated.View entering={FadeInDown.duration(400)} style={{ gap: 10 }}>
+        <Row spread style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <T style={{ fontSize: 24, fontWeight: "800", letterSpacing: -0.7 }}>{headline}</T>
+            <T style={s.hint}>{dateTime(leg.pickup_at, LOCALE)}</T>
           </View>
           <Badge text={statusLabel("status", booking.status)} tone={statusTone(booking.status)} />
         </Row>
-        <Row spread>
-          <P muted>{booking.passenger_name}</P>
-          <Text style={s.price}>{fmt(booking.total_amount)}</Text>
+        {booking.status !== "iptal" && booking.status !== "odeme_bekliyor" ? (
+          <ProgressSegments total={LEG_FLOW.length} done={Math.max(1, legIdx + 1)} color={tracking ? colors.ok : colors.ink} />
+        ) : null}
+      </Animated.View>
+
+      <Alert text={error} />
+      <Alert text={notice} tone="ok" />
+      {waitingPayment && booking.status === "odeme_bekliyor" ? <Alert tone="warn" text={t("bookings.paymentWaiting")} /> : null}
+
+      {booking.status !== "iptal" && booking.status !== "odeme_bekliyor" && (
+        leg.driver ? (
+          <Card elevated delay={80}>
+            <Row style={{ flexWrap: "nowrap" }} gap={14}>
+              <Avatar name={leg.driver.first_name} size={54} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <T style={{ fontWeight: "700", fontSize: 17 }}>{leg.driver.first_name}</T>
+                <T style={s.hint} numberOfLines={1}>{leg.driver.vehicle}</T>
+              </View>
+              <View style={{ borderWidth: 1.5, borderColor: colors.ink, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: "#fff" }}>
+                <T style={{ fontWeight: "800", letterSpacing: 1, fontSize: 13 }}>{leg.driver.plate}</T>
+              </View>
+            </Row>
+            {tracking ? (
+              <View style={{ backgroundColor: colors.okSoft, borderRadius: 14, padding: 12, gap: 4 }}>
+                <Row gap={8}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.ok }} />
+                  <T style={{ fontWeight: "700", color: colors.ok }}>{t("bookings.live")}</T>
+                </Row>
+                {location ? (
+                  <>
+                    <T style={[s.hint, { color: "#2D5A43" }]}>{t("bookings.liveUpdated", { time: dateTime(location.at, LOCALE) })}</T>
+                    <T style={{ color: colors.ink, fontWeight: "600", textDecorationLine: "underline" }}
+                      onPress={() => Linking.openURL(`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=16/${location.lat}/${location.lng}`)}>
+                      {t("bookings.openMap")} ›
+                    </T>
+                  </>
+                ) : (
+                  <T style={[s.hint, { color: "#2D5A43" }]}>{t("bookings.liveNone")}</T>
+                )}
+              </View>
+            ) : null}
+          </Card>
+        ) : (
+          <Card flat delay={80}>
+            <Row gap={14} style={{ flexWrap: "nowrap" }}>
+              <Searching />
+              <View style={{ flex: 1 }}>
+                <T style={{ fontWeight: "700" }}>{t("bookings.driverPending")}</T>
+                <T style={s.hint}>{t("home.promoText")}</T>
+              </View>
+            </Row>
+          </Card>
+        )
+      )}
+
+      <Card delay={140}>
+        <H2>{t("bookings.details")}</H2>
+        {booking.legs.map((l, i) => (
+          <View key={l.id} style={{ gap: 10 }}>
+            {booking.legs.length > 1 ? <T style={[s.hint, { fontWeight: "700" }]}>{i === 0 ? "1 · " : "2 · "}{dateTime(l.pickup_at, LOCALE)}</T> : null}
+            <RouteStops from={l.pickup_region.name} to={l.dropoff_region.name} fromHint={l.pickup_address ?? undefined} toHint={l.dropoff_address ?? undefined} />
+            {l.flight ? <Info icon="airplane-outline" label={t("bookings.flight")}>{l.flight.flight_no}</Info> : null}
+          </View>
+        ))}
+        <View style={{ height: 1, backgroundColor: colors.line }} />
+        <Row spread style={{ flexWrap: "nowrap" }}>
+          <View style={{ gap: 2, flex: 1 }}>
+            <T style={s.hint}>{t("bookings.vehicle")}</T>
+            <T style={{ fontWeight: "700" }}>{booking.vehicle_type.name}</T>
+            <T style={s.hint}>{booking.passenger_name} · {booking.passenger_count} · {booking.luggage_count}</T>
+          </View>
+          {VEHICLE_IMAGE[booking.vehicle_type.code] ? (
+            <Image source={VEHICLE_IMAGE[booking.vehicle_type.code]} style={{ width: 110, height: 70, mixBlendMode: "multiply" } as object} resizeMode="contain" />
+          ) : null}
         </Row>
+        <View style={{ backgroundColor: colors.canvas, borderRadius: 14, padding: 14 }}>
+          <Row spread>
+            <P muted>{t("book.total")}</P>
+            <T style={{ fontWeight: "800", fontSize: 20, letterSpacing: -0.4 }}>{fmt(booking.total_amount)}</T>
+          </Row>
+        </View>
       </Card>
 
-      {booking.status === "odeme_bekliyor" && (
-        <Card style={{ borderColor: colors.ink, borderWidth: 1.5 }}>
-          {waitingPayment && <Alert tone="warn" text={t("bookings.paymentWaiting")} />}
-          <Button title={t("bookings.payNow")} icon="card-outline" variant="accent" onPress={startPayment} />
+      {booking.status !== "iptal" && booking.status !== "odeme_bekliyor" && (
+        <Card delay={200}>
+          <Timeline current={leg.status} steps={LEG_FLOW.map((k) => ({ key: k, label: statusLabel("leg", k) }))} />
         </Card>
       )}
-
-      {booking.legs.map((leg) => (
-        <Card key={leg.id}>
-          <H2>{leg.pickup_region.name} → {leg.dropoff_region.name}</H2>
-          <Info icon="calendar-outline">{dateTime(leg.pickup_at, LOCALE)}</Info>
-          {(leg.pickup_address || leg.dropoff_address) && (
-            <Info icon="location-outline">{[leg.pickup_address, leg.dropoff_address].filter(Boolean).join(" → ")}</Info>
-          )}
-          {leg.flight && <Info icon="airplane-outline">{t("bookings.flight")}: {leg.flight.flight_no}</Info>}
-          {leg.driver ? (
-            <View style={{ flexDirection: "row", gap: 12, alignItems: "center", backgroundColor: colors.brandSoft, borderRadius: 12, padding: 12 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 18 }}>{leg.driver.first_name.slice(0, 1)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <P bold>{leg.driver.first_name}</P>
-                <P muted small>{leg.driver.vehicle} · {leg.driver.plate}</P>
-              </View>
-            </View>
-          ) : (
-            <Info icon="time-outline">{t("bookings.driverPending")}</Info>
-          )}
-          {TRACKABLE.includes(leg.status) && (
-            <View style={{ backgroundColor: "#edf7f1", borderRadius: 12, padding: 12, gap: 6 }}>
-              <Row>
-                <Ionicons name="radio" size={18} color={colors.ok} />
-                <P bold>{t("bookings.live")}</P>
-              </Row>
-              {location ? (
-                <>
-                  <P small>{t("bookings.liveUpdated", { time: dateTime(location.at, LOCALE) })}</P>
-                  <Text style={{ color: colors.brand, fontWeight: "600" }}
-                    onPress={() => Linking.openURL(`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=16/${location.lat}/${location.lng}`)}>
-                    {t("bookings.openMap")} ›
-                  </Text>
-                </>
-              ) : (
-                <P muted small>{t("bookings.liveNone")}</P>
-              )}
-            </View>
-          )}
-          {leg.status !== "iptal" && (
-            <Timeline current={leg.status} steps={LEG_FLOW.map((k) => ({ key: k, label: statusLabel("leg", k) }))} />
-          )}
-        </Card>
-      ))}
 
       {CANCELLABLE.includes(booking.status) && !refund && (
-        <Button title={t("bookings.cancel")} variant="secondary" icon="close-circle-outline" onPress={previewCancel} />
+        <Pressable onPress={previewCancel} style={{ alignSelf: "center", padding: 10, flexDirection: "row", gap: 6, alignItems: "center" }}>
+          <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
+          <T style={{ color: colors.danger, fontWeight: "600" }}>{t("bookings.cancel")}</T>
+        </Pressable>
       )}
       {refund && (
-        <Card>
+        <Card style={{ borderColor: colors.danger }}>
           <P>
             {booking.status === "odeme_bekliyor"
               ? t("bookings.cancelNoPay")
@@ -198,7 +284,7 @@ export default function BookingScreen() {
           <Button title={t("bookings.keep")} variant="secondary" onPress={() => setRefund(null)} />
         </Card>
       )}
-      {booking.status !== "iptal" && booking.status !== "tamamlandi" && <P muted small>{t("bookings.change")}</P>}
-    </Screen>
+      {booking.status !== "iptal" && booking.status !== "tamamlandi" && <P muted small center>{t("bookings.change")}</P>}
+    </MapSheet>
   );
 }

@@ -3,14 +3,14 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Inter } from "next/font/google";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import Icon from "@/components/Icon";
-import LocaleSwitcher from "@/components/LocaleSwitcher";
 import Logo from "@/components/Logo";
+import SiteHeader from "@/components/SiteHeader";
 import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { company } from "@/lib/site";
 import "../globals.css";
+import "../home.css";
 
 // next/font yazı tipini derleme sırasında indirir ve kendi sunucumuzdan verir (ziyaretçi Google'a bağlanmaz).
 const sans = Inter({ subsets: ["latin", "latin-ext", "cyrillic"], variable: "--font-sans", display: "swap" });
@@ -62,26 +62,12 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html lang={locale} className={sans.variable}>
       <body>
         <NextIntlClientProvider>
-          <header className="header">
-            <div className="container header-inner">
-              <Link href="/" aria-label={company.name}>
-                <Logo />
-              </Link>
-              <nav className="nav-center" aria-label="sections">
-                <Link href="/#services">{t("services")}</Link>
-                <Link href="/#fleet">{t("fleet")}</Link>
-                <Link href="/#faq">{t("faq")}</Link>
-              </nav>
-              <nav className="nav">
-                <Link href="/bookings"><Icon name="list" size={18} /> <span>{t("bookings")}</span></Link>
-                <Link href="/account"><Icon name="user" size={18} /> <span>{t("account")}</span></Link>
-                <Suspense>
-                  <LocaleSwitcher />
-                </Suspense>
-                <Link href="/book" className="btn small">{t("book")}</Link>
-              </nav>
-            </div>
-          </header>
+          <SiteHeader
+            labels={{
+              services: t("services"), fleet: t("fleet"), faq: t("faq"), bookings: t("bookings"),
+              account: t("account"), book: t("book"), menu: t("menu"), home: company.name,
+            }}
+          />
           <main>{children}</main>
           <footer className="footer">
             <div className="container">

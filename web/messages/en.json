@@ -10,7 +10,8 @@
     "language": "Language",
     "services": "Services",
     "fleet": "Fleet",
-    "faq": "FAQ"
+    "faq": "FAQ",
+    "menu": "Menu"
   },
   "home": {
     "heroTitle": "Your chauffeur is ready. Your fare is fixed.",
@@ -68,7 +69,24 @@
     "group3": "Meet and greet at the airport",
     "group4": "Outbound and return in one booking",
     "routesTitle": "Popular routes",
-    "faqLead": "About booking, payment and cancellation."
+    "faqLead": "About booking, payment and cancellation.",
+    "colorWhite": "White",
+    "colorBlack": "Black",
+    "statAirports": "airports",
+    "statDistricts": "districts and resorts",
+    "statHoursUnit": " h",
+    "statCancel": "free cancellation before pickup",
+    "cardTitle": "Where are you going?",
+    "cardText": "Choose your route and see the fixed price instantly.",
+    "flightTag": "Flight tracking on · no extra charge for delays",
+    "servicesEyebrow": "Services",
+    "fleetEyebrow": "Fleet",
+    "howEyebrow": "3 steps",
+    "groupEyebrow": "Families and groups",
+    "groupPill": "6 to 14 passengers",
+    "groupImageAlt": "Black Mercedes-Benz Vito, side view",
+    "airportsEyebrow": "Airports",
+    "faqEyebrow": "FAQ"
   },
   "trip": {
     "from": "From",

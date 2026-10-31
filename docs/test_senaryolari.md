@@ -30,7 +30,7 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 | Müşteri | Herhangi bir telefon numarası. SMS kodu ekranda sarı kutuda görünür (yalnızca geliştirme), tıklayınca alana dolar. |
 | Demo sürücü 1 | +90 530 000 00 01, Mehmet Demir, Minivan (Vito), 07GA001 |
 | Demo sürücü 2 | +90 530 000 00 02, Ayşe Kaya, VIP Van (V-Class), 48GA002 |
-| Admin | ebkaya.0637@gmail.com, geçici parola size iletildi. İlk girişte doğrulama uygulamasıyla QR okutulur, sonra **Parolamı değiştir**. |
+| Admin | ebkaya.0637@gmail.com. Parola repoya yazılmaz, sohbette iletilen geçici parola kullanılır (2026-10-31'de sıfırlandı, 2FA yeniden kuruldu). İlk girişte doğrulama uygulamasıyla (Google/Microsoft Authenticator) QR okutulur, sonra **Parolamı değiştir**. |
 
 - **Adres araması:** Google anahtarı yokken örnek yerler kullanılır: Antalya Havalimanı, Kaleiçi, Lara, Rixos Downtown, Belek, Side, Kleopatra Plajı (Alanya), Kemer Marina, Kaş, Kalkan, Bodrum Marina, Turgutreis, Ölüdeniz, Fethiye, Göcek, Marmaris, Dalyan, Taksim (hizmet dışı).
 - **Ödeme:** iFrame içinde sahte ödeme sayfası açılır, **Ödemeyi onayla** veya **Reddet** seçilir.
@@ -62,9 +62,9 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 7. Sürücü → **Kazanç**: hakediş "Ödeme bekliyor" olarak görünür.
 
 ### 4. Anlık rezervasyon ve teklif kabulü
-1. Sürücü önizleme: ana ekranda çevrimiçi anahtarını açın.
-2. Mobil müşteri (8081) → **Yeni rezervasyon** → **Hemen al** açık → rota seçin → araç (Minivan) → bilgiler → onaylar → öde.
-3. Sürücü ekranında geri sayımlı **Yeni iş teklifi** kartı görünür (8 sn içinde) → **Kabul et** → yolculuk ekranı açılır.
+1. Sürücü önizleme: ana ekranda siyah **GO** düğmesine dokunun (çevrimiçi olunca radar animasyonu döner).
+2. Mobil müşteri (8081) → **Ana sayfa** → bir havalimanına dokunun → **Ne zaman?** alanında **Şimdi** → **Nereye** → **Fiyatları göster** → ilk araç seçili gelir, alttaki **Minivan seç** → bilgiler → onaylar → öde.
+3. Sürücü ekranında geri sayım halkalı siyah **Yeni iş teklifi** kartı görünür (8 sn içinde) → **Kabul et** → yolculuk ekranı açılır. **Karşılama tabelasını aç** yolcu adını tam ekran gösterir.
 4. Teklif kartında yolcu adı ve adres gösterilmez; kabulden sonra yolculuk ekranında görünür.
 
 ### 5. İptal ve iade
@@ -100,13 +100,13 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 1. Bir rezervasyonun tutarını not edin.
 2. Admin → **Fiyatlandırma** → Minivan için km fiyatı 1,30 olan yeni kural ekleyin.
 3. Web'de aynı rotada yeni fiyat yükselir; eski rezervasyonun tutarı değişmez.
-4. Gidiş-dönüş indirimi ekleyip (ör. %10) gidiş-dönüş fiyatını kontrol edin.
+4. Gidiş-dönüş indirimi varsayılan olarak %5'tir (K-30). Web'de gidiş-dönüş seçip toplamın iki tek yönün toplamından %5 az (5'in katına yuvarlı) olduğunu kontrol edin. Admin → Fiyatlandırma'dan değiştirilebilir.
 
 ### 12. Para birimi
-1. Web'de bilgiler adımında ülkeyi **Türkiye** seçin: fiyatlar TL olur (admin → Döviz kuru). Diğer ülkelerde EUR.
+1. Web'de bilgiler adımında ülkeyi **Türkiye** seçin: fiyatlar TL olur (admin → Döviz kuru; kur TCMB'den saatlik otomatik gelir, K-33). Diğer ülkelerde EUR. Tüm fiyatlar 5'in katıdır (K-32).
 
 ### 13. Dil
-1. Web üst menüden dili değiştirin (TR, EN, DE, RU). Mobil müşteri uygulaması cihaz (tarayıcı) diline göre açılır.
+1. Web üst menüden dili değiştirin (şu an TR, EN, DE, RU; hedef on dil, K-34). Mobil müşteri uygulaması cihaz (tarayıcı) diline göre açılır.
 
 ## Otomatik testler
 

@@ -1,9 +1,12 @@
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Badge, Button, Card, H2, Input, P, Picker, Row, Screen, statusTone } from "@/components/ui";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { View } from "react-native";
+import Svg, { Circle } from "react-native-svg";
+import { Alert, Badge, Button, Card, H2, Hero, IconBubble, Input, P, Picker, Row, Screen, T, colors, s, statusTone } from "@/components/ui";
 import { api, upload } from "@/lib/api";
-import { DOC_LABEL, DOC_STATUS, DOC_TYPES_DRIVER, DOC_TYPES_VEHICLE } from "@/lib/driverLabels";
+import { DOC_LABEL, DOC_STATUS, DOC_TYPES_DRIVER, DOC_TYPES_VEHICLE, DRIVER_STATUS } from "@/lib/driverLabels";
 import { date } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
 import type { DriverDocument, DriverMe, DriverVehicle, VehicleType } from "@/lib/types";
@@ -11,6 +14,30 @@ import type { DriverDocument, DriverMe, DriverVehicle, VehicleType } from "@/lib
 type DocAlert = { id: string; doc_type: string; valid_until: string; days_left: number };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const PLATE_RE = /^\d{2}\s?[A-Z]{1,3}\s?\d{2,4}$/;
+
+/** Onaylı belge oranı halkası. */
+function Ring(props: { done: number; total: number }) {
+  const R = 34;
+  const C = 2 * Math.PI * R;
+  const p = props.total ? props.done / props.total : 0;
+  return (
+    <View style={{ width: 84, height: 84, alignItems: "center", justifyContent: "center" }}>
+      <Svg width={84} height={84} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
+        <Circle cx={42} cy={42} r={R} stroke="rgba(255,255,255,0.15)" strokeWidth={7} fill="none" />
+        <Circle cx={42} cy={42} r={R} stroke={p >= 1 ? "#7FD3A4" : colors.accent} strokeWidth={7} fill="none" strokeLinecap="round"
+          strokeDasharray={C} strokeDashoffset={C * (1 - p)} />
+      </Svg>
+      <T style={{ color: "#fff", fontWeight: "800", fontSize: 18 }}>{props.done}/{props.total}</T>
+    </View>
+  );
+}
+
+const DOC_ICON: Record<string, "checkmark-circle" | "time" | "close-circle" | "alert-circle"> = {
+  onayli: "checkmark-circle",
+  beklemede: "time",
+  reddedildi: "close-circle",
+  suresi_doldu: "alert-circle",
+};
 
 /** Sürücü ekranları 1, 2, 8: belge yükleme, belge durumu, süre uyarıları; araç ekleme. */
 export default function DocumentsScreen() {
@@ -104,7 +131,21 @@ export default function DocumentsScreen() {
   }
 
   return (
-    <Screen refreshing={false} onRefresh={load}>
+    <Screen canvas header={<Hero title="Belgeler" subtitle="Onaylı belgelerle iş almaya başlarsınız." />} refreshing={false} onRefresh={load}>
+      {me && (
+        <View style={{ backgroundColor: colors.ink, borderRadius: 24, padding: 20, flexDirection: "row", alignItems: "center", gap: 16 }}>
+          <Ring done={Object.keys(DOC_TYPES_DRIVER).length - me.missing_documents.length} total={Object.keys(DOC_TYPES_DRIVER).length} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <T style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>{me.full_name}</T>
+            <T style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
+              {me.missing_documents.length === 0 ? "Sürücü belgeleriniz tamam." : `${me.missing_documents.length} sürücü belgesi eksik.`}
+            </T>
+            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <T style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{DRIVER_STATUS[me.status] ?? me.status}</T>
+            </View>
+          </View>
+        </View>
+      )}
       <Alert text={message?.text ?? null} tone={message?.ok ? "ok" : "danger"} />
       {alerts.map((a) => (
         <Alert key={a.id} tone={a.days_left < 0 ? "danger" : "warn"}
@@ -115,7 +156,10 @@ export default function DocumentsScreen() {
       )}
 
       <Card>
-        <H2>Belge yükle</H2>
+        <Row gap={12}>
+          <IconBubble name="cloud-upload-outline" dark />
+          <H2>Belge yükle</H2>
+        </Row>
         <Picker
           label="Belge sahibi"
           placeholder="Seçin"
@@ -132,24 +176,35 @@ export default function DocumentsScreen() {
 
       <H2>Belgelerim</H2>
       {docs.length === 0 && <P muted>Henüz belge yüklenmedi.</P>}
-      {docs.map((d) => (
-        <Card key={d.id}>
-          <Row spread>
-            <P bold>{DOC_LABEL[d.doc_type] ?? d.doc_type}</P>
-            <Badge text={DOC_STATUS[d.status] ?? d.status} tone={statusTone(d.status)} />
-          </Row>
-          <P muted small>
-            {d.owner_type === "vehicle" ? `Araç ${vehicles.find((v) => v.id === d.owner_id)?.plate ?? ""} · ` : ""}
-            Geçerlilik: {date(d.valid_until)} · Yüklenme: {date(d.created_at)}
-          </P>
+      {docs.length > 0 && (
+        <Card style={{ paddingVertical: 6 }}>
+          {docs.map((d, i) => (
+            <View key={d.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: colors.line }}>
+              <Ionicons name={DOC_ICON[d.status] ?? "document"} size={26}
+                color={d.status === "onayli" ? colors.ok : d.status === "beklemede" ? colors.warn : colors.danger} />
+              <View style={{ flex: 1 }}>
+                <T style={{ fontWeight: "600" }}>{DOC_LABEL[d.doc_type] ?? d.doc_type}</T>
+                <T style={s.hint}>
+                  {d.owner_type === "vehicle" ? `Araç ${vehicles.find((v) => v.id === d.owner_id)?.plate ?? ""} · ` : ""}
+                  Geçerlilik: {date(d.valid_until)} · Yüklenme: {date(d.created_at)}
+                </T>
+              </View>
+              <Badge text={DOC_STATUS[d.status] ?? d.status} tone={statusTone(d.status)} />
+            </View>
+          ))}
         </Card>
-      ))}
+      )}
 
       <H2>Araçlarım</H2>
       {vehicles.map((v) => (
         <Card key={v.id}>
           <Row spread>
-            <P bold>{v.plate} · {v.brand} {v.model}</P>
+            <Row gap={10}>
+              <View style={{ borderWidth: 1.5, borderColor: colors.ink, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 4 }}>
+                <T style={{ fontWeight: "800", letterSpacing: 1, fontSize: 13 }}>{v.plate}</T>
+              </View>
+              <P bold>{v.brand} {v.model}</P>
+            </Row>
             <Badge text={v.status} tone={statusTone(v.status)} />
           </Row>
           {v.missing_documents.length > 0 && (

@@ -133,7 +133,7 @@ export default function AddressField(props: {
   }
 
   return (
-    <div className="field address" ref={box}>
+    <div className={`field address ${props.icon === "plane" ? "from" : "to"}`} ref={box}>
       <label htmlFor={props.id}>{props.label}</label>
       {props.value ? (
         <div className="address-chosen">

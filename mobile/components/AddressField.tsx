@@ -1,11 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Pressable, TextInput, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 import { LOCALE, errorText, t } from "@/lib/i18n";
 import type { Endpoint, PlaceSuggestion, PlaceDetails, Region } from "@/lib/types";
-import { Alert, colors, s } from "./ui";
+import { Alert, IconBubble, T, colors, s, tap } from "./ui";
 
 type Option =
   | { kind: "region"; key: string; region: Region; title: string; subtitle: string }
@@ -20,15 +21,14 @@ export function regionEndpoint(r: Region): Endpoint {
   return { label: r.iata_code ? `${r.name} (${r.iata_code})` : r.name, region: r };
 }
 
-/** Adres seçimi: havalimanı ve ilçeler anında, otel ve adresler backend üzerinden aranır. Fiyat ilçeye göre. */
-export default function AddressField(props: {
-  label: string;
-  icon: "airplane-outline" | "location-outline";
+/** Arama ekranı: havalimanı ve ilçeler anında, otel ve adresler backend üzerinden aranır. */
+export function AddressSearch(props: {
+  open: boolean;
+  title: string;
   regions: Region[];
-  value: Endpoint | null;
-  onChange: (e: Endpoint | null) => void;
+  onClose: () => void;
+  onPick: (e: Endpoint) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [places, setPlaces] = useState<PlaceSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
@@ -47,7 +47,7 @@ export default function AddressField(props: {
         key: `r${r.id}`,
         region: r,
         title: r.iata_code ? `${r.name} (${r.iata_code})` : r.name,
-        subtitle: r.type === "havalimani" ? t("book.airports") : `${t("addr.districts")} · ${PROVINCE[r.province] ?? r.province}`,
+        subtitle: r.type === "havalimani" ? `${t("book.airports")} · ${PROVINCE[r.province] ?? r.province}` : `${t("addr.districts")} · ${PROVINCE[r.province] ?? r.province}`,
       }));
     const shown = new Set(regionHits.map((o) => fold(o.title)));
     const placeHits = places
@@ -78,78 +78,131 @@ export default function AddressField(props: {
   }, [query]);
 
   async function choose(o: Option) {
+    tap();
     setError(null);
     if (o.kind === "region") {
-      props.onChange(regionEndpoint(o.region));
+      props.onPick(regionEndpoint(o.region));
     } else {
       try {
         const d = await api<PlaceDetails>(`places/${encodeURIComponent(o.place.place_id)}?session=${session.current}&lang=${LOCALE}`);
-        props.onChange({ label: o.title, region: d.region, place_token: d.place_token });
+        props.onPick({ label: o.title, region: d.region, place_token: d.place_token });
       } catch (e) {
         setError(errorText(e));
         return;
       }
     }
-    setOpen(false);
+    props.onClose();
     setQuery("");
     setPlaces([]);
     session.current = uuid();
   }
 
   return (
-    <View style={s.field}>
-      <Text style={s.label}>{props.label}</Text>
-      <Pressable style={[s.inputWrap, props.value && { borderColor: colors.brand, backgroundColor: colors.brandSoft }]} onPress={() => setOpen(true)}>
-        <Ionicons name={props.value?.region.type === "havalimani" ? "airplane-outline" : props.icon} size={20} color={colors.brand} style={{ marginRight: 10 }} />
-        <View style={{ flex: 1, paddingVertical: 10 }}>
-          <Text style={[s.p, !props.value && { color: "#9aa0a6" }]} numberOfLines={1}>
-            {props.value?.label ?? t("addr.placeholder")}
-          </Text>
-          {props.value ? <Text style={s.hint}>{t("addr.region", { region: props.value.region.name })}</Text> : null}
-        </View>
-        {props.value ? (
-          <Pressable hitSlop={10} onPress={() => props.onChange(null)}>
-            <Ionicons name="close-circle" size={20} color={colors.muted} />
+    <Modal visible={props.open} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={props.onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 12 }}>
+          <Pressable onPress={props.onClose} hitSlop={10} accessibilityLabel={t("back")}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
-        ) : null}
-      </Pressable>
-
-      <Modal visible={open} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={() => setOpen(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 16 }}>
-            <View style={[s.inputWrap, { flex: 1, borderColor: colors.brand }]}>
-              <Ionicons name="search" size={18} color={colors.muted} style={{ marginRight: 8 }} />
-              <TextInput autoFocus value={query} onChangeText={setQuery} placeholder={t("addr.placeholder")}
-                placeholderTextColor="#9aa0a6" style={s.inputText} autoCorrect={false} />
-            </View>
-            <Pressable onPress={() => setOpen(false)} hitSlop={10}>
-              <Ionicons name="close" size={26} color={colors.text} />
-            </Pressable>
+          <T style={{ fontSize: 18, fontWeight: "700" }}>{props.title}</T>
+        </View>
+        <View style={{ padding: 16 }}>
+          <View style={[s.inputWrap, { borderColor: colors.ink, backgroundColor: "#fff" }]}>
+            <Ionicons name="search" size={18} color={colors.ink} style={{ marginRight: 10 }} />
+            <TextInput autoFocus value={query} onChangeText={setQuery} placeholder={t("addr.placeholder")}
+              placeholderTextColor={colors.faint} style={s.inputText} autoCorrect={false} />
+            {query ? (
+              <Pressable onPress={() => setQuery("")} hitSlop={10}>
+                <Ionicons name="close-circle" size={20} color={colors.faint} />
+              </Pressable>
+            ) : null}
           </View>
-          <View style={{ paddingHorizontal: 16 }}>
-            <Alert text={error} />
-          </View>
-          <FlatList
-            data={options}
-            keyboardShouldPersistTaps="handled"
-            keyExtractor={(o) => o.key}
-            ListFooterComponent={
-              searching ? <Text style={[s.hint, { padding: 16 }]}>{t("addr.searching")}</Text>
-                : query.trim().length >= 3 && options.length === 0 ? <Text style={[s.hint, { padding: 16 }]}>{t("addr.noResults")}</Text>
-                  : undefined
-            }
-            renderItem={({ item }) => (
-              <Pressable style={[s.option, { justifyContent: "flex-start", gap: 12 }]} onPress={() => choose(item)}>
-                <Ionicons name={item.kind === "region" && item.region.type === "havalimani" ? "airplane" : "location"} size={20} color={colors.brand} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.p, { fontWeight: "600" }]}>{item.title}</Text>
-                  <Text style={s.hint}>{item.subtitle}</Text>
+        </View>
+        <View style={{ paddingHorizontal: 16 }}>
+          <Alert text={error} />
+        </View>
+        {!query.trim() ? <T style={s.section}>{t("home.popular")}</T> : null}
+        <FlatList
+          data={options}
+          keyboardShouldPersistTaps="handled"
+          keyExtractor={(o) => o.key}
+          ListFooterComponent={
+            searching ? <T style={[s.hint, { padding: 16 }]}>{t("addr.searching")}</T>
+              : query.trim().length >= 3 && options.length === 0 ? <T style={[s.hint, { padding: 16 }]}>{t("addr.noResults")}</T>
+                : undefined
+          }
+          renderItem={({ item, index }) => (
+            <Animated.View entering={FadeInDown.duration(250).delay(index * 25)}>
+              <Pressable style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 12 }, pressed && { backgroundColor: colors.brandSoft }]} onPress={() => choose(item)}>
+                <IconBubble name={item.kind === "region" && item.region.type === "havalimani" ? "airplane" : item.kind === "place" ? "business" : "location"} size={40} />
+                <View style={{ flex: 1, borderBottomWidth: 1, borderBottomColor: colors.line, paddingBottom: 12, marginBottom: -12 }}>
+                  <T style={[s.p, { fontWeight: "600" }]} numberOfLines={1}>{item.title}</T>
+                  <T style={s.hint} numberOfLines={1}>{item.subtitle}</T>
                 </View>
               </Pressable>
-            )}
-          />
-        </SafeAreaView>
-      </Modal>
+            </Animated.View>
+          )}
+        />
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+/** Rota kutusu: iki adres tek kutuda, solda nokta–çizgi–kare, sağda yön değiştirme. */
+export function RouteBox(props: {
+  regions: Region[];
+  from: Endpoint | null;
+  to: Endpoint | null;
+  onFrom: (e: Endpoint | null) => void;
+  onTo: (e: Endpoint | null) => void;
+}) {
+  const [open, setOpen] = useState<"from" | "to" | null>(null);
+  const row = (which: "from" | "to") => {
+    const v = which === "from" ? props.from : props.to;
+    return (
+      <Pressable onPress={() => setOpen(which)} style={{ height: 60, justifyContent: "center", paddingRight: 52 }}
+        accessibilityRole="button" accessibilityLabel={which === "from" ? t("book.from") : t("book.to")}>
+        {v ? (
+          <>
+            <T style={[s.p, { fontWeight: "600" }]} numberOfLines={1}>{v.label}</T>
+            <T style={s.hint} numberOfLines={1}>{t("addr.region", { region: v.region.name })}</T>
+          </>
+        ) : (
+          <T style={[s.p, { color: colors.faint, fontWeight: "500", fontSize: 16 }]}>{which === "from" ? t("book.from") : t("book.to")}</T>
+        )}
+      </Pressable>
+    );
+  };
+  return (
+    <View style={{ backgroundColor: colors.brandSoft, borderRadius: 18, paddingLeft: 44 }}>
+      <View pointerEvents="none" style={{ position: "absolute", left: 18, top: 25, height: 70, width: 10, alignItems: "center" }}>
+        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.ink }} />
+        <View style={{ flex: 1, width: 2, backgroundColor: colors.ink, marginVertical: 3, opacity: 0.85 }} />
+        <View style={{ width: 10, height: 10, backgroundColor: colors.ink }} />
+      </View>
+      {row("from")}
+      <View style={{ height: 1, backgroundColor: "#DEDCD5", marginRight: 0 }} />
+      {row("to")}
+      <Pressable
+        onPress={() => {
+          tap();
+          props.onFrom(props.to);
+          props.onTo(props.from);
+        }}
+        accessibilityLabel="⇅"
+        style={{ position: "absolute", right: 12, top: 41, width: 38, height: 38, borderRadius: 19, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line }}
+      >
+        <Ionicons name="swap-vertical" size={18} color={colors.ink} />
+      </Pressable>
+      <AddressSearch
+        open={open !== null}
+        title={open === "from" ? t("book.from") : t("book.to")}
+        regions={props.regions}
+        onClose={() => setOpen(null)}
+        onPick={(e) => (open === "from" ? props.onFrom(e) : props.onTo(e))}
+      />
     </View>
   );
 }
+
+export default RouteBox;
