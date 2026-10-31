@@ -20,9 +20,10 @@ from app.models import (
     NotificationTemplate,
     PricingRule,
     Region,
+    RoundTripDiscount,
     VehicleType,
 )
-from app.models.enums import CommissionScope, NotificationChannel, RegionType
+from app.models.enums import CommissionScope, DiscountType, NotificationChannel, RegionType
 from app.services.auth import ensure_roles
 
 EPOCH = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -130,7 +131,9 @@ def run(db: Session) -> None:
     if db.scalar(select(CommissionRule.id).where(CommissionRule.scope == CommissionScope.GENERAL).limit(1)) is None:
         db.add(CommissionRule(scope=CommissionScope.GENERAL, rate=D("0.25"), valid_from=EPOCH))
 
-    # Gidiş-dönüş indirimi açık konu (yüzde mi sabit mi); bu yüzden varsayılan indirim eklenmez.
+    # K-30: gidiş-dönüş indirimi %5
+    if db.scalar(select(RoundTripDiscount.id).limit(1)) is None:
+        db.add(RoundTripDiscount(type=DiscountType.PERCENT, value=D("5"), valid_from=EPOCH))
 
     have = set(db.execute(select(NotificationTemplate.code, NotificationTemplate.locale,
                                  NotificationTemplate.channel)).all())

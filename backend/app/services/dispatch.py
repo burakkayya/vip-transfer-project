@@ -306,7 +306,9 @@ def advance_trip(
 def _on_leg_finished(db: Session, leg: BookingLeg, now: datetime) -> None:
     booking = leg.booking
     if leg.flight is not None:
-        leg.flight.purge_at = now + timedelta(hours=24)  # K-18
+        # K-18 (K-31 ile güncel): yolculuk tamamlanınca silinir. Kuruma bildirim zorunluluğu
+        # doğrulanırsa silme, bildirim kaydedildikten sonra yapılacak (docs/acik_konular.md).
+        leg.flight.purge_at = now
     split = commission.split(leg.leg_price, booking.commission_rate)
     if booking.currency is Currency.TRY:
         net_try = split.net

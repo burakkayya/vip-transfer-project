@@ -5,13 +5,17 @@ ARQ worker'ı (app/worker.py) bunları periyodik çağırır.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.errors import ServiceUnavailable
 from app.localtime import local_date
-from app.models import Booking, Document, Driver, FlightInfo, OtpChallenge, Vehicle
+from app.models import Booking, Document, Driver, ExchangeRate, FlightInfo, OtpChallenge, Vehicle
+from app.providers import fx
+from app.services.quotes import latest_exchange_rate
 from app.models.enums import (
     BookingStatus,
     DocumentOwner,
@@ -22,11 +26,30 @@ from app.models.enums import (
 )
 from app.services import audit, dispatch, system_settings
 
+log = logging.getLogger(__name__)
+
 
 def purge_flight_data(db: Session, now: datetime) -> int:
     """K-18: uçuş bilgisi yolculuktan 24 saat sonra silinir."""
     result = db.execute(delete(FlightInfo).where(FlightInfo.purge_at <= now))
     return result.rowcount or 0
+
+
+def refresh_exchange_rate(db: Session, now: datetime) -> int:
+    """K-33: EUR/TRY kuru TCMB'den otomatik alınır. Değişmediyse yeni kayıt açılmaz.
+
+    Kaynağa ulaşılamazsa son kur geçerli kalır (rezervasyonlar kuru zaten dondurur).
+    """
+    try:
+        rate = fx.fetch_eur_try()
+    except ServiceUnavailable as exc:
+        log.warning("kur güncellenemedi: %s", exc)
+        return 0
+    last = latest_exchange_rate(db, now)
+    if last is not None and last.rate == rate:
+        return 0
+    db.add(ExchangeRate(rate=rate, source="tcmb", valid_from=now))
+    return 1
 
 
 def expire_documents(db: Session, now: datetime) -> int:
@@ -95,6 +118,7 @@ def expire_dispatch_offers(db: Session, now: datetime) -> int:
 
 ALL_JOBS = (
     purge_flight_data,
+    refresh_exchange_rate,
     expire_documents,
     cancel_unpaid_bookings,
     purge_otp_challenges,
