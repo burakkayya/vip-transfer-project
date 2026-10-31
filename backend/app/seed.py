@@ -75,6 +75,8 @@ VEHICLE_TYPES = [
     ("minivan", "Minivan", 6, 6, D("1.30")),
     ("vip_van", "VIP Van", 6, 6, D("1.60")),
     ("minibus", "Minibüs", 14, 14, D("2.00")),
+    # K-35: siyah, VIP donanımlı Sprinter. Çarpan yer tutucu, admin panelinden değiştirilir.
+    ("vip_minibus", "VIP Minibüs", 14, 14, D("2.40")),
 ]
 # Hizmetten kaldırılan araç tipleri: eski rezervasyonlar bağlı olduğu için silinmez, pasife alınır.
 RETIRED_VEHICLE_TYPES = ["sedan"]

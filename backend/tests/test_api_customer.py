@@ -14,7 +14,7 @@ def test_regions_and_vehicle_types_are_public(client):
     assert {"ayt", "dlm", "bjv", "kemer", "bodrum", "fethiye"} <= codes
     assert len([r for r in regions if r["type"] == "havalimani"]) == 4
     codes = {v["code"] for v in client.get("/api/v1/vehicle-types").json()}
-    assert codes >= {"minivan", "vip_van", "minibus"}
+    assert codes >= {"minivan", "vip_van", "minibus", "vip_minibus"}
     assert "sedan" not in codes  # sedan hizmetten kaldırıldı
 
 

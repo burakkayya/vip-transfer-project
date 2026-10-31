@@ -235,6 +235,33 @@ p {
   font-size: 0.78rem;
 }
 
+/* Yatay formlarda ipucu alanın altına taşar; giriş kutuları aynı hizada kalır. */
+.row .field {
+  position: relative;
+}
+
+.row .field .hint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.card.row:has(.hint) {
+  padding-bottom: 30px;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select {
+  height: 38px;
+}
+
+input[type="datetime-local"],
+input[type="date"] {
+  min-width: 215px;
+}
+
 input,
 select,
 textarea {

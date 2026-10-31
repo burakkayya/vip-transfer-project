@@ -41,23 +41,26 @@ function greeting() {
 }
 
 function Counter(props: { label: string; icon: IconName; value: number; min: number; onChange: (n: number) => void }) {
+  const btn = { width: 36, height: 36, borderRadius: 18, alignItems: "center" as const, justifyContent: "center" as const };
   return (
-    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: colors.brandSoft, borderRadius: 16, padding: 8, paddingLeft: 14, gap: 8 }}>
-      <Ionicons name={props.icon} size={18} color={colors.muted} />
-      <View style={{ flex: 1 }}>
-        <T style={s.hint}>{props.label}</T>
-        <T style={{ fontWeight: "700", fontSize: 17 }}>{props.value}</T>
+    <View style={{ flex: 1, backgroundColor: colors.brandSoft, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, gap: 8 }}>
+      <Row gap={6} style={{ flexWrap: "nowrap" }}>
+        <Ionicons name={props.icon} size={15} color={colors.muted} />
+        <T style={s.hint} numberOfLines={1}>{props.label}</T>
+      </Row>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <Pressable accessibilityLabel={`${props.label} -`} hitSlop={6} disabled={props.value <= props.min}
+          onPress={() => { tap(); props.onChange(Math.max(props.min, props.value - 1)); }}
+          style={[btn, { backgroundColor: "#fff", opacity: props.value <= props.min ? 0.4 : 1 }]}>
+          <Ionicons name="remove" size={18} color={colors.ink} />
+        </Pressable>
+        <T style={{ fontWeight: "800", fontSize: 20, minWidth: 28, textAlign: "center" }}>{props.value}</T>
+        <Pressable accessibilityLabel={`${props.label} +`} hitSlop={6}
+          onPress={() => { tap(); props.onChange(Math.min(50, props.value + 1)); }}
+          style={[btn, { backgroundColor: colors.ink }]}>
+          <Ionicons name="add" size={18} color="#fff" />
+        </Pressable>
       </View>
-      <Pressable accessibilityLabel={`${props.label} -`} hitSlop={6} disabled={props.value <= props.min}
-        onPress={() => { tap(); props.onChange(Math.max(props.min, props.value - 1)); }}
-        style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", opacity: props.value <= props.min ? 0.4 : 1 }}>
-        <Ionicons name="remove" size={18} color={colors.ink} />
-      </Pressable>
-      <Pressable accessibilityLabel={`${props.label} +`} hitSlop={6}
-        onPress={() => { tap(); props.onChange(Math.min(50, props.value + 1)); }}
-        style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>
-        <Ionicons name="add" size={18} color="#fff" />
-      </Pressable>
     </View>
   );
 }
@@ -325,7 +328,7 @@ export default function Book() {
                   <View style={{ flex: 1, gap: 3 }}>
                     <Row gap={8}>
                       <T style={{ fontWeight: "700", fontSize: 16.5 }}>{vt.name}</T>
-                      {vt.code === "vip_van" ? <Badge text="VIP" tone="dark" /> : null}
+                      {vt.code.startsWith("vip_") ? <Badge text="VIP" tone="dark" /> : null}
                     </Row>
                     <Row gap={10}>
                       <Row gap={3}><Ionicons name="person" size={13} color={colors.muted} /><T style={s.hint}>{vt.capacity}</T></Row>

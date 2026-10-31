@@ -37,6 +37,8 @@ Mimari notlar ve güvenlik ilkeleri: kök `README.md` ve `yasal_ve_guvenlik.md`.
 | Müşteri | Herhangi bir telefon numarası. SMS kodu ekranda sarı kutuda görünür. |
 | Sürücü 1 | +90 530 000 00 01, Mehmet Demir, Minivan, 07GA001 |
 | Sürücü 2 | +90 530 000 00 02, Ayşe Kaya, VIP Van, 48GA002 |
+
+Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35).
 | Admin | ebkaya.0637@gmail.com. Parola repoya yazılmaz; sohbette iletilen geçici parola kullanılır, ilk girişte 2FA QR kurulumu istenir, sonra **Parolamı değiştir**. |
 
 ## 5. Kararlar

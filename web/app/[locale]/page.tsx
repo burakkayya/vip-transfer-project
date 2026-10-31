@@ -125,7 +125,7 @@ export default async function Home({ params }: Props) {
                     name={vt.name}
                     capacity={vt.capacity}
                     luggage={vt.luggage_capacity}
-                    tag={vt.code === "vip_van" ? "VIP" : undefined}
+                    tag={vt.code.startsWith("vip_") ? "VIP" : undefined}
                     cta={t("fleetCta")}
                     variants={vehicleVariants(vt.code).map((v) => ({ ...v, label: colorLabels[v.key] }))}
                   />

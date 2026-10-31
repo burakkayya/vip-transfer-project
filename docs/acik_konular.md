@@ -56,10 +56,11 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 ## Tasarım yenilemesinden kalanlar (2026-10-31)
 
 - [ ] Mobil haritalar stilize SVG; gerçek harita için `react-native-maps` (iOS Apple Maps, Android Google Maps anahtarı) bağlanmalı. Rota çizgisi için Routes API polyline gerekir.
-- [ ] Siyah minibüs ayrı araç tipi mi (ör. VIP Minibüs, ayrı fiyat)? Şu an minibüs kartında renk seçeneği olarak gösteriliyor, fiyat aynı. CLAUDE.md'deki araç tipi listesi değişecekse karar gerekir.
+- [x] Siyah minibüs ayrı araç tipi oldu: VIP Minibüs (K-35). Fiyat çarpanı 2,40 yer tutucu; gerçek fiyat admin panelinden girilmeli.
+- [ ] Sürücü belgelerinde `vip_minibus` araç tipiyle araç eklenip onaylanmalı; şu an bu tipte sürücü yok, bu tip rezervasyonlar admin eşleştirmesi bekler.
 - [ ] Yandan Vito görseli (`vito_transparent.png`) 525 px; büyük ekranda keskinlik için yüksek çözünürlüklü şeffaf sürüm gerekli.
 - [ ] Mobil web önizlemesinde açılır pencereler (adres arama, liste seçici) telefon çerçevesinin dışına tam ekran açılıyor; yalnızca önizleme sorunu, gerçek cihazda tam ekran zaten doğru.
-- [ ] Bu bilgisayarda Metro dosya değişikliklerini izlemiyor (8081/8082 eski paketi sunuyordu). Önizleme sunucuları değişiklikten sonra `--clear` ile yeniden başlatılmalı; Watchman kurulumu çözebilir.
+- [ ] Bu bilgisayarda Metro dosya değişikliklerini izlemiyor (8081/8082 eski paketi sunuyordu). Önizleme sunucuları değişiklikten sonra `--clear` ile yeniden başlatılmalı; Watchman kurulumu çözebilir. Web ve admin `next start` ile çalıştığı için değişiklikten sonra `npm run build` gerekir.
 
 ## Kararı verilmiş, geliştirmesi bekleyen (2026-10-31)
 
