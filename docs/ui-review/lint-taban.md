@@ -32,4 +32,16 @@ Not: `admin/next.config.ts` içinde `eslint.ignoreDuringBuilds: true` vardır; a
 
 ## mobile
 
-(Hat A sonraki görevi dolduracak.)
+Özet: 7 hata, 2 uyarı, 6 dosya (`npm run lint` rc=1). Ölçüm: 2026-11-02, dal `chore/ui-infra`. Komut: `cd mobile && npx eslint .` (`eslint-config-expo/flat`, ESLint 9; React Compiler kuralları `react-hooks/*` dahil).
+
+| Dosya | Kural | Önem | Adet |
+|---|---|---|---|
+| `mobile/app/(driver)/home.tsx` | `react-hooks/purity` | hata | 1 |
+| `mobile/app/booking/[code].tsx` | `react-hooks/set-state-in-effect` | hata | 1 |
+| `mobile/app/driver-register.tsx` | `@typescript-eslint/no-unused-vars` | uyarı | 1 |
+| `mobile/app/trip/[legId].tsx` | `@typescript-eslint/no-unused-vars` | uyarı | 1 |
+| `mobile/app/trip/[legId].tsx` | `react-hooks/set-state-in-effect` | hata | 2 |
+| `mobile/components/AddressField.tsx` | `react-hooks/set-state-in-effect` | hata | 1 |
+| `mobile/components/ui.tsx` | `react-hooks/immutability` | hata | 2 |
+
+Not: `ui.tsx` içindeki `immutability` hataları `Button`'daki `scale.value = withSpring(...)` atamalarıdır (Reanimated paylaşımlı değer deseni); düzeltme ekran görevinde yapılır.

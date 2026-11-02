@@ -17,6 +17,13 @@ Kapsam: `docs/ekranlar.md`, "Müşteri mobil" ve "Sürücü mobil".
 Web önizlemesi yalnızca geliştirme içindir. Jetonlar orada `localStorage`'da tutulur (`lib/storage.web.ts`); mağaza uygulamaları Keychain ve Keystore kullanır. Tarih seçici web'de tarayıcının alanıdır (`DateTimeField.web.tsx`).
 İki çeşidin önbellekleri ayrıdır (`metro.config.js`). Biri diğerinin derlemesini almaz, ikisi aynı anda açılabilir.
 
+## Test ve lint
+
+- `npm test` → jest-expo + React Native Testing Library (`__tests__/`). RNTL 14'te `render` asenkrondur: `await render(<... />)`.
+- Yerel modüller `jest.setup.ts` içinde taklit edilir (Reanimated, haptics, secure-store). Reanimated 4 için `jest.config.js` paketin kendi çözücüsünü kullanır.
+- `npm run lint` → ESLint 9 (`eslint-config-expo/flat`). Mevcut bulgular `docs/ui-review/lint-taban.md` "mobile" bölümünde.
+- `npm run typecheck` → `tsc --noEmit`.
+
 ## Android emülatöründe
 
 Bu bilgisayarda Android SDK ve `getaway_pixel7` sanal cihazı (Pixel 7, Android 15) kurulu: `%LOCALAPPDATA%\Android\Sdk`. Android Studio gerekmez.
