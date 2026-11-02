@@ -6,11 +6,7 @@ ESLint 9 (flat config; `next/core-web-vitals` + `plugin:jsx-a11y/recommended`) i
 
 ## web
 
-Özet: 3 hata, 4 uyarı, 4 dosya (`npm run lint` rc=1). **Güncel (2026-11-02, B-W2 sonrası): 1 hata, 0 uyarı, 1 dosya** (`BookingWizard.tsx` satırları B-W2'de giderildi).
-
-| Dosya | Kural | Önem | Adet |
-|---|---|---|---|
-| `web/components/OtpLogin.tsx` | `jsx-a11y/no-autofocus` | hata | 1 |
+Özet: 3 hata, 4 uyarı, 4 dosya (`npm run lint` rc=1). **Güncel (2026-11-02, B-W3 sonrası): 0 hata, 0 uyarı** (`BookingWizard.tsx` satırları B-W2'de, `OtpLogin.tsx` `no-autofocus` B-W3'te giderildi: odak kullanıcı eyleminden sonra programla verilir).
 
 Not: `web/next.config.ts` içinde `eslint.ignoreDuringBuilds: true` vardır; aksi halde hatalar `next build`'i düşürür. Lint ayrıca `npm run lint` ile çalıştırılır.
 

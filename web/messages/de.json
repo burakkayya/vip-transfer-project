@@ -174,14 +174,20 @@
   },
   "otp": {
     "phone": "Telefonnummer",
-    "phoneHint": "Wir senden Ihnen einen 6-stelligen Code per SMS.",
+    "phoneHint": "Ohne Ländervorwahl. Wir senden Ihnen einen 6-stelligen Code per SMS.",
     "sendCode": "Code senden",
+    "sending": "Wird gesendet …",
+    "codeSent": "Wir haben einen Code an <num>{phone}</num> gesendet.",
+    "resent": "Wir haben einen neuen Code an <num>{phone}</num> gesendet.",
     "code": "SMS-Code",
-    "codeSent": "Code an {phone} gesendet.",
+    "codeRequired": "Geben Sie den Code aus der SMS ein.",
     "verify": "Bestätigen",
+    "verifying": "Wird geprüft …",
     "resend": "Code erneut senden",
+    "resendIn": "Erneut senden in {s} s",
     "changePhone": "Nummer ändern",
-    "devCode": "Entwicklung: Ihr Code lautet {code}"
+    "devCode": "Entwicklung: Ihr Code lautet {code}",
+    "checking": "Anmeldung wird geprüft …"
   },
   "pay": {
     "title": "Zahlung",

@@ -1,23 +1,13 @@
 {
   "log": [
     {
-      "file": "tr-1440-book-2-details.png",
-      "url": "http://localhost:3000/tr/book?from=ayt&to=kemer&at=2026-11-07T10:00",
+      "file": "tr-1440-data-request-anon.png",
+      "url": "http://localhost:3000/tr/data-request",
       "hOverflowPx": 0
     },
     {
-      "file": "tr-390-book-2-details.png",
-      "url": "http://localhost:3000/tr/book?from=ayt&to=kemer&at=2026-11-07T10:00",
-      "hOverflowPx": 0
-    },
-    {
-      "file": "de-1440-book-2-details.png",
-      "url": "http://localhost:3000/de/book?from=ayt&to=kemer&at=2026-11-07T10:00",
-      "hOverflowPx": 0
-    },
-    {
-      "file": "de-390-book-2-details.png",
-      "url": "http://localhost:3000/de/book?from=ayt&to=kemer&at=2026-11-07T10:00",
+      "file": "tr-390-data-request-anon.png",
+      "url": "http://localhost:3000/tr/data-request",
       "hOverflowPx": 0
     }
   ],
@@ -26,12 +16,6 @@
       "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
     ],
     "tr-390": [
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
-    ],
-    "de-1440": [
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
-    ],
-    "de-390": [
       "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
     ]
   },

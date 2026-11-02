@@ -174,14 +174,20 @@
   },
   "otp": {
     "phone": "Phone number",
-    "phoneHint": "We will text you a 6-digit code.",
+    "phoneHint": "Without the country code. We will text you a 6-digit code.",
     "sendCode": "Send code",
+    "sending": "Sending…",
+    "codeSent": "We sent a code to <num>{phone}</num>.",
+    "resent": "We sent a new code to <num>{phone}</num>.",
     "code": "SMS code",
-    "codeSent": "Code sent to {phone}.",
+    "codeRequired": "Enter the code from the SMS.",
     "verify": "Verify",
+    "verifying": "Verifying…",
     "resend": "Resend code",
+    "resendIn": "You can resend in {s} s",
     "changePhone": "Change number",
-    "devCode": "Development: your code is {code}"
+    "devCode": "Development: your code is {code}",
+    "checking": "Checking your session…"
   },
   "pay": {
     "title": "Payment",

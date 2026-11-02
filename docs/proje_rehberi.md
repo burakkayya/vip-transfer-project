@@ -64,10 +64,10 @@ Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-
 | Alan | Durum | Eksik |
 |---|---|---|
 | Backend | Tamamlandı, 94 test geçiyor | PayTR gerçek doğrulama, iyzico yedeği, e-Arşiv, FCM, S3 depolama |
-| Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar; 2026-11-02 ana sayfa Impeccable geçişi (B-W1, critique 31/36), rezervasyon sihirbazı geçişi (B-W2, critique 35/40) | 6 dil daha, günlük kiralama ekranları |
+| Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar; 2026-11-02 ana sayfa Impeccable geçişi (B-W1, critique 31/36), rezervasyon sihirbazı geçişi (B-W2, critique 35/40), SMS doğrulama geçişi (B-W3, critique 36/40) | 6 dil daha, günlük kiralama ekranları |
 | Admin | Tamamlandı (23 rota) | Günlük kiralama yönetimi |
 | Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi | Android Maps anahtarı (kendi derlememiz için) ve iOS harita doğrulaması, 6 dil daha, push, mağaza derlemesi, günlük kiralama |
-| Ön yüz testleri | Altyapı kuruldu (K-40): web/admin Playwright + axe smoke, ESLint; mobil jest-expo + RNTL, ESLint; `scripts/` testleri; `scripts/ui-shots` | Lint taban ihlalleri (web 1, admin 3, mobil 9; `ui-review/lint-taban.md`), ekran bazlı e2e ve axe testleri (arayüz taraması; web ortak dosyalar B-W0, ana sayfa B-W1 ve rezervasyon sihirbazı B-W2 tamamlandı: `web/e2e/shared.spec.ts`, `web/e2e/home.spec.ts`, `web/e2e/book.spec.ts`) |
+| Ön yüz testleri | Altyapı kuruldu (K-40): web/admin Playwright + axe smoke, ESLint; mobil jest-expo + RNTL, ESLint; `scripts/` testleri; `scripts/ui-shots` | Lint taban ihlalleri (web 0, admin 3, mobil 9; `ui-review/lint-taban.md`), ekran bazlı e2e ve axe testleri (arayüz taraması; web ortak dosyalar B-W0, ana sayfa B-W1 ve rezervasyon sihirbazı B-W2 ve SMS doğrulama B-W3 tamamlandı: `web/e2e/shared.spec.ts`, `web/e2e/home.spec.ts`, `web/e2e/book.spec.ts`, `web/e2e/otp.spec.ts`) |
 | Yasal metinler | Taslak | Hukukçu onayı, şirket bilgileri (`web/lib/site.ts`) |
 
 ## 7. Açık konular

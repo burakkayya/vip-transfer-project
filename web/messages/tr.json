@@ -174,14 +174,20 @@
   },
   "otp": {
     "phone": "Telefon numarası",
-    "phoneHint": "SMS ile 6 haneli bir kod göndereceğiz.",
+    "phoneHint": "Ülke kodu olmadan yazın. SMS ile 6 haneli bir kod göndereceğiz.",
     "sendCode": "Kod gönder",
+    "sending": "Gönderiliyor…",
+    "codeSent": "Kodu <num>{phone}</num> numarasına gönderdik.",
+    "resent": "Yeni kodu <num>{phone}</num> numarasına gönderdik.",
     "code": "SMS kodu",
-    "codeSent": "{phone} numarasına kod gönderildi.",
+    "codeRequired": "SMS ile gelen kodu yazın.",
     "verify": "Doğrula",
+    "verifying": "Doğrulanıyor…",
     "resend": "Kodu tekrar gönder",
+    "resendIn": "{s} sn sonra tekrar gönderebilirsiniz",
     "changePhone": "Numarayı değiştir",
-    "devCode": "Geliştirme ortamı: kodunuz {code}"
+    "devCode": "Geliştirme ortamı: kodunuz {code}",
+    "checking": "Oturum denetleniyor…"
   },
   "pay": {
     "title": "Ödeme",

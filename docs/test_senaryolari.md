@@ -60,6 +60,14 @@ Rezervasyon sihirbazı ek kontrolleri (B-W2):
 - **Onay**: üç kutu işaretsiz gelir; ilk ikisi işaretlenene kadar ödeme düğmesi kapalıdır ve yanında nedeni yazar. Kampanya kutusu isteğe bağlıdır. Kartın üstünde iptal kademeleri yazar (48 saat ve üzeri %100, 24-48 saat %50, 24 saatten az iade yok).
 - Backend kapalıyken (veya ağ kesikken) araç adımında "Sunucuya ulaşılamadı…" ve **Tekrar dene** görünür; adres aramasında da aynı.
 
+SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/account`, `/data-request`):
+- Oturum denetlenirken kısa süre "Oturum denetleniyor…" görünür, boş ekran kalmaz.
+- Telefon alanının başında seçili ülkenin kodu (ör. **+90**) yazar; ülke değişince değişir. Numara ülke kodu olmadan yazılır; yine de `+90 532…` yazılırsa kod ikinci kez eklenmez.
+- **Kod gönder** her zaman basılabilir; çok kısa numarada alanın altında "Telefon numarasını kontrol edin." çıkar ve imleç alana döner. İstek sürerken düğme "Gönderiliyor…" yazar.
+- Kod adımında "Kodu **+90 …** numarasına gönderdik." yazar ve imleç kod alanındadır. Yanlış kod (`000000`) → alanın altında "Kod hatalı veya süresi dolmuş.", imleç koda döner; numara değişmez.
+- **Kodu tekrar gönder** ilk gönderimden sonra 45 saniye "… sn sonra tekrar gönderebilirsiniz" diye sayar; süre dolunca basılır ve "Yeni kodu … numarasına gönderdik." yazar, sayaç yeniden başlar.
+- **Numarayı değiştir** telefon adımına döner; yazılan numara alanda kalır.
+
 ### 2. İlçe bazlı fiyat kontrolü
 1. Senaryo 1'in ilk adımını **Kalkan** ve ardından **Kaş Merkez** ile tekrarlayın. İkisi de Kaş ilçesinde olduğu için fiyat aynıdır.
 2. **Kaleiçi → Lara** (ikisi de Muratpaşa): aynı ilçe içinde gerçek mesafe kullanılır, minimum fiyat çıkar.
