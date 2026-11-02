@@ -42,21 +42,21 @@ async function confirmStep(page: Page) {
 test("book has no axe violations at each step", async ({ page }) => {
   test.setTimeout(120_000);
   await vehicleStep(page);
-  await expectNoAxeViolations(page, { exclude: ["nextjs-portal"] });
+  await expectNoAxeViolations(page);
   await page.locator(".vehicle-card:not([disabled])").first().click();
   await expect(page.locator("#name")).toBeVisible();
-  await expectNoAxeViolations(page, { exclude: ["nextjs-portal"] });
+  await expectNoAxeViolations(page);
   await page.fill("#name", "Test Yolcu");
   await page.locator("form.wizard-step button[type=submit]").click();
   await page.waitForSelector("#otp-phone");
-  await expectNoAxeViolations(page, { exclude: ["nextjs-portal"] });
+  await expectNoAxeViolations(page);
   phoneSeq += 1;
   await page.fill("#otp-phone", `556${String(Date.now()).slice(-5)}${String(phoneSeq % 100).padStart(2, "0")}`);
   await page.locator("form:has(#otp-phone) button[type=submit]").click();
   await page.locator(".dev-hint").click();
   await page.locator("form:has(#otp-code) button[type=submit]").click();
   await expect(page.locator(".confirm-total")).toBeVisible({ timeout: 30_000 });
-  await expectNoAxeViolations(page, { exclude: ["nextjs-portal"] });
+  await expectNoAxeViolations(page);
 });
 
 test("consent boxes start unchecked and pay is disabled until both required are checked", async ({ page }) => {
@@ -79,9 +79,11 @@ test("consent boxes start unchecked and pay is disabled until both required are 
   await expect(boxes.nth(2)).not.toHaveAttribute("required", /.*/);
   await expect(boxes.nth(0)).toHaveAttribute("aria-required", "true");
   await expect(boxes.nth(1)).toHaveAttribute("aria-required", "true");
-  // İptal kademeleri onay adımında K-14 ile birebir.
-  await expect(page.locator(".cancel-tiers")).toContainText("%100");
-  await expect(page.locator(".cancel-tiers")).toContainText("%50");
+  // İptal kademeleri onay adımında K-14 ile birebir: sınırlar (48 ve 24 saat) ve oranlar birlikte.
+  const tiers = page.locator(".cancel-tiers");
+  await expect(tiers).toContainText("48 saat veya daha önce iptalde %100");
+  await expect(tiers).toContainText("24-48 saat kala %50");
+  await expect(tiers).toContainText("24 saatten az kala iade yapılmaz");
 });
 
 test("invalid flight number shows field-level error", async ({ page }) => {
@@ -97,14 +99,19 @@ test("invalid flight number shows field-level error", async ({ page }) => {
   const describedBy = (await flight.getAttribute("aria-describedby")) ?? "";
   expect(describedBy.split(" ")).toContain("flight-error");
   await expect(page.locator("#flight-error")).toBeVisible();
-  // Düzeltince hata kalkar; TK12 geçerli kabul edilir.
-  await flight.fill("TK12");
+  // Düzeltince hata kalkar.
+  await flight.fill("TK1234");
   await expect(flight).not.toHaveAttribute("aria-invalid", "true");
+  // Numarasız kod da reddedilir.
   await flight.fill("TK");
   await page.locator("form.wizard-step button[type=submit]").click();
   await expect(flight).toHaveAttribute("aria-invalid", "true");
-  await flight.fill("TK1234");
-  await expect(flight).not.toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#flight-error")).toBeVisible();
+  // TK12 geçerlidir: gönderimde hata yok, sihirbaz doğrulama adımına geçer.
+  await flight.fill("TK12");
+  await page.locator("form.wizard-step button[type=submit]").click();
+  await expect(page.locator("#otp-phone")).toBeVisible();
+  await expect(page.locator("#flight-error")).toHaveCount(0);
 });
 
 test("empty passenger name shows localized field error", async ({ page }) => {
@@ -132,6 +139,66 @@ test("TRY price fits on one line", async ({ page }) => {
   await page.locator(".vehicle-card:not([disabled])").first().click();
   const total = page.locator(".wizard-summary .total-row .price");
   expect(await total.evaluate((el) => el.getClientRects().length)).toBe(1);
+});
+
+test("TRY price fits on one line at 360px", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "genişlik testte ayarlanır; tek projede yeter");
+  await page.setViewportSize({ width: 360, height: 800 });
+  await vehicleStep(page, BOOK("tr", "datca"));
+  const prices = page.locator(".wizard .price");
+  const n = await prices.count();
+  expect(n).toBeGreaterThan(0);
+  for (let i = 0; i < n; i++) {
+    const p = prices.nth(i);
+    await expect(p).toContainText("₺");
+    expect(await p.evaluate((el) => el.getClientRects().length)).toBe(1);
+    expect(await p.evaluate((el) => el.getBoundingClientRect().right <= window.innerWidth)).toBe(true);
+  }
+  const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+  }));
+  expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
+});
+
+/** OTP'yi BFF üzerinden (geliştirme kodu) tamamlar; oturum çerezi tarayıcı bağlamına yazılır. */
+async function logIn(page: Page) {
+  const base = test.info().project.use.baseURL ?? "http://localhost:3000";
+  const headers = { origin: new URL(base).origin };
+  phoneSeq += 1;
+  const phone = `+90557${String(Date.now()).slice(-5)}${String(phoneSeq % 100).padStart(2, "0")}`;
+  const req = await page.request.post("/bff/auth/otp/request", { headers, data: { phone, purpose: "customer", locale: "tr" } });
+  expect(req.ok()).toBe(true);
+  const { dev_code } = (await req.json()) as { dev_code?: string };
+  expect(dev_code, "geliştirme kodu dönmedi").toBeTruthy();
+  const verify = await page.request.post("/bff/auth/otp/verify", {
+    headers,
+    data: { phone, code: dev_code, purpose: "customer", country_code: "TR", locale: "tr" },
+  });
+  expect(verify.ok()).toBe(true);
+}
+
+test("logged-in user sees 3 steps without a 4-step frame", async ({ page }) => {
+  await logIn(page);
+  // Sayfa açılmadan önce gözlemci kurulur: göstergedeki en büyük adım sayısı kaydedilir.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __maxSteps: number };
+    w.__maxSteps = 0;
+    new MutationObserver(() => {
+      const n = document.querySelectorAll("ol.stepper-bar li").length;
+      if (n > w.__maxSteps) w.__maxSteps = n;
+    }).observe(document, { subtree: true, childList: true });
+  });
+  await vehicleStep(page);
+  const bar = page.getByRole("list", { name: "Rezervasyon adımları" });
+  await expect(bar.locator("li")).toHaveCount(3);
+  await expect(bar).not.toContainText("Doğrulama");
+  expect(await page.evaluate(() => (window as unknown as { __maxSteps: number }).__maxSteps)).toBe(3);
+  // Bilgiler adımında da 3 kalır.
+  await page.locator(".vehicle-card:not([disabled])").first().click();
+  await expect(bar.locator("li")).toHaveCount(3);
+  await expect(bar.locator('[aria-current="step"]')).toContainText("Bilgiler");
+  expect(await page.evaluate(() => (window as unknown as { __maxSteps: number }).__maxSteps)).toBe(3);
 });
 
 test("wizard shows step progress to screen readers", async ({ page }) => {

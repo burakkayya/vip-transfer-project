@@ -66,7 +66,7 @@ Kapsam: araç, bilgiler, doğrulama kabuğu ve onay adımları; boş `/book` (ro
 | P3 | Fiyatlar tabular değildi, dar ekranda satır kırılabilirdi | **Kapandı**: `.wizard .price` `nowrap` + `tabular-nums` (Review Focus 3 testi) |
 | P3 | Rota düzenlemesinden geri dönüş yoktu | **Kapandı**: "Vazgeç, araçlara dön" |
 | P3 | Boş `/book` yönlendirmesiz (onboard) | **Kapandı**: kısa giriş cümlesi (sabit fiyat hemen, ödeme son adım; mevcut gerçek özellikler) |
-| P3 | Oturum durumu bilinmeden (ilk ~100 ms) oturumlu kullanıcı 4 adım görür, sonra 3 | Açık (bilinçli; ilk ziyaretçi çoğunlukla oturumsuz) |
+| P3 | Oturum durumu bilinmeden (ilk ~100 ms) oturumlu kullanıcı 4 adım görür, sonra 3 | **Kapandı** (düzeltme turu 1): oturum çözülene kadar adım sayısı çizilmez; nötr yer tutucu (tek soluk çizgi) göstergeyle aynı yükseklikte (33,3 px), düzen kaymaz. Test: "logged-in user sees 3 steps without a 4-step frame" (MutationObserver ile hiçbir karede 4 adım yok) |
 
 ### Adım göstergesi kararı (clarify)
 
@@ -88,7 +88,7 @@ Akışın dört durumu var (araç → bilgiler → doğrulama → onay). Seçile
 
 ## Uygulanamadı: neden
 
-- Brifteki kırmızı test "`TK12` → hata": `TK12` geçerli IATA biçimidir (havayolu kodu + 1-4 hane; TK1 gerçek sefer). Geçerli numarayı reddetmek yerine test gerçekten geçersiz girişlerle (`TK-12`, `TK`) yazıldı ve `TK12`'nin kabul edildiğini de doğrular.
+- Brifteki kırmızı test "`TK12` → hata": `TK12` geçerli IATA biçimidir (havayolu kodu + 1-4 hane; TK1 gerçek sefer). Geçerli numarayı reddetmek yerine test gerçekten geçersiz girişlerle (`TK-12`, `TK`) yazıldı; `TK12` ile gönderimde hata çıkmadığı ve sihirbazın doğrulama adımına geçtiği de test edilir (düzeltme turu 1).
 - `OtpLogin` içindeki hata ve `autoFocus`: B-W3.
 - Tam iade garantisi seçeneği: K-15 gereği gizli (yalnızca `guarantee_available` ise çizilir; backend kapalı).
 
@@ -96,10 +96,11 @@ Akışın dört durumu var (araç → bilgiler → doğrulama → onay). Seçile
 
 - Kırmızı testler önce: `npx playwright test book --project=desktop --workers=1` → **12 başarısız, 6 geçti** (axe `color-contrast` bilgiler adımında; `form.wizard-step` yok; `fontVariantNumeric` `tabular-nums` değil; `Rezervasyon adımları` listesi yok; `.wizard-start` yok; yeniden dene düğmeleri yok; "6 yolcu" metni yok; geçenler 5 genişlik taşma testi ve Esc).
 - Sonra: `npx playwright test book shared home --workers=1` → **66 geçti, 10 atlandı** (genişlik testleri yalnızca `desktop` projesinde). `book.spec.ts` 18 test (13 × 2 proje + 5 genişlik).
+- Düzeltme turu 1: `book.spec.ts` 20 test (oturumlu 3 adım, 360 px TRY tek satır eklendi; uçuş testi `TK12` gönderimini, onay testi 48/24 saat sınırlarını doğrular; axe `nextjs-portal` istisnası kaldırıldı). `shared.spec.ts` Esc testi hidrasyon yarışına karşı sağlamlaştırıldı. `book shared home` → **69 geçti, 11 atlandı**.
 - `npx tsc --noEmit` temiz; `npx eslint` değişen dosyalarda 0, web genelinde 1 hata (`OtpLogin.tsx`, B-W3); `npm run build` başarılı (`/[locale]/book` 7,65 kB, ilk yük 138 kB); dev sunucu yeniden başlatıldı, 200.
 - Ekran görüntüsü betiği `--only book-empty,book-1-vehicle,book-2-details,book-5-confirm,home`: 20 görüntü, yatay taşma 0, eksik 0; konsol hatası yalnızca oturumsuz `auth/me` 401 (beklenen). Akış onay adımında durdu (rezervasyon oluşturulmadı).
 
 ## Görüntüler
 
 - Önce: `screenshots/before/web/{tr,de}-{1440,390}-book-{empty,1-vehicle,2-details,3-verify,4-otp,5-confirm}.png`
-- Sonra: `screenshots/after/web/{tr,de}-{1440,390}-book-{empty,1-vehicle,2-details,5-confirm}.png`. Ana sayfa sonrası görüntüleri (`*-home.png`, 1440 ve 390) Next geliştirme göstergesi ("N" dairesi) olmadan yeniden çekildi.
+- Sonra: `screenshots/after/web/{tr,de}-{1440,390}-book-{empty,1-vehicle,2-details,5-confirm}.png`. Ana sayfa sonrası görüntüleri (`{tr,de}-{1440,390}-home.png` ve düzeltme turu 1'de `de-{360,768,1024}-home.png`) Next geliştirme göstergesi ("N" dairesi) olmadan yeniden çekildi.

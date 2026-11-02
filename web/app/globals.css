@@ -822,6 +822,20 @@ dl.summary dd {
   gap: 8px;
 }
 
+/* Oturum durumu bilinene kadar nötr yer tutucu: tek soluk çizgi, göstergeyle aynı yükseklik. */
+.stepper-pending {
+  /* Çizgi 4 px + aralık 8 px + bir satır ad (0.86rem × 1.55); ölçülen gösterge yüksekliği 33,3 px. */
+  min-height: calc(12px + 0.86rem * 1.55);
+}
+
+.stepper-pending::before {
+  content: "";
+  flex: 1;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
 .stepper-bar li {
   flex: 1;
   display: flex;

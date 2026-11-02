@@ -58,7 +58,7 @@ for (const locale of ["tr", "de"]) {
     await page.goto(`/${locale}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await scrollThrough(page);
-    await expectNoAxeViolations(page, { exclude: ["nextjs-portal"] });
+    await expectNoAxeViolations(page);
   });
 }
 

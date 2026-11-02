@@ -98,8 +98,11 @@ test("Esc closes mobile menu and returns focus", async ({ page }) => {
   await page.goto("/tr/legal/privacy");
   const menuBtn = page.locator(".menu-btn");
   await expect(menuBtn).toBeVisible();
-  await menuBtn.click();
-  await expect(menuBtn).toHaveAttribute("aria-expanded", "true");
+  // Düğme sunucuda çizilir; yük altındaki geliştirme sunucusunda hidrasyondan önceki tıklama boşa gider. Açılana kadar yeniden dene.
+  await expect(async () => {
+    if ((await menuBtn.getAttribute("aria-expanded")) !== "true") await menuBtn.click();
+    await expect(menuBtn).toHaveAttribute("aria-expanded", "true", { timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
   await expect(page.locator("#mobile-menu")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#mobile-menu")).toHaveCount(0);

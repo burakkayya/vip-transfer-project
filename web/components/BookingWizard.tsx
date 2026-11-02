@@ -310,14 +310,19 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   return (
     <div className="wizard" ref={top}>
       <div className="wizard-main">
-        <ol className="stepper-bar" aria-label={t("progress")}>
-          {visibleSteps.map((s, i) => (
-            <li key={s} className={i === stepIndex ? "active" : i < stepIndex ? "done" : ""} aria-current={i === stepIndex ? "step" : undefined}>
-              <span className="name">{t(`steps.${s}`)}</span>
-              {i < stepIndex && <span className="sr-only"> ({t("stepDone")})</span>}
-            </li>
-          ))}
-        </ol>
+        {loggedIn === null ? (
+          // Oturum durumu bilinmeden adım sayısı (3 veya 4) çizilmez; yer tutucu yüksekliği korur, gösterge sıçramaz.
+          <div className="stepper-bar stepper-pending" aria-hidden="true" />
+        ) : (
+          <ol className="stepper-bar" aria-label={t("progress")}>
+            {visibleSteps.map((s, i) => (
+              <li key={s} className={i === stepIndex ? "active" : i < stepIndex ? "done" : ""} aria-current={i === stepIndex ? "step" : undefined}>
+                <span className="name">{t(`steps.${s}`)}</span>
+                {i < stepIndex && <span className="sr-only"> ({t("stepDone")})</span>}
+              </li>
+            ))}
+          </ol>
+        )}
 
         {step === "vehicle" && (
           <section className="stack wizard-step" key="vehicle">
