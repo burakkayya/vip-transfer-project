@@ -54,7 +54,7 @@ Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-
 | K-34 | MVP'de on dil | Bekliyor, şu an 4 dil (tr, en, de, ru) |
 | K-35 | VIP Minibüs ayrı araç tipi | Uygulandı (çarpan 2,40 yer tutucu) |
 | K-36 | Arayüz dilleri fr, es, it, zh, ja, ar; yasal metinler taslak çeviri | Bekliyor (K-34'ün uygulaması) |
-| K-37 | Mobil gerçek harita; backend `route_polyline` | Bekliyor |
+| K-37 | Mobil gerçek harita; backend `route_polyline` | Backend uygulandı (rezervasyon detayı ve sürücü yolculuğu); mobil harita bekliyor |
 | K-38 | Renk tokenlarının tek kaynağı kök `DESIGN.md` | Üretici hazır (`scripts/sync-tokens.mjs`); web ve admin bağlı, mobil `ui.tsx` bağlantısı bekliyor |
 | K-39 | Görsel yön "Kıyı Yolu" | Bekliyor (arayüz taraması) |
 | K-40 | Ön yüz test altyapısı (ESLint, Playwright, axe, jest-expo) | Kuruldu: web (A3) ve admin (A4) ESLint + Playwright + axe; mobil (A5) ESLint + jest-expo + RNTL. Ekran bazlı testler arayüz taraması sırasında yazılacak |

@@ -37,7 +37,7 @@ from app.models.enums import (
     VehicleStatus,
 )
 from app.providers.storage import get_storage
-from app.services import audit, dispatch, documents, live_location, system_settings
+from app.services import audit, dispatch, documents, live_location, route_line, system_settings
 
 router = APIRouter(prefix="/driver", tags=["driver"])
 
@@ -242,9 +242,11 @@ class TripOut(BaseModel):
     flight_no: str | None
     driver_amount: MoneyStr
     currency: str
+    route_polyline: str | None = None
 
 
-def _trip_out(leg: BookingLeg) -> TripOut:
+def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
+    """`with_route` yalnızca tekil yolculuk yanıtlarında (kabul, durum adımı) doldurulur; listelerde None kalır."""
     b = leg.booking
     return TripOut(
         leg_id=leg.id,
@@ -263,6 +265,7 @@ def _trip_out(leg: BookingLeg) -> TripOut:
         flight_no=leg.flight.flight_no if leg.flight else None,
         driver_amount=leg.leg_price - (leg.leg_price * b.commission_rate).quantize(Decimal("0.01")),
         currency=b.currency.value,
+        route_polyline=route_line.route_polyline(leg) if with_route else None,
     )
 
 
@@ -300,7 +303,7 @@ def accept_offer(offer_id: uuid.UUID, driver: CurrentDriver, db: DbSession, now:
         db.commit()  # teklif durumu (süresi doldu/geri çekildi) kaydedilsin
         raise
     db.commit()
-    return _trip_out(leg)
+    return _trip_out(leg, with_route=True)
 
 
 @router.post("/offers/{offer_id}/reject", status_code=204)
@@ -330,7 +333,7 @@ def trip_event(leg_id: uuid.UUID, body: TripEventIn, driver: CurrentDriver, db: 
     db.commit()
     if leg.status is LegStatus.COMPLETED:
         live_location.clear(leg)
-    return _trip_out(leg)
+    return _trip_out(leg, with_route=True)
 
 
 class LocationIn(BaseModel):

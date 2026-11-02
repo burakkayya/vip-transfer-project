@@ -57,7 +57,7 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Tasarım yenilemesinden kalanlar (2026-10-31)
 
-- [ ] Mobil haritalar stilize SVG; gerçek harita (K-37) için `react-native-maps` (iOS Apple Maps, Android Google Maps anahtarı) bağlanmalı. Rota çizgisi için Routes API polyline gerekir.
+- [ ] Mobil haritalar stilize SVG; gerçek harita (K-37) için `react-native-maps` (iOS Apple Maps, Android Google Maps anahtarı) bağlanmalı. Rota çizgisi için backend `route_polyline` alanı hazır (müşteri rezervasyon detayı, sürücü yolculuğu); mobil tarafı bağlanmalı.
 - [x] Siyah minibüs ayrı araç tipi oldu: VIP Minibüs (K-35). Fiyat çarpanı 2,40 yer tutucu; gerçek fiyat admin panelinden girilmeli.
 - [ ] Sürücü belgelerinde `vip_minibus` araç tipiyle araç eklenip onaylanmalı; şu an bu tipte sürücü yok, bu tip rezervasyonlar admin eşleştirmesi bekler.
 - [ ] Yandan Vito görseli (`vito_transparent.png`) 525 px; büyük ekranda keskinlik için yüksek çözünürlüklü şeffaf sürüm gerekli.

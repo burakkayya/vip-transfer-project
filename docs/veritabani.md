@@ -58,6 +58,7 @@ Fiyat ve komisyon geçmişi tutulur, eski rezervasyonların hangi kuralla hesapl
 
 - `flight_infos.purge_at` yolculuk tamamlandığında şimdiye ayarlanır (K-31), saatlik zamanlanmış görev siler. Yolculuk hiç tamamlanmazsa rezervasyon sırasındaki yedek süre geçerlidir.
 - Canlı sürücü konumu PostgreSQL'de tutulmaz. Redis'te kısa süreli saklanır.
+- Ayak rota çizgisi (`route_polyline`, K-37): şema değişmedi; polyline PostgreSQL'e yazılmaz, Redis'te `route_line:{leg_id}` anahtarıyla 24 saat (TTL 86400) önbelleğe alınır.
 
 ## Ödeme, iade, finans
 

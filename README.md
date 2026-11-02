@@ -87,7 +87,7 @@ Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik
 
 Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35). Sedan hizmetten kaldırıldı.
 
-Kararı verilmiş, geliştirmesi bekleyen: günlük araç kiralama (K-29), on dil (K-34, uygulaması K-36) ve mobil gerçek harita ile rota çizgisi (K-37). Arayüz taraması (Impeccable) planlandı (K-38, K-39; `docs/plans/2026-11-impeccable-tarama.md`); ön yüz test altyapısı kuruldu (K-40, aşağıda).
+Kararı verilmiş, geliştirmesi bekleyen: günlük araç kiralama (K-29), on dil (K-34, uygulaması K-36) ve mobil gerçek harita (K-37; backend `route_polyline` hazır). Arayüz taraması (Impeccable) planlandı (K-38, K-39; `docs/plans/2026-11-impeccable-tarama.md`); ön yüz test altyapısı kuruldu (K-40, aşağıda).
 
 ## Mimari notlar
 

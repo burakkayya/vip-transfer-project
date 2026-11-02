@@ -166,6 +166,30 @@ def test_instant_booking_offer_accept_trip_and_ledger(client, db, ops):
     assert D(earnings["pending_try"]) == entry.net_amount_try
 
 
+def test_driver_trip_has_route_polyline(client, db, ops, route_line_cleanup):
+    from app.providers.polyline import decode
+
+    driver_headers, _ = onboard_driver(client, ops)
+    customer = otp_login(client, random_phone())
+    r = client.post("/api/v1/me/bookings", json=booking_body(client, hours_ahead=0, booking_type="anlik"),
+                    headers=customer)
+    code = r.json()["booking_code"]
+    pay(client, customer, code)
+    offers = client.get("/api/v1/driver/offers", headers=driver_headers).json()
+    offer = next(o for o in offers if o["trip"]["booking_code"] == code)
+    assert offer["trip"]["route_polyline"] is None
+
+    trip = client.post(f"/api/v1/driver/offers/{offer['offer_id']}/accept", headers=driver_headers).json()
+    assert isinstance(trip["route_polyline"], str) and len(decode(trip["route_polyline"])) >= 2
+
+    listed = client.get("/api/v1/driver/trips", headers=driver_headers).json()
+    assert next(t for t in listed if t["booking_code"] == code)["route_polyline"] is None
+
+    r = client.post(f"/api/v1/driver/trips/{trip['leg_id']}/events", headers=driver_headers,
+                    json={"event": "yola_cikti"})
+    assert isinstance(r.json()["route_polyline"], str)
+
+
 def test_second_driver_cannot_take_assigned_leg(client, db, ops):
     first, _ = onboard_driver(client, ops, vehicle_type="vip_van")
     second, _ = onboard_driver(client, ops, vehicle_type="vip_van")

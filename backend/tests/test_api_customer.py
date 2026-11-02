@@ -4,6 +4,7 @@ from sqlalchemy import select, text
 
 from app import pricing
 from app.models import Booking, Consent, Invoice, Notification, OtpChallenge
+from app.providers.polyline import decode
 from app.providers.routing import HaversineRouting, Point
 from tests.conftest import booking_body, future, otp_login, pay, random_phone, region_id
 
@@ -254,3 +255,24 @@ def test_profile_consent_and_data_request(client):
     r = client.post("/api/v1/me/data-requests", json={"request_type": "erisim"}, headers=headers)
     assert r.status_code == 201
     assert client.get("/api/v1/me/data-requests", headers=headers).json()[0]["status"] == "acik"
+
+
+def test_customer_booking_detail_has_route_polyline(client, route_line_cleanup):
+    headers = otp_login(client, random_phone())
+    r = client.post("/api/v1/me/bookings", json=booking_body(client), headers=headers)
+    assert r.status_code == 201, r.text
+    code = r.json()["booking_code"]
+    detail = client.get(f"/api/v1/me/bookings/{code}", headers=headers).json()
+    line = detail["legs"][0]["route_polyline"]
+    assert isinstance(line, str) and line
+    assert len(decode(line)) >= 2
+
+
+def test_customer_booking_list_omits_route_polyline(client, route_line_cleanup):
+    headers = otp_login(client, random_phone())
+    r = client.post("/api/v1/me/bookings", json=booking_body(client), headers=headers)
+    assert r.status_code == 201, r.text
+    assert "route_polyline" in r.json()["legs"][0]
+    assert r.json()["legs"][0]["route_polyline"] is None
+    rows = client.get("/api/v1/me/bookings", headers=headers).json()
+    assert rows and all(leg["route_polyline"] is None for b in rows for leg in b["legs"])
