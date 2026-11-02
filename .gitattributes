@@ -1,3 +1,8 @@
 # Kabuk betikleri her platformda LF kalmalı (Impeccable başlatıcısı #!/bin/sh).
 .claude/skills/impeccable/scripts/impeccable text eol=lf
 *.sh text eol=lf
+
+# Üretilmiş token dosyaları (scripts/sync-tokens.mjs) her platformda LF kalmalı.
+web/app/tokens.css text eol=lf
+admin/app/tokens.css text eol=lf
+mobile/lib/tokens.ts text eol=lf

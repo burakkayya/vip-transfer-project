@@ -50,6 +50,8 @@ cd ../admin  && npm install && npm run dev
 cd ../mobile && npm install && npm run web       # ya da: npm run start:driver / npm start (Expo Go)
 ```
 
+Renk tokenları tek kaynaktan (kök `DESIGN.md` `colors` bloğu) üretilir: `node scripts/sync-tokens.mjs` (kontrol: `--check`, test: `node --test "scripts/*.test.mjs"`). Üretilmiş `tokens.css` / `tokens.ts` dosyaları elle düzenlenmez.
+
 Geliştirmede SMS kodları backend konsoluna yazılır ve uygulamalarda ekranda gösterilir; ödemeler sahte sağlayıcıyla yapılır.
 
 Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik_gunlugu.md`.

@@ -1,19 +1,24 @@
 /* Getaway Transfers — sade, siyah-beyaz, VIP. Vurgu rengi yalnızca küçük etiketlerde. */
 :root {
-  --ink: #0b0b0c;
-  --ink-2: #1c1c1f;
-  --bg: #ffffff;
-  --soft: #f5f5f3;
-  --soft-2: #ececea;
-  --surface: #ffffff;
-  --text: #0b0b0c;
-  --muted: #6b6b70;
-  --line: #e8e7e3;
-  --line-strong: #d6d5d0;
-  --accent: #a8875a;
-  --danger: #c0261d;
-  --ok: #18794e;
-  --warn: #8a6100;
+  --ink: var(--color-lacquer-black);
+  --ink-2: var(--color-lacquer-black-raised);
+  --bg: var(--color-paper);
+  --soft: var(--color-limestone);
+  --soft-2: var(--color-limestone-deep);
+  --surface: var(--color-paper);
+  --text: var(--color-lacquer-black);
+  --muted: var(--color-slate-text);
+  --faint: var(--color-slate-faint);
+  --line: var(--color-hairline);
+  --line-strong: var(--color-hairline-strong);
+  --accent: var(--color-champagne-brass);
+  --brass-ink: var(--color-champagne-brass-ink);
+  --danger: var(--color-signal-red);
+  --danger-soft: var(--color-signal-red-soft);
+  --ok: var(--color-pine-green);
+  --ok-soft: var(--color-pine-green-soft);
+  --warn: var(--color-amber-ink);
+  --warn-soft: var(--color-amber-soft);
   --radius: 18px;
   --radius-lg: 28px;
   --radius-sm: 12px;
