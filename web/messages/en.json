@@ -175,6 +175,7 @@
   "otp": {
     "phone": "Phone number",
     "phoneHint": "Without the country code. We will text you a 6-digit code.",
+    "unknownCountry": "This country code is not in our list. Choose your country from the list and enter the number without the country code.",
     "sendCode": "Send code",
     "sending": "Sending…",
     "codeSent": "We sent a code to <num>{phone}</num>.",

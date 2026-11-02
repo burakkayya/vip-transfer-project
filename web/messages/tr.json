@@ -175,6 +175,7 @@
   "otp": {
     "phone": "Telefon numarası",
     "phoneHint": "Ülke kodu olmadan yazın. SMS ile 6 haneli bir kod göndereceğiz.",
+    "unknownCountry": "Bu ülke kodu listede yok. Ülkenizi listeden seçin ve numarayı ülke kodu olmadan yazın.",
     "sendCode": "Kod gönder",
     "sending": "Gönderiliyor…",
     "codeSent": "Kodu <num>{phone}</num> numarasına gönderdik.",

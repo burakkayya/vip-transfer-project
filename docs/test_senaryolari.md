@@ -67,6 +67,7 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 - Kod adımında "Kodu **+90 …** numarasına gönderdik." yazar ve imleç kod alanındadır. Yanlış kod (`000000`) → alanın altında "Kod hatalı veya süresi dolmuş.", imleç koda döner; numara değişmez.
 - **Kodu tekrar gönder** ilk gönderimden sonra 45 saniye "… sn sonra tekrar gönderebilirsiniz" diye sayar; süre dolunca basılır ve "Yeni kodu … numarasına gönderdik." yazar, sayaç yeniden başlar.
 - **Numarayı değiştir** telefon adımına döner; yazılan numara alanda kalır.
+- Türkiye seçiliyken `+49 151 …` yazılırsa kod Almanya numarasına gider ve **Numarayı değiştir** sonrası ülke **Deutschland (+49)** görünür (müşteri ülkesi ve para birimi numarayla tutarlı). `(+90) 532 …`, `0090 532 …` ve `90 532 123 45 67` aynı numaraya (+90 532…) gider. Listede olmayan bir kod (`+81 …`) alan hatası verir.
 
 ### 2. İlçe bazlı fiyat kontrolü
 1. Senaryo 1'in ilk adımını **Kalkan** ve ardından **Kaş Merkez** ile tekrarlayın. İkisi de Kaş ilçesinde olduğu için fiyat aynıdır.

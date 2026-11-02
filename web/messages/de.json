@@ -175,6 +175,7 @@
   "otp": {
     "phone": "Telefonnummer",
     "phoneHint": "Ohne Ländervorwahl. Wir senden Ihnen einen 6-stelligen Code per SMS.",
+    "unknownCountry": "Diese Ländervorwahl ist nicht in der Liste. Wählen Sie Ihr Land aus der Liste und geben Sie die Nummer ohne Vorwahl ein.",
     "sendCode": "Code senden",
     "sending": "Wird gesendet …",
     "codeSent": "Wir haben einen Code an <num>{phone}</num> gesendet.",

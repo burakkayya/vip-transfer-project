@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { useApiError } from "@/lib/hooks";
+import { displayPhone, toE164 } from "@/lib/phone";
 import { countries, defaultCountry } from "@/lib/site";
 import CountrySelect from "./CountrySelect";
 
@@ -12,21 +13,6 @@ import CountrySelect from "./CountrySelect";
  * Yalnızca görsel bir frendir: asıl sınır backend'in saatlik kod sınırıdır (429 → `too_many_requests`).
  */
 const RESEND_SECONDS = 45;
-
-/** Yazılan numarayı E.164'e çevirir. "+" veya "00" ile başlıyorsa ülke kodu zaten yazılmıştır, ikinci kez eklenmez. */
-function toE164(raw: string, dial: string) {
-  const trimmed = raw.trim();
-  const digits = trimmed.replace(/\D/g, "");
-  if (trimmed.startsWith("+")) return { full: `+${digits}`, valid: digits.length >= 8 };
-  if (trimmed.startsWith("00")) return { full: `+${digits.slice(2)}`, valid: digits.length >= 10 };
-  const national = digits.replace(/^0+/, "");
-  return { full: `${dial}${national}`, valid: national.length >= 6 };
-}
-
-/** Ekranda okunur biçim: seçili ülke koduyla başlıyorsa kod ile numara arasında boşluk. */
-function displayPhone(full: string, dial: string) {
-  return full.startsWith(dial) ? `${dial} ${full.slice(dial.length)}` : full;
-}
 
 /** Ekran 4: telefon ile OTP doğrulama. Hesap yoksa backend oluşturur (K-16). */
 export default function OtpLogin(props: { onDone: (country: string) => void; country?: string }) {
@@ -46,6 +32,9 @@ export default function OtpLogin(props: { onDone: (country: string) => void; cou
   /** Alan hatası: telefon adımında numara, kod adımında kod alanına bağlanır. */
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
+  /** Yalnızca ekran okuyucuya: her tekrar gönderimde boşaltılıp yeniden yazılır, aynı metin de yeniden duyurulur. */
+  const [announce, setAnnounce] = useState("");
+  const announceTimer = useRef<number | undefined>(undefined);
   const [waitUntil, setWaitUntil] = useState(0);
   const [now, setNow] = useState(0);
   /** Bir sonraki çizimden sonra odaklanacak alan (autoFocus yerine; yalnızca kullanıcı eylemiyle). */
@@ -56,16 +45,27 @@ export default function OtpLogin(props: { onDone: (country: string) => void; cou
   const dial = countries.find((c) => c.code === country)?.dial ?? "+";
   const wait = Math.max(0, Math.ceil((waitUntil - now) / 1000));
 
-  // Bekleme sayacı: yalnızca bekleme sürerken saniyede bir güncellenir.
+  // Bekleme sayacı: kalan süre her zaman saklanan bitiş anından (Date.now) hesaplanır, adım saymaz.
+  // Arka planda kısılan sekme geri gelince (visibilitychange) hemen yeniden hesaplanır.
   useEffect(() => {
     if (waitUntil === 0) return;
-    const id = window.setInterval(() => {
+    const tick = () => {
       const at = Date.now();
       setNow(at);
-      if (at >= waitUntil) window.clearInterval(id);
-    }, 1000);
-    return () => window.clearInterval(id);
+      if (at >= waitUntil) {
+        window.clearInterval(id);
+        document.removeEventListener("visibilitychange", tick);
+      }
+    };
+    const id = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [waitUntil]);
+
+  useEffect(() => () => window.clearTimeout(announceTimer.current), []);
 
   // Adım değişince veya hatadan sonra odak ilgili alana gider.
   useEffect(() => {
@@ -100,6 +100,13 @@ export default function OtpLogin(props: { onDone: (country: string) => void; cou
       setPhone(full);
       setCode("");
       setResent(again);
+      if (again) {
+        // Bölge önce boşalır, sonra metin yazılır: ikinci ve sonraki gönderimler de duyurulur.
+        const text = t.markup("resent", { phone: displayPhone(full, dial), num: (c) => c });
+        setAnnounce("");
+        window.clearTimeout(announceTimer.current);
+        announceTimer.current = window.setTimeout(() => setAnnounce(text), 150);
+      }
       const at = Date.now();
       setNow(at);
       setWaitUntil(at + RESEND_SECONDS * 1000);
@@ -108,14 +115,16 @@ export default function OtpLogin(props: { onDone: (country: string) => void; cou
 
   const send = (e: React.FormEvent) => {
     e.preventDefault();
-    const { full, valid } = toE164(national, dial);
-    if (!valid) {
+    const parsed = toE164(national, { code: country, dial }, countries);
+    if (!parsed.ok) {
       setError(null);
-      setFieldError(te("phone"));
+      setFieldError(parsed.reason === "unknown_country" ? t("unknownCountry") : te("phone"));
       phoneRef.current?.focus();
       return;
     }
-    return request(full, false);
+    // Uluslararası yazımın ülkesi seçimden farklıysa seçim ona döner: müşteri ülkesi (para birimi) numarayla tutarlı kalır.
+    if (parsed.country !== country) setCountry(parsed.country);
+    return request(parsed.full, false);
   };
 
   const verify = (e: React.FormEvent) => {
@@ -149,6 +158,7 @@ export default function OtpLogin(props: { onDone: (country: string) => void; cou
     setError(null);
     setFieldError(null);
     setResent(false);
+    setAnnounce("");
     focusNext.current = "phone";
   };
 
@@ -221,9 +231,12 @@ export default function OtpLogin(props: { onDone: (country: string) => void; cou
 
   return (
     <form onSubmit={verify} className="otp stack" noValidate>
-      {/* Gönderim bilgisi canlı bölgedir: tekrar gönderince "yeni kod" duyurulur. */}
-      <p className="otp-sent muted" id="otp-sent" role="status">
+      <p className="otp-sent muted" id="otp-sent">
         {resent ? t.rich("resent", { phone: shown, num }) : t.rich("codeSent", { phone: shown, num })}
+      </p>
+      {/* Canlı bölge her zaman DOM'da; tekrar gönderimde boşaltılıp yeniden yazılır. */}
+      <p className="sr-only" role="status" id="otp-announce">
+        {announce}
       </p>
       {devCode && (
         <button type="button" className="dev-hint" onClick={() => { setCode(devCode); setFieldError(null); }}>

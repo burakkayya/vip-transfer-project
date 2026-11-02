@@ -59,7 +59,7 @@ Kapsam: `/book` "Doğrulama" adımı ve `RequireLogin` ile sarılan `/account`, 
 
 ### Kararlar (görev içi)
 
-- **Tekrar gönder beklemesi 45 sn**: kontrolcü kararı "görsel bekleme yeterli, API'nin döndürdüğünün ötesinde iş kuralı ekleme". Değer mobil girişteki `RESEND_SECONDS = 45` ile aynıdır; bekleme ilk gönderimden itibaren başlar (mobil gibi). Gerçek sınır backend'in saatlik 5 kod sınırıdır; 429 gelirse mesajı gösterilir, bekleme yeniden başlamaz.
+- **Tekrar gönder beklemesi 45 sn** (K-41): kontrolcü kararı "görsel bekleme yeterli, API'nin döndürdüğünün ötesinde iş kuralı ekleme". Değer mobil girişteki `RESEND_SECONDS = 45` ile aynıdır; bekleme ilk gönderimden itibaren başlar (mobil gibi). Gerçek sınır backend'in saatlik 5 kod sınırıdır; 429 gelirse mesajı gösterilir, bekleme yeniden başlamaz.
 - **Ülke kodunun duyurulması**: kontrolcü kararı "telefon alanının erişilebilir adı seçili ülke kodunu içerir". Görünür ön ek (`#otp-dial`) ve etiket `aria-labelledby` ile birleşir; ülke değişince ad değişir.
 - **Ön ekli yazım**: alana "+" veya "00" ile başlayan numara yazılırsa seçili ülke kodu eklenmez (backend `normalize_phone` ile aynı yorum). Ülke seçimi müşteri ülkesi olarak (`country_code`) gönderilmeye devam eder.
 - **Geliştirme kodu kutusu**: görünürlüğü istemcide `NODE_ENV` ile değil API'nin `dev_code` alanıyla belirlenir (backend yalnızca üretim dışı + konsol SMS'te doldurur). Böylece `npm run start` ile çalışan e2e ve ekran görüntüsü betikleri bozulmaz.
@@ -89,6 +89,26 @@ Kapsam: `/book` "Doğrulama" adımı ve `RequireLogin` ile sarılan `/account`, 
 - Sonra: `npx playwright test otp --project=desktop --workers=1` → **12 geçti**. Tüm web e2e (`npx playwright test --workers=2`, iki proje): **90 geçti, 16 atlandı** (genişlik testleri yalnızca `desktop`), `book.spec.ts` dahil.
 - `npx tsc --noEmit` temiz; `npx eslint .` (web) 0; `impeccable detect` 0; `npm run build` başarılı (dev sunucu durduruldu, build, yeniden başlatıldı, 200).
 - Ekran görüntüsü betiği `--only account-anon,data-request-anon,book-3-verify,book-4-otp` (tr, de × 1440, 390): 16 görüntü; `tr-1440-data-request-anon` ilk turda soğuk derleme zaman aşımı, tek başına yeniden çekildi. Konsol hatası yalnızca oturumsuz `auth/me` 401 (beklenen). Akış OTP ekranında durdu.
+
+## Düzeltme turu 1 (inceleme küçükleri)
+
+| İnceleme bulgusu | Durum |
+|---|---|
+| 1. "+49…" TR seçiliyken `country_code: TR` gidiyordu (para birimi TRY) | **Kapandı**: uluslararası yazımın kodu listedeki ülkeyle eşlenir (en uzun kod; +7 gibi ortak kodda seçili ülke korunur), seçim o ülkeye döner ve `country_code` o ülkedir. Listede olmayan kod → alan hatası `otp.unknownCountry` (4 dil). Yeni ülke eklenmedi |
+| 2. `toE164` birim testi yok | **Kapandı**: işlev `web/lib/phone.ts`'e taşındı; `web/e2e/phone.spec.ts` 17 durum + `displayPhone` (ağsız Playwright testi, yalnızca desktop projesi; web'de ayrı birim test koşucusu yok) |
+| 3. "(+90) 532…" ve "90 532…" çift ön ek | **Kapandı**: biçim karakterleri "+"/"00" denetiminden önce atılır; seçili kod tekrar yazılmışsa ve kalan kısım ≥ 10 haneyse eklenmez (KZ "7172 12345" gibi kısa ulusal numara etkilenmez); ulusal önek 0 atılmaya devam eder |
+| 4. İkinci tekrar gönderimde canlı bölge aynı metin, duyuru yok | **Kapandı**: duyuru ayrı `sr-only` `role="status"` bölgesinde (her zaman DOM'da); her tekrar gönderimde boşaltılır, 150 ms sonra yeniden yazılır. Görünür gönderim satırı canlı bölge değil |
+| 5. Arka plan sekmesinde sayaç gecikmesi | **Kapandı**: kalan süre zaten bitiş anından (`Date.now`) hesaplanıyordu (adım sayılmıyordu); `visibilitychange` ile sekme dönünce hemen yeniden hesaplanır. Test: saat 30 sn atlatılınca ad doğrudan "1x sn" olur |
+| 6. 45 sn kararı `kararlar.md`'de yok | **Kapandı**: K-41 |
+| 7. `BookingsHome` boş döner, satır içi `maxWidth` | Kapsam dışı (B-W6) |
+| 8. 429 gösterimi testi yok | **Kapandı**: gönderimde ve tekrar gönderimde `page.route` ile 429 → `role="alert"` "Çok fazla deneme yapıldı…", numara korunur, başarısız istek beklemeyi başlatmaz |
+| 5 (inceleme). `RequireLogin` oturumlu kullanıcıya kısa iskelet | Kabul edildi (boş ekrandan iyi; gecikmeli gösterim B-W6/B-W9 sırasında değerlendirilebilir) |
+
+Ek: axe testine `test.setTimeout(90_000)` (üç tarama + geliştirme sunucusunda ilk derleme 30 sn sınırını aşabiliyordu).
+
+Doğrulama: `npx playwright test otp book phone --workers=2` → **81 geçti, 29 atlandı** (genişlik ve saf işlev testleri yalnızca desktop). `npx tsc --noEmit` temiz, `npx eslint .` (web) 0.
+
+Değişen dosyalar: `web/lib/phone.ts` (yeni), `web/components/OtpLogin.tsx`, `web/messages/{tr,en,de,ru}.json` (`otp.unknownCountry`; `otp` 16 anahtar), `web/e2e/otp.spec.ts`, `web/e2e/phone.spec.ts` (yeni), `docs/kararlar.md` (K-41), `docs/proje_rehberi.md`, `docs/test_senaryolari.md`, `docs/degisiklik_gunlugu.md`.
 
 ## Görüntüler
 

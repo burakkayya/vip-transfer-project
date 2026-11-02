@@ -42,7 +42,7 @@ Mimari notlar ve güvenlik ilkeleri: kök `README.md` ve `yasal_ve_guvenlik.md`.
 
 ## 5. Kararlar
 
-Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-02):
+Tam liste: `kararlar.md` (K-01 ... K-41). Son eklenenler (2026-10-31 ve 2026-11-02):
 
 | No | Karar | Uygulama durumu |
 |---|---|---|
@@ -58,6 +58,7 @@ Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-
 | K-38 | Renk tokenlarının tek kaynağı kök `DESIGN.md` | Üretici hazır (`scripts/sync-tokens.mjs`); web ve admin bağlı, mobil `ui.tsx` bağlantısı bekliyor |
 | K-39 | Görsel yön "Kıyı Yolu" | Bekliyor (arayüz taraması) |
 | K-40 | Ön yüz test altyapısı (ESLint, Playwright, axe, jest-expo) | Kuruldu: web (A3) ve admin (A4) ESLint + Playwright + axe; mobil (A5) ESLint + jest-expo + RNTL. Ekran bazlı testler arayüz taraması sırasında yazılacak |
+| K-41 | SMS kodu tekrar gönderme beklemesi 45 sn (yalnızca görsel; asıl sınır backend saatte 5 kod) | Uygulandı: web `OtpLogin` (B-W3), mobil giriş |
 
 ## 6. Durum matrisi (2026-11-02)
 
