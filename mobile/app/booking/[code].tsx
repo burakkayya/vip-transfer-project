@@ -150,10 +150,13 @@ export default function BookingScreen() {
     : statusLabel("leg", leg.status);
   const mapMode = tracking ? "driver" : booking.status === "iptal" ? "idle" : "route";
   const progress = leg.status === "vardi" ? 0 : undefined;
+  const driverPos = tracking && location ? { latitude: location.lat, longitude: location.lng } : null;
+  const mapSummary = t(driverPos ? "map.summaryDriver" : "map.summaryRoute", { from: leg.pickup_region.name, to: leg.dropoff_region.name });
 
   return (
     <MapSheet
-      map={<MapCanvas seed={booking.booking_code} mode={mapMode} progress={progress} focusTop={0.55} />}
+      map={<MapCanvas seed={booking.booking_code} mode={mapMode} progress={progress} focusTop={0.55}
+        route={leg.route_polyline} driver={driverPos} accessibilitySummary={mapSummary} />}
       mapRatio={0.42}
       refreshing={false}
       onRefresh={load}
