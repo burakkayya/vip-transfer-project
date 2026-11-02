@@ -54,7 +54,7 @@ Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-
 | K-34 | MVP'de on dil | Bekliyor, şu an 4 dil (tr, en, de, ru) |
 | K-35 | VIP Minibüs ayrı araç tipi | Uygulandı (çarpan 2,40 yer tutucu) |
 | K-36 | Arayüz dilleri fr, es, it, zh, ja, ar; yasal metinler taslak çeviri | Bekliyor (K-34'ün uygulaması) |
-| K-37 | Mobil gerçek harita; backend `route_polyline` | Backend uygulandı (rezervasyon detayı ve sürücü yolculuğu); mobil harita bekliyor |
+| K-37 | Mobil gerçek harita; backend `route_polyline` | Backend uygulandı (rezervasyon detayı ve sürücü yolculuğu); mobil `MapCanvas` native gerçek harita + polyline çözücü hazır (web SVG); ekranlara bağlama bekliyor (D7) |
 | K-38 | Renk tokenlarının tek kaynağı kök `DESIGN.md` | Üretici hazır (`scripts/sync-tokens.mjs`); web ve admin bağlı, mobil `ui.tsx` bağlantısı bekliyor |
 | K-39 | Görsel yön "Kıyı Yolu" | Bekliyor (arayüz taraması) |
 | K-40 | Ön yüz test altyapısı (ESLint, Playwright, axe, jest-expo) | Kuruldu: web (A3) ve admin (A4) ESLint + Playwright + axe; mobil (A5) ESLint + jest-expo + RNTL. Ekran bazlı testler arayüz taraması sırasında yazılacak |
@@ -66,7 +66,7 @@ Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-
 | Backend | Tamamlandı, 94 test geçiyor | PayTR gerçek doğrulama, iyzico yedeği, e-Arşiv, FCM, S3 depolama |
 | Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar | 6 dil daha, günlük kiralama ekranları |
 | Admin | Tamamlandı (23 rota) | Günlük kiralama yönetimi |
-| Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi | Gerçek harita (Google/Apple Maps), 6 dil daha, push, mağaza derlemesi, günlük kiralama |
+| Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi | Gerçek haritanın ekranlara bağlanması (bileşen hazır, D7) ve Android Maps anahtarı, 6 dil daha, push, mağaza derlemesi, günlük kiralama |
 | Ön yüz testleri | Altyapı kuruldu (K-40): web/admin Playwright + axe smoke, ESLint; mobil jest-expo + RNTL, ESLint; `scripts/` testleri; `scripts/ui-shots` | Lint taban ihlalleri (web 7, admin 3, mobil 9; `ui-review/lint-taban.md`), ekran bazlı e2e ve axe testleri (arayüz taraması) |
 | Yasal metinler | Taslak | Hukukçu onayı, şirket bilgileri (`web/lib/site.ts`) |
 

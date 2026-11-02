@@ -8,6 +8,10 @@ const isDriver = variant === "driver";
 const apiUrl = process.env.GETAWAY_API_URL ?? "http://localhost:8000";
 // Yasal metinler ve ödeme dönüşü için müşteri web sitesi. Mağaza derlemesinde https://getawaytransfers.com verilir.
 const webUrl = process.env.GETAWAY_WEB_URL ?? "http://localhost:3000";
+// Android Google Maps SDK anahtarı (react-native-maps). Yalnızca ortam değişkeninden okunur; tanımsızsa alan eklenmez.
+// iOS varsayılan sağlayıcı Apple Maps'tir, anahtar gerekmez. Expo prebuild react-native-maps için yerleşik
+// eklentiyi (android.config.googleMaps.apiKey) kendisi uygular; plugins listesine ayrıca eklenmez.
+const googleMapsAndroidKey = process.env.GETAWAY_GOOGLE_MAPS_ANDROID_KEY;
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -27,6 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: isDriver ? "com.getawaytransfers.driver" : "com.getawaytransfers.app",
     permissions: isDriver ? ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"] : [],
+    ...(googleMapsAndroidKey ? { config: { googleMaps: { apiKey: googleMapsAndroidKey } } } : {}),
   },
   plugins: [
     "expo-router",

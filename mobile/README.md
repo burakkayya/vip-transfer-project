@@ -14,13 +14,21 @@ Kapsam: `docs/ekranlar.md`, "Müşteri mobil" ve "Sürücü mobil".
 2. `Ctrl+Shift+P` → **Simple Browser: Show** → `http://localhost:8081` (müşteri) veya `http://localhost:8082` (sürücü).
 3. Uygulama telefon boyutunda bir çerçevede açılır. SMS kodu ekranda sarı kutuda görünür. Senaryolar: `docs/test_senaryolari.md`.
 
-Web önizlemesi yalnızca geliştirme içindir. Jetonlar orada `localStorage`'da tutulur (`lib/storage.web.ts`); mağaza uygulamaları Keychain ve Keystore kullanır. Tarih seçici web'de tarayıcının alanıdır (`DateTimeField.web.tsx`).
+Web önizlemesi yalnızca geliştirme içindir. Jetonlar orada `localStorage`'da tutulur (`lib/storage.web.ts`); mağaza uygulamaları Keychain ve Keystore kullanır. Tarih seçici web'de tarayıcının alanıdır (`DateTimeField.web.tsx`). Harita web'de stilize SVG'dir (`MapCanvas.web.tsx`), telefonda gerçek haritadır (aşağıda).
 İki çeşidin önbellekleri ayrıdır (`metro.config.js`). Biri diğerinin derlemesini almaz, ikisi aynı anda açılabilir.
+
+## Harita (K-37)
+
+- `components/MapCanvas.tsx`: iOS/Android gerçek harita, `react-native-maps` (iOS Apple Maps, Android Google Maps). `route` (Google encoded polyline, `lib/polyline.ts` `decodePolyline`) lake siyah 4 px çizilir; alış dolu daire, varış dolu kare, `driver` verilirse sürücü işaretçisi. Kamera noktaları kenar payıyla içine alır, alt panel için `hiddenBottom` (varsayılan 66) kadar ek alt pay bırakır; "hareketi azalt" açıksa animasyonsuz geçer. `route` yoksa Antalya merkezi gösterilir. `accessibilitySummary` haritanın ekran okuyucu etiketidir; verilmezse harita ekran okuyucudan gizlenir.
+- `components/MapCanvas.web.tsx`: web önizlemesindeki stilize SVG harita (Metro web'de `.web.tsx`'i seçer). Yeni prop'ları (`route`, `driver`, `accessibilitySummary`) yok sayar.
+- Ortak prop'lar `components/mapTypes.ts` (`MapCanvasProps`, `LatLng`). Rota çizgisi backend'den `BookingLeg.route_polyline` (müşteri rezervasyon detayı) ve `Trip.route_polyline` (sürücü tekil yolculuk, teklif kabulü, olaylar) ile gelir; listelerde `null`.
+- Android anahtarı: `GETAWAY_GOOGLE_MAPS_ANDROID_KEY` ortam değişkeni (`app.config.ts` → `android.config.googleMaps.apiKey`; tanımsızsa alan eklenmez). Anahtar repoya yazılmaz. iOS Apple Maps anahtar istemez. Expo prebuild `react-native-maps` için yerleşik eklentiyi kendisi uygular; `plugins` listesine eklenmez (paketin kendi eklentisi anahtar verilmezse manifest anahtarını siler).
+- Ekranlara bağlama (rota, sürücü konumu, özet metni) plan Task D7'de; şu an ekranlar yalnız eski prop'ları verir, telefonda Antalya merkezli harita görünür.
 
 ## Test ve lint
 
 - `npm test` → jest-expo + React Native Testing Library (`__tests__/`). RNTL 14'te `render` asenkrondur: `await render(<... />)`.
-- Yerel modüller `jest.setup.ts` içinde taklit edilir (Reanimated, haptics, secure-store). Reanimated 4 için `jest.config.js` paketin kendi çözücüsünü kullanır.
+- Yerel modüller `jest.setup.ts` içinde taklit edilir (Reanimated, haptics, secure-store, `react-native-maps`: prop'ları açığa çıkaran `View` taklitleri, kamera komutları `__commands` dışa aktarımında `jest.fn`). Reanimated 4 için `jest.config.js` paketin kendi çözücüsünü kullanır.
 - `expo-modules-core` `dependencies` içinde açıkça listelenir: jest-expo onu kök `node_modules`'tan çözer, `expo/node_modules` altında iç içe kalırsa "Cannot find module" hatası verir. Test paketleri (`jest`, `jest-expo`, `@testing-library/react-native`, `@types/jest`) `devDependencies`'tedir.
 - `npm run lint` → ESLint 9 (`eslint-config-expo/flat`). Mevcut bulgular `docs/ui-review/lint-taban.md` "mobile" bölümünde.
 - `npm run typecheck` → `tsc --noEmit`.

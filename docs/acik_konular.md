@@ -57,7 +57,8 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Tasarım yenilemesinden kalanlar (2026-10-31)
 
-- [ ] Mobil haritalar stilize SVG; gerçek harita (K-37) için `react-native-maps` (iOS Apple Maps, Android Google Maps anahtarı) bağlanmalı. Rota çizgisi için backend `route_polyline` alanı hazır (müşteri rezervasyon detayı, sürücü yolculuğu); mobil tarafı bağlanmalı.
+- [ ] Mobil gerçek harita (K-37): `react-native-maps` bileşeni hazır (`mobile/components/MapCanvas.tsx`, web'de SVG kalır). Kalan: ekranlara `route`/`driver`/`accessibilitySummary` bağlama (plan Task D7); Android Google Maps SDK anahtarı (`GETAWAY_GOOGLE_MAPS_ANDROID_KEY`, Google Cloud'da paket adı + SHA-1 kısıtlı) alınmalı; telefonda/emülatörde görsel doğrulama yapılmadı.
+- [ ] Expo prebuild `react-native-maps` kurulu olduğunda yerleşik eklentiyle müşteri uygulamasına da `ACCESS_FINE/COARSE_LOCATION` izni ve iOS'ta İngilizce varsayılan `NSLocationWhenInUseUsageDescription` ekler (müşteri uygulaması konum kullanmıyor). Mağaza derlemesinden önce müşteri çeşidinde `android.blockedPermissions` ve Türkçe/kaldırılmış açıklama ile kontrol edilmeli.
 - [x] Siyah minibüs ayrı araç tipi oldu: VIP Minibüs (K-35). Fiyat çarpanı 2,40 yer tutucu; gerçek fiyat admin panelinden girilmeli.
 - [ ] Sürücü belgelerinde `vip_minibus` araç tipiyle araç eklenip onaylanmalı; şu an bu tipte sürücü yok, bu tip rezervasyonlar admin eşleştirmesi bekler.
 - [ ] Yandan Vito görseli (`vito_transparent.png`) 525 px; büyük ekranda keskinlik için yüksek çözünürlüklü şeffaf sürüm gerekli.
