@@ -53,9 +53,12 @@ cd ../mobile && npm install && npm run web       # ya da: npm run start:driver /
 Ön yüz denetimleri ve testleri (K-40):
 
 ```
-cd web    && npm run lint && npm run test:e2e   # test:e2e 3000'de çalışan sunucuya karşı (Playwright + axe)
-cd admin  && npm run lint && npm run test:e2e   # 3001'de çalışan sunucuya karşı; yerel e2e admin için admin/.env.e2e.local
-cd mobile && npm run lint && npm test           # jest-expo + React Native Testing Library
+cd web    && npm run lint                       # taban ihlalleri nedeniyle şimdilik sıfırdan farklı çıkar
+cd web    && npm run test:e2e                   # 3000'de çalışan sunucuya karşı (Playwright + axe)
+cd admin  && npm run lint                       # taban ihlalleri nedeniyle şimdilik sıfırdan farklı çıkar
+cd admin  && npm run test:e2e                   # 3001'de çalışan sunucuya karşı; yerel e2e admin için admin/.env.e2e.local
+cd mobile && npm run lint                       # taban ihlalleri nedeniyle şimdilik sıfırdan farklı çıkar
+cd mobile && npm test                           # jest-expo + React Native Testing Library
 
 node --test "scripts/*.test.mjs"                # kök betik testleri
 node scripts/sync-tokens.mjs --check            # renk tokenı kaynakla uyumlu mu
@@ -63,7 +66,7 @@ node scripts/sync-tokens.mjs --check            # renk tokenı kaynakla uyumlu m
 cd scripts/ui-shots && npm ci                   # önce/sonra ekran görüntüsü betikleri: node web.js --out after
 ```
 
-`npm run lint` taban çizgisinde bilinen ihlallerle (web 7, admin 3, mobil 9) sıfırdan farklı çıkar; kaynak ve sayılar `docs/ui-review/lint-taban.md`. Ekran görevleri ilgili dosyaya dokundukça giderilir; yeni ihlal eklenmez.
+`npm run lint`, taban çizgisindeki bilinen ihlaller (web 7, admin 3, mobil 9) giderilene kadar sıfırdan farklı kodla çıkar; bu yüzden lint ve testler `&&` ile zincirlenmez, ayrı çalıştırılır; kaynak ve sayılar `docs/ui-review/lint-taban.md`. Ekran görevleri ilgili dosyaya dokundukça giderilir; yeni ihlal eklenmez.
 
 Renk tokenları tek kaynaktan (kök `DESIGN.md` `colors` bloğu) üretilir: `node scripts/sync-tokens.mjs` (kontrol: `--check`, test: `node --test "scripts/*.test.mjs"`). Üretilmiş `tokens.css` / `tokens.ts` dosyaları elle düzenlenmez.
 

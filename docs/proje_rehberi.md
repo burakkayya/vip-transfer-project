@@ -57,7 +57,7 @@ Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-
 | K-37 | Mobil gerçek harita; backend `route_polyline` | Bekliyor |
 | K-38 | Renk tokenlarının tek kaynağı kök `DESIGN.md` | Üretici hazır (`scripts/sync-tokens.mjs`); web ve admin bağlı, mobil `ui.tsx` bağlantısı bekliyor |
 | K-39 | Görsel yön "Kıyı Yolu" | Bekliyor (arayüz taraması) |
-| K-40 | Ön yüz test altyapısı (ESLint, Playwright, axe, jest-expo) | Kuruldu: web (A3) ve admin (A4) ESLint + Playwright + axe; mobil (A5) ESLint + jest-expo + RNTL |
+| K-40 | Ön yüz test altyapısı (ESLint, Playwright, axe, jest-expo) | Kuruldu: web (A3) ve admin (A4) ESLint + Playwright + axe; mobil (A5) ESLint + jest-expo + RNTL. Ekran bazlı testler arayüz taraması sırasında yazılacak |
 
 ## 6. Durum matrisi (2026-11-02)
 

@@ -70,6 +70,11 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 - [ ] On dil (K-34, uygulaması K-36): web, mobil ve bildirim şablonları için fr, es, it, zh, ja, ar çevirileri. Arapça için sağdan sola yerleşim. Bildirim şablonları 6 yeni dilde de hazırlanmalı (admin şablon ekranında dil başına kayıt). Yasal metinlerin çevirisi taslak olarak "çeviri doğrulanmadı" notuyla yayımlanır; yayından önce hukukçu kontrolünden geçmeli.
 - [ ] Uçuş verisinin kuruma bildirimi: zorunluysa bildirim akışı ve kaydı yazılacak, silme bu kayda bağlanacak (K-31).
 
+## Ön yüz test altyapısı (K-40, 2026-11-02)
+
+- [ ] Lint taban borcu: web 7 (3 hata, 4 uyarı), admin 3 (1/2), mobil 9 (7/2) ihlal (`docs/ui-review/lint-taban.md`). Ekran görevleri ilgili dosyaya dokundukça giderilir; plan kapanışında lint sıfır ihlalle zorunlu olur, o zamana kadar `npm run lint` sıfırdan farklı çıkar ve web/admin `next.config.ts` içinde `eslint.ignoreDuringBuilds: true` durur.
+- [ ] Yerel e2e admin hesabı: admin Playwright testleri geliştirme veritabanında ayrı bir admin hesabıyla çalışır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (repoya yazılmaz). Geliştirme veritabanında eski, pasif iki e2e personel kaydı kalmıştır; temizlenip temizlenmeyeceği kararlaştırılacak. Üretimde bu hesap açılmaz.
+
 ## Operasyon
 
 - [ ] İlk admin kullanıcıların listesi.
