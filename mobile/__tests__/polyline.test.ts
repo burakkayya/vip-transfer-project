@@ -11,3 +11,10 @@ test("decodes the Google reference polyline", () => {
 test("returns an empty list for an empty string", () => {
   expect(decodePolyline("")).toEqual([]);
 });
+
+test("stops at a truncated string and keeps the complete points", () => {
+  // İkinci noktanın yalnız enlemi var: boylam eksik.
+  expect(decodePolyline("_p~iF~ps|U_ulL")).toEqual([{ latitude: 38.5, longitude: -120.2 }]);
+  // Devam biti açık bir karakterle biten dize (yarım değer).
+  expect(decodePolyline("_p~iF~ps|U_")).toEqual([{ latitude: 38.5, longitude: -120.2 }]);
+});

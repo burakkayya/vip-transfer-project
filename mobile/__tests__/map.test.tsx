@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react-native";
+import { Platform } from "react-native";
 import * as Maps from "react-native-maps";
 
 import MapCanvas from "@/components/MapCanvas";
@@ -72,4 +73,48 @@ test("moves the camera without animation when reduce motion is on", async () => 
   await render(<MapCanvas mode="route" route={ROUTE} />);
   expect(commands().fitToCoordinates).toHaveBeenCalledWith(POINTS, expect.objectContaining({ animated: false }));
   spy.mockRestore();
+});
+
+test("passes the same dp edge padding on Android as on iOS", async () => {
+  // react-native-maps Android tarafı dp → px dönüşümünü kendisi yapar; JS ölçeklememeli.
+  const os = jest.replaceProperty(Platform, "OS", "android");
+  await render(<MapCanvas mode="route" route={ROUTE} hiddenBottom={100} />);
+  expect(commands().fitToCoordinates).toHaveBeenCalledWith(
+    POINTS,
+    expect.objectContaining({ edgePadding: { top: 40, right: 40, bottom: 140, left: 40 } }),
+  );
+  os.restore();
+});
+
+test("uses a dark map style on Android in dark mode", async () => {
+  const os = jest.replaceProperty(Platform, "OS", "android");
+  await render(<MapCanvas mode="route" route={ROUTE} dark />);
+  const style = screen.getByTestId("map-view", all).props.customMapStyle;
+  expect(Array.isArray(style)).toBe(true);
+  expect(style.length).toBeGreaterThan(0);
+  os.restore();
+});
+
+test("keeps the provider style on iOS and in light mode", async () => {
+  await render(<MapCanvas mode="route" route={ROUTE} dark />);
+  expect(screen.getByTestId("map-view", all).props.customMapStyle).toBeUndefined();
+  expect(screen.getByTestId("map-view", all).props.userInterfaceStyle).toBe("dark");
+});
+
+test("centres on a single-point route without fitting", async () => {
+  await render(<MapCanvas mode="route" route="_p~iF~ps|U" />);
+  expect(commands().fitToCoordinates).not.toHaveBeenCalled();
+  expect(commands().animateToRegion).toHaveBeenCalledWith(
+    expect.objectContaining({ latitude: 38.5, longitude: -120.2 }),
+    600,
+  );
+  expect(screen.getByTestId("map-pickup", all).props.coordinate).toEqual({ latitude: 38.5, longitude: -120.2 });
+  expect(screen.queryByTestId("map-dropoff", all)).toBeNull();
+  expect(screen.queryByTestId("map-polyline", all)).toBeNull();
+});
+
+test("static markers do not track view changes", async () => {
+  await render(<MapCanvas mode="route" route={ROUTE} />);
+  expect(screen.getByTestId("map-pickup", all).props.tracksViewChanges).toBe(false);
+  expect(screen.getByTestId("map-dropoff", all).props.tracksViewChanges).toBe(false);
 });

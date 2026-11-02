@@ -2,8 +2,8 @@
 // Web'de Metro MapCanvas.web.tsx'i (stilize SVG) seçer; iki dosya aynı MapCanvasProps'u kabul eder.
 // Rota rayı dili: alış = dolu daire, varış = dolu kare, çizgi lake siyah 4 px.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PixelRatio, Platform, StyleSheet, View } from "react-native";
-import MapView, { Marker, Polyline, type Region } from "react-native-maps";
+import { Platform, StyleSheet, View } from "react-native";
+import MapView, { Marker, Polyline, type MapStyleElement, type Region } from "react-native-maps";
 import { useReducedMotion } from "react-native-reanimated";
 
 import { decodePolyline } from "@/lib/polyline";
@@ -18,6 +18,24 @@ export const ANTALYA_REGION: Region = { latitude: 36.8969, longitude: 30.7133, l
 /** Varsayılan alt panel örtüsü (MapSheet: harita mapH+40, panel mapH-26'da başlar). */
 const DEFAULT_HIDDEN_BOTTOM = 66;
 const EDGE = 40;
+
+/**
+ * Android (Google Maps) koyu harita stili; renkler palet tokenlarından. iOS Apple Maps
+ * `userInterfaceStyle="dark"` ile koyulaşır, `customMapStyle`'ı yok sayar. Koyu modda rota
+ * kâğıt beyazı çizildiği için zemin koyu olmalı (WCAG 1.4.11, en az 3:1).
+ */
+const DARK_MAP_STYLE: MapStyleElement[] = [
+  { elementType: "geometry", stylers: [{ color: palette.lacquerBlack }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: palette.slateFaint }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: palette.lacquerBlack }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: palette.lacquerBlackRaised }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: palette.lacquerBlack }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: palette.lacquerBlackRaised }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: palette.lacquerBlackRaised }] },
+];
 
 function regionFor(points: LatLng[]): Region {
   if (points.length === 0) return ANTALYA_REGION;
@@ -62,13 +80,17 @@ export default function MapCanvas(props: MapCanvasProps) {
       map.animateToRegion(regionFor(fitPoints), animated ? 600 : 0);
       return;
     }
-    // Android edgePadding'i piksel, iOS nokta bekler.
-    const k = Platform.OS === "android" ? PixelRatio.get() : 1;
+    // Kenar payı iki platformda da dp: react-native-maps Android'de yoğunlukla kendisi çarpar
+    // (MapView.java appendMapPadding); JS'te ölçeklemek payı iki kez büyütür.
     map.fitToCoordinates(fitPoints, {
-      edgePadding: { top: EDGE * k, right: EDGE * k, bottom: (bottom + EDGE) * k, left: EDGE * k },
+      edgePadding: { top: EDGE, right: EDGE, bottom: bottom + EDGE, left: EDGE },
       animated,
     });
   }, [ready, fitPoints, bottom, reduceMotion]);
+
+  // Sürücü işaretçisi ilk çiziminden sonra görünüm izlemeyi bırakır (Android'de boş işaretçi kalmasın,
+  // sonra her karede yeniden bitmap üretilmesin). Konum değişimi izlemeyi gerektirmez.
+  const [driverDrawn, setDriverDrawn] = useState(false);
 
   const summary = props.accessibilitySummary;
   const pickup = route[0];
@@ -92,6 +114,7 @@ export default function MapCanvas(props: MapCanvasProps) {
         initialRegion={regionFor(route)}
         onMapReady={() => setReady(true)}
         userInterfaceStyle={props.dark ? "dark" : "light"}
+        customMapStyle={props.dark && Platform.OS === "android" ? DARK_MAP_STYLE : undefined}
         scrollEnabled={false}
         zoomEnabled={false}
         rotateEnabled={false}
@@ -105,20 +128,23 @@ export default function MapCanvas(props: MapCanvasProps) {
           <Polyline coordinates={route} strokeColor={line} strokeWidth={4} lineCap="round" lineJoin="round" />
         ) : null}
         {pickup ? (
-          <Marker testID="map-pickup" coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker testID="map-pickup" coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
             <View style={[st.pickup, { backgroundColor: line, borderColor: ring }]} />
           </Marker>
         ) : null}
         {dropoff ? (
-          <Marker testID="map-dropoff" coordinate={dropoff} anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker testID="map-dropoff" coordinate={dropoff} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
             <View style={[st.dropoff, { backgroundColor: line, borderColor: ring }]}>
               <View style={[st.dropoffInner, { backgroundColor: ring }]} />
             </View>
           </Marker>
         ) : null}
         {driver ? (
-          <Marker testID="map-driver" coordinate={driver} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={[st.driver, { backgroundColor: ring }]}>
+          <Marker testID="map-driver" coordinate={driver} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={!driverDrawn}>
+            <View
+              style={[st.driver, { backgroundColor: ring }]}
+              onLayout={() => requestAnimationFrame(() => setDriverDrawn(true))}
+            >
               <View style={[st.driverInner, { backgroundColor: line }]}>
                 <View style={[st.driverDot, { backgroundColor: ring }]} />
               </View>
