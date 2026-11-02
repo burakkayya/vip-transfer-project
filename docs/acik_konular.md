@@ -57,7 +57,9 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Tasarım yenilemesinden kalanlar (2026-10-31)
 
-- [ ] Mobil gerçek harita (K-37): `react-native-maps` bileşeni hazır (`mobile/components/MapCanvas.tsx`, web'de SVG kalır). Kalan: ekranlara `route`/`driver`/`accessibilitySummary` bağlama (plan Task D7); Android Google Maps SDK anahtarı (`GETAWAY_GOOGLE_MAPS_ANDROID_KEY`, Google Cloud'da paket adı + SHA-1 kısıtlı) alınmalı; telefonda/emülatörde görsel doğrulama yapılmadı.
+- [x] Mobil SVG harita yerine gerçek harita (K-37, 2026-11-02): müşteri rezervasyon detayı ve sürücü yolculuk ekranı `react-native-maps` ile rota çizgisini, alış/varış işaretlerini ve sürücü işaretçisini gösterir; web önizlemesinde stilize SVG kalır. Android emülatörde (Expo Go) Senaryo 3 ile doğrulandı (`docs/ui-review/screenshots/after/mobile/android-map-customer.png`, `android-map-driver.png`).
+- [ ] Android Google Maps SDK anahtarı (`GETAWAY_GOOGLE_MAPS_ANDROID_KEY`, Google Cloud'da paket adı + SHA-1 kısıtlı, `hesap_kurulumu.md` satır 2a) kendi derlememiz (EAS) için alınmalı; Expo Go'da gerekmez.
+- [ ] Mobil haritanın iOS (Apple Maps) doğrulaması Mac ve iOS simülatörü gerektirir; yapılmadı.
 - [x] Müşteri çeşidine konum izni sızması çözüldü (2026-11-02): Expo prebuild kurulu `react-native-maps` ve `expo-location` yerleşik eklentileriyle müşteri uygulamasına da konum izni ve İngilizce iOS açıklamaları ekliyordu. `app.config.ts` müşteri çeşidinde `android.blockedPermissions` (FINE/COARSE, manifestte `tools:node="remove"`) ve yerel `withoutLocationUsage` eklentisi (iOS `NSLocation*` anahtarlarını siler); `npx expo config --type introspect` ile doğrulandı.
 - [ ] Sürücü çeşidinde `expo-location` eklentisi `NSLocationAlwaysUsageDescription`, `NSLocationAlwaysAndWhenInUseUsageDescription` ve `NSLocationTemporaryUsageDescriptionDictionary` için İngilizce varsayılan metin ekliyor (yalnız `WhenInUse` Türkçe). Sürücü arka plan konumu kullanmıyor; mağaza derlemesinden önce bu anahtarlar kaldırılmalı veya Türkçeleştirilmeli.
 - [x] Siyah minibüs ayrı araç tipi oldu: VIP Minibüs (K-35). Fiyat çarpanı 2,40 yer tutucu; gerçek fiyat admin panelinden girilmeli.

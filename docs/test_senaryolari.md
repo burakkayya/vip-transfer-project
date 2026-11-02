@@ -58,6 +58,7 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 3. Sürücü önizleme (8082) → demo sürücü 1 ile giriş → **Yaklaşan işler** → işe dokunun.
 4. **Yola çıktım** → **Geliştirme: konum gönder** (birkaç kez).
 5. Müşteri web veya mobil (8081) rezervasyon detayı: "Canlı takip" kutusu ve konum bağlantısı görünür (web 5 sn, mobil WebSocket).
+   - Telefonda veya Android emülatöründe (Expo Go) iki ekranın üstündeki harita gerçek haritadır: alış (daire) ile varış (kare) arasındaki rota çizgisi ve sürücü işaretçisi (halka) görünür. Sürücü ekranında işaretçi sürücünün son paylaştığı konumdur. Web önizlemesi (8081/8082) stilize SVG haritayı göstermeye devam eder. Örnek görüntüler: `docs/ui-review/screenshots/after/mobile/android-map-*.png`.
 6. Sürücü: **Vardım** → **Yolcu alındı** → **Tamamlandı**. Müşteri tarafında zaman çizelgesi ilerler, sonuç **Tamamlandı**.
 7. Sürücü → **Kazanç**: hakediş "Ödeme bekliyor" olarak görünür.
 

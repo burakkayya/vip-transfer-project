@@ -81,13 +81,13 @@ Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik
 | Backend | Tamamlandı; 94 test geçiyor. Kur TCMB'den otomatik, gidiş-dönüş %5, fiyatlar 5'in katı. Adres (Google Places, şimdilik örnek veri), ilçe bazlı fiyat (K-28), PayTR (test mağazası bekliyor) |
 | Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu. 2026-10-31: yeni tasarım, Motion/Lenis animasyonları, 4 araçlı filo (VIP Minibüs, K-35) |
 | Admin paneli | Tamamlandı; 23 rota (ekran), 2FA, rol bazlı menü, parola değiştirme |
-| Mobil (müşteri + sürücü) | Tamamlandı; 2026-10-31 Uber tarzı yeni tasarım (Reanimated). Harita: telefonda `react-native-maps` gerçek harita bileşeni hazır (ekranlara bağlama bekliyor), web önizlemede SVG. Push bildirim (FCM) ve mağaza derlemesi bekliyor |
+| Mobil (müşteri + sürücü) | Tamamlandı; 2026-10-31 Uber tarzı yeni tasarım (Reanimated). Harita: telefonda `react-native-maps` gerçek harita (rezervasyon detayı ve sürücü yolculuğunda rota ve sürücü işaretçisi; Android emülatörde doğrulandı), web önizlemede SVG. Push bildirim (FCM) ve mağaza derlemesi bekliyor |
 | Ön yüz testleri | Altyapı kuruldu (K-40): web ve admin ESLint + Playwright + axe (smoke), mobil ESLint + jest-expo + RNTL, kök betik testleri, ekran görüntüsü betikleri. Lint taban ihlalleri henüz giderilmedi; ekran bazlı testler arayüz taramasında yazılacak |
 | Yasal metinler | Taslak; hukukçu onayı bekliyor (`web/lib/site.ts` içinde yer tutucular) |
 
 Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35). Sedan hizmetten kaldırıldı.
 
-Kararı verilmiş, geliştirmesi bekleyen: günlük araç kiralama (K-29), on dil (K-34, uygulaması K-36) ve mobil gerçek haritanın ekranlara bağlanması (K-37; backend `route_polyline` ve mobil harita bileşeni hazır). Arayüz taraması (Impeccable) planlandı (K-38, K-39; `docs/plans/2026-11-impeccable-tarama.md`); ön yüz test altyapısı kuruldu (K-40, aşağıda).
+Kararı verilmiş, geliştirmesi bekleyen: günlük araç kiralama (K-29), on dil (K-34, uygulaması K-36). Mobil gerçek harita (K-37) uygulandı; Android Maps anahtarı ve iOS doğrulaması bekliyor. Arayüz taraması (Impeccable) planlandı (K-38, K-39; `docs/plans/2026-11-impeccable-tarama.md`); ön yüz test altyapısı kuruldu (K-40, aşağıda).
 
 ## Mimari notlar
 
