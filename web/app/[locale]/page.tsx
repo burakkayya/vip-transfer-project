@@ -1,7 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import Image from "next/image";
 import FleetCard from "@/components/FleetCard";
 import Icon from "@/components/Icon";
-import { CountUp, DriveIn, HeroMedia, ParallaxBg, Reveal, SmoothScroll, StepBar, WordsIn } from "@/components/Motion";
+import { CountUp, HeroMedia, InView, ParallaxBg, Reveal, SmoothScroll } from "@/components/Motion";
 import TripForm from "@/components/TripForm";
 import { Link } from "@/i18n/navigation";
 import { getRegions, getVehicleTypes } from "@/lib/server";
@@ -17,6 +18,21 @@ const SERVICES = [
   { key: "s4", image: "/images/service-events.webp", to: "/book" },
 ] as const;
 
+// Bento ızgarada kartın kapladığı genişlik (next/image sizes): ilk kart geniş, dördüncü tam satır.
+const SERVICE_SIZES = [
+  "(max-width: 960px) 100vw, 66vw",
+  "(max-width: 720px) 100vw, (max-width: 960px) 50vw, 33vw",
+  "(max-width: 720px) 100vw, (max-width: 960px) 50vw, 33vw",
+  "(max-width: 1440px) 100vw, 1440px",
+];
+
+const TRUST = [
+  { i: 1, icon: "shield" },
+  { i: 3, icon: "plane" },
+  { i: 2, icon: "user" },
+  { i: 4, icon: "refund" },
+] as const;
+
 export default async function Home({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -24,13 +40,8 @@ export default async function Home({ params }: Props) {
   const [regions, vehicleTypes] = await Promise.all([getRegions(), getVehicleTypes()]);
   const airports = regions.filter((r) => r.type === "havalimani");
   const districts = regions.filter((r) => r.type === "ilce");
-  const trust = [
-    { i: 1, icon: "shield" },
-    { i: 3, icon: "plane" },
-    { i: 2, icon: "user" },
-    { i: 4, icon: "refund" },
-  ] as const;
   const colorLabels = { white: t("colorWhite"), black: t("colorBlack") };
+  const titleWords = t("heroTitle").split(" ");
 
   return (
     <>
@@ -39,62 +50,59 @@ export default async function Home({ params }: Props) {
         <HeroMedia src="/images/hero-airport.webp" mobileSrc="/images/hero-airport-mobile.webp" alt="" />
         <div className="container hero-inner">
           <div className="hero-copy">
-            <Reveal y={12}>
-              <span className="chip"><span className="live-dot" /> {t("heroBadge")}</span>
-            </Reveal>
-            <h1><WordsIn text={t("heroTitle")} delay={0.1} /></h1>
-            <Reveal delay={0.45}>
-              <p className="lead">{t("heroText")}</p>
-            </Reveal>
-            <Reveal delay={0.6}>
-              <ul className="hero-stats">
-                {airports.length > 0 && <li><strong><CountUp value={airports.length} /></strong><span>{t("statAirports")}</span></li>}
-                {districts.length > 0 && <li><strong><CountUp value={districts.length} /></strong><span>{t("statDistricts")}</span></li>}
-                <li><strong><CountUp value={48} suffix={t("statHoursUnit")} /></strong><span>{t("statCancel")}</span></li>
-              </ul>
-            </Reveal>
+            {/* Kelimeler CSS ile açılır (JS beklemez); ekran okuyucu düz başlığı okur. */}
+            <h1>
+              {titleWords.map((w, i) => (
+                <span key={i}>
+                  {i > 0 && " "}
+                  <span className="word" style={{ "--i": i } as React.CSSProperties}>{w}</span>
+                </span>
+              ))}
+            </h1>
+            <p className="lead">{t("heroText")}</p>
+            <ul className="hero-stats">
+              {airports.length > 0 && <li><strong><CountUp value={airports.length} /></strong><span>{t("statAirports")}</span></li>}
+              {districts.length > 0 && <li><strong><CountUp value={districts.length} /></strong><span>{t("statDistricts")}</span></li>}
+              <li><strong><CountUp value={48} suffix={t("statHoursUnit")} /></strong><span>{t("statCancel")}</span></li>
+            </ul>
           </div>
-          <Reveal delay={0.25} y={40}>
-            <div className="hero-card" id="quote">
-              <h2 className="hero-card-title">{t("cardTitle")}</h2>
-              <p className="hero-card-sub">{t("cardText")}</p>
-              <TripForm regions={regions} initial={emptyTrip()} />
-            </div>
-          </Reveal>
+          <div className="hero-card" id="quote">
+            <h2 className="hero-card-title">{t("cardTitle")}</h2>
+            <p className="hero-card-sub">{t("cardText")}</p>
+            <TripForm regions={regions} initial={emptyTrip()} />
+          </div>
         </div>
         <div className="flight-tag" aria-hidden>
           <Icon name="plane" size={18} /> <span>{t("flightTag")}</span>
         </div>
       </section>
 
-      <div className="container">
-        <div className="trust-strip">
-          {trust.map(({ i, icon }, n) => (
-            <Reveal key={i} delay={n * 0.08}>
-              <div className="trust-item">
-                <span className="ico"><Icon name={icon} size={20} /></span>
-                <div>
-                  <h3>{t(`why${i}Title`)}</h3>
-                  <p>{t(`why${i}Text`)}</p>
-                </div>
+      {/* Güven şeridi giriş bölümünün koyu zeminini sürdürür: kart değil, çizgiyle ayrılmış dört söz. */}
+      <div className="trust-band">
+        <ul className="container trust-strip">
+          {TRUST.map(({ i, icon }) => (
+            <li key={i} className="trust-item">
+              <Icon name={icon} size={20} />
+              <div>
+                <strong>{t(`why${i}Title`)}</strong>
+                <p>{t(`why${i}Text`)}</p>
               </div>
-            </Reveal>
+            </li>
           ))}
-        </div>
+        </ul>
+      </div>
 
+      <div className="container">
         <section className="section" id="services">
           <Reveal className="section-head">
-            <div>
-              <span className="eyebrow">{t("servicesEyebrow")}</span>
-              <h2 className="section-title">{t("servicesTitle")}</h2>
-            </div>
+            <h2 className="section-title">{t("servicesTitle")}</h2>
             <p>{t("servicesLead")}</p>
           </Reveal>
           <div className="services">
             {SERVICES.map((s, n) => (
               <Reveal key={s.key} delay={n * 0.08}>
                 <Link href={s.to} className="service">
-                  <img src={s.image} alt="" loading="lazy" width={960} height={720} />
+                  <Image src={s.image} alt="" fill sizes={SERVICE_SIZES[n]} />
                   <div className="service-body">
                     <h3>{t(`${s.key}Title`)}</h3>
                     <p>{t(`${s.key}Text`)}</p>
@@ -111,15 +119,12 @@ export default async function Home({ params }: Props) {
         <section className="band" id="fleet">
           <div className="container">
             <Reveal className="section-head">
-              <div>
-                <span className="eyebrow">{t("fleetEyebrow")}</span>
-                <h2 className="section-title">{t("fleetTitle")}</h2>
-              </div>
+              <h2 className="section-title">{t("fleetTitle")}</h2>
               <p>{t("fleetLead")}</p>
             </Reveal>
             <div className="fleet">
               {vehicleTypes.map((vt, n) => (
-                <Reveal key={vt.code} delay={n * 0.1}>
+                <Reveal key={vt.code} delay={n * 0.08}>
                   <FleetCard
                     code={vt.code}
                     name={vt.name}
@@ -138,29 +143,23 @@ export default async function Home({ params }: Props) {
 
       <div className="container">
         <section className="section">
-          <Reveal className="section-head">
-            <div>
-              <span className="eyebrow">{t("howEyebrow")}</span>
-              <h2 className="section-title">{t("howTitle")}</h2>
-            </div>
+          <div className="section-head">
+            <h2 className="section-title">{t("howTitle")}</h2>
             <p>{t("howLead")}</p>
-          </Reveal>
-          <ol className="steps-row">
-            {(["how1", "how2", "how3"] as const).map((k, i) => (
-              <Reveal key={k} as="li" delay={i * 0.12}>
-                <div className="step">
-                  <span className="step-num">0{i + 1}</span>
-                  <StepBar delay={0.2 + i * 0.25} />
-                  <p>{t(k)}</p>
-                </div>
-              </Reveal>
+          </div>
+          {/* Rota rayı: alış dairesi, kesikli hat, varış karesi. Görününce hat soldan sağa çizilir. */}
+          <InView as="ol" className="route-steps" threshold={0.8}>
+            {(["how1", "how2", "how3"] as const).map((k) => (
+              <li key={k}>
+                <span className="node" aria-hidden />
+                <p>{t(k)}</p>
+              </li>
             ))}
-          </ol>
+          </InView>
         </section>
 
         <section className="section feature-band">
-          <Reveal>
-            <span className="eyebrow">{t("groupEyebrow")}</span>
+          <div>
             <h2>{t("groupTitle")}</h2>
             <p>{t("groupText")}</p>
             <ul>
@@ -169,33 +168,31 @@ export default async function Home({ params }: Props) {
               ))}
             </ul>
             <Link href="/book" className="btn big on-dark">{t("ctaButton")} <Icon name="arrow" size={18} /></Link>
-          </Reveal>
-          <div className="drive-stage">
+          </div>
+          {/* Yandan Vito görününce yola girer; yol çizgileri araçla birlikte akar ve araç durunca durur. */}
+          <InView className="drive-stage" threshold={0.75}>
             <span className="capacity-pill"><Icon name="users" size={16} /> {t("groupPill")}</span>
             <span className="glow" aria-hidden />
             <span className="road" aria-hidden />
-            <DriveIn src="/images/vito-side.webp" alt={t("groupImageAlt")} />
-          </div>
+            <div className="drive-car">
+              <Image src="/images/vito-side.webp" alt={t("groupImageAlt")} width={870} height={346} sizes="(max-width: 960px) 90vw, 660px" />
+            </div>
+          </InView>
         </section>
 
         {airports.length > 0 && (
           <section className="section">
-            <Reveal className="section-head">
-              <div>
-                <span className="eyebrow">{t("airportsEyebrow")}</span>
-                <h2 className="section-title">{t("airportsTitle")}</h2>
-              </div>
+            <div className="section-head">
+              <h2 className="section-title">{t("airportsTitle")}</h2>
               <p>{t("trust2")}</p>
-            </Reveal>
+            </div>
             <div className="airport-list">
-              {airports.map((a, n) => (
-                <Reveal key={a.id} delay={n * 0.06}>
-                  <Link href={`/book?from=${a.code}`} className="airport-row">
-                    <span className="iata">{a.iata_code}</span>
-                    <span>{a.name}</span>
-                    <Icon name="arrow" size={20} />
-                  </Link>
-                </Reveal>
+              {airports.map((a) => (
+                <Link key={a.id} href={`/book?from=${a.code}`} className="airport-row">
+                  <span className="iata">{a.iata_code}</span>
+                  <span className="airport-name">{a.name}</span>
+                  <Icon name="arrow" size={20} />
+                </Link>
               ))}
             </div>
           </section>
@@ -203,27 +200,24 @@ export default async function Home({ params }: Props) {
 
         <section className="section cta-band">
           <ParallaxBg src="/images/coast.webp" className="bg" />
-          <Reveal className="inner">
+          <div className="inner">
             <h2>{t("ctaTitle")}</h2>
             <p>{t("ctaText")}</p>
             <Link href="/book" className="btn big on-dark">{t("ctaButton")} <Icon name="arrow" size={18} /></Link>
-          </Reveal>
+          </div>
         </section>
 
         <section className="section faq" id="faq">
-          <Reveal>
-            <span className="eyebrow">{t("faqEyebrow")}</span>
-            <h2 className="section-title" style={{ marginTop: 14 }}>{t("faqTitle")}</h2>
-            <p className="muted" style={{ marginTop: 16 }}>{t("faqLead")}</p>
-          </Reveal>
+          <div>
+            <h2 className="section-title">{t("faqTitle")}</h2>
+            <p className="faq-lead">{t("faqLead")}</p>
+          </div>
           <div>
             {([1, 2, 3, 4] as const).map((i) => (
-              <Reveal key={i} delay={i * 0.05}>
-                <details>
-                  <summary>{t(`faq${i}q`)}</summary>
-                  <p>{t(`faq${i}a`)}</p>
-                </details>
-              </Reveal>
+              <details key={i}>
+                <summary>{t(`faq${i}q`)}</summary>
+                <p>{t(`faq${i}a`)}</p>
+              </details>
             ))}
           </div>
         </section>

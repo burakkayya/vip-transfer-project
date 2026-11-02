@@ -47,6 +47,12 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 6. İki onay kutusunu işaretleyin → **Rezervasyonu oluştur ve öde** → sahte sayfada **Ödemeyi onayla**.
 7. Beklenen: "Rezervasyonunuz onaylandı", durum **Onaylandı**.
 
+Ana sayfa ek kontrolleri (B-W1):
+- Adres alanı klavyeyle: "antalya hav" yazın, **↓** ve **Enter**; öneri seçilir ve "Fiyat … bölgesine göre hesaplanır" görünür.
+- Adres seçmeden **Fiyatları göster**: düğme artık soluk değildir; basınca "Sizi nereden alacağımızı seçin." uyarısı çıkar ve imleç **Nereden** alanına gider. Aynısı `/book` sayfasındaki rota formunda da geçerlidir.
+- **Tek yön / Gidiş-dönüş** seçicisinde ok tuşları seçimi değiştirir. Yolcu ve bagaj **−/+** düğmelerinin ekran okuyucu adı "Yolcu sayısını azalt" gibidir.
+- İşletim sisteminde "hareketi azalt" açıkken sayfa kaydırılmadan tüm bölümler görünür; kapalıyken giriş sahnesi oynar, "Nasıl çalışır" rayı görününce çizilir, Vito görününce yola girer.
+
 ### 2. İlçe bazlı fiyat kontrolü
 1. Senaryo 1'in ilk adımını **Kalkan** ve ardından **Kaş Merkez** ile tekrarlayın. İkisi de Kaş ilçesinde olduğu için fiyat aynıdır.
 2. **Kaleiçi → Lara** (ikisi de Muratpaşa): aynı ilçe içinde gerçek mesafe kullanılır, minimum fiyat çıkar.
@@ -114,7 +120,7 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 - **Getaway: Backend testleri**: iş kuralları, API, adres ve ilçe çözümleme, ödeme, eşleştirme ve WebSocket.
 - **Getaway: Tip denetimi (web, admin, mobil)**.
 - **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır.
-- **Lint**: `npm run lint` (`web`, `admin`, `mobile`). Taban çizgisindeki bilinen ihlaller nedeniyle sıfırdan farklı çıkış beklenir (web 3 hata/2 uyarı, admin 1/2, mobil 7/2; `docs/ui-review/lint-taban.md`); sayılar artmamalıdır.
+- **Lint**: `npm run lint` (`web`, `admin`, `mobile`). Taban çizgisindeki bilinen ihlaller nedeniyle sıfırdan farklı çıkış beklenir (web 3 hata/1 uyarı, admin 1/2, mobil 7/2; `docs/ui-review/lint-taban.md`); sayılar artmamalıdır.
 - **Web ortak dosyalar** (`cd web && npx playwright test shared`, iki proje): üst bilgide axe ihlali yok, eşleşmeyen adres (`/tr/yok`) yerel 404 çizer (`html[lang=tr]`, `h1` "404", durum 404, üst bilgi ve "Ana sayfaya dön"), Tab ile odaklanan düğmede 2 px lake siyah halka, yer tutucunun gerçek zemine karşı WCAG kontrastı dinlenme ve üzerine gelme halinde ≥ 4,5 (ana sayfa adres alanı, rezervasyon kodu alanı), 390 px'te açık mobil menü Esc ile kapanır ve odak menü düğmesine döner, hareket azaltmada adım çizgisi dolu. Geliştirme sunucusunda kararlı sonuç için `--workers=1`.
 - **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).
 - **Kök betik testleri**: `node --test "scripts/*.test.mjs"` (renk tokenı üreticisi, 5 test). Token kaynağı ile üretilmiş dosyaların uyumu: `node scripts/sync-tokens.mjs --check`.

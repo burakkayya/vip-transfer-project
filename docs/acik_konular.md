@@ -27,7 +27,7 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 - [ ] Yurt dışı servislerde veri bölgesi (Sentry, e-posta).
 - [ ] Uçuş takip API'sinin seçimi ve maliyeti.
-- [ ] Sitedeki "uçuş takibi / sürücü iniş saatinizi takip eder" ifadesi ile kod arasındaki fark: şimdilik yalnızca uçuş numarası saklanıyor, uçuş takip API'si yok. API seçilene kadar ifade yumuşatılmalı veya API bağlanmalı.
+- [ ] Sitedeki "uçuş takibi / sürücü iniş saatinizi takip eder" ifadesi ile kod arasındaki fark: şimdilik yalnızca uçuş numarası saklanıyor, uçuş takip API'si yok. API seçilene kadar ifade yumuşatılmalı veya API bağlanmalı. **Kullanıcı kararı bekliyor** (B-W1 metne dokunmadı): ana sayfada `home.why3Title/why3Text` (güven şeridi), `home.s1Text` (hizmet kartı), `home.faq2a` (SSS), `home.flightTag` (giriş görseli etiketi) ve `home.trust2` (havalimanları bölümü alt metni), dört dilde.
 - [ ] ARQ işçisi (`arq app.worker.WorkerSettings`) 2026-11-02 taban çizgisinde çalışmıyordu. Saatlik kur güncelleme ve uçuş verisi silme gibi zamanlanmış görevler işçi çalışmadan işlemez; geliştirmede ayrıca başlatılmalı, üretimde süreç yöneticisiyle ayakta tutulmalı.
 - [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı.
 
@@ -76,7 +76,7 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Ön yüz test altyapısı (K-40, 2026-11-02)
 
-- [ ] Lint taban borcu: web 5 (3 hata, 2 uyarı; B-W0 `Motion.tsx` iki uyarıyı giderdi), admin 3 (1/2), mobil 9 (7/2) ihlal (`docs/ui-review/lint-taban.md`). Ekran görevleri ilgili dosyaya dokundukça giderilir; plan kapanışında lint sıfır ihlalle zorunlu olur, o zamana kadar `npm run lint` sıfırdan farklı çıkar ve web/admin `next.config.ts` içinde `eslint.ignoreDuringBuilds: true` durur.
+- [ ] Lint taban borcu: web 4 (3 hata, 1 uyarı; B-W0 `Motion.tsx` iki, B-W1 ana sayfa bir uyarıyı giderdi), admin 3 (1/2), mobil 9 (7/2) ihlal (`docs/ui-review/lint-taban.md`). Ekran görevleri ilgili dosyaya dokundukça giderilir; plan kapanışında lint sıfır ihlalle zorunlu olur, o zamana kadar `npm run lint` sıfırdan farklı çıkar ve web/admin `next.config.ts` içinde `eslint.ignoreDuringBuilds: true` durur.
 - [ ] Yerel e2e admin hesabı: admin Playwright testleri geliştirme veritabanında ayrı bir admin hesabıyla çalışır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (repoya yazılmaz). Geliştirme veritabanında eski, pasif iki e2e personel kaydı kalmıştır; temizlenip temizlenmeyeceği kararlaştırılacak. Üretimde bu hesap açılmaz.
 
 ## Arayüz taraması (2026-11-02)

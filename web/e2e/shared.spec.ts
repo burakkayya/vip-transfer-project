@@ -110,9 +110,13 @@ test("Esc closes mobile menu and returns focus", async ({ page }) => {
 test("reduced motion shows animated elements in final state", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/tr");
-  const bar = page.locator(".step-bar span").first();
-  await expect(bar).toBeAttached();
-  // Görünür alana kaydırılmadan bile çizgi dolu olmalı (scaleX 1 = dönüşüm yok).
-  const transform = await bar.evaluate((el) => getComputedStyle(el).transform);
-  expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(transform);
+  // "Nasıl çalışır" rota rayı (B-W1): görünür alana kaydırılmadan bile hat çizili ve duraklar yerinde olmalı.
+  const step = page.locator(".route-steps li").first();
+  await expect(step).toBeAttached();
+  const state = await step.evaluate((el) => ({
+    clip: getComputedStyle(el, "::before").clipPath,
+    node: getComputedStyle(el.querySelector(".node") as Element).transform,
+  }));
+  expect(["none", "inset(0px)"]).toContain(state.clip);
+  expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(state.node);
 });

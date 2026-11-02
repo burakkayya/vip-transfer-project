@@ -66,7 +66,7 @@ node scripts/sync-tokens.mjs --check            # renk tokenı kaynakla uyumlu m
 cd scripts/ui-shots && npm ci                   # önce/sonra ekran görüntüsü betikleri: node web.js --out after
 ```
 
-`npm run lint`, taban çizgisindeki bilinen ihlaller (web 7, admin 3, mobil 9) giderilene kadar sıfırdan farklı kodla çıkar; bu yüzden lint ve testler `&&` ile zincirlenmez, ayrı çalıştırılır; kaynak ve sayılar `docs/ui-review/lint-taban.md`. Ekran görevleri ilgili dosyaya dokundukça giderilir; yeni ihlal eklenmez.
+`npm run lint`, taban çizgisindeki bilinen ihlaller (web 4, admin 3, mobil 9) giderilene kadar sıfırdan farklı kodla çıkar; bu yüzden lint ve testler `&&` ile zincirlenmez, ayrı çalıştırılır; kaynak ve sayılar `docs/ui-review/lint-taban.md`. Ekran görevleri ilgili dosyaya dokundukça giderilir; yeni ihlal eklenmez.
 
 Renk tokenları tek kaynaktan (kök `DESIGN.md` `colors` bloğu) üretilir: `node scripts/sync-tokens.mjs` (kontrol: `--check`, test: `node --test "scripts/*.test.mjs"`). Üretilmiş `tokens.css` / `tokens.ts` dosyaları elle düzenlenmez.
 
@@ -79,10 +79,10 @@ Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik
 | Alan | Durum |
 |---|---|
 | Backend | Tamamlandı; 94 test geçiyor. Kur TCMB'den otomatik, gidiş-dönüş %5, fiyatlar 5'in katı. Adres (Google Places, şimdilik örnek veri), ilçe bazlı fiyat (K-28), PayTR (test mağazası bekliyor) |
-| Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu. 2026-10-31: yeni tasarım, Motion/Lenis animasyonları, 4 araçlı filo (VIP Minibüs, K-35) |
+| Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu. 2026-10-31: yeni tasarım, Motion/Lenis animasyonları, 4 araçlı filo (VIP Minibüs, K-35). 2026-11-02: ana sayfa Impeccable geçişi (rota rayı "Nasıl çalışır", koyu güven şeridi, JS'siz/hareket azaltmada görünür bölümler, axe 0) |
 | Admin paneli | Tamamlandı; 23 rota (ekran), 2FA, rol bazlı menü, parola değiştirme |
 | Mobil (müşteri + sürücü) | Tamamlandı; 2026-10-31 Uber tarzı yeni tasarım (Reanimated). Harita: telefonda `react-native-maps` gerçek harita (rezervasyon detayı ve sürücü yolculuğunda rota ve sürücü işaretçisi; Android emülatörde doğrulandı), web önizlemede SVG. Push bildirim (FCM) ve mağaza derlemesi bekliyor |
-| Ön yüz testleri | Altyapı kuruldu (K-40): web ve admin ESLint + Playwright + axe (smoke), mobil ESLint + jest-expo + RNTL, kök betik testleri, ekran görüntüsü betikleri. Lint taban ihlalleri kısmen giderildi (web 5); ekran bazlı testler arayüz taramasında yazılıyor (web ortak dosyalar B-W0: `web/e2e/shared.spec.ts`, yerel 404, odak halkası, durum bileşenleri) |
+| Ön yüz testleri | Altyapı kuruldu (K-40): web ve admin ESLint + Playwright + axe (smoke), mobil ESLint + jest-expo + RNTL, kök betik testleri, ekran görüntüsü betikleri. Lint taban ihlalleri kısmen giderildi (web 4); ekran bazlı testler arayüz taramasında yazılıyor (web ortak dosyalar B-W0: `web/e2e/shared.spec.ts`, yerel 404, odak halkası, durum bileşenleri; ana sayfa B-W1: `web/e2e/home.spec.ts`, axe 0, klavye, hareket azaltma, 360 px Almanca) |
 | Yasal metinler | Taslak; hukukçu onayı bekliyor (`web/lib/site.ts` içinde yer tutucular) |
 
 Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35). Sedan hizmetten kaldırıldı.

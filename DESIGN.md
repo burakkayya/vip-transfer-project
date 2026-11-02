@@ -162,7 +162,7 @@ Siyah-beyaz bir yol; tek sıcak vurgu ve yalnızca anlam taşıyan durum renkler
 
 ### Neutral
 - **Kâğıt** (paper): sayfa ve kart zemini.
-- **Kireçtaşı** (limestone) ve **Derin Kireçtaşı** (limestone-deep): giriş alanı zemini, ikincil düğme, yumuşak bloklar; üzerine gelmede derinleşir.
+- **Kireçtaşı** (limestone) ve **Derin Kireçtaşı** (limestone-deep): kireçtaşı giriş alanı zemini, ikincil düğme ve yumuşak bloklardır. Derin kireçtaşı yalnızca ikincil düğmenin ve yumuşak blokların üzerine gelme halidir; giriş alanları üzerine gelmede koyulaşmaz (yalnızca `hairline-strong` kenar belirir, bkz. Inputs).
 - **Liman Tuvali** (harbor-canvas): admin sayfa zemini, mobil tuval.
 - **Arduvaz Metin** (slate-text): ikincil metin ve ipuçları (beyazda 5,30:1, kireçtaşında 4,86:1).
 - **Soluk Arduvaz** (slate-faint): metin olarak kullanılabilecek en açık gri (4,52:1). Daha açık gri yalnızca süs ve devre dışı çizgilerde.
@@ -192,7 +192,7 @@ Siyah-beyaz bir yol; tek sıcak vurgu ve yalnızca anlam taşıyan durum renkler
 - **Headline** (700, clamp 1.9–2.8rem, 1.1): sayfa başlıkları (Rezervasyon, Ödeme, Hesabım) ve ana sayfa bölüm başlıkları.
 - **Title** (700, 1.4rem): kart ve adım başlıkları.
 - **Body** (400, 16px, 1.55): akış metni; yasal metinlerde satır uzunluğu 65–75ch.
-- **Label** (600, 0.74rem, 0.16em, büyük harf): üst etiketler (eyebrow), küçük kategori başlıkları.
+- **Label** (600, 0.74rem, 0.16em, büyük harf): küçük kategori başlıkları ve rozetler. Başlığın üstüne ayrı satır etiket (eyebrow/kicker) konmaz; başlık kendi ağırlığını taşır (ana sayfadan B-W1'de kaldırıldı).
 - **Admin Body** (400, 14px, 1.5) ve **Admin Heading** (700, 1.6rem): panelin yoğun ölçeği. Tablo başlıkları 0.72rem, 600, büyük harf, 0.08em.
 
 ### Named Rules
@@ -258,7 +258,10 @@ Bileşen hissi yüzeye göre ayrıdır: **web dokunsal ve kendinden emin**, **ad
 - **Admin:** sol kenar çubuğu, rol bazlı gruplanmış bağlantılar; etkin bağlantı koyu zemin.
 
 ### Rota Rayı (signature)
-İki adres alanını tek bir kartta birleştiren dikey hat: üstte daire, altta kare, arada kesikli çizgi; tam iki alanın ortasından geçer. Web ana sayfası, rezervasyon özeti ve mobilde aynı biçimde kullanılır.
+İki adres alanını tek bir kartta birleştiren dikey hat: üstte daire, altta kare, arada kesikli çizgi; tam iki alanın ortasından geçer. Web ana sayfası, rezervasyon özeti ve mobilde aynı biçimde kullanılır. Ana sayfanın "Nasıl çalışır" bölümü aynı rayı adımlar için kullanır (geniş ekranda yatay, telefonda dikey; ara durak içi boş halka).
+
+### Hareket (web, Persuade)
+Varsayılan çizim her zaman görünürdür; gizli başlangıç durumu yalnızca JS öğeyi işaretlediğinde ve `prefers-reduced-motion: no-preference` iken uygulanır (`Reveal`, `InView`, `home.css`). Ana sayfanın tek sahnesi CSS ile ilk boyamada oynar (~1,6 sn): görsel oturur, başlık kelime kelime yükselir, rota kartı gelir, kartın rayı daireden kareye çizilir. Destekleyici anlar: "Nasıl çalışır" rayı görününce çizilir; yandan Vito görününce yola girer ve yol çizgileri araçla birlikte akıp durur. Sonsuz döngü yok (canlı veri göstergesi hariç).
 
 ### Araç Kartı (signature)
 Fotoğraf, ad, yolcu ve bagaj kapasitesi, mesafe ve süre, sağda fiyat. Fiyat gelene kadar iskelet; fiyat backend'den gelmezse "uygun değil" ve nedeni. Seçili kart lake siyah kenarlı.

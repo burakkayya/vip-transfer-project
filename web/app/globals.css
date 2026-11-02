@@ -1304,6 +1304,7 @@ dl.summary dd {
 .footer-about p {
   margin-top: 18px;
   max-width: 260px;
+  text-wrap: pretty;
 }
 
 .footer-bottom {

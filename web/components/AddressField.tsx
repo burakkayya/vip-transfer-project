@@ -31,11 +31,14 @@ export default function AddressField(props: {
   regions: Region[];
   value: Endpoint | null;
   onChange: (e: Endpoint | null) => void;
+  /** Formun bildirdiği hata (ör. gönderimde boş alan). */
+  error?: string | null;
 }) {
   const t = useTranslations("trip");
   const locale = useLocale();
   const errorText = useApiError();
   const listId = useId();
+  const errorId = `${props.id}-error`;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [places, setPlaces] = useState<PlaceSuggestion[]>([]);
@@ -119,7 +122,12 @@ export default function AddressField(props: {
   function onKey(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setOpen(true);
+      // Kapalı liste önce açılır (ilk öneri etkin); açıksa bir sonrakine geçer.
+      if (!open) {
+        setOpen(true);
+        setActive(0);
+        return;
+      }
       setActive((a) => Math.min(a + 1, options.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -131,6 +139,10 @@ export default function AddressField(props: {
       setOpen(false);
     }
   }
+
+  const shownError = props.error ?? error;
+  const optionId = (i: number) => `${listId}-o${i}`;
+  const showList = open && !props.value;
 
   return (
     <div className={`field address ${props.icon === "plane" ? "from" : "to"}`} ref={box}>
@@ -152,9 +164,12 @@ export default function AddressField(props: {
           <input
             id={props.id}
             role="combobox"
-            aria-expanded={open}
+            aria-expanded={showList}
             aria-controls={listId}
             aria-autocomplete="list"
+            aria-activedescendant={showList && options[active] ? optionId(active) : undefined}
+            aria-invalid={props.error ? true : undefined}
+            aria-describedby={shownError ? errorId : undefined}
             autoComplete="off"
             placeholder={props.label}
             aria-label={`${props.label}: ${t("searchPlaceholder")}`}
@@ -169,12 +184,13 @@ export default function AddressField(props: {
           />
         </div>
       )}
-      {open && !props.value && (
+      {showList && (
         <ul className="suggestions" id={listId} role="listbox">
           {query.trim().length < 3 && <li className="tip-row" role="presentation">{t("searchPlaceholder")}</li>}
           {options.map((o, i) => (
             <li
               key={o.key}
+              id={optionId(i)}
               role="option"
               aria-selected={i === active}
               className={i === active ? "active" : ""}
@@ -195,7 +211,7 @@ export default function AddressField(props: {
           {!searching && query.trim().length >= 3 && options.length === 0 && <li className="muted-row">{t("noResults")}</li>}
         </ul>
       )}
-      {error && <span className="field-error">{error}</span>}
+      {shownError && <span className="field-error" id={errorId} role={props.error ? "alert" : undefined}>{shownError}</span>}
     </div>
   );
 }
