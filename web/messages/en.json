@@ -11,7 +11,8 @@
     "services": "Services",
     "fleet": "Fleet",
     "faq": "FAQ",
-    "menu": "Menu"
+    "menu": "Menu",
+    "sections": "Sections"
   },
   "home": {
     "heroTitle": "Your chauffeur is ready. Your fare is fixed.",
@@ -357,6 +358,9 @@
     "phone": "Please check the phone number.",
     "required": "This field is required.",
     "place_not_found": "Address not found. Try another one.",
-    "place_token_invalid": "Your address selection has expired. Please choose the address again."
+    "place_token_invalid": "Your address selection has expired. Please choose the address again.",
+    "retry": "Try again",
+    "page_not_found": "We couldn't find this page. The address may have changed or the page was removed.",
+    "back_home": "Back to home"
   }
 }

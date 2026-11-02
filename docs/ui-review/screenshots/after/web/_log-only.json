@@ -1,0 +1,79 @@
+{
+  "log": [
+    {
+      "file": "tr-1440-home.png",
+      "url": "http://localhost:3000/tr",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "tr-1440-legal-privacy.png",
+      "url": "http://localhost:3000/tr/legal/privacy",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "tr-1440-not-found.png",
+      "url": "http://localhost:3000/tr/bu-sayfa-yok",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "tr-390-home.png",
+      "url": "http://localhost:3000/tr",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "tr-390-legal-privacy.png",
+      "url": "http://localhost:3000/tr/legal/privacy",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "tr-390-not-found.png",
+      "url": "http://localhost:3000/tr/bu-sayfa-yok",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "de-1440-home.png",
+      "url": "http://localhost:3000/de",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "de-1440-legal-privacy.png",
+      "url": "http://localhost:3000/de/legal/privacy",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "de-1440-not-found.png",
+      "url": "http://localhost:3000/de/bu-sayfa-yok",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "de-390-home.png",
+      "url": "http://localhost:3000/de",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "de-390-legal-privacy.png",
+      "url": "http://localhost:3000/de/legal/privacy",
+      "hOverflowPx": 0
+    },
+    {
+      "file": "de-390-not-found.png",
+      "url": "http://localhost:3000/de/bu-sayfa-yok",
+      "hOverflowPx": 0
+    }
+  ],
+  "consoleErrors": {
+    "tr-1440": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "tr-390": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "de-1440": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "de-390": [
+      "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  "missed": []
+}

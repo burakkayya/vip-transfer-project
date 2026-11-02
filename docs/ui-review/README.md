@@ -93,3 +93,11 @@ Not: `trip/[legId]` sürücünün yolculuk ekranıdır; müşterinin canlı taki
 | Mobil müşteri 6 | "bildirim tercihleri" | Yalnızca pazarlama anahtarı; push yok (FCM bekliyor) |
 | Web | — | `account`, `booking/payment-result` ve 404 listede yok |
 | Günlük kiralama (K-29) | — | Hiçbir yüzeyde ekran yok (bilinen, bekleyen) |
+
+## 4. Tarama durumu
+
+Ortak dosya görevlerinde (`*0`) critique puanı verilmez; yalnızca detector, axe ve ilgili testler.
+
+| Ekran | Önce | Sonra | Açık P0/P1 | Durum | Rapor |
+|---|---|---|---|---|---|
+| web/shared (B-W0: `globals.css`, `home.css`, üst bilgi, logo, `Motion.tsx`, `States.tsx`, yerel 404) | — (ortak dosyalar) | — | 0 | Tamamlandı (2026-11-02): başlıkta axe 0 (1440 ve 390), yerel 404 (`html[lang]`, 404 kodu, site düzeni), `:focus-visible` 2 px halka, placeholder `--faint`, mantıksal özellikler, hareket azaltma, `shared.spec.ts` 10/10 | `docs/degisiklik_gunlugu.md` (2026-11-02, B-W0); görüntüler `screenshots/after/web/*-{home,not-found,legal-privacy}.png` |

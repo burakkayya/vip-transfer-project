@@ -2,6 +2,7 @@
 
 // Animasyon yardımcıları (motion kütüphanesi). Hareket azaltma tercihi olan ziyaretçide animasyon kapanır.
 import Lenis from "lenis";
+import Image from "next/image";
 import { motion, useInView, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
 import { useEffect, useRef } from "react";
 
@@ -86,15 +87,18 @@ export function HeroMedia(props: { src: string; mobileSrc: string; alt: string }
   const y = useTransform(scrollY, [0, 800], [0, reduce ? 0 : 140]);
   return (
     <motion.div className="hero-media" style={{ y }}>
-      <motion.picture
+      <motion.div
         initial={reduce ? false : { scale: 1.12 }}
         animate={{ scale: 1 }}
         transition={{ duration: 2.4, ease: EASE }}
-        style={{ display: "block", width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%" }}
       >
-        <source media="(max-width: 720px)" srcSet={props.mobileSrc} />
-        <img src={props.src} alt={props.alt} fetchPriority="high" />
-      </motion.picture>
+        {/* Sanat yönetimi (dar ekranda ayrı kadraj) için düz <picture>; LCP görseli öncelikli yüklenir. */}
+        <picture style={{ display: "block", width: "100%", height: "100%" }}>
+          <source media="(max-width: 720px)" srcSet={props.mobileSrc} />
+          <img src={props.src} alt={props.alt} fetchPriority="high" />
+        </picture>
+      </motion.div>
     </motion.div>
   );
 }
@@ -107,7 +111,7 @@ export function ParallaxBg(props: { src: string; className?: string }) {
   const y = useTransform(scrollYProgress, [0, 1], reduce ? ["0%", "0%"] : ["-8%", "8%"]);
   return (
     <motion.div ref={ref} className={props.className} style={{ y }}>
-      <img src={props.src} alt="" loading="lazy" />
+      <Image src={props.src} alt="" fill sizes="100vw" />
     </motion.div>
   );
 }
@@ -137,11 +141,12 @@ export function DriveIn(props: { src: string; alt: string }) {
 export function StepBar(props: { delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "0px 0px -15% 0px" });
+  const reduce = useReducedMotion();
   return (
     <div className="step-bar" ref={ref}>
       <motion.span
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: inView ? 1 : 0 }}
+        initial={reduce ? false : { scaleX: 0 }}
+        animate={{ scaleX: inView || reduce ? 1 : 0 }}
         transition={{ duration: 1.2, ease: EASE, delay: props.delay ?? 0 }}
       />
     </div>

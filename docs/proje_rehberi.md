@@ -67,7 +67,7 @@ Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-
 | Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar | 6 dil daha, günlük kiralama ekranları |
 | Admin | Tamamlandı (23 rota) | Günlük kiralama yönetimi |
 | Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi | Android Maps anahtarı (kendi derlememiz için) ve iOS harita doğrulaması, 6 dil daha, push, mağaza derlemesi, günlük kiralama |
-| Ön yüz testleri | Altyapı kuruldu (K-40): web/admin Playwright + axe smoke, ESLint; mobil jest-expo + RNTL, ESLint; `scripts/` testleri; `scripts/ui-shots` | Lint taban ihlalleri (web 7, admin 3, mobil 9; `ui-review/lint-taban.md`), ekran bazlı e2e ve axe testleri (arayüz taraması) |
+| Ön yüz testleri | Altyapı kuruldu (K-40): web/admin Playwright + axe smoke, ESLint; mobil jest-expo + RNTL, ESLint; `scripts/` testleri; `scripts/ui-shots` | Lint taban ihlalleri (web 5, admin 3, mobil 9; `ui-review/lint-taban.md`), ekran bazlı e2e ve axe testleri (arayüz taraması; web ortak dosyalar B-W0 tamamlandı: `web/e2e/shared.spec.ts`) |
 | Yasal metinler | Taslak | Hukukçu onayı, şirket bilgileri (`web/lib/site.ts`) |
 
 ## 7. Açık konular

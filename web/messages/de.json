@@ -11,7 +11,8 @@
     "services": "Leistungen",
     "fleet": "Fahrzeuge",
     "faq": "FAQ",
-    "menu": "Menü"
+    "menu": "Menü",
+    "sections": "Bereiche"
   },
   "home": {
     "heroTitle": "Ihr Fahrer wartet. Ihr Preis steht fest.",
@@ -357,6 +358,9 @@
     "phone": "Bitte prüfen Sie die Telefonnummer.",
     "required": "Pflichtfeld.",
     "place_not_found": "Adresse nicht gefunden. Bitte eine andere versuchen.",
-    "place_token_invalid": "Die Adressauswahl ist abgelaufen. Bitte Adresse erneut wählen."
+    "place_token_invalid": "Die Adressauswahl ist abgelaufen. Bitte Adresse erneut wählen.",
+    "retry": "Erneut versuchen",
+    "page_not_found": "Diese Seite wurde nicht gefunden. Die Adresse hat sich möglicherweise geändert oder die Seite wurde entfernt.",
+    "back_home": "Zur Startseite"
   }
 }

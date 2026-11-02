@@ -3,6 +3,8 @@
   --ink: var(--color-lacquer-black);
   --ink-2: var(--color-lacquer-black-raised);
   --bg: var(--color-paper);
+  --paper: var(--color-paper);
+  --canvas: var(--color-harbor-canvas);
   --soft: var(--color-limestone);
   --soft-2: var(--color-limestone-deep);
   --surface: var(--color-paper);
@@ -27,6 +29,8 @@
   --font-sans: system-ui, sans-serif;
   --gutter: clamp(16px, 4vw, 56px);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Klavye odak halkası rengi. Koyu yüzeyler bunu kâğıt beyazına çevirir (aşağıda). */
+  --focus: var(--ink);
   color-scheme: light;
 }
 
@@ -48,6 +52,29 @@ body {
 
 a {
   color: inherit;
+}
+
+/* --- Klavye odağı (DESIGN.md: 2 px lake siyah halka, koyu zeminde beyaz) --- */
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.hero,
+.feature-band,
+.cta-band,
+.footer-box {
+  --focus: var(--paper);
+}
+
+.hero-card {
+  --focus: var(--ink);
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 /* width/height öznitelikleri yalnızca yer ayırmak içindir; boyutu CSS belirler. */
@@ -159,7 +186,7 @@ main {
 }
 
 .brand.inverted {
-  color: #fff;
+  color: var(--paper);
 }
 
 .brand.inverted .brand-sub {
@@ -241,7 +268,7 @@ main {
   border-radius: 12px;
   border: 1px solid var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   cursor: pointer;
   text-decoration: none;
   transition: background 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
@@ -264,13 +291,13 @@ main {
 .btn.primary,
 .btn.accent {
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 
 .btn.light {
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
-  border-color: #fff;
+  border-color: var(--paper);
 }
 
 .btn.light:hover:not(:disabled) {
@@ -432,7 +459,8 @@ textarea {
 
 input::placeholder,
 textarea::placeholder {
-  color: #9a9a9f;
+  color: var(--faint);
+  opacity: 1;
 }
 
 input:hover,
@@ -444,9 +472,17 @@ textarea:hover {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: none;
+  /* Odak göstergesi lake siyah kenardır; saydam çizgi Windows yüksek karşıtlık modunda görünür kalır. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
   border-color: var(--ink);
-  background: #fff;
+  background: var(--paper);
+}
+
+/* Yerel onay kutusu ve radyo kenar çizmez; bunlarda halka gösterilir. */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid var(--focus);
 }
 
 input[type="checkbox"],
@@ -463,7 +499,7 @@ input[type="radio"] {
 
 .with-icon > svg {
   position: absolute;
-  left: 14px;
+  inset-inline-start: 14px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted);
@@ -471,7 +507,7 @@ input[type="radio"] {
 }
 
 .with-icon > input {
-  padding-left: 44px;
+  padding-inline-start: 44px;
 }
 
 .check {
@@ -517,32 +553,32 @@ input[type="radio"] {
 
 .alert.error {
   color: var(--danger);
-  background: #fdf2f1;
-  border-color: #f4cdc9;
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--paper));
 }
 
 .alert.ok {
   color: var(--ok);
-  background: #eff8f3;
-  border-color: #c6e6d4;
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 22%, var(--paper));
 }
 
 .alert.info {
   color: var(--warn);
-  background: #fbf7ee;
-  border-color: #eedfbd;
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 22%, var(--paper));
 }
 
 .dev-hint {
   font: inherit;
   font-size: 0.9rem;
-  background: #fbf7ee;
-  border: 1px dashed #d4b977;
-  color: #5c4a1c;
+  background: var(--warn-soft);
+  border: 1px dashed color-mix(in srgb, var(--accent) 70%, var(--paper));
+  color: var(--warn);
   border-radius: var(--radius-sm);
   padding: 9px 12px;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 .badge {
@@ -559,17 +595,17 @@ input[type="radio"] {
 }
 
 .badge.ok {
-  background: #e7f4ec;
+  background: var(--ok-soft);
   color: var(--ok);
 }
 
 .badge.warn {
-  background: #f8f0dc;
+  background: var(--warn-soft);
   color: var(--warn);
 }
 
 .badge.danger {
-  background: #fbe6e4;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -621,7 +657,7 @@ dl.summary dd {
 
 .marker {
   position: absolute;
-  left: 17px;
+  inset-inline-start: 17px;
   top: 50%;
   transform: translateY(-50%);
   width: 10px;
@@ -639,8 +675,8 @@ dl.summary dd {
 }
 
 .address-input input {
-  padding-left: 42px;
-  padding-right: 52px;
+  padding-inline-start: 42px;
+  padding-inline-end: 52px;
   height: 54px;
   font-weight: 500;
 }
@@ -651,7 +687,8 @@ dl.summary dd {
   align-items: center;
   gap: 12px;
   min-height: 54px;
-  padding: 6px 52px 6px 42px;
+  padding-block: 6px;
+  padding-inline: 42px 52px;
   background: var(--soft);
   border-radius: var(--radius-sm);
 }
@@ -676,19 +713,18 @@ dl.summary dd {
 
 .address-chosen .icon-btn {
   position: absolute;
-  right: 52px;
+  inset-inline-end: 52px;
 }
 
 .suggestions {
   position: absolute;
   z-index: 30;
   top: calc(100% + 6px);
-  left: 0;
-  right: 0;
+  inset-inline: 0;
   list-style: none;
   margin: 0;
   padding: 6px;
-  background: #fff;
+  background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
@@ -818,12 +854,13 @@ dl.summary dd {
   grid-template-columns: 150px 1fr auto;
   gap: 20px;
   align-items: center;
-  text-align: left;
+  text-align: start;
   font: inherit;
   color: inherit;
   width: 100%;
-  padding: 12px 20px 12px 12px;
-  background: #fff;
+  padding-block: 12px;
+  padding-inline: 12px 20px;
+  background: var(--paper);
   border: 1.5px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
@@ -845,7 +882,7 @@ dl.summary dd {
   aspect-ratio: 16 / 10;
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--paper);
 }
 
 .vehicle-media img {
@@ -889,13 +926,13 @@ dl.summary dd {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-left: 26px;
+  padding-inline-start: 26px;
 }
 
 .route-summary::before {
   content: "";
   position: absolute;
-  left: 4px;
+  inset-inline-start: 4px;
   top: 10px;
   bottom: 10px;
   width: 1.5px;
@@ -910,7 +947,7 @@ dl.summary dd {
 .route-summary > div:not(.route-line)::before {
   content: "";
   position: absolute;
-  left: -26px;
+  inset-inline-start: -26px;
   top: 7px;
   width: 10px;
   height: 10px;
@@ -945,6 +982,107 @@ dl.summary dd {
 
 .trust-list svg {
   color: var(--ink);
+}
+
+/* --- Durum bileşenleri (components/States.tsx) ---------------------- */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.state-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.state-lines .skeleton {
+  width: 100%;
+  height: 16px;
+}
+
+.state-lines .skeleton:nth-child(2) {
+  width: 82%;
+}
+
+.state-lines .skeleton:nth-child(3) {
+  width: 64%;
+}
+
+.state-label,
+.state-text {
+  margin: 0;
+}
+
+.state-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.state-empty {
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.state-empty .state-title {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.state-empty .state-text {
+  color: var(--muted);
+  max-width: 46ch;
+}
+
+.state-error {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--danger) 22%, var(--paper));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.state-error .state-text {
+  flex: 1 1 24ch;
+}
+
+/* --- Bulunamadı (404) --------------------------------------------------- */
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding-block: clamp(56px, 10vw, 120px);
+}
+
+.not-found h1 {
+  margin: 0;
+  font-size: clamp(3.2rem, 9vw, 6rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.not-found .lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.08rem;
+  max-width: 52ch;
+}
+
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-block-start: 8px;
 }
 
 /* --- Rezervasyon detayı ------------------------------------------------ */
@@ -983,12 +1121,12 @@ dl.summary dd {
   content: "";
   position: absolute;
   top: 6px;
-  left: 50%;
+  inset-inline-start: 50%;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
+  margin-inline-start: -6px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--paper);
   border: 2px solid var(--line-strong);
   z-index: 1;
 }
@@ -997,7 +1135,7 @@ dl.summary dd {
   content: "";
   position: absolute;
   top: 11px;
-  left: -50%;
+  inset-inline-start: -50%;
   width: 100%;
   height: 2px;
   background: var(--line);
@@ -1042,7 +1180,7 @@ dl.summary dd {
   height: 46px;
   border-radius: 999px;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -1089,7 +1227,7 @@ dl.summary dd {
   min-height: 640px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--paper);
 }
 
 .legal h2 {
@@ -1125,7 +1263,7 @@ dl.summary dd {
 }
 
 .footer h4 {
-  color: #fff;
+  color: var(--paper);
   font-size: 0.9rem;
   letter-spacing: 0;
   margin-bottom: 16px;
@@ -1137,7 +1275,7 @@ dl.summary dd {
 }
 
 .footer a:hover {
-  color: #fff;
+  color: var(--paper);
 }
 
 .footer ul {
@@ -1157,6 +1295,8 @@ dl.summary dd {
 .footer li,
 .footer a {
   overflow-wrap: anywhere;
+  /* Uzun Almanca bileşik sözcükler harf ortasından değil heceden bölünür. */
+  hyphens: auto;
 }
 
 .footer-about p {
@@ -1193,7 +1333,7 @@ dl.summary dd {
     display: none;
   }
   .nav {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 }
 

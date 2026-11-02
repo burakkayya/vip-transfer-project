@@ -11,7 +11,8 @@
     "services": "Hizmetler",
     "fleet": "Filo",
     "faq": "SSS",
-    "menu": "Menü"
+    "menu": "Menü",
+    "sections": "Bölümler"
   },
   "home": {
     "heroTitle": "Şoförünüz hazır. Yolculuğunuz sabit fiyatlı.",
@@ -357,6 +358,9 @@
     "phone": "Telefon numarasını kontrol edin.",
     "required": "Bu alan zorunlu.",
     "place_not_found": "Adres bulunamadı, başka bir adres deneyin.",
-    "place_token_invalid": "Adres seçiminin süresi doldu, adresi yeniden seçin."
+    "place_token_invalid": "Adres seçiminin süresi doldu, adresi yeniden seçin.",
+    "retry": "Tekrar dene",
+    "page_not_found": "Aradığınız sayfa bulunamadı. Adres değişmiş ya da kaldırılmış olabilir.",
+    "back_home": "Ana sayfaya dön"
   }
 }

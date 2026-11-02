@@ -82,7 +82,7 @@ Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik
 | Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu. 2026-10-31: yeni tasarım, Motion/Lenis animasyonları, 4 araçlı filo (VIP Minibüs, K-35) |
 | Admin paneli | Tamamlandı; 23 rota (ekran), 2FA, rol bazlı menü, parola değiştirme |
 | Mobil (müşteri + sürücü) | Tamamlandı; 2026-10-31 Uber tarzı yeni tasarım (Reanimated). Harita: telefonda `react-native-maps` gerçek harita (rezervasyon detayı ve sürücü yolculuğunda rota ve sürücü işaretçisi; Android emülatörde doğrulandı), web önizlemede SVG. Push bildirim (FCM) ve mağaza derlemesi bekliyor |
-| Ön yüz testleri | Altyapı kuruldu (K-40): web ve admin ESLint + Playwright + axe (smoke), mobil ESLint + jest-expo + RNTL, kök betik testleri, ekran görüntüsü betikleri. Lint taban ihlalleri henüz giderilmedi; ekran bazlı testler arayüz taramasında yazılacak |
+| Ön yüz testleri | Altyapı kuruldu (K-40): web ve admin ESLint + Playwright + axe (smoke), mobil ESLint + jest-expo + RNTL, kök betik testleri, ekran görüntüsü betikleri. Lint taban ihlalleri kısmen giderildi (web 5); ekran bazlı testler arayüz taramasında yazılıyor (web ortak dosyalar B-W0: `web/e2e/shared.spec.ts`, yerel 404, odak halkası, durum bileşenleri) |
 | Yasal metinler | Taslak; hukukçu onayı bekliyor (`web/lib/site.ts` içinde yer tutucular) |
 
 Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35). Sedan hizmetten kaldırıldı.
