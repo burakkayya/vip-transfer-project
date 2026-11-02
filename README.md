@@ -78,7 +78,7 @@ Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik
 
 | Alan | Durum |
 |---|---|
-| Backend | Tamamlandı; 78 test geçiyor. Kur TCMB'den otomatik, gidiş-dönüş %5, fiyatlar 5'in katı. Adres (Google Places, şimdilik örnek veri), ilçe bazlı fiyat (K-28), PayTR (test mağazası bekliyor) |
+| Backend | Tamamlandı; 94 test geçiyor. Kur TCMB'den otomatik, gidiş-dönüş %5, fiyatlar 5'in katı. Adres (Google Places, şimdilik örnek veri), ilçe bazlı fiyat (K-28), PayTR (test mağazası bekliyor) |
 | Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu. 2026-10-31: yeni tasarım, Motion/Lenis animasyonları, 4 araçlı filo (VIP Minibüs, K-35) |
 | Admin paneli | Tamamlandı; 23 rota (ekran), 2FA, rol bazlı menü, parola değiştirme |
 | Mobil (müşteri + sürücü) | Tamamlandı; 2026-10-31 Uber tarzı yeni tasarım (Reanimated, SVG harita). Gerçek harita, push bildirim (FCM) ve mağaza derlemesi bekliyor |

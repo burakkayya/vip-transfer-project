@@ -20,11 +20,19 @@ from app.providers.routing import Point, get_routing
 log = logging.getLogger(__name__)
 
 TTL_SECONDS = 86400
+FAILURE_TTL_SECONDS = 60
+FAILURE_SENTINEL = "-"
+REDIS_TIMEOUT_SECONDS = 1
 
 
 @lru_cache
 def _redis() -> redis.Redis:
-    return redis.Redis.from_url(get_settings().redis_url, decode_responses=True)
+    return redis.Redis.from_url(
+        get_settings().redis_url,
+        decode_responses=True,
+        socket_connect_timeout=REDIS_TIMEOUT_SECONDS,
+        socket_timeout=REDIS_TIMEOUT_SECONDS,
+    )
 
 
 def _key(leg_id: uuid.UUID) -> str:
@@ -45,12 +53,22 @@ def _points(leg: BookingLeg) -> tuple[Point, Point]:
     return pickup, dropoff
 
 
+def _store(leg: BookingLeg, value: str, ttl: int) -> None:
+    try:
+        _redis().set(_key(leg.id), value, ex=ttl)
+    except redis.RedisError:
+        log.warning("rota çizgisi önbelleğe yazılamadı", exc_info=True)
+
+
 def route_polyline(leg: BookingLeg) -> str | None:
+    """Önbellek: başarı 24 saat; sağlayıcı hatası veya boş sonuç 60 sn "olumsuz" kayıt (yavaş sağlayıcıyı yormaz)."""
     try:
         cached = _redis().get(_key(leg.id))
     except redis.RedisError:
         log.warning("rota çizgisi önbelleği okunamadı", exc_info=True)
         cached = None
+    if cached == FAILURE_SENTINEL:
+        return None
     if cached:
         return cached
     origin, destination = _points(leg)
@@ -58,10 +76,9 @@ def route_polyline(leg: BookingLeg) -> str | None:
         line = get_routing().route(origin, destination).polyline
     except ServiceUnavailable:
         log.warning("rota çizgisi alınamadı (leg=%s)", leg.id, exc_info=True)
-        return None
+        line = None
     if line:
-        try:
-            _redis().set(_key(leg.id), line, ex=TTL_SECONDS)
-        except redis.RedisError:
-            log.warning("rota çizgisi önbelleğe yazılamadı", exc_info=True)
-    return line
+        _store(leg, line, TTL_SECONDS)
+        return line
+    _store(leg, FAILURE_SENTINEL, FAILURE_TTL_SECONDS)
+    return None

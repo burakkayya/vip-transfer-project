@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal as D
 
@@ -188,6 +189,37 @@ def test_driver_trip_has_route_polyline(client, db, ops, route_line_cleanup):
     r = client.post(f"/api/v1/driver/trips/{trip['leg_id']}/events", headers=driver_headers,
                     json={"event": "yola_cikti"})
     assert isinstance(r.json()["route_polyline"], str)
+
+
+def _accepted_trip(client, ops, driver_headers):
+    customer = otp_login(client, random_phone())
+    r = client.post("/api/v1/me/bookings", json=booking_body(client, hours_ahead=0, booking_type="anlik"),
+                    headers=customer)
+    code = r.json()["booking_code"]
+    pay(client, customer, code)
+    offers = client.get("/api/v1/driver/offers", headers=driver_headers).json()
+    offer = next(o for o in offers if o["trip"]["booking_code"] == code)
+    return client.post(f"/api/v1/driver/offers/{offer['offer_id']}/accept", headers=driver_headers).json()
+
+
+def test_driver_trip_detail_has_route_polyline(client, db, ops, route_line_cleanup):
+    from app.providers.polyline import decode
+
+    driver_headers, _ = onboard_driver(client, ops)
+    trip = _accepted_trip(client, ops, driver_headers)
+    r = client.get(f"/api/v1/driver/trips/{trip['leg_id']}", headers=driver_headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["leg_id"] == trip["leg_id"] and body["passenger_name"] == "Anna Schmidt"
+    assert len(decode(body["route_polyline"])) >= 2
+
+
+def test_driver_trip_detail_other_driver_404(client, db, ops, route_line_cleanup):
+    owner, _ = onboard_driver(client, ops)
+    other, _ = onboard_driver(client, ops)
+    trip = _accepted_trip(client, ops, owner)
+    assert client.get(f"/api/v1/driver/trips/{trip['leg_id']}", headers=other).status_code == 404
+    assert client.get(f"/api/v1/driver/trips/{uuid.uuid4()}", headers=owner).status_code == 404
 
 
 def test_second_driver_cannot_take_assigned_leg(client, db, ops):

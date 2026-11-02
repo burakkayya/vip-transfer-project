@@ -320,6 +320,14 @@ def list_trips(driver: CurrentDriver, db: DbSession, include_past: bool = False)
     return [_trip_out(leg) for leg in db.scalars(q.order_by(BookingLeg.pickup_at).limit(200))]
 
 
+@router.get("/trips/{leg_id}", response_model=TripOut)
+def get_trip(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession):
+    leg = db.get(BookingLeg, leg_id)
+    if leg is None or leg.driver_id != driver.id:
+        raise NotFound("yolculuk bulunamadı")
+    return _trip_out(leg, with_route=True)
+
+
 class TripEventIn(BaseModel):
     event: TripEventType
 

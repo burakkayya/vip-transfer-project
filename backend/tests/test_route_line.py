@@ -3,6 +3,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+import redis
 
 from app.errors import ServiceUnavailable
 from app.providers.polyline import decode
@@ -85,4 +86,32 @@ def test_route_polyline_provider_error_returns_none(monkeypatch, redis_cleanup):
     leg = _leg()
     redis_cleanup.append(leg.id)
     assert route_line.route_polyline(leg) is None
-    assert route_line._redis().get(f"route_line:{leg.id}") is None
+    assert route_line._redis().get(f"route_line:{leg.id}") == route_line.FAILURE_SENTINEL
+
+
+def test_route_polyline_failure_is_negatively_cached(monkeypatch, redis_cleanup):
+    provider = _CountingProvider(error=True)
+    monkeypatch.setattr(route_line, "get_routing", lambda: provider)
+    leg = _leg()
+    redis_cleanup.append(leg.id)
+    assert route_line.route_polyline(leg) is None
+    assert route_line.route_polyline(leg) is None
+    assert len(provider.calls) == 1
+    ttl = route_line._redis().ttl(f"route_line:{leg.id}")
+    assert 0 < ttl <= 60
+
+
+def test_route_polyline_survives_redis_down(monkeypatch):
+    class _Down:
+        def get(self, *a, **k):
+            raise redis.ConnectionError("down")
+
+        def set(self, *a, **k):
+            raise redis.ConnectionError("down")
+
+    provider = _CountingProvider()
+    monkeypatch.setattr(route_line, "get_routing", lambda: provider)
+    monkeypatch.setattr(route_line, "_redis", lambda: _Down())
+    assert route_line.route_polyline(_leg()) == "abc_poly"
+    provider.error = True
+    assert route_line.route_polyline(_leg()) is None
