@@ -12,6 +12,7 @@ import httpx
 
 from app.config import get_settings
 from app.errors import ServiceUnavailable
+from app.providers.polyline import encode
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class Point:
 class Route:
     distance_km: Decimal
     duration_minutes: int
+    polyline: str | None = None
 
 
 class RoutingProvider(Protocol):
@@ -48,7 +50,10 @@ class HaversineRouting:
 
     def route(self, origin: Point, destination: Point) -> Route:
         km = (haversine_km(origin, destination) * self.road_factor).quantize(Decimal("0.01"))
-        return Route(distance_km=km, duration_minutes=max(1, int(km)))
+        line = encode(
+            [(float(origin.lat), float(origin.lng)), (float(destination.lat), float(destination.lng))]
+        )
+        return Route(distance_km=km, duration_minutes=max(1, int(km)), polyline=line)
 
 
 @dataclass
@@ -68,7 +73,7 @@ class GoogleRouting:
         }
         headers = {
             "X-Goog-Api-Key": self.api_key,
-            "X-Goog-FieldMask": "routes.distanceMeters,routes.duration",
+            "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
         }
         try:
             resp = httpx.post(self.url, json=body, headers=headers, timeout=10)
@@ -83,6 +88,7 @@ class GoogleRouting:
         return Route(
             distance_km=(Decimal(meters) / 1000).quantize(Decimal("0.01")),
             duration_minutes=max(1, round(seconds / 60)),
+            polyline=routes[0].get("polyline", {}).get("encodedPolyline"),
         )
 
 
