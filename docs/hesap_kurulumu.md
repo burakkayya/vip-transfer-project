@@ -11,7 +11,7 @@ Bu hesapları yalnızca şirket sahibi açabilir (kimlik, kart veya şirket bilg
 | 5 | Expo (EAS) | Ücretsiz katman | expo.dev'de hesap açın. Bilgisayarda `npx eas-cli login`, sonra `mobile` klasöründe `npx eas-cli init`. Derleme profilleri hazır: `mobile/eas.json` (`preview`, `preview-driver`, `production`, `production-driver`). Android test APK'sı: `npx eas-cli build -p android --profile preview`. | `eas init` proje kimliğini `app.config.ts`'e ekler |
 | 6 | Mağaza hesapları | Apple 99 $/yıl, Google Play 25 $ tek sefer | Ücretli; yayın aşamasında. | `eas submit` |
 | 7 | Netgsm | Hesap ücretsiz, SMS kredisi ücretli | Hesap açın, **SMS başlığı** (ör. GETAWAY) için başvurun. Başlık onaylanınca kredi alın. | `GETAWAY_SMS_PROVIDER=netgsm`, `GETAWAY_NETGSM_USERCODE`, `GETAWAY_NETGSM_PASSWORD`, `GETAWAY_NETGSM_HEADER` |
-| 8 | Cloudflare | Ücretsiz | Hesap açın, alan adını ekleyin, ad sunucularını GoDaddy'de Cloudflare'inkilerle değiştirin. **Zero Trust > Access**'te `admin.getawaytransfers.com` için uygulama tanımlayıp yalnızca şirket e-postalarına izin verin (50 kullanıcıya kadar ücretsiz). | DNS, kod gerekmez |
+| 8 | Cloudflare | Ücretsiz | Hesap açın, alan adını ekleyin, ad sunucularını Turhost'ta Cloudflare'inkilerle değiştirin. **Zero Trust > Access**'te `admin.getawaytransfers.com` için uygulama tanımlayıp yalnızca şirket e-postalarına izin verin (50 kullanıcıya kadar ücretsiz). | DNS, kod gerekmez |
 | 9 | Hukukçu | Ücretli | Şirket unvanı, adres, TÜRSAB belge no, MERSİS no hazırlanır. | `web/lib/site.ts` içindeki `[...]` yer tutucuları |
 
 ## Sıra önerisi

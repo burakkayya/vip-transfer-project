@@ -1,6 +1,6 @@
 # Proje Rehberi
 
-Bu dosya projenin tek yerden bakılan özetidir: ne olduğu, nasıl çalıştığı, hangi karar nerede, nelerin bittiği ve nelerin kaldığı. Ayrıntılar ilgili dosyalara bağlanır. Son güncelleme: 2026-10-31.
+Bu dosya projenin tek yerden bakılan özetidir: ne olduğu, nasıl çalıştığı, hangi karar nerede, nelerin bittiği ve nelerin kaldığı. Ayrıntılar ilgili dosyalara bağlanır. Son güncelleme: 2026-11-02.
 
 > Kural: Her değişiklikten sonra ilgili `.md` dosyaları güncellenir ve `degisiklik_gunlugu.md` dosyasına satır eklenir (kök `CLAUDE.md`).
 
@@ -37,13 +37,12 @@ Mimari notlar ve güvenlik ilkeleri: kök `README.md` ve `yasal_ve_guvenlik.md`.
 | Müşteri | Herhangi bir telefon numarası. SMS kodu ekranda sarı kutuda görünür. |
 | Sürücü 1 | +90 530 000 00 01, Mehmet Demir, Minivan, 07GA001 |
 | Sürücü 2 | +90 530 000 00 02, Ayşe Kaya, VIP Van, 48GA002 |
-
-Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35).
+| Araç tipleri | Minivan, VIP Van, Minibüs, VIP Minibüs (K-35) |
 | Admin | ebkaya.0637@gmail.com. Parola repoya yazılmaz; sohbette iletilen geçici parola kullanılır, ilk girişte 2FA QR kurulumu istenir, sonra **Parolamı değiştir**. |
 
 ## 5. Kararlar
 
-Tam liste: `kararlar.md` (K-01 ... K-34). Son eklenenler (2026-10-31):
+Tam liste: `kararlar.md` (K-01 ... K-40). Son eklenenler (2026-10-31 ve 2026-11-02):
 
 | No | Karar | Uygulama durumu |
 |---|---|---|
@@ -53,14 +52,20 @@ Tam liste: `kararlar.md` (K-01 ... K-34). Son eklenenler (2026-10-31):
 | K-32 | Tüm para birimleri 5'in katına yuvarlanır | Uygulandı |
 | K-33 | Kur manuel değil, TCMB'den otomatik | Uygulandı (saatlik görev) |
 | K-34 | MVP'de on dil | Bekliyor, şu an 4 dil (tr, en, de, ru) |
+| K-35 | VIP Minibüs ayrı araç tipi | Uygulandı (çarpan 2,40 yer tutucu) |
+| K-36 | Arayüz dilleri fr, es, it, zh, ja, ar; yasal metinler taslak çeviri | Bekliyor (K-34'ün uygulaması) |
+| K-37 | Mobil gerçek harita; backend `route_polyline` | Bekliyor |
+| K-38 | Renk tokenlarının tek kaynağı kök `DESIGN.md` | Bekliyor (`scripts/sync-tokens.mjs`) |
+| K-39 | Görsel yön "Kıyı Yolu" | Bekliyor (arayüz taraması) |
+| K-40 | Ön yüz test altyapısı (ESLint, Playwright, axe, jest-expo) | Bekliyor |
 
-## 6. Durum matrisi (2026-10-31)
+## 6. Durum matrisi (2026-11-02)
 
 | Alan | Durum | Eksik |
 |---|---|---|
 | Backend | Tamamlandı, 78 test geçiyor | PayTR gerçek doğrulama, iyzico yedeği, e-Arşiv, FCM, S3 depolama |
 | Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar | 6 dil daha, günlük kiralama ekranları |
-| Admin | Tamamlandı (19 ekran) | Günlük kiralama yönetimi |
+| Admin | Tamamlandı (23 rota) | Günlük kiralama yönetimi |
 | Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi | Gerçek harita (Google/Apple Maps), 6 dil daha, push, mağaza derlemesi, günlük kiralama |
 | Yasal metinler | Taslak | Hukukçu onayı, şirket bilgileri (`web/lib/site.ts`) |
 

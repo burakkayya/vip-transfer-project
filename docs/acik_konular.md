@@ -21,12 +21,14 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 ## Ürün
 
-- [ ] Araç tipleri ve çarpanları (minivan, VIP van, minibüs).
+- [ ] Araç tipleri ve çarpanları (minivan, VIP van, minibüs, VIP minibüs).
 
 ## Teknik
 
 - [ ] Yurt dışı servislerde veri bölgesi (Sentry, e-posta).
 - [ ] Uçuş takip API'sinin seçimi ve maliyeti.
+- [ ] Sitedeki "uçuş takibi / sürücü iniş saatinizi takip eder" ifadesi ile kod arasındaki fark: şimdilik yalnızca uçuş numarası saklanıyor, uçuş takip API'si yok. API seçilene kadar ifade yumuşatılmalı veya API bağlanmalı.
+- [ ] ARQ işçisi (`arq app.worker.WorkerSettings`) 2026-11-02 taban çizgisinde çalışmıyordu. Saatlik kur güncelleme ve uçuş verisi silme gibi zamanlanmış görevler işçi çalışmadan işlemez; geliştirmede ayrıca başlatılmalı, üretimde süreç yöneticisiyle ayakta tutulmalı.
 - [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı.
 
 ## Geliştirme sırasında ortaya çıkanlar
@@ -37,7 +39,7 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 - [ ] Sürücü hakedişinde EUR→TRY kuru: iş tamamlandığı andaki kur mu, ödeme günündeki kur mu? Şimdilik tamamlanma anındaki kur kullanılıyor.
 - [ ] Zorunlu belge listesi: sürücü için sürücü belgesi, SRC ve adli sicil; araç için ruhsat, sigorta, muayene ve turizm taşımacılığı yetki belgesi. Liste `system_settings` üzerinden değiştirilebilir, hukukçuyla teyit edilmeli.
 - [ ] Gazipaşa-Alanya Havalimanı (GZP), K-06 kapsamında aktif olarak eklendi. is_modeli.md'de yalnızca üç havalimanı geçiyor.
-- [ ] Araç tipleri ve çarpanları yer tutucu: minivan 1,30, VIP van 1,60, minibüs 2,00. Sedan hizmetten kaldırıldı (2026-10-29), eski kayıtlar için pasif tutuluyor.
+- [ ] Araç tipleri ve çarpanları yer tutucu: minivan 1,30, VIP van 1,60, minibüs 2,00, VIP minibüs 2,40. Sedan hizmetten kaldırıldı (2026-10-29), eski kayıtlar için pasif tutuluyor.
 - [ ] PayTR imza formülleri test mağazasında doğrulanmalı (iFrame token, bildirim hash'i, iade).
 - [ ] iyzico yedek sağlayıcısı henüz kodlanmadı. Para birimi desteği teyit edilince eklenecek.
 - [ ] Netgsm API'si güncel belgeyle doğrulanmalı, uluslararası SMS yetkisi kontrol edilmeli.
@@ -55,7 +57,7 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Tasarım yenilemesinden kalanlar (2026-10-31)
 
-- [ ] Mobil haritalar stilize SVG; gerçek harita için `react-native-maps` (iOS Apple Maps, Android Google Maps anahtarı) bağlanmalı. Rota çizgisi için Routes API polyline gerekir.
+- [ ] Mobil haritalar stilize SVG; gerçek harita (K-37) için `react-native-maps` (iOS Apple Maps, Android Google Maps anahtarı) bağlanmalı. Rota çizgisi için Routes API polyline gerekir.
 - [x] Siyah minibüs ayrı araç tipi oldu: VIP Minibüs (K-35). Fiyat çarpanı 2,40 yer tutucu; gerçek fiyat admin panelinden girilmeli.
 - [ ] Sürücü belgelerinde `vip_minibus` araç tipiyle araç eklenip onaylanmalı; şu an bu tipte sürücü yok, bu tip rezervasyonlar admin eşleştirmesi bekler.
 - [ ] Yandan Vito görseli (`vito_transparent.png`) 525 px; büyük ekranda keskinlik için yüksek çözünürlüklü şeffaf sürüm gerekli.
@@ -65,7 +67,7 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 ## Kararı verilmiş, geliştirmesi bekleyen (2026-10-31)
 
 - [ ] Günlük araç kiralama (K-29): ürün tanımı (şoförlü mü şoförsüz mü, günlük km sınırı, teslim noktası, fiyat modeli, depozito), veritabanı, API, web, mobil ve admin ekranları.
-- [ ] On dil (K-34): web, mobil ve bildirim şablonları için fr, es, it, zh, ja, ar çevirileri. Arapça için sağdan sola yerleşim. Yasal metinlerin çevirisi hukukçu kontrolünden geçmeli.
+- [ ] On dil (K-34, uygulaması K-36): web, mobil ve bildirim şablonları için fr, es, it, zh, ja, ar çevirileri. Arapça için sağdan sola yerleşim. Bildirim şablonları 6 yeni dilde de hazırlanmalı (admin şablon ekranında dil başına kayıt). Yasal metinlerin çevirisi taslak olarak "çeviri doğrulanmadı" notuyla yayımlanır; yayından önce hukukçu kontrolünden geçmeli.
 - [ ] Uçuş verisinin kuruma bildirimi: zorunluysa bildirim akışı ve kaydı yazılacak, silme bu kayda bağlanacak (K-31).
 
 ## Operasyon

@@ -84,4 +84,4 @@ Tasarım bileşenleri `components/ui.tsx` içindedir: renkler, Ionicons, başlı
 
 - Push bildirimi (FCM) hesabı açılınca `expo-notifications` eklenecek. O zamana kadar sürücü, çevrimiçiyken teklifleri 8 saniyede bir yokluyor.
 - Arka planda konum paylaşımı (`expo-task-manager`) mağaza izin gerekçesiyle birlikte değerlendirilmeli.
-- EAS Build yapılandırması (`eas.json`) ve mağaza hesapları açılınca eklenecek.
+- EAS Build yapılandırması (`eas.json`) eklendi (2026-10-31). Mağaza hesapları (EAS, Apple, Google Play) açılınca derleme alınacak.
