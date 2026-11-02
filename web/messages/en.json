@@ -214,7 +214,9 @@
     "confirmSlow": "We have not received the payment confirmation yet. If your card was charged, do not pay again; refresh the status in a few minutes. If you did not complete the payment, you can go back to the payment page.",
     "refresh": "Refresh status",
     "backToPayment": "Back to payment",
-    "pollPaused": "Automatic updates have paused: the server cannot be reached."
+    "pollPaused": "Automatic updates have paused: the server cannot be reached.",
+    "resultLoading": "Getting your payment result…",
+    "resultStalled": "Redirecting is taking longer than expected. You can check your payment status in your bookings."
   },
   "bookings": {
     "title": "My bookings",

@@ -13,7 +13,7 @@
 9. Rezervasyon detayı ve iptal. Rezervasyon değişikliği ekranı yok: değişiklik e-postayla (info@getawaytransfers.com, rezervasyon koduyla) istenir.
 10. Sabit sayfalar: iptal ve iade politikası, KVKK aydınlatma, mesafeli satış, çerez, veri talep formu
 11. Hesabım (`/account`): profil ve pazarlama onayı
-12. Ödeme sonucu (`/booking/payment-result`): ödeme penceresinden çıkaran görünmez yönlendirme
+12. Ödeme sonucu (`/booking/payment-result`): ödeme penceresinden çıkaran kısa geçiş ekranı ("Ödeme sonucu alınıyor…"; gecikirse Rezervasyonlarım bağlantısı)
 13. 404 sayfası
 
 ## Müşteri mobil uygulaması (iOS ve Android)

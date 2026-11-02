@@ -214,7 +214,9 @@
     "confirmSlow": "Die Zahlungsbestätigung ist noch nicht bei uns eingegangen. Wurde Ihre Karte belastet, zahlen Sie bitte nicht erneut, sondern aktualisieren Sie den Status in einigen Minuten. Haben Sie die Zahlung nicht abgeschlossen, können Sie zur Zahlungsseite zurückkehren.",
     "refresh": "Status aktualisieren",
     "backToPayment": "Zurück zur Zahlung",
-    "pollPaused": "Automatische Aktualisierung angehalten: Server nicht erreichbar."
+    "pollPaused": "Automatische Aktualisierung angehalten: Server nicht erreichbar.",
+    "resultLoading": "Zahlungsergebnis wird abgerufen…",
+    "resultStalled": "Die Weiterleitung dauert länger als erwartet. Den Status Ihrer Zahlung sehen Sie unter Ihren Buchungen."
   },
   "bookings": {
     "title": "Meine Buchungen",

@@ -1238,6 +1238,20 @@ dl.summary dd {
   flex: 1 1 24ch;
 }
 
+/* Ödeme sonucu geçiş ekranı (components/PaymentResult.tsx): gecikme notu */
+.result-stalled {
+  margin-block: 16px 0;
+  max-width: 46ch;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.result-stalled a {
+  color: var(--text);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
 /* --- Bulunamadı (404) --------------------------------------------------- */
 
 .not-found {

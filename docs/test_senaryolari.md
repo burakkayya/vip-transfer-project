@@ -108,6 +108,11 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 - **Tekrar dene**'ye çift tıklamak tek bir ödeme sayfası açar.
 - İptal edilmiş bir rezervasyonun ödeme adresi açılırsa "Bu rezervasyon iptal edildi" ile **Yeni rezervasyon** ve **Rezervasyonu görüntüle** görünür; ödenmiş rezervasyonda "Ödemeniz alındı…" yazar ve detaya geçilir.
 
+Ödeme sonucu geçiş ekranı (B-W5; `/booking/payment-result`):
+- Sahte sağlayıcıda **Ödemeyi onayla** veya **Reddet** sonrası sayfa kısa süre "Ödeme sonucu alınıyor…" (başlık "Ödeme") gösterir, sonra ödeme ekranına döner; boş sayfa görünmez.
+- Adresi doğrudan açmak (`/tr/booking/payment-result?status=ok`) bekleyen rezervasyon yoksa Rezervasyonlarım'a, varsa ilgili rezervasyonun ödeme ekranına götürür.
+- Yönlendirme 8 saniyeden uzun sürerse (ağı yavaşlatın) "Yönlendirme beklenenden uzun sürüyor…" notu ve "Rezervasyonlarım" bağlantısı çıkar. Dört dilde (tr, en, de, ru) denenebilir.
+
 ### 7. Yeni sürücü başvurusu ve belge onayı
 1. Sürücü önizleme → çıkış → yeni bir numarayla giriş → **Sürücü kaydı** formu.
 2. **Belgeler** sekmesi: sürücü belgeleri için PDF/JPEG yükleyin, **Araç ekle** ile araç ekleyip araç belgelerini yükleyin.

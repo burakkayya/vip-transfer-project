@@ -28,6 +28,8 @@ const ANON = [
   ["not-found", (l) => `/${l}/bu-sayfa-yok`],
   ["not-found-in-locale", (l) => `/${l}/legal/olmayan`],
   ["booking-not-found", (l) => `/${l}/bookings/ZZZZZZ`],
+  // Geçiş ekranı: yönlendirme hedefi (/bookings) tutulur, böylece bekleme durumu görüntülenir.
+  ["payment-result", (l) => `/${l}/booking/payment-result?status=ok`],
 ];
 const FLOW = [
   "book-1-vehicle", "book-2-details", "book-3-verify", "book-4-otp", "book-5-confirm",
@@ -98,8 +100,10 @@ function errors(page, bucket) {
       for (const [name, url] of ANON) {
         if (!filter.want(name)) continue;
         try {
+          if (name === "payment-result") await a.route(/\/[a-z]{2}\/bookings(\?|$)/, () => {});
           await a.goto(BASE + url(loc));
           await shot(a, prefix, name);
+          if (name === "payment-result") await a.unroute(/\/[a-z]{2}\/bookings(\?|$)/);
         } catch (e) {
           missed.push({ name: prefix + "-" + name, error: String(e.message).split("\n")[0] });
         }
