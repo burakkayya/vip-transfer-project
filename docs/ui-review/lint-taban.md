@@ -20,7 +20,15 @@ Not: `web/next.config.ts` içinde `eslint.ignoreDuringBuilds: true` vardır; aks
 
 ## admin
 
-(Hat A sonraki görevi dolduracak.)
+Özet: 1 hata, 2 uyarı, 2 dosya (`npm run lint` rc=1). Ölçüm: 2026-11-02, dal `chore/ui-infra`. Komut: `cd admin && npx eslint .`
+
+| Dosya | Kural | Önem | Adet |
+|---|---|---|---|
+| `admin/app/login/page.tsx` | `@next/next/no-img-element` | uyarı | 1 |
+| `admin/app/login/page.tsx` | `jsx-a11y/no-autofocus` | hata | 1 |
+| `admin/components/DocumentReview.tsx` | `@next/next/no-img-element` | uyarı | 1 |
+
+Not: `admin/next.config.ts` içinde `eslint.ignoreDuringBuilds: true` vardır; aksi halde login sayfasındaki hata `next build`'i düşürür.
 
 ## mobile
 

@@ -112,3 +112,4 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 
 - **Getaway: Backend testleri**: iş kuralları, API, adres ve ilçe çözümleme, ödeme, eşleştirme ve WebSocket.
 - **Getaway: Tip denetimi (web, admin, mobil)**.
+- **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır.
