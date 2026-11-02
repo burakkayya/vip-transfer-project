@@ -209,7 +209,12 @@
     "inbound": "Dönüş",
     "viewBooking": "Rezervasyonu görüntüle",
     "cancelledTitle": "Bu rezervasyon iptal edildi",
-    "cancelledText": "İptal edilen rezervasyon için ödeme alınmaz. Transfere hâlâ ihtiyacınız varsa yeni bir rezervasyon yapabilirsiniz."
+    "cancelledText": "İptal edilen rezervasyon için ödeme alınmaz. Transfere hâlâ ihtiyacınız varsa yeni bir rezervasyon yapabilirsiniz.",
+    "confirming": "Ödemeniz onaylanıyor…",
+    "confirmSlow": "Ödeme onayı henüz bize ulaşmadı. Kartınızdan ödeme çekildiyse yeniden ödemeyin; birkaç dakika sonra durumu yenileyin. Ödemeyi tamamlamadıysanız ödeme sayfasına dönebilirsiniz.",
+    "refresh": "Durumu yenile",
+    "backToPayment": "Ödemeye dön",
+    "pollPaused": "Otomatik güncelleme durdu: sunucuya ulaşılamıyor."
   },
   "bookings": {
     "title": "Rezervasyonlarım",

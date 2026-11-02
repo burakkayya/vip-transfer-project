@@ -91,6 +91,28 @@ Gelir akışı eşiği %85: sonra %90.
 - `npx tsc --noEmit` temiz; `npx eslint .` (web) 0; `impeccable detect` 0.
 - Ekran görüntüsü betiği `node web.js --out after --only pay,pay-failed` (tr, de × 1440, 390): 8 görüntü, taşma yok, kaçan yok; konsol hatası yalnızca oturumsuz `auth/me` 401 (beklenen). Ek durumlar geçici betikle (`page.route` ile bekletme/abort/iptal yanıtı): `{tr}-{1440,390}-pay-{loading,error,cancelled}.png`.
 
+## Düzeltme turu 1 (inceleme)
+
+| İnceleme bulgusu | Durum |
+|---|---|
+| 1 (Önemli). `?result=ok` ve rezervasyon hâlâ `odeme_bekliyor`: "Güvenli ödeme sayfası hazırlanıyor…" iskeleti, çıkış yok | **Kapandı**: ayrı "Ödemeniz onaylanıyor…" durumu (`LoadingState`, `role="status"`), yoklama sürer, ödeme başlatılmaz. **Sınırlı bekleme 75 sn** (`CONFIRM_WAIT_MS`; PayTR bildirimi genelde saniyeler içinde gelir, 75 sn yavaş bildirimi kapsar ama müşteriyi dakikalarca bekletmez). Süre dolunca kehribar `role="status"` uyarı: "Ödeme onayı henüz bize ulaşmadı. Kartınızdan ödeme çekildiyse yeniden ödemeyin…" + birincil **Durumu yenile** (hemen yeniden okur, bekleme baştan başlar) + **Ödemeye dön** (adresten `result` kalkar, yeni ödeme sayfası). Ek iş kuralı yok. Test: "returning with result=ok shows confirming state and offers recovery after the bounded wait" (`page.clock` ile 76 sn ileri) |
+| 2 (Küçük). Sağlayıcı sayfası açıkken oturum dolarsa kurtarma yok | Açık P3 (`acik_konular.md`): sınırlı bekleme bu durumu kapsamıyor; sayfa yenilemesi yeni ödeme açar. K-42 gereği açıkken yeniden deneme yok |
+| 3. `start()` için uçuştaki istek kilidi yok | **Kapandı**: `useRef` kilidi; aynı anda tek `POST payments`. Test: "retry double click starts only one payment" (iki eşzamanlı `click()`, önce 2 çağrı, sonra 1). Yeniden deneme adresteki `result`'ı da temizler |
+| 4. Yoklama hataları yutuluyor | **Kapandı**: 401 (yoklama, yükleme veya başlatmada) → `RequireLogin`'in yeni `useSessionExpired()` bağlamı ile SMS girişi yeniden gösterilir (girişten sonra panel baştan yüklenir). Art arda **3** ağ/sunucu hatasında yoklama durur ve engellemeyen kehribar bildirim "Otomatik güncelleme durdu: sunucuya ulaşılamıyor." + **Durumu yenile** (başarılı okumada yoklama sürer). Testler: "poll 401 sends the user to login", "repeated poll network errors pause updates with a refresh action" |
+| 5. Eksik testler | **Kapandı**: "poll turning paid shows success and redirects to the booking" (`?result=ok` → onaylanıyor → `?paid=1`), "poll turning cancelled shows the cancelled explanation", "404/403 booking shows final error with a link instead of retry", "large TRY amount fits on one line at 360px" (`route.fulfill` ile `12345.00 TRY` → `₺12.345,00`, tek satır, taşma yok) |
+| 6. `kararlar.md` güncellenmedi | **Kapandı**: K-42 (açıkken yeniden deneme yok, başlatma kilidi, 75 sn onay beklemesi), K-43 (iskelet parıltısı hareket tercihine bağlı) |
+| 7. `_log-only.json` gürültüsü | **Geri alındı**: dosya her `--only` çalıştırmasında son çalıştırmanın kaydıyla üzerine yazılan üretilmiş bir günlük; yalnızca geliştirme DB rezervasyon kodları değişmişti. B-W3 sonrası haline döndürüldü; taşma ölçümü (0 px) bu raporda |
+
+Yeni mesajlar (tr, en, de, ru): `confirming`, `confirmSlow`, `refresh`, `backToPayment`, `pollPaused`; `pay` 24 anahtar, dört dilde eşit. Yeni stil: `.pay-paused`.
+
+Kırmızı (uygulamadan önce, `-g "result=ok|poll|double click|final error|large TRY"`, desktop): **5 başarısız, 4 geçti**. Başarısızlar: result=ok ve paid testleri (`role=status` "Ödemeniz onaylanıyor" yok), çift tıklama (`Expected: 1, Received: 2`), 401 (`#otp-phone` yok), ağ hatası (`.pay-paused` yok). Geçenler (mevcut davranışı belgeleyen kapsama testleri): iptale dönen yoklama, 404, 403, büyük TRY tutarı.
+
+Sonra: `pay.spec --project=desktop` **19 geçti** (paid testi ilk koşuda `waitForURL` "load" beklediği için düştü; yönlendirme istemci tarafı, `toHaveURL` ile düzeltildi). `npx playwright test pay book otp --workers=2` (iki proje): **99 geçti, 13 atlandı, 0 başarısız**; `tsc` temiz, `npx eslint .` (web) 0.
+
+Görüntü: `screenshots/after/web/tr-{1440,390}-pay-confirm-slow.png`.
+
+Değişen dosyalar: `web/components/PaymentPanel.tsx`, `web/components/RequireLogin.tsx` (`useSessionExpired` bağlamı, davranış aynı), `web/app/globals.css` (`.pay-paused`), `web/messages/{tr,en,de,ru}.json`, `web/e2e/pay.spec.ts` (20 test), `docs/kararlar.md` (K-42, K-43), `docs/proje_rehberi.md`, `docs/acik_konular.md`, `docs/test_senaryolari.md`, `docs/degisiklik_gunlugu.md`, `docs/ui-review/README.md`, `_log-only.json` (geri alındı).
+
 ## Görüntüler
 
 - Önce: `screenshots/before/web/{tr,de}-{1440,390}-{pay,pay-failed}.png`

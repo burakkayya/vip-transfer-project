@@ -89,6 +89,37 @@ async function bookingAwaitingPayment(page: Page, locale = "tr"): Promise<string
 const panel = (page: Page) => page.locator(".pay");
 const providerFrame = (page: Page) => page.frameLocator(".iframe-wrap iframe");
 
+type BookingPatch = Record<string, unknown> | { abort: true } | { status: number; code: string };
+
+/**
+ * Rezervasyon GET yanıtını taklit eder: `patch(n)` n'inci çağrıda (1'den başlar) gerçek yanıtın üstüne
+ * yazılacak alanları, ağ hatası (`{ abort: true }`) veya hata yanıtını (`{ status, code }`) döner.
+ */
+async function mockBooking(page: Page, code: string, patch: (n: number) => BookingPatch) {
+  let n = 0;
+  await page.route(`**/bff/me/bookings/${code}`, async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    n += 1;
+    const p = patch(n);
+    if ("abort" in p) return route.abort();
+    if (typeof p.status === "number" && typeof p.code === "string") {
+      return route.fulfill({ status: p.status, json: { error: { code: p.code, message: p.code } } });
+    }
+    const res = await route.fetch();
+    await route.fulfill({ response: res, json: { ...(await res.json()), ...p } });
+  });
+}
+
+/** Ödeme başlatma (POST payments) çağrılarını sayar. */
+async function countCheckouts(page: Page, code: string) {
+  const calls = { n: 0 };
+  await page.route(`**/bff/me/bookings/${code}/payments`, async (route) => {
+    calls.n += 1;
+    await route.continue();
+  });
+  return calls;
+}
+
 /** Ödeme sayfasını açar ve sahte sağlayıcının düğmeleri görünene kadar bekler. */
 async function openPay(page: Page, code: string, locale = "tr") {
   await page.goto(`/${locale}/bookings/${code}/pay`);
@@ -268,4 +299,140 @@ test("de pay has no horizontal overflow from 360 to 1440 px", async ({ page }, i
     }));
     expect(height, `${width}px`).toBeLessThan(lineHeight * 1.5);
   }
+});
+
+// --- Düzeltme turu 1: onay bekleme, başlatma kilidi, yoklama hataları ---
+
+test("returning with result=ok shows confirming state and offers recovery after the bounded wait", async ({ page }) => {
+  test.setTimeout(120_000);
+  const code = await bookingAwaitingPayment(page);
+  const checkouts = await countCheckouts(page, code);
+  await page.clock.install();
+  // Sağlayıcıdan "ok" ile dönüldü ama bildirim henüz işlenmedi: rezervasyon hâlâ ödeme bekliyor.
+  await page.goto(`/tr/bookings/${code}/pay?result=ok`);
+  const confirming = panel(page).getByRole("status").filter({ hasText: "Ödemeniz onaylanıyor" });
+  await expect(confirming).toBeVisible({ timeout: 30_000 });
+  await expect(panel(page).getByText("Güvenli ödeme sayfası hazırlanıyor")).toHaveCount(0);
+  await expect(page.locator(".iframe-wrap")).toHaveCount(0);
+  expect(checkouts.n).toBe(0);
+
+  // Sınırlı bekleme (75 sn) dolunca açık mesaj ve iki eylem.
+  await page.clock.runFor(76_000);
+  const slow = panel(page).locator(".pay-confirm-slow");
+  await expect(slow).toContainText("Ödeme onayı henüz bize ulaşmadı");
+  const refresh = slow.getByRole("button", { name: "Durumu yenile" });
+  await expect(refresh).toBeVisible();
+  await expect(slow.getByRole("button", { name: "Ödemeye dön" })).toBeVisible();
+
+  // Durumu yenile: yeniden yoklar ve bekleme baştan başlar.
+  await refresh.click();
+  await expect(confirming).toBeVisible();
+  await expect(slow).toHaveCount(0);
+
+  // Ödemeye dön: adresten `result` kalkar, yeni ödeme sayfası açılır.
+  await page.clock.runFor(76_000);
+  await slow.getByRole("button", { name: "Ödemeye dön" }).click();
+  await expect(providerFrame(page).locator("button.ok")).toBeVisible({ timeout: 30_000 });
+  expect(new URL(page.url()).searchParams.has("result")).toBe(false);
+  expect(checkouts.n).toBe(1);
+});
+
+test("poll turning paid shows success and redirects to the booking", async ({ page }) => {
+  const code = await bookingAwaitingPayment(page);
+  // İlk iki okuma ödeme bekliyor, sonra bildirim işlenmiş gibi onaylandı.
+  await mockBooking(page, code, (n) => (n <= 2 ? {} : { status: "onaylandi" }));
+  await page.goto(`/tr/bookings/${code}/pay?result=ok`);
+  await expect(panel(page).getByRole("status").filter({ hasText: "Ödemeniz onaylanıyor" })).toBeVisible({
+    timeout: 30_000,
+  });
+  // İstemci tarafı geçiş ("load" olayı yok): adres beklenir.
+  await expect(page).toHaveURL((url) => url.pathname === `/tr/bookings/${code}` && url.searchParams.get("paid") === "1", {
+    timeout: 30_000,
+  });
+});
+
+test("poll turning cancelled shows the cancelled explanation", async ({ page }) => {
+  const code = await bookingAwaitingPayment(page);
+  await mockBooking(page, code, (n) => (n <= 1 ? {} : { status: "iptal" }));
+  await openPay(page, code);
+  await expect(panel(page)).toContainText("Bu rezervasyon iptal edildi", { timeout: 30_000 });
+  await expect(page.locator(".iframe-wrap")).toHaveCount(0);
+});
+
+test("retry double click starts only one payment", async ({ page }) => {
+  const code = await bookingAwaitingPayment(page);
+  const checkouts = await countCheckouts(page, code);
+  await page.goto(`/tr/bookings/${code}/pay?result=fail`);
+  const retry = panel(page).getByRole("button", { name: "Tekrar dene" });
+  await expect(retry).toBeVisible({ timeout: 30_000 });
+  // İki tıklama React yeniden çizmeden aynı anda gelir.
+  await retry.evaluate((b: HTMLButtonElement) => {
+    b.click();
+    b.click();
+  });
+  await expect(providerFrame(page).locator("button.ok")).toBeVisible({ timeout: 30_000 });
+  expect(checkouts.n).toBe(1);
+  // Yeniden deneme adresteki eski sonucu da temizler.
+  expect(new URL(page.url()).searchParams.has("result")).toBe(false);
+});
+
+test("poll 401 sends the user to login", async ({ page }) => {
+  const code = await bookingAwaitingPayment(page);
+  await mockBooking(page, code, (n) => (n <= 1 ? {} : { status: 401, code: "unauthorized" }));
+  await openPay(page, code);
+  await expect(page.locator("#otp-phone")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".pay")).toHaveCount(0);
+});
+
+test("repeated poll network errors pause updates with a refresh action", async ({ page }) => {
+  const code = await bookingAwaitingPayment(page);
+  let down = false;
+  await mockBooking(page, code, () => (down ? { abort: true } : {}));
+  await page.clock.install();
+  await openPay(page, code);
+  down = true;
+  await page.clock.runFor(10_000);
+  const paused = panel(page).locator(".pay-paused");
+  await expect(paused).toContainText("Otomatik güncelleme durdu");
+  // Bildirim engellemez: ödeme sayfası açık kalır.
+  await expect(providerFrame(page).locator("button.ok")).toBeVisible();
+  down = false;
+  await paused.getByRole("button", { name: "Durumu yenile" }).click();
+  await expect(paused).toHaveCount(0);
+});
+
+for (const [status, code] of [
+  [404, "not_found"],
+  [403, "forbidden"],
+] as const) {
+  test(`${status} booking shows final error with a link instead of retry`, async ({ page }) => {
+    const booking = await bookingAwaitingPayment(page);
+    await mockBooking(page, booking, () => ({ status, code }));
+    await page.goto(`/tr/bookings/${booking}/pay`);
+    await expect(panel(page).getByRole("alert")).toBeVisible({ timeout: 30_000 });
+    await expect(panel(page).getByRole("button", { name: "Tekrar dene" })).toHaveCount(0);
+    await expect(panel(page).getByRole("link", { name: "Rezervasyonlarım" })).toHaveAttribute("href", "/tr/bookings");
+  });
+}
+
+test("large TRY amount fits on one line at 360px", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "genişlik testte ayarlanır; tek projede yeter");
+  const code = await bookingAwaitingPayment(page);
+  await mockBooking(page, code, () => ({ total_amount: "12345.00", currency: "TRY" }));
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto(`/tr/bookings/${code}/pay`);
+  const amount = panel(page).locator(".pay-amount");
+  await expect(amount).toHaveText("₺12.345,00", { timeout: 30_000 });
+  const { height, lineHeight, right } = await amount.evaluate((el) => ({
+    height: el.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+    right: el.getBoundingClientRect().right,
+  }));
+  expect(height).toBeLessThan(lineHeight * 1.5);
+  expect(right).toBeLessThanOrEqual(360);
+  const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+  }));
+  expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
 });

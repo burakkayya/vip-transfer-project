@@ -209,7 +209,12 @@
     "inbound": "Return",
     "viewBooking": "View booking",
     "cancelledTitle": "This booking has been cancelled",
-    "cancelledText": "No payment is taken for a cancelled booking. If you still need a transfer, you can make a new booking."
+    "cancelledText": "No payment is taken for a cancelled booking. If you still need a transfer, you can make a new booking.",
+    "confirming": "Confirming your payment…",
+    "confirmSlow": "We have not received the payment confirmation yet. If your card was charged, do not pay again; refresh the status in a few minutes. If you did not complete the payment, you can go back to the payment page.",
+    "refresh": "Refresh status",
+    "backToPayment": "Back to payment",
+    "pollPaused": "Automatic updates have paused: the server cannot be reached."
   },
   "bookings": {
     "title": "My bookings",

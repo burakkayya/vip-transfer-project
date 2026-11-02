@@ -1500,6 +1500,19 @@ dl.summary dd {
   gap: 12px;
 }
 
+/* Yoklama durdu: engellemeyen bildirim, metin ve "Durumu yenile" tek satırda (dar ekranda alt alta). */
+.pay-paused {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.pay-paused > span {
+  flex: 1 1 24ch;
+}
+
 .pay .state-empty .pay-actions {
   justify-content: center;
 }

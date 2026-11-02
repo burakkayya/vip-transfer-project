@@ -103,6 +103,9 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 - Özet kartında ödenecek tutar (API'nin tutarı, tek satır), rezervasyon kodu, güzergâh ve alış tarihi; altında kilit simgesiyle kart bilgisi notu ve saat simgesiyle "Ödenmeyen rezervasyonlar 30 dakika sonra iptal edilir." yazar.
 - Sahte ödeme sayfası açıkken üstünde "Ödemeniz bekleniyor. Onaylandığında bu sayfa kendiliğinden ilerler." yazar; bu sırada **Tekrar dene** düğmesi yoktur (açık ödeme sayfası sıfırlanmaz).
 - Backend kapalıyken (veya ağ kesikken) sayfa "Sunucuya ulaşılamadı…" ve **Tekrar dene** gösterir; backend açılıp düğmeye basınca ödeme sayfası gelir.
+- Sahte sayfada **Ödemeyi onayla** sonrası bildirim gecikirse "Ödemeniz onaylanıyor…" görünür (sayfa yoklamaya devam eder, onay gelince detaya geçer). 75 saniye içinde onay gelmezse sarı uyarı ile **Durumu yenile** ve **Ödemeye dön** çıkar; **Ödemeye dön** adresten `result`'ı kaldırıp yeni ödeme sayfası açar. Denemek için: tarayıcıda `/tr/bookings/<ödeme bekleyen kod>/pay?result=ok` açın.
+- Ödeme sayfası açıkken backend durdurulursa birkaç saniye sonra "Otomatik güncelleme durdu…" ve **Durumu yenile** görünür; ödeme sayfası kapanmaz. Oturum düşerse (çerezler silinirse) SMS girişi yeniden istenir.
+- **Tekrar dene**'ye çift tıklamak tek bir ödeme sayfası açar.
 - İptal edilmiş bir rezervasyonun ödeme adresi açılırsa "Bu rezervasyon iptal edildi" ile **Yeni rezervasyon** ve **Rezervasyonu görüntüle** görünür; ödenmiş rezervasyonda "Ödemeniz alındı…" yazar ve detaya geçilir.
 
 ### 7. Yeni sürücü başvurusu ve belge onayı

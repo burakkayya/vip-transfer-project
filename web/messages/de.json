@@ -209,7 +209,12 @@
     "inbound": "Rückfahrt",
     "viewBooking": "Buchung ansehen",
     "cancelledTitle": "Diese Buchung wurde storniert",
-    "cancelledText": "Für eine stornierte Buchung wird keine Zahlung angenommen. Wenn Sie den Transfer noch brauchen, können Sie neu buchen."
+    "cancelledText": "Für eine stornierte Buchung wird keine Zahlung angenommen. Wenn Sie den Transfer noch brauchen, können Sie neu buchen.",
+    "confirming": "Ihre Zahlung wird bestätigt…",
+    "confirmSlow": "Die Zahlungsbestätigung ist noch nicht bei uns eingegangen. Wurde Ihre Karte belastet, zahlen Sie bitte nicht erneut, sondern aktualisieren Sie den Status in einigen Minuten. Haben Sie die Zahlung nicht abgeschlossen, können Sie zur Zahlungsseite zurückkehren.",
+    "refresh": "Status aktualisieren",
+    "backToPayment": "Zurück zur Zahlung",
+    "pollPaused": "Automatische Aktualisierung angehalten: Server nicht erreichbar."
   },
   "bookings": {
     "title": "Meine Buchungen",

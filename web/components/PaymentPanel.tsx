@@ -10,13 +10,21 @@ import type { Booking, Checkout } from "@/lib/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ErrorState } from "./ErrorState";
 import Icon from "./Icon";
+import { useSessionExpired } from "./RequireLogin";
 import { EmptyState, LoadingState } from "./States";
 
 export const PENDING_KEY = "ga_pending_booking";
 const PAID = new Set(["onaylandi", "atandi", "yolculukta", "tamamlandi"]);
+/** Durum yoklama aralığı. */
+const POLL_MS = 3000;
+/** Art arda bu kadar yoklama hatasından sonra otomatik güncelleme durur ve müşteriye söylenir. */
+const MAX_POLL_FAILURES = 3;
+/** Sağlayıcıdan "ok" ile dönüldükten sonra onayın beklendiği süre; dolunca müşteriye seçenek sunulur (yoklama sürer). */
+const CONFIRM_WAIT_MS = 75_000;
 
 /** Yeniden denemenin anlamsız olduğu hatalar: rezervasyon yok veya bu müşterinin değil. */
 const isFinal = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 403);
+const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401;
 
 /**
  * Ekran 6: ödeme. Kart bilgisi sağlayıcının iFrame'inde girilir (K-17).
@@ -29,14 +37,34 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
   const locale = useLocale();
   const router = useRouter();
   const errorText = useApiError();
+  const sessionExpired = useSessionExpired();
+  const [result, setResult] = useState(props.result);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loadError, setLoadError] = useState<{ text: string; final: boolean } | null>(null);
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [failed, setFailed] = useState(props.result === "fail");
+  const [pollPaused, setPollPaused] = useState(false);
+  const [confirmSlow, setConfirmSlow] = useState(false);
+  const [confirmRound, setConfirmRound] = useState(0);
   const started = useRef(false);
+  const starting = useRef(false);
+  const pollFailures = useRef(0);
 
+  /** Sağlayıcı dönüşündeki `result` adresten kalkar: yenilemede eski sonuç tekrar gösterilmez. */
+  const clearResult = useCallback(() => {
+    setResult(undefined);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("result")) {
+      url.searchParams.delete("result");
+      window.history.replaceState(window.history.state, "", url);
+    }
+  }, []);
+
+  // Aynı anda tek ödeme başlatma isteği: çift tıklama veya hızlı yeniden deneme ikinci ödeme açmaz.
   const start = useCallback(async () => {
+    if (starting.current) return;
+    starting.current = true;
     setCheckoutError(null);
     setFailed(false);
     setCheckout(null);
@@ -45,9 +73,12 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
       sessionStorage.setItem(PENDING_KEY, props.code);
       setCheckout(c);
     } catch (e) {
-      setCheckoutError(errorText(e));
+      if (isUnauthorized(e)) sessionExpired();
+      else setCheckoutError(errorText(e));
+    } finally {
+      starting.current = false;
     }
-  }, [props.code, errorText]);
+  }, [props.code, errorText, sessionExpired]);
 
   const load = useCallback(async () => {
     setLoadError(null);
@@ -56,9 +87,23 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
       setBooking(b);
       if (b.status === "odeme_bekliyor" && !props.result) void start();
     } catch (e) {
-      setLoadError({ text: errorText(e), final: isFinal(e) });
+      if (isUnauthorized(e)) sessionExpired();
+      else setLoadError({ text: errorText(e), final: isFinal(e) });
     }
-  }, [props.code, props.result, start, errorText]);
+  }, [props.code, props.result, start, errorText, sessionExpired]);
+
+  /** Durumu hemen yeniden okur; başarılıysa duran otomatik güncelleme yeniden başlar. */
+  const refresh = useCallback(async () => {
+    try {
+      const b = await api<Booking>(`me/bookings/${props.code}`);
+      pollFailures.current = 0;
+      setPollPaused(false);
+      setBooking(b);
+    } catch (e) {
+      if (isUnauthorized(e)) sessionExpired();
+      else setPollPaused(true);
+    }
+  }, [props.code, sessionExpired]);
 
   useEffect(() => {
     if (started.current) return;
@@ -66,15 +111,29 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
     void load();
   }, [load]);
 
-  // Ödeme bildirimi gelene kadar durum yoklanır.
+  // Ödeme bildirimi gelene kadar durum yoklanır. Oturum düşerse giriş istenir; art arda ağ hatasında durur.
   useEffect(() => {
-    if (!booking || booking.status !== "odeme_bekliyor") return;
+    if (!booking || booking.status !== "odeme_bekliyor" || pollPaused) return;
     const id = setInterval(async () => {
-      const b = await api<Booking>(`me/bookings/${props.code}`).catch(() => null);
-      if (b && b.status !== booking.status) setBooking(b);
-    }, 3000);
+      try {
+        const b = await api<Booking>(`me/bookings/${props.code}`);
+        pollFailures.current = 0;
+        if (b.status !== booking.status) setBooking(b);
+      } catch (e) {
+        if (isUnauthorized(e)) {
+          clearInterval(id);
+          sessionExpired();
+          return;
+        }
+        pollFailures.current += 1;
+        if (pollFailures.current >= MAX_POLL_FAILURES) {
+          clearInterval(id);
+          setPollPaused(true);
+        }
+      }
+    }, POLL_MS);
     return () => clearInterval(id);
-  }, [booking, props.code]);
+  }, [booking, pollPaused, props.code, sessionExpired]);
 
   useEffect(() => {
     if (booking && PAID.has(booking.status)) {
@@ -82,6 +141,27 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
       router.replace(`/bookings/${props.code}?paid=1`);
     }
   }, [booking, props.code, router]);
+
+  // Sağlayıcıdan "ok" ile dönüldü, bildirim henüz işlenmedi: onay beklenir, süre dolunca seçenek sunulur.
+  const confirming =
+    result === "ok" && booking?.status === "odeme_bekliyor" && !checkout && !checkoutError && !failed;
+  useEffect(() => {
+    if (!confirming) return;
+    const id = setTimeout(() => setConfirmSlow(true), CONFIRM_WAIT_MS);
+    return () => clearTimeout(id);
+  }, [confirming, confirmRound]);
+
+  function refreshConfirmation() {
+    setConfirmSlow(false);
+    setConfirmRound((r) => r + 1);
+    void refresh();
+  }
+
+  function retryPayment() {
+    clearResult();
+    setConfirmSlow(false);
+    void start();
+  }
 
   if (loadError) {
     return (
@@ -176,13 +256,22 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
         </div>
       </section>
 
+      {pollPaused && (
+        <div className="alert info pay-paused" role="status">
+          <span>{t("pollPaused")}</span>
+          <button className="btn secondary small" type="button" onClick={() => void refresh()}>
+            {t("refresh")}
+          </button>
+        </div>
+      )}
+
       {failed ? (
         <div className="pay-failed stack">
           <p className="alert error" role="alert">
             {t("failed")}
           </p>
           <div className="pay-actions">
-            <button className="btn pay-retry" type="button" onClick={() => void start()}>
+            <button className="btn pay-retry" type="button" onClick={retryPayment}>
               {t("retry")}
             </button>
           </div>
@@ -198,6 +287,24 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
             <iframe src={checkout.iframe_url} title={t("frameTitle")} allow="payment" />
           </div>
         </>
+      ) : confirming ? (
+        confirmSlow ? (
+          <div className="pay-confirm-slow stack">
+            <p className="alert info" role="status">
+              {t("confirmSlow")}
+            </p>
+            <div className="pay-actions">
+              <button className="btn" type="button" onClick={refreshConfirmation}>
+                {t("refresh")}
+              </button>
+              <button className="btn secondary" type="button" onClick={retryPayment}>
+                {t("backToPayment")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <LoadingState label={t("confirming")} />
+        )
       ) : (
         <LoadingState label={t("preparing")} />
       )}
