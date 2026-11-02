@@ -18,7 +18,7 @@ Durum: **taban çizgisi alındı, plan onayı bekleniyor** (2026-11-02). Plan: `
 
 ### Ekran görüntüleri ("önce")
 
-`screenshots/before/` (toplam 138 görüntü, 26 MB). Betikler proje dışında (geçici klasörde `playwright-core` + makinedeki chromium-1248) çalıştırıldı; projeye bağımlılık eklenmedi.
+`screenshots/before/` (toplam 138 görüntü, 26 MB). Betikler proje dışında (geçici klasörde `playwright-core` + makinedeki chromium-1248) çalıştırıldı; parametrelendirilmiş halleri artık `scripts/ui-shots/` altındadır (bkz. oradaki README; önce/sonra aynı adlarla üretilir).
 
 | Yüzey | Kapsam | Adet |
 |---|---|---|

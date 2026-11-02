@@ -8,6 +8,7 @@ htmlcov/
 
 # --- Node / Next.js (web, admin) ---
 node_modules/
+scripts/ui-shots/node_modules/
 .next/
 out/
 next-env.d.ts

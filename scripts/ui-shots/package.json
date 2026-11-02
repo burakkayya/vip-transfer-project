@@ -1,0 +1,11 @@
+{
+  "name": "ui-shots",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VIP Transfer arayüz taraması için önce/sonra ekran görüntüsü ve axe betikleri",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "playwright-core": "1.64.1"
+  }
+}
