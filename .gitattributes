@@ -1,0 +1,3 @@
+# Kabuk betikleri her platformda LF kalmalı (Impeccable başlatıcısı #!/bin/sh).
+.claude/skills/impeccable/scripts/impeccable text eol=lf
+*.sh text eol=lf

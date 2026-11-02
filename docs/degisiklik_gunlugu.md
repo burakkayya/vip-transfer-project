@@ -2,6 +2,14 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-02 (Claude Code'a taşıma, arayüz taraması tabanı)
+
+- **Taban çizgisi** (`main` 7ba4480, kod değişikliği yok): backend 78 test geçti; web, admin, mobil `tsc` temiz; web ve admin build başarılı. Lint ve ön yüz testi altyapısı yok.
+- **Ekran envanteri** ve "önce" ekran görüntüleri (138 adet; web tr/de × 1440/390, mobil müşteri tr/de, sürücü tr, admin giriş) ve axe taban ölçümü: `docs/ui-review/README.md`, `docs/ui-review/screenshots/before/`.
+- Impeccable 0.1.18 projede yerel (`.claude/skills/impeccable`), `doctor` bulgusu yok.
+- **Tasarım bağlamı**: `PRODUCT.md` (web + admin, platform `web`) ve `mobile/PRODUCT.md` (platform `adaptive`); `DESIGN.md` ve `mobile/DESIGN.md` (North Star "Kıyı Yolu", üç yüzeyde ortak renk tokenları); Impeccable sidecar'ları `.impeccable/design.json`, `mobile/.impeccable/design.json`.
+- **Spec**: `docs/superpowers/specs/2026-11-02-impeccable-tarama-design.md` (dört hat: altyapı, arayüz taraması, 6 dil, gerçek harita + polyline). Brainstorming kararları onaylanınca K-36'dan itibaren `kararlar.md`'ye işlenecek. Plan henüz yazılmadı.
+
 ## 2026-10-31 (düzeltmeler, dal `redesign/web-mobile-ui`)
 
 - **VIP Minibüs** ayrı araç tipi (K-35): `backend/app/seed.py` (`vip_minibus`, çarpan 2,40), web ve mobil görsel eşlemesi, VIP etiketi. Test `test_api_customer.py` güncellendi; backend 78 test geçti.
