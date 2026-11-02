@@ -47,7 +47,7 @@ node axe.js --out after
 
 ### Ekran adları
 
-- **web**: `home`, `book-empty`, `bookings-anon`, `account-anon`, `data-request-anon`, `legal-cancellation`, `legal-privacy`, `legal-distance-sales`, `legal-cookies`, `not-found`, `booking-not-found`, `book-1-vehicle`, `book-2-details`, `book-3-verify`, `book-4-otp`, `book-5-confirm`, `pay`, `pay-failed`, `booking-detail-paid`, `booking-cancel-preview`, `bookings-list`, `account`, `data-request`. `--only` tam eşleşir. Oturumsuz ekranlar tek başına çekilebilir; akış ve oturumlu ekranlar için tam rezervasyon akışı (OTP + sahte ödeme) çalışır.
+- **web**: `home`, `book-empty`, `bookings-anon`, `account-anon`, `data-request-anon`, `legal-cancellation`, `legal-privacy`, `legal-distance-sales`, `legal-cookies`, `not-found` (`/<dil>/bu-sayfa-yok`), `not-found-in-locale` (`/<dil>/legal/olmayan`), `booking-not-found`, `book-1-vehicle`, `book-2-details`, `book-3-verify`, `book-4-otp`, `book-5-confirm`, `pay`, `pay-failed`, `booking-detail-paid`, `booking-cancel-preview`, `bookings-list`, `account`, `data-request`. `--only` tam eşleşir. Oturumsuz ekranlar tek başına çekilebilir; akış ve oturumlu ekranlar için tam rezervasyon akışı (OTP + sahte ödeme) çalışır.
 - **mobile / driver**: dosya adının uzantısız hali (`customer-tr-home`, `driver-tr-home-offer`) veya son eki (`home`). `driver-tr-home-offer`, `-trip-assigned`, `-trip-sign`, `-trip-enroute` ve `customer-tr-booking-live` bir müşteri rezervasyonu ile çevrimiçi sürücü ister; betik bunu kendisi kurar. Müşteri akışı `--only` ile son istenen ekrandan sonra durur. Metin seçicileri yalnızca `tr` ve `de` içindir; yeni dillerde mobil betik seçicileri güncellenmelidir.
 - **admin**: `login` (her zaman oturumsuz) ve panel ekranları `dashboard`, `bookings`, `dispatch`, `drivers`, `documents`, `vehicles`, `regions`, `pricing`, `commission`, `exchange-rates`, `payments`, `payouts`, `invoices`, `customers`, `templates`, `data-requests`, `users`, `audit-logs`, `settings`, `account`, ayrıca listedeki ilk satırın ayrıntısı `bookings-detail` ve `drivers-detail` (satır yoksa atlanır).
 
@@ -66,4 +66,6 @@ Admin yenileme jetonu her kullanımda döner. Bu yüzden `admin.js` ve `axe.js` 
 
 - `--only` kullanıldığında web günlüğü `_log-only.json` olarak yazılır (tam günlük `_log.json` ezilmez).
 - Çıktı adları taban çizgisindeki dosyalarla aynıdır; önce/sonra çiftleri dosya adıyla eşleşir.
+- Web betiği her çalıştırmada benzersiz OTP telefonu kullanır; bir ekran zaman aşımına uğrarsa `missed` listesine yazılır, `_log.json` yine yazılır ve betik sonunda exit 1 verir.
+- Admin oturum dosyası, çalışma hata ile kesilse bile `finally` içinde geri yazılır (oturum geçersiz değilse).
 - Mobil betikte bir adım başarısız olursa `missed` listesinde raporlanır ve betik exit 1 ile biter; kalan ekranlar yine çekilir.

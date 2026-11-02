@@ -89,6 +89,7 @@ async function shot(page, vp, name) {
       }
       return true;
     };
+    try {
     for (const vp of VIEWPORTS) {
       if (expired) break;
       await p.setViewportSize({ width: vp.width, height: vp.height });
@@ -107,13 +108,16 @@ async function shot(page, vp, name) {
         if (await open(URLS.admin + href)) await shot(p, vp, name);
       }
     }
-    if (expired) {
-      notes.push("Oturum geçersiz (login'e yönlendi); panel ekranları eksik. Oturumu yenile: cd admin && npx playwright test --project=setup");
-      process.exitCode = 1;
-    } else {
-      await ctx.storageState({ path: ADMIN_STATE }); // dönen yenileme jetonunu sakla
+    } finally {
+      // Hata olsa da dönen yenileme jetonu saklanır; aksi halde oturum dosyası ölü kalır.
+      if (expired) {
+        notes.push("Oturum geçersiz (login'e yönlendi); panel ekranları eksik. Oturumu yenile: cd admin && npx playwright test --project=setup");
+        process.exitCode = 1;
+      } else {
+        await ctx.storageState({ path: ADMIN_STATE }).catch(() => {});
+      }
+      await ctx.close().catch(() => {});
     }
-    await ctx.close();
   }
   await browser.close();
   console.log(JSON.stringify({ shots: done.length, files: done, notes }, null, 2));

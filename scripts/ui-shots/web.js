@@ -26,6 +26,7 @@ const ANON = [
   ["legal-distance-sales", (l) => `/${l}/legal/distance-sales`],
   ["legal-cookies", (l) => `/${l}/legal/cookies`],
   ["not-found", (l) => `/${l}/bu-sayfa-yok`],
+  ["not-found-in-locale", (l) => `/${l}/legal/olmayan`],
   ["booking-not-found", (l) => `/${l}/bookings/ZZZZZZ`],
 ];
 const FLOW = [
@@ -38,6 +39,7 @@ const LOGGED = [
   ["data-request", (l) => `/${l}/data-request`],
 ];
 const log = [];
+const missed = [];
 
 function inDays(d, h) {
   const t = new Date(Date.now() + d * 864e5);
@@ -89,15 +91,22 @@ function errors(page, bucket) {
       // Oturumsuz ekranlar
       for (const [name, url] of ANON) {
         if (!filter.want(name)) continue;
-        await a.goto(BASE + url(loc));
-        await shot(a, prefix, name);
+        try {
+          await a.goto(BASE + url(loc));
+          await shot(a, prefix, name);
+        } catch (e) {
+          missed.push({ name: prefix + "-" + name, error: String(e.message).split("\n")[0] });
+        }
       }
 
       if (needFlow) {
+        let stage = "book-1-vehicle";
+        try {
         // Rezervasyon akışı (oturumsuz başlar, OTP ile giriş)
         await a.goto(`${BASE}/${loc}/book?from=ayt&to=kemer&at=${inDays(5, 10)}`);
         await a.waitForSelector(".vehicle-card .price", { timeout: 30000 });
         await shot(a, prefix, "book-1-vehicle");
+        stage = "book-2-details";
         await a.locator(".vehicle-card:not([disabled])").first().click();
         await a.fill("#name", "Test Yolcu");
         await shot(a, prefix, "book-2-details");
@@ -105,12 +114,15 @@ function errors(page, bucket) {
         await a.waitForSelector("#otp-phone");
         await shot(a, prefix, "book-3-verify");
         n += 1;
-        await a.fill("#otp-phone", `555000${String(n).padStart(4, "0")}`);
+        stage = "book-4-otp";
+        // Her çalıştırmada benzersiz numara (Date.now son 5 hane + sıra no): önceki çalıştırmaların rezervasyonlarıyla karışmaz.
+        await a.fill("#otp-phone", `555${String(Date.now()).slice(-5)}${String(n).padStart(2, "0")}`);
         await a.locator("form:has(#otp-phone) button[type=submit]").click();
         await a.waitForSelector(".dev-hint");
         await shot(a, prefix, "book-4-otp");
         await a.click(".dev-hint");
         await a.locator("form:has(#otp-code) button[type=submit]").click();
+        stage = "book-5-confirm";
         await a.waitForSelector(".confirm-total", { timeout: 30000 });
         await shot(a, prefix, "book-5-confirm");
         const checks = a.locator(".check input[type=checkbox]");
@@ -119,6 +131,7 @@ function errors(page, bucket) {
         await a.locator("button.btn.primary.big").click();
 
         // Ödeme: sahte sağlayıcı, önce red sonra onay
+        stage = "pay";
         await a.waitForURL(/\/bookings\/[A-Z0-9]+\/pay/, { timeout: 30000 });
         const code = a.url().match(/bookings\/([A-Z0-9]+)\/pay/)[1];
         const frame = a.frameLocator(".iframe-wrap iframe");
@@ -134,6 +147,7 @@ function errors(page, bucket) {
         await a.waitForURL(/paid=1/, { timeout: 40000 });
         await a.waitForTimeout(800);
         await shot(a, prefix, "booking-detail-paid");
+        stage = "booking-cancel-preview";
         await a.locator(".row button.btn.ghost").first().click();
         await a.waitForSelector("button.btn.danger");
         await shot(a, prefix, "booking-cancel-preview");
@@ -141,19 +155,25 @@ function errors(page, bucket) {
         // Oturumlu ekranlar
         for (const [name, url] of LOGGED) {
           if (!filter.want(name)) continue;
+          stage = name;
           await a.goto(BASE + url(loc));
           await a.waitForTimeout(1200);
           await shot(a, prefix, name);
         }
         log.push({ prefix, bookingCode: code });
+        } catch (e) {
+          // Akış adımları birbirine bağlıdır; hata o dil/genişlik için akışı keser, sonraki dile geçilir.
+          missed.push({ name: prefix + "-" + stage, error: String(e.message).split("\n")[0] });
+        }
       }
       await ctx.close();
     }
   }
   await browser.close();
-  fs.writeFileSync(path.join(OUT, filter.all ? "_log.json" : "_log-only.json"), JSON.stringify({ log, consoleErrors }, null, 2));
+  fs.writeFileSync(path.join(OUT, filter.all ? "_log.json" : "_log-only.json"), JSON.stringify({ log, consoleErrors, missed }, null, 2));
   const shots = log.filter((l) => l.file);
-  console.log(JSON.stringify({ shots: shots.length, overflow: shots.filter((l) => l.hOverflowPx > 0), consoleErrors }, null, 2));
+  console.log(JSON.stringify({ shots: shots.length, overflow: shots.filter((l) => l.hOverflowPx > 0), consoleErrors, missed }, null, 2));
+  if (missed.length) process.exitCode = 1;
 })().catch((e) => {
   console.error("FAILED", e);
   process.exit(1);

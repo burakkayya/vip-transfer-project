@@ -65,6 +65,7 @@ function buildPages() {
   const anon = await browser.newContext();
   const authed = needAuth ? await browser.newContext({ storageState: ADMIN_STATE }) : null;
   let expired = false;
+  try {
   for (const [w, h] of [[1440, 900], [390, 844]]) {
     for (const pg of pages) {
       const ctx = pg.auth ? authed : anon;
@@ -87,16 +88,19 @@ function buildPages() {
       await p.close();
     }
   }
-  if (authed) {
-    if (expired) {
-      console.error("UYARI: admin oturumu geçersiz; panel ölçümleri login sayfasını ölçtü. Yenile: cd admin && npx playwright test --project=setup");
-      process.exitCode = 1;
-    } else {
-      await authed.storageState({ path: ADMIN_STATE });
+  } finally {
+    // Hata olsa da dönen yenileme jetonu saklanır; aksi halde oturum dosyası ölü kalır.
+    if (authed) {
+      if (expired) {
+        console.error("UYARI: admin oturumu geçersiz; panel ölçümleri login sayfasını ölçtü. Yenile: cd admin && npx playwright test --project=setup");
+        process.exitCode = 1;
+      } else {
+        await authed.storageState({ path: ADMIN_STATE }).catch(() => {});
+      }
+      await authed.close().catch(() => {});
     }
-    await authed.close();
+    await anon.close().catch(() => {});
   }
-  await anon.close();
   await browser.close();
   const dir = path.join(REPO, "docs", "ui-review", "screenshots", out);
   fs.mkdirSync(dir, { recursive: true });
