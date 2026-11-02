@@ -96,7 +96,14 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 3. Admin → **Ödemeler ve iadeler**: iade kayıtları.
 
 ### 6. Başarısız ödeme
-1. Ödeme ekranında sahte sayfada **Reddet** → "Ödeme tamamlanamadı" → **Tekrar dene** → **Ödemeyi onayla**.
+1. Ödeme ekranında sahte sayfada **Reddet** → "Ödeme tamamlanamadı. Kart bilgilerinizi kontrol edip…" (kırmızı uyarı; tutar ve özet yerinde kalır) → siyah **Tekrar dene** → **Ödemeyi onayla**.
+
+Ödeme ekranı ek kontrolleri (B-W4; `/bookings/<kod>/pay`):
+- Açılırken önce "Oturum denetleniyor…", sonra "Rezervasyon bilgileri yükleniyor…", ardından "Güvenli ödeme sayfası hazırlanıyor…" görünür; boş ekran kalmaz.
+- Özet kartında ödenecek tutar (API'nin tutarı, tek satır), rezervasyon kodu, güzergâh ve alış tarihi; altında kilit simgesiyle kart bilgisi notu ve saat simgesiyle "Ödenmeyen rezervasyonlar 30 dakika sonra iptal edilir." yazar.
+- Sahte ödeme sayfası açıkken üstünde "Ödemeniz bekleniyor. Onaylandığında bu sayfa kendiliğinden ilerler." yazar; bu sırada **Tekrar dene** düğmesi yoktur (açık ödeme sayfası sıfırlanmaz).
+- Backend kapalıyken (veya ağ kesikken) sayfa "Sunucuya ulaşılamadı…" ve **Tekrar dene** gösterir; backend açılıp düğmeye basınca ödeme sayfası gelir.
+- İptal edilmiş bir rezervasyonun ödeme adresi açılırsa "Bu rezervasyon iptal edildi" ile **Yeni rezervasyon** ve **Rezervasyonu görüntüle** görünür; ödenmiş rezervasyonda "Ödemeniz alındı…" yazar ve detaya geçilir.
 
 ### 7. Yeni sürücü başvurusu ve belge onayı
 1. Sürücü önizleme → çıkış → yeni bir numarayla giriş → **Sürücü kaydı** formu.

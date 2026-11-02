@@ -151,9 +151,9 @@ function errors(page, bucket) {
         await shot(a, prefix, "pay");
         await frame.locator("button.no").click();
         await a.waitForURL(/result=fail/, { timeout: 30000 });
-        await a.waitForSelector(".alert.error");
+        await a.waitForSelector(".pay [role=alert]");
         await shot(a, prefix, "pay-failed");
-        await a.locator("button.btn.secondary").click();
+        await a.locator(".pay-retry").click();
         await frame.locator("button.ok").waitFor({ timeout: 30000 });
         await frame.locator("button.ok").click();
         await a.waitForURL(/paid=1/, { timeout: 40000 });

@@ -1353,7 +1353,13 @@
   border-radius: 8px;
   background: linear-gradient(90deg, var(--soft) 0%, var(--soft-2) 50%, var(--soft) 100%);
   background-size: 200% 100%;
-  animation: shimmer 1.2s linear infinite;
+}
+
+/* Parıltı yalnızca hareket serbestken; azaltılmış harekette iskelet durağan kalır. */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: shimmer 1.2s linear infinite;
+  }
 }
 
 @keyframes shimmer {
