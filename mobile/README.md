@@ -21,6 +21,7 @@ Web önizlemesi yalnızca geliştirme içindir. Jetonlar orada `localStorage`'da
 
 - `npm test` → jest-expo + React Native Testing Library (`__tests__/`). RNTL 14'te `render` asenkrondur: `await render(<... />)`.
 - Yerel modüller `jest.setup.ts` içinde taklit edilir (Reanimated, haptics, secure-store). Reanimated 4 için `jest.config.js` paketin kendi çözücüsünü kullanır.
+- `expo-modules-core` `dependencies` içinde açıkça listelenir: jest-expo onu kök `node_modules`'tan çözer, `expo/node_modules` altında iç içe kalırsa "Cannot find module" hatası verir. Test paketleri (`jest`, `jest-expo`, `@testing-library/react-native`, `@types/jest`) `devDependencies`'tedir.
 - `npm run lint` → ESLint 9 (`eslint-config-expo/flat`). Mevcut bulgular `docs/ui-review/lint-taban.md` "mobile" bölümünde.
 - `npm run typecheck` → `tsc --noEmit`.
 
