@@ -35,6 +35,7 @@ export default function AddressField(props: {
   error?: string | null;
 }) {
   const t = useTranslations("trip");
+  const tErrors = useTranslations("errors");
   const locale = useLocale();
   const errorText = useApiError();
   const listId = useId();
@@ -45,6 +46,9 @@ export default function AddressField(props: {
   const [searching, setSearching] = useState(false);
   const [active, setActive] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Arama hatasında "Tekrar dene" aynı sorguyu yeniden gönderir.
+  const [searchTry, setSearchTry] = useState(0);
+  const [searchFailed, setSearchFailed] = useState(false);
   const session = useRef(newSession());
   const box = useRef<HTMLDivElement>(null);
 
@@ -74,6 +78,7 @@ export default function AddressField(props: {
     const q = query.trim();
     if (q.length < 3) {
       setPlaces([]);
+      setSearchFailed(false);
       return;
     }
     const timer = setTimeout(async () => {
@@ -82,14 +87,16 @@ export default function AddressField(props: {
         const qs = new URLSearchParams({ q, session: session.current, lang: locale });
         setPlaces(await api<PlaceSuggestion[]>(`places/autocomplete?${qs}`));
         setError(null);
+        setSearchFailed(false);
       } catch (e) {
         setError(errorText(e));
+        setSearchFailed(true);
       } finally {
         setSearching(false);
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, locale, errorText]);
+  }, [query, locale, errorText, searchTry]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -102,6 +109,7 @@ export default function AddressField(props: {
   async function choose(o: Option) {
     setOpen(false);
     setError(null);
+    setSearchFailed(false);
     if (o.kind === "region") {
       props.onChange(regionEndpoint(o.region));
     } else {
@@ -212,6 +220,13 @@ export default function AddressField(props: {
         </ul>
       )}
       {shownError && <span className="field-error" id={errorId} role={props.error ? "alert" : undefined}>{shownError}</span>}
+      {!props.error && searchFailed && !props.value && (
+        <div>
+          <button type="button" className="btn link" onClick={() => setSearchTry((n) => n + 1)}>
+            {tErrors("retry")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

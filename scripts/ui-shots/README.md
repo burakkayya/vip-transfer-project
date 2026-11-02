@@ -19,7 +19,7 @@ Bağımlılıklar: `playwright-core` ve `@axe-core/playwright` (sürümler sabit
 
 Geliştirme yığını ayakta olmalıdır: API (8000), web (3000), admin (3001), müşteri mobil önizlemesi (8081), sürücü önizlemesi (8082). Adresler ortam değişkeniyle değişir: `WEB_URL`, `ADMIN_URL`, `MOBILE_URL`, `DRIVER_URL`.
 
-Web, mobil ve sürücü betikleri yerel geliştirme veritabanında gerçek rezervasyon, OTP girişi ve sahte ödeme oluşturur; bu beklenen davranıştır. Üretim adreslerine karşı çalıştırılmaz.
+Web, mobil ve sürücü betikleri yerel geliştirme veritabanında gerçek rezervasyon, OTP girişi ve sahte ödeme oluşturur; bu beklenen davranıştır. Üretim adreslerine karşı çalıştırılmaz. `web.js` `--only` ile yalnızca `book-1-vehicle` … `book-5-confirm` arası istenirse akış son istenen ekranda durur: rezervasyon oluşturulmaz, ödeme yapılmaz (`book-3-verify` ve sonrası yine OTP girişi yapar).
 
 ## Betikler
 

@@ -76,13 +76,14 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Ön yüz test altyapısı (K-40, 2026-11-02)
 
-- [ ] Lint taban borcu: web 4 (3 hata, 1 uyarı; B-W0 `Motion.tsx` iki, B-W1 ana sayfa bir uyarıyı giderdi), admin 3 (1/2), mobil 9 (7/2) ihlal (`docs/ui-review/lint-taban.md`). Ekran görevleri ilgili dosyaya dokundukça giderilir; plan kapanışında lint sıfır ihlalle zorunlu olur, o zamana kadar `npm run lint` sıfırdan farklı çıkar ve web/admin `next.config.ts` içinde `eslint.ignoreDuringBuilds: true` durur.
+- [ ] Lint taban borcu: web 1 (1 hata, `OtpLogin.tsx` `no-autofocus`, B-W3; B-W0 `Motion.tsx` iki, B-W1 ana sayfa bir uyarıyı, B-W2 `BookingWizard.tsx` iki hata ve bir uyarıyı giderdi), admin 3 (1/2), mobil 9 (7/2) ihlal (`docs/ui-review/lint-taban.md`). Ekran görevleri ilgili dosyaya dokundukça giderilir; plan kapanışında lint sıfır ihlalle zorunlu olur, o zamana kadar `npm run lint` sıfırdan farklı çıkar ve web/admin `next.config.ts` içinde `eslint.ignoreDuringBuilds: true` durur.
 - [ ] Yerel e2e admin hesabı: admin Playwright testleri geliştirme veritabanında ayrı bir admin hesabıyla çalışır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (repoya yazılmaz). Geliştirme veritabanında eski, pasif iki e2e personel kaydı kalmıştır; temizlenip temizlenmeyeceği kararlaştırılacak. Üretimde bu hesap açılmaz.
 
 ## Arayüz taraması (2026-11-02)
 
 - [ ] Logo alt yazısı "TRANSFERS" 9,28 px (`.brand-sub` 0.58rem); Impeccable detector `undersized-ui-text` olarak işaretliyor. Logotip olduğu için (bağlantının adı `aria-label`) değiştirilmedi; büyütmek kimlik kararıdır.
 - [ ] Üretim derlemesinde `notFound()` çağıran dinamik rotalar (`/tr/yok`, `/tr/bookings/XX`) sunucuda `__next_error__` kabuğu döndürür, 404 içeriği istemcide çizilir (durum kodu 404, tarayıcıda `html[lang]` ve başlık doğru). JavaScript'siz istemci yalnızca kabuğu görür; Next 15 davranışı, B-W0'dan önce de vardı.
+- [ ] Rezervasyon sihirbazı (B-W2'den açık P2): telefonda onay adımında araç ve tarih özeti formun altında kalıyor (ödeme adımıyla birlikte, B-W4); rezervasyon oluşturma hatalarından yalnızca `price_changed` ve oturum düşmesi (401) özel ele alınıyor, diğerleri genel "Bir hata oluştu" metni.
 - [ ] Web e2e geliştirme sunucusunda 4 paralel işçiyle `smoke` testi ara sıra `net::ERR_ABORTED` ile düşüyor (sayfa derlenirken); `--workers=1` ile tümü geçiyor.
 
 ## Operasyon

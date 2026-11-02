@@ -53,6 +53,13 @@ Ana sayfa ek kontrolleri (B-W1):
 - **Tek yön / Gidiş-dönüş** seçicisinde ok tuşları seçimi değiştirir. Yolcu ve bagaj **−/+** düğmelerinin ekran okuyucu adı "Yolcu sayısını azalt" gibidir.
 - İşletim sisteminde "hareketi azalt" açıkken sayfa kaydırılmadan tüm bölümler görünür; kapalıyken giriş sahnesi oynar, "Nasıl çalışır" rayı görününce çizilir, Vito görününce yola girer.
 
+Rezervasyon sihirbazı ek kontrolleri (B-W2):
+- Adım göstergesi oturumsuz kullanıcıda dört adımdır (**Araç, Bilgiler, Doğrulama, Onay**) ve telefon doğrulandıktan sonra da dört kalır; oturumla gelen kullanıcı üç adım görür. Telefonda (dar ekran) yalnızca etkin adımın adı yazılır.
+- Her adımda **Geri** başlığın sağındadır; **Rotayı değiştir** sonrası **Vazgeç, araçlara dön** önceki rotaya döner.
+- **Bilgiler**: ad boşken **Devam** → "Yolcunun adını ve soyadını yazın." ve imleç ad alanına gider. Uçuş numarasına `TK` yazıp **Devam** → alanın altında "Uçuş numarası geçersiz…"; düzeltince kaybolur (`TK12`, `TK1234` geçerlidir).
+- **Onay**: üç kutu işaretsiz gelir; ilk ikisi işaretlenene kadar ödeme düğmesi kapalıdır ve yanında nedeni yazar. Kampanya kutusu isteğe bağlıdır. Kartın üstünde iptal kademeleri yazar (48 saat ve üzeri %100, 24-48 saat %50, 24 saatten az iade yok).
+- Backend kapalıyken (veya ağ kesikken) araç adımında "Sunucuya ulaşılamadı…" ve **Tekrar dene** görünür; adres aramasında da aynı.
+
 ### 2. İlçe bazlı fiyat kontrolü
 1. Senaryo 1'in ilk adımını **Kalkan** ve ardından **Kaş Merkez** ile tekrarlayın. İkisi de Kaş ilçesinde olduğu için fiyat aynıdır.
 2. **Kaleiçi → Lara** (ikisi de Muratpaşa): aynı ilçe içinde gerçek mesafe kullanılır, minimum fiyat çıkar.

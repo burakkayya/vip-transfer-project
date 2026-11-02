@@ -38,6 +38,12 @@ const LOGGED = [
   ["account", (l) => `/${l}/account`],
   ["data-request", (l) => `/${l}/data-request`],
 ];
+// --only yalnızca akışın erken ekranlarını isterse akış orada durur: onay adımından sonra
+// rezervasyon oluşturulmaz, sahte ödeme yapılmaz.
+const LOGGED_NAMES = LOGGED.map(([n]) => n);
+function nothingAfter(name) {
+  return !filter.wantAny(FLOW.slice(FLOW.indexOf(name) + 1)) && !filter.wantAny(LOGGED_NAMES);
+}
 const log = [];
 const missed = [];
 
@@ -102,17 +108,21 @@ function errors(page, bucket) {
       if (needFlow) {
         let stage = "book-1-vehicle";
         try {
+        await (async () => {
         // Rezervasyon akışı (oturumsuz başlar, OTP ile giriş)
         await a.goto(`${BASE}/${loc}/book?from=ayt&to=kemer&at=${inDays(5, 10)}`);
         await a.waitForSelector(".vehicle-card .price", { timeout: 30000 });
         await shot(a, prefix, "book-1-vehicle");
+        if (nothingAfter("book-1-vehicle")) return;
         stage = "book-2-details";
         await a.locator(".vehicle-card:not([disabled])").first().click();
         await a.fill("#name", "Test Yolcu");
         await shot(a, prefix, "book-2-details");
+        if (nothingAfter("book-2-details")) return;
         await a.locator("form.card button[type=submit]").click();
         await a.waitForSelector("#otp-phone");
         await shot(a, prefix, "book-3-verify");
+        if (nothingAfter("book-3-verify")) return;
         n += 1;
         stage = "book-4-otp";
         // Her çalıştırmada benzersiz numara (Date.now son 5 hane + sıra no): önceki çalıştırmaların rezervasyonlarıyla karışmaz.
@@ -120,11 +130,13 @@ function errors(page, bucket) {
         await a.locator("form:has(#otp-phone) button[type=submit]").click();
         await a.waitForSelector(".dev-hint");
         await shot(a, prefix, "book-4-otp");
+        if (nothingAfter("book-4-otp")) return;
         await a.click(".dev-hint");
         await a.locator("form:has(#otp-code) button[type=submit]").click();
         stage = "book-5-confirm";
         await a.waitForSelector(".confirm-total", { timeout: 30000 });
         await shot(a, prefix, "book-5-confirm");
+        if (nothingAfter("book-5-confirm")) return;
         const checks = a.locator(".check input[type=checkbox]");
         await checks.nth(0).check();
         await checks.nth(1).check();
@@ -161,6 +173,7 @@ function errors(page, bucket) {
           await shot(a, prefix, name);
         }
         log.push({ prefix, bookingCode: code });
+        })();
         } catch (e) {
           // Akış adımları birbirine bağlıdır; hata o dil/genişlik için akışı keser, sonraki dile geçilir.
           missed.push({ name: prefix + "-" + stage, error: String(e.message).split("\n")[0] });

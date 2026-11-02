@@ -1273,16 +1273,17 @@
 
 /* --- Rezervasyon sihirbazı (Uber tarzı araç seçimi) ----------------------- */
 
-.wizard-main > section,
-.wizard-main > .card,
-.wizard-main > form {
-  animation: step-in 0.5s var(--ease);
+/* Yeni adım yerine kısa bir kayışla oturur; hareket azaltılmışsa hiç animasyon yok. */
+@media (prefers-reduced-motion: no-preference) {
+  .wizard-step {
+    animation: step-in 0.32s var(--ease);
+  }
 }
 
 @keyframes step-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
 }
 
@@ -1332,6 +1333,13 @@
 
 .vehicle-info strong {
   font-size: 1.25rem;
+}
+
+/* Kapasite hapının içindeki sayı ve ekran okuyucu metni ayrı hap çizmez. */
+.vehicle-info .specs span span {
+  padding: 0;
+  background: none;
+  border-radius: 0;
 }
 
 .vehicle-price .price {
