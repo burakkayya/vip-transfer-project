@@ -176,7 +176,7 @@ Siyah-beyaz bir yol; tek sıcak vurgu ve yalnızca anlam taşıyan durum renkler
 ### Named Rules
 **The Brass Is Rare Rule.** Şampanya pirinci bir ekranın %10'unu geçmez ve yalnızca "özel" anlarda görünür (VIP, teklif, seçili durum). Birincil eylem her zaman lake siyahtır.
 
-**The Text Floor Rule.** Metin rengi, zemininde 4,5:1'in altına düşmez. Yer tutucu metin dahil hiçbir metin `slate-faint`'ten açık olamaz.
+**The Text Floor Rule.** Metin rengi, zemininde 4,5:1'in altına düşmez. Yer tutucu metin dahil hiçbir metin `slate-faint`'ten açık olamaz. `slate-faint` yalnızca kâğıt/tuval zemininde (kireçtaşında 4,14:1 kalır).
 
 **The Status Means Status Rule.** Kırmızı, yeşil ve kehribar yalnızca durum bildirir; süs olarak kullanılmaz.
 
@@ -248,7 +248,7 @@ Bileşen hissi yüzeye göre ayrıdır: **web dokunsal ve kendinden emin**, **ad
 - **Style:** kireçtaşı zemin, şeffaf 1,5 px kenar, 12 px köşe, 13×14 px iç boşluk; etiket alanın üstünde 0.82rem 600.
 - **Focus:** kenar lake siyah, zemin kâğıda döner.
 - **Error:** alanın altında sinyal kırmızısı metin; alan `aria-invalid` ve `aria-describedby` ile bağlanır.
-- **Placeholder:** en az `slate-faint`.
+- **Placeholder:** `slate-text` (kireçtaşı zeminde 4,86:1). Üzerine gelince zemin koyulaşmaz; `hairline-strong` kenar belirir.
 
 ### Chips / Badges
 - **Style:** tam yuvarlak hap; durum rozetleri yumuşak zemin + koyu durum rengi. VIP rozeti lake siyah zemin, beyaz metin.

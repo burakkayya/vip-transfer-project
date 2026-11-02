@@ -50,12 +50,61 @@ test("keyboard focus is visible on primary button", async ({ page }) => {
   expect(ring.color).toBe(await resolveColor(page, "--ink"));
 });
 
-test("placeholder meets contrast", async ({ page }) => {
-  await page.goto("/tr");
-  const input = page.locator("input[placeholder]").first();
-  await expect(input).toBeAttached();
-  const color = await input.evaluate((el) => getComputedStyle(el, "::placeholder").color);
-  expect(color).toBe(await resolveColor(page, "--faint"));
+/** WCAG kontrast oranı: yer tutucu rengi ile alanın gerçek (saydamsa üst öğelerden gelen) zemini. */
+async function placeholderContrast(page: Page, selector: string): Promise<number> {
+  return page.locator(selector).first().evaluate((el) => {
+    const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+    const lum = ([r, g, b]: number[]) => {
+      const f = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    let bg = "rgb(255, 255, 255)";
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      const c = getComputedStyle(n).backgroundColor;
+      const a = rgb(c);
+      if (a.length === 3 || (a.length === 4 && a[3] === 1)) {
+        bg = c;
+        break;
+      }
+    }
+    const fg = lum(rgb(getComputedStyle(el, "::placeholder").color));
+    const back = lum(rgb(bg));
+    return (Math.max(fg, back) + 0.05) / (Math.min(fg, back) + 0.05);
+  });
+}
+
+for (const c of [
+  { name: "home address", path: "/tr", selector: "input[placeholder]" },
+  { name: "booking code", path: "/tr/bookings", selector: 'input[placeholder="GA7K3P9Q"]' },
+]) {
+  test(`placeholder meets contrast: ${c.name}`, async ({ page }) => {
+    await page.goto(c.path);
+    const input = page.locator(c.selector).first();
+    await expect(input).toBeVisible();
+    // Dinlenme hali (fare alanın dışında).
+    await page.mouse.move(0, 0);
+    expect(await placeholderContrast(page, c.selector)).toBeGreaterThanOrEqual(4.5);
+    // Üzerine gelme hali.
+    await input.hover();
+    expect(await placeholderContrast(page, c.selector)).toBeGreaterThanOrEqual(4.5);
+  });
+}
+
+test("Esc closes mobile menu and returns focus", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/tr/legal/privacy");
+  const menuBtn = page.locator(".menu-btn");
+  await expect(menuBtn).toBeVisible();
+  await menuBtn.click();
+  await expect(menuBtn).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("#mobile-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#mobile-menu")).toHaveCount(0);
+  await expect(menuBtn).toHaveAttribute("aria-expanded", "false");
+  await expect(menuBtn).toBeFocused();
 });
 
 test("reduced motion shows animated elements in final state", async ({ page }) => {

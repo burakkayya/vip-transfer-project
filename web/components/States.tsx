@@ -1,8 +1,5 @@
-"use client";
-
-// Ortak durum bileşenleri: yükleniyor, boş ve hata. Her ağ çağrısı boş ekran yerine bunlardan birini gösterir.
-import { useTranslations } from "next-intl";
-import Icon from "./Icon";
+// Ortak durum bileşenleri: yükleniyor ve boş. Sunucu ve istemci bileşenlerinden kullanılabilir ("use client" yok).
+// Hata durumu geri çağırma aldığı için ayrı istemci dosyasındadır: `@/components/ErrorState`.
 
 /** Yükleniyor: ekran okuyucuya kibarca duyurulur; iskelet satırları içeriğin yerini tutar. */
 export function LoadingState(props: { label: string }) {
@@ -25,21 +22,6 @@ export function EmptyState(props: { title: string; text?: string; action?: React
       <h2 className="state-title">{props.title}</h2>
       {props.text && <p className="state-text">{props.text}</p>}
       {props.action && <div className="state-action">{props.action}</div>}
-    </div>
-  );
-}
-
-/** Hata: sorunu ve çözümü söyler; `onRetry` verilirse "Tekrar dene" düğmesi çıkar. */
-export function ErrorState(props: { text: string; onRetry?: () => void }) {
-  const t = useTranslations("errors");
-  return (
-    <div className="state state-error" role="alert">
-      <p className="state-text">{props.text}</p>
-      {props.onRetry && (
-        <button type="button" className="btn secondary small" onClick={props.onRetry}>
-          <Icon name="refund" size={16} /> {t("retry")}
-        </button>
-      )}
     </div>
   );
 }

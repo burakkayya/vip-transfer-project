@@ -457,16 +457,18 @@ textarea {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+/* Yer tutucu kireçtaşı zeminde 4,86:1 (slate-text). slate-faint yalnızca kâğıt/tuval zemininde metindir. */
 input::placeholder,
 textarea::placeholder {
-  color: var(--faint);
+  color: var(--muted);
   opacity: 1;
 }
 
+/* Üzerine gelme zemini koyulaştırmaz (yer tutucu kontrastı korunur); kenar belirir. */
 input:hover,
 select:hover,
 textarea:hover {
-  background: var(--soft-2);
+  border-color: var(--line-strong);
 }
 
 input:focus,

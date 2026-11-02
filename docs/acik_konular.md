@@ -81,7 +81,6 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Arayüz taraması (2026-11-02)
 
-- [ ] Placeholder rengi `--faint` (`slate-faint` #76767b) beyazda 4,52:1 ama alanın dinlenme zemini kireçtaşında (#f5f5f3) 4,14:1, üzerine gelince (#ececea) 3,82:1. WCAG 1.4.3 için `DESIGN.md`'de `slate-faint` biraz koyulaştırılmalı (ör. kireçtaşında 4,5:1 için yaklaşık #6f6f74) ya da placeholder `--muted` olmalı. Karar kullanıcıda (token kaynağı `DESIGN.md`, K-38).
 - [ ] Logo alt yazısı "TRANSFERS" 9,28 px (`.brand-sub` 0.58rem); Impeccable detector `undersized-ui-text` olarak işaretliyor. Logotip olduğu için (bağlantının adı `aria-label`) değiştirilmedi; büyütmek kimlik kararıdır.
 - [ ] Üretim derlemesinde `notFound()` çağıran dinamik rotalar (`/tr/yok`, `/tr/bookings/XX`) sunucuda `__next_error__` kabuğu döndürür, 404 içeriği istemcide çizilir (durum kodu 404, tarayıcıda `html[lang]` ve başlık doğru). JavaScript'siz istemci yalnızca kabuğu görür; Next 15 davranışı, B-W0'dan önce de vardı.
 - [ ] Web e2e geliştirme sunucusunda 4 paralel işçiyle `smoke` testi ara sıra `net::ERR_ABORTED` ile düşüyor (sayfa derlenirken); `--workers=1` ile tümü geçiyor.

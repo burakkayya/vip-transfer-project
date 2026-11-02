@@ -1412,4 +1412,8 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Sunucu çizimi hareket tercihini bilmez (motion scaleX(0) satır içi yazar); hidrasyondan önce de dolu. */
+  .step-bar span {
+    transform: none !important;
+  }
 }
