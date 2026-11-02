@@ -205,7 +205,7 @@ Müşteride **dokunsal ve kendinden emin**; sürücüde **iri ve kaba hedefli**.
 Lake siyah, 28 px köşe, yüzen gölge. Üstte pirinç "YENİ İŞ TEKLİFİ" etiketi, iri tutar (sürücü kazancı olduğu yazılır), sağda geri sayım halkası; rota rayı; yolcu ve bagaj hapları; "Reddet" (çerçeveli) ve "Kabul et" (beyaz) eşit genişlikte, en az 56 px. Yolcu adı ve adres kabulden önce gösterilmez.
 
 ### Karşılama Tabelası (signature, sürücü)
-Tam ekran beyaz zemin, yolcu adı ekrana sığan en büyük boyutta lake siyah; dokununca kapanır. Yatay ve dikey kullanılabilir.
+Tam ekran beyaz zemin, yolcu adı ekrana sığan en büyük boyutta lake siyah; dokununca kapanır. Uygulama yalnızca dikey yönde çalışır (`app.config.ts` `orientation: "portrait"`).
 
 ### GO Düğmesi (signature, sürücü)
 Tam daire lake siyah, "GO" 26 px 800; çevrimiçi olunca radar halkası.
