@@ -50,6 +50,21 @@ cd ../admin  && npm install && npm run dev
 cd ../mobile && npm install && npm run web       # ya da: npm run start:driver / npm start (Expo Go)
 ```
 
+Ön yüz denetimleri ve testleri (K-40):
+
+```
+cd web    && npm run lint && npm run test:e2e   # test:e2e 3000'de çalışan sunucuya karşı (Playwright + axe)
+cd admin  && npm run lint && npm run test:e2e   # 3001'de çalışan sunucuya karşı; yerel e2e admin için admin/.env.e2e.local
+cd mobile && npm run lint && npm test           # jest-expo + React Native Testing Library
+
+node --test "scripts/*.test.mjs"                # kök betik testleri
+node scripts/sync-tokens.mjs --check            # renk tokenı kaynakla uyumlu mu
+
+cd scripts/ui-shots && npm ci                   # önce/sonra ekran görüntüsü betikleri: node web.js --out after
+```
+
+`npm run lint` taban çizgisinde bilinen ihlallerle (web 7, admin 3, mobil 9) sıfırdan farklı çıkar; kaynak ve sayılar `docs/ui-review/lint-taban.md`. Ekran görevleri ilgili dosyaya dokundukça giderilir; yeni ihlal eklenmez.
+
 Renk tokenları tek kaynaktan (kök `DESIGN.md` `colors` bloğu) üretilir: `node scripts/sync-tokens.mjs` (kontrol: `--check`, test: `node --test "scripts/*.test.mjs"`). Üretilmiş `tokens.css` / `tokens.ts` dosyaları elle düzenlenmez.
 
 Geliştirmede SMS kodları backend konsoluna yazılır ve uygulamalarda ekranda gösterilir; ödemeler sahte sağlayıcıyla yapılır.
@@ -64,11 +79,12 @@ Tek yerden özet: `docs/proje_rehberi.md`. Değişiklik kaydı: `docs/degisiklik
 | Müşteri web sitesi | Tamamlandı; 4 dil, adres arama, rezervasyon, ödeme, iptal, KVKK sayfaları, mobil uyumlu. 2026-10-31: yeni tasarım, Motion/Lenis animasyonları, 4 araçlı filo (VIP Minibüs, K-35) |
 | Admin paneli | Tamamlandı; 23 rota (ekran), 2FA, rol bazlı menü, parola değiştirme |
 | Mobil (müşteri + sürücü) | Tamamlandı; 2026-10-31 Uber tarzı yeni tasarım (Reanimated, SVG harita). Gerçek harita, push bildirim (FCM) ve mağaza derlemesi bekliyor |
+| Ön yüz testleri | Altyapı kuruldu (K-40): web ve admin ESLint + Playwright + axe (smoke), mobil ESLint + jest-expo + RNTL, kök betik testleri, ekran görüntüsü betikleri. Lint taban ihlalleri henüz giderilmedi; ekran bazlı testler arayüz taramasında yazılacak |
 | Yasal metinler | Taslak; hukukçu onayı bekliyor (`web/lib/site.ts` içinde yer tutucular) |
 
 Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35). Sedan hizmetten kaldırıldı.
 
-Kararı verilmiş, geliştirmesi bekleyen: günlük araç kiralama (K-29), on dil (K-34, uygulaması K-36) ve mobil gerçek harita ile rota çizgisi (K-37). Arayüz taraması (Impeccable) ve ön yüz test altyapısı planlandı (K-38..K-40; `docs/plans/2026-11-impeccable-tarama.md`).
+Kararı verilmiş, geliştirmesi bekleyen: günlük araç kiralama (K-29), on dil (K-34, uygulaması K-36) ve mobil gerçek harita ile rota çizgisi (K-37). Arayüz taraması (Impeccable) planlandı (K-38, K-39; `docs/plans/2026-11-impeccable-tarama.md`); ön yüz test altyapısı kuruldu (K-40, aşağıda).
 
 ## Mimari notlar
 

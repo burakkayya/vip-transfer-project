@@ -113,3 +113,7 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 - **Getaway: Backend testleri**: iş kuralları, API, adres ve ilçe çözümleme, ödeme, eşleştirme ve WebSocket.
 - **Getaway: Tip denetimi (web, admin, mobil)**.
 - **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır.
+- **Lint**: `npm run lint` (`web`, `admin`, `mobile`). Taban çizgisindeki bilinen ihlaller nedeniyle sıfırdan farklı çıkış beklenir (web 3 hata/4 uyarı, admin 1/2, mobil 7/2; `docs/ui-review/lint-taban.md`); sayılar artmamalıdır.
+- **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).
+- **Kök betik testleri**: `node --test "scripts/*.test.mjs"` (renk tokenı üreticisi, 5 test). Token kaynağı ile üretilmiş dosyaların uyumu: `node scripts/sync-tokens.mjs --check`.
+- **Ekran görüntüsü ve axe betikleri**: `scripts/ui-shots` (`npm ci`, sonra `node web.js --out after` vb.; ayrıntı `scripts/ui-shots/README.md`). Geliştirme veritabanında rezervasyon ve sahte ödeme oluşturur.
