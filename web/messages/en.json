@@ -329,7 +329,6 @@
     },
     "note": "Details (optional)",
     "submit": "Send request",
-    "sent": "We have received your request.",
     "list": "My requests",
     "due": "Due by {date}",
     "statuses": {
@@ -337,7 +336,13 @@
       "isleniyor": "In progress",
       "tamamlandi": "Completed",
       "reddedildi": "Rejected"
-    }
+    },
+    "typeRequired": "Choose a request type.",
+    "noteHint": "Characters left: {count}",
+    "sending": "Sending…",
+    "sentDue": "We have received your request. Due by {date}.",
+    "listLoading": "Loading your requests…",
+    "empty": "You have no requests yet."
   },
   "footer": {
     "legal": "Legal",

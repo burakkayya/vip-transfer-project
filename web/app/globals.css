@@ -2214,3 +2214,53 @@ input.readonly:focus {
 .account-actions a {
   text-underline-offset: 3px;
 }
+
+/* --- Veri talebi (B-W10, components/DataRequestPanel.tsx) --------------- */
+
+/* Talep türü: fieldset + legend, seçenek kartları (`.option-card`). Tarayıcı fieldset çerçevesi kaldırılır. */
+.choice-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-group legend {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--ink);
+  padding: 0;
+  margin-block-end: 6px;
+}
+
+.request-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.request-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding-block: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.request-list li:first-child {
+  border-block-start: 0;
+  padding-block-start: 0;
+}
+
+.request-type {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.request-list .hint {
+  flex-basis: 100%;
+}

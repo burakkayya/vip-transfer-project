@@ -329,7 +329,6 @@
     },
     "note": "Erläuterung (optional)",
     "submit": "Antrag senden",
-    "sent": "Ihr Antrag ist eingegangen.",
     "list": "Meine Anträge",
     "due": "Frist: {date}",
     "statuses": {
@@ -337,7 +336,13 @@
       "isleniyor": "In Bearbeitung",
       "tamamlandi": "Erledigt",
       "reddedildi": "Abgelehnt"
-    }
+    },
+    "typeRequired": "Wählen Sie die Art des Antrags.",
+    "noteHint": "Verbleibende Zeichen: {count}",
+    "sending": "Wird gesendet…",
+    "sentDue": "Ihr Antrag ist eingegangen. Frist: {date}.",
+    "listLoading": "Ihre Anträge werden geladen…",
+    "empty": "Sie haben noch keine Anträge."
   },
   "footer": {
     "legal": "Rechtliches",

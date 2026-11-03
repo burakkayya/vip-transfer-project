@@ -329,7 +329,6 @@
     },
     "note": "Açıklama (isteğe bağlı)",
     "submit": "Talebi gönder",
-    "sent": "Talebiniz alındı.",
     "list": "Taleplerim",
     "due": "Son tarih: {date}",
     "statuses": {
@@ -337,7 +336,13 @@
       "isleniyor": "İşleniyor",
       "tamamlandi": "Tamamlandı",
       "reddedildi": "Reddedildi"
-    }
+    },
+    "typeRequired": "Talep türünü seçin.",
+    "noteHint": "Kalan karakter: {count}",
+    "sending": "Gönderiliyor…",
+    "sentDue": "Talebiniz alındı. Son tarih: {date}.",
+    "listLoading": "Talepleriniz yükleniyor…",
+    "empty": "Henüz bir talebiniz yok."
   },
   "footer": {
     "legal": "Yasal",

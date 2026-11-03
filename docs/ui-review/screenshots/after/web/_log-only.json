@@ -1,60 +1,32 @@
 {
   "log": [
     {
-      "file": "tr-1440-account-anon.png",
-      "url": "http://localhost:3000/tr/account",
+      "file": "tr-1440-data-request-anon.png",
+      "url": "http://localhost:3000/tr/data-request",
       "hOverflowPx": 0
     },
     {
-      "file": "tr-1440-account.png",
-      "url": "http://localhost:3000/tr/account",
+      "file": "tr-1440-data-request.png",
+      "url": "http://localhost:3000/tr/data-request",
       "hOverflowPx": 0
     },
     {
       "prefix": "tr-1440",
-      "bookingCode": "GAVQWFKJ"
+      "bookingCode": "GAXHFAAU"
     },
     {
-      "file": "tr-390-account-anon.png",
-      "url": "http://localhost:3000/tr/account",
+      "file": "tr-390-data-request-anon.png",
+      "url": "http://localhost:3000/tr/data-request",
       "hOverflowPx": 0
     },
     {
-      "file": "tr-390-account.png",
-      "url": "http://localhost:3000/tr/account",
+      "file": "tr-390-data-request.png",
+      "url": "http://localhost:3000/tr/data-request",
       "hOverflowPx": 0
     },
     {
       "prefix": "tr-390",
-      "bookingCode": "GA2H8527"
-    },
-    {
-      "file": "de-1440-account-anon.png",
-      "url": "http://localhost:3000/de/account",
-      "hOverflowPx": 0
-    },
-    {
-      "file": "de-1440-account.png",
-      "url": "http://localhost:3000/de/account",
-      "hOverflowPx": 0
-    },
-    {
-      "prefix": "de-1440",
-      "bookingCode": "GADQH78P"
-    },
-    {
-      "file": "de-390-account-anon.png",
-      "url": "http://localhost:3000/de/account",
-      "hOverflowPx": 0
-    },
-    {
-      "file": "de-390-account.png",
-      "url": "http://localhost:3000/de/account",
-      "hOverflowPx": 0
-    },
-    {
-      "prefix": "de-390",
-      "bookingCode": "GA3QV2GJ"
+      "bookingCode": "GAYF3WYA"
     }
   ],
   "consoleErrors": {
@@ -63,14 +35,6 @@
       "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
     ],
     "tr-390": [
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
-    ],
-    "de-1440": [
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
-    ],
-    "de-390": [
       "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
       "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
     ]
