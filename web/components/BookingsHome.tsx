@@ -9,12 +9,14 @@ import type { Booking } from "@/lib/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import { statusClass } from "./BookingDetail";
 import OtpLogin from "./OtpLogin";
+import { LoadingState } from "./States";
 
 const CODE_RE = /^GA[A-Z0-9]{6}$/;
 
 /** Ekran 8: rezervasyon sorgulama (kod ve telefon) ve girişliyse rezervasyon listesi. */
 export default function BookingsHome() {
   const t = useTranslations("bookings");
+  const to = useTranslations("otp");
   const locale = useLocale();
   const router = useRouter();
   const { loggedIn, setLoggedIn } = useSession();
@@ -39,11 +41,12 @@ export default function BookingsHome() {
     </div>
   );
 
-  if (loggedIn === null) return null;
+  // Oturum denetlenirken boş alan yerine yükleniyor durumu (RequireLogin ile aynı metin).
+  if (loggedIn === null) return <LoadingState label={to("checking")} />;
 
   if (!loggedIn) {
     return (
-      <div className="card stack" style={{ maxWidth: 560 }}>
+      <div className="card stack login-card">
         <h2>{t("lookupTitle")}</h2>
         <p className="muted">{t("lookupText")}</p>
         {codeField}
@@ -60,14 +63,14 @@ export default function BookingsHome() {
   return (
     <div className="stack">
       <form
-        className="card row"
+        className="card row lookup-form"
         onSubmit={(e) => {
           e.preventDefault();
           if (validCode) router.push(`/bookings/${code}`);
         }}
       >
-        <div style={{ flex: 1 }}>{codeField}</div>
-        <button className="btn" type="submit" disabled={!validCode} style={{ alignSelf: "end" }}>
+        {codeField}
+        <button className="btn" type="submit" disabled={!validCode}>
           {t("find")}
         </button>
       </form>
@@ -92,7 +95,7 @@ export default function BookingsHome() {
             </div>
           </div>
           <div className="row">
-            <span className="price" style={{ fontSize: "1.1rem" }}>
+            <span className="price">
               {money(b.total_amount, b.currency, locale)}
             </span>
             <span className="btn ghost small">{t("view")}</span>

@@ -92,6 +92,15 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 
 ### 5. İptal ve iade
 1. 48 saatten uzak bir rezervasyonda **Rezervasyonu iptal et** → "%100 iade" önizlemesi → **İptali onayla**.
+
+   Rezervasyon detayı ek kontrolleri (B-W6; `/bookings/<kod>`):
+   - Açılırken önce "Oturum denetleniyor…", sonra "Rezervasyon bilgileri yükleniyor…" görünür; boş ekran kalmaz. Backend kapalıyken "Sunucuya ulaşılamadı…" ve **Tekrar dene**.
+   - Başlık kartında kod, durum rozeti ve "Toplam tutar" (API'nin tutarı, tek satır). Bilgi kartında etiketler yazılı: Yolcu, Not, Rezervasyon tarihi; adres satırı "Adres".
+   - **Rezervasyonu iptal et** → panel açılır ve odak panel başlığına gider. Panelde "İade tutarı" (API'nin önizlemesi, ör. ₺4.190,00), "Şimdi iptal ederseniz iade oranı %100." ve K-14 kademeleri birebir ("…48 saat veya daha önce iptalde %100, 24-48 saat kala %50 iade yapılır; 24 saatten az kala iade yapılmaz.") + "İptal ve iade politikası" bağlantısı. Ödeme alınmamış rezervasyonda "Bu rezervasyon için ödeme alınmadı, iade yapılmaz."
+   - Kırmızı **İptali onayla** ile çerçeveli **Vazgeç** aynı boyuttadır. **Vazgeç** paneli kapatır, odak **Rezervasyonu iptal et**'e döner. Onaylanınca yeşil "Rezervasyon iptal edildi." duyurulur ve odak ona gider; rozet "İptal edildi" olur, `?paid=1` ile gelinmişse "Rezervasyonunuz onaylandı" kutusu kalkar. Çift tıklama tek istek gönderir.
+   - Geçersiz kod (`/tr/bookings/ZZZZZZ`, durum 404) veya başkasına ait/olmayan kod: "Rezervasyon bulunamadı" + "Bu koda ait rezervasyon bulunamadı." + **Rezervasyonlarım** / **Yeni rezervasyon** (yeniden deneme yok).
+   - Canlı takip (sürücü yoldayken, 5 sn yoklama): konum tazeyken yeşil kutu, nabızlı nokta, "Son güncelleme: SS:DD:ss" ve **Haritada aç**. Backend durdurulursa yaklaşık 20 sn sonra (3 yoklama aralığından uzun süre başarılı güncelleme yok) kutu kehribara döner: "Konum güncellenemiyor", son güncelleme saati yerinde, bağlantı "Son bilinen konumu haritada aç", nokta nabızsız, **Yenile** düğmesi. Backend açılınca kendiliğinden yeşile döner.
+   - Rezervasyonlarım (`/tr/bookings`) oturum denetlenirken boş değil, "Oturum denetleniyor…" gösterir.
 2. 24 saatten yakın bir rezervasyon için admin → **Rezervasyonlar** → detay → İptal bölümünde gerekçe yazın, iade oranını boş bırakın: %0 uygulanır. Oranı 100 yazarak operasyonel iptal (tam iade) deneyin.
 3. Admin → **Ödemeler ve iadeler**: iade kayıtları.
 

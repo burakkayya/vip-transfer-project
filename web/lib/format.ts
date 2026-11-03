@@ -14,6 +14,11 @@ export function dateTime(iso: string, locale: string): string {
   );
 }
 
+/** Saniyeli saat, Türkiye saatiyle (canlı konumun son güncelleme zamanı). */
+export function clockTime(iso: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { timeStyle: "medium", timeZone: TZ }).format(new Date(iso));
+}
+
 /** `<input type="datetime-local">` değerini Türkiye saatiyle ISO-8601'e çevirir. */
 export function localInputToIso(value: string): string {
   return `${value.length === 16 ? value + ":00" : value}${TR_OFFSET}`;

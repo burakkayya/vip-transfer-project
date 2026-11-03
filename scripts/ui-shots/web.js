@@ -164,7 +164,7 @@ function errors(page, bucket) {
         await a.waitForTimeout(800);
         await shot(a, prefix, "booking-detail-paid");
         stage = "booking-cancel-preview";
-        await a.locator(".row button.btn.ghost").first().click();
+        await a.locator(".booking-cancel-open").click();
         await a.waitForSelector("button.btn.danger");
         await shot(a, prefix, "booking-cancel-preview");
 
