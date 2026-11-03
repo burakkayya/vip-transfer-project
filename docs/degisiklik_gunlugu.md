@@ -4,6 +4,8 @@ En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
 ## 2026-11-03
 
+- `docs/DEVAM_PROMPTU.md`: kalan tarama işleri (B-W11–15 incelemesi, C-W1, mobil, sürücü, admin, Z1–Z4) için yeni oturuma yapıştırılacak devam promptu.
+
 - Backend çift ödeme önlemi (K-46): ödeme başlatma rezervasyonu kilitler ve 25 dk içindeki açık (`beklemede`) ödemeyi yeniden kullanır; yeni `payments.checkout_url` sütunu (migration 0003). Backend testleri 96/96 (2 yeni test).
 
 - **B-W11–B-W14 web yasal sayfalar Impeccable geçişi** (tek rota `legal/[slug]`; critique iptal 20/28 → 24/28, KVKK 20/32 → 28/32, mesafeli satış 20/28 → 23/28, çerez 21/28 → 23/28; axe 0 → 0; lint 0): yalnızca tipografi ve düzen. Ortak okuma düzeni: 70ch ölçü, 1.0625rem / 1.65 gövde, başlık + taslak notu + sürüm tek blokta, bölüm başlığı üstü boşluğu, baskıda üst/alt bilgi gizli ve taslak notu kenarlı. İptal sayfasında K-14 kademeleri ayrı liste; KVKK metninde mevcut başlıklardan içindekiler ve bölüm çapaları. Metin anahtarları, metin ve sıra değişmedi; yeni anahtar yok. Yeni `web/e2e/legal.spec.ts` (20 test). Rapor `docs/ui-review/web-legal.md`.
