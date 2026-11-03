@@ -11,13 +11,17 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
+): Promise<T> {
   const res = await fetch(`/bff/${path}`, {
     method: init.method ?? (init.body === undefined ? "GET" : "POST"),
     headers: init.body === undefined ? undefined : { "content-type": "application/json" },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
     credentials: "same-origin",
     cache: "no-store",
+    signal: init.signal,
   });
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);

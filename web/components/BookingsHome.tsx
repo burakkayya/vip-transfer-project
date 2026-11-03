@@ -1,13 +1,14 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { ApiError, api } from "@/lib/api";
 import { dateTime, money } from "@/lib/format";
-import { useSession } from "@/lib/hooks";
+import { useApiError, useSession } from "@/lib/hooks";
 import type { Booking } from "@/lib/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import { statusClass } from "./BookingDetail";
+import { ErrorState } from "./ErrorState";
 import OtpLogin from "./OtpLogin";
 import { LoadingState } from "./States";
 
@@ -21,11 +22,24 @@ export default function BookingsHome() {
   const router = useRouter();
   const { loggedIn, setLoggedIn } = useSession();
   const [code, setCode] = useState("");
+  const errorText = useApiError();
   const [list, setList] = useState<Booking[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+
+  // Liste alınamazsa "rezervasyonunuz yok" denmez: hata ve yeniden dene; oturum düştüyse giriş.
+  const loadList = useCallback(async () => {
+    setListError(null);
+    try {
+      setList(await api<Booking[]>("me/bookings"));
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) setLoggedIn(false);
+      else setListError(errorText(e));
+    }
+  }, [errorText, setLoggedIn]);
 
   useEffect(() => {
-    if (loggedIn) api<Booking[]>("me/bookings").then(setList).catch(() => setList([]));
-  }, [loggedIn]);
+    if (loggedIn) void loadList();
+  }, [loggedIn, loadList]);
 
   const validCode = CODE_RE.test(code);
   const codeField = (
@@ -74,6 +88,11 @@ export default function BookingsHome() {
           {t("find")}
         </button>
       </form>
+      {listError ? (
+        <ErrorState text={listError} onRetry={() => void loadList()} />
+      ) : (
+        list === null && <LoadingState label={t("listLoading")} />
+      )}
       {list?.length === 0 && (
         <div className="card stack">
           <p>{t("empty")}</p>

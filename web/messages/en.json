@@ -266,6 +266,7 @@
     "openMapLast": "Open last known location in maps",
     "liveRefresh": "Refresh",
     "newTab": "opens in a new tab",
+    "listLoading": "Loading your bookings…",
     "status": {
       "odeme_bekliyor": "Awaiting payment",
       "onaylandi": "Confirmed",

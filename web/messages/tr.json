@@ -266,6 +266,7 @@
     "openMapLast": "Son bilinen konumu haritada aç",
     "liveRefresh": "Yenile",
     "newTab": "yeni sekmede açılır",
+    "listLoading": "Rezervasyonlarınız yükleniyor…",
     "status": {
       "odeme_bekliyor": "Ödeme bekleniyor",
       "onaylandi": "Onaylandı",

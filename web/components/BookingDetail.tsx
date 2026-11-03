@@ -21,8 +21,12 @@ const CANCELLABLE = new Set<BookingStatus>(["odeme_bekliyor", "onaylandi", "atan
 const PAID = new Set<BookingStatus>(["onaylandi", "atandi", "yolculukta", "tamamlandi"]);
 /** Canlı konum yoklama aralığı. */
 const POLL_MS = 5000;
-/** Bu süreden uzun başarılı konum güncellemesi yoksa konum canlı gösterilmez (3 yoklama aralığı). */
+/** Konum zamanı bu süreden uzun değişmediyse konum canlı gösterilmez (3 yoklama aralığı, K-44). */
 const STALE_MS = 3 * POLL_MS;
+/** Asılı istek bir sonraki yoklamadan önce iptal edilir: yoklamalar üst üste binmez. */
+const REQUEST_TIMEOUT_MS = POLL_MS - 500;
+/** Eskime denetimi yoklamadan bağımsız, saniyede bir (duvar saati). */
+const TICK_MS = 1000;
 
 /** Yeniden denemenin anlamsız olduğu hatalar: rezervasyon yok veya bu müşterinin değil. */
 const isFinal = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 403);
@@ -34,45 +38,89 @@ export function statusClass(s: BookingStatus) {
   return "ok";
 }
 
-type LiveMode = "pending" | "live" | "stale" | "none";
+/**
+ * pending: ilk yanıt bekleniyor · live: konum taze · stale: eldeki konum eskidi ·
+ * failed: konum hiç alınamadı (istek hatası) · none: sunucuda konum yok.
+ */
+type LiveMode = "pending" | "live" | "stale" | "failed" | "none";
 
 /**
- * Sürücü konumu 5 sn'de bir yoklanır (jeton tarayıcıya verilmediği için WebSocket yok).
- * Üç aralıktan uzun süre başarılı güncelleme gelmezse konum "canlı" sayılmaz; son bilinen zaman gösterilir.
+ * Sürücü konumu 5 sn'de bir yoklanır (jeton tarayıcıya verilmediği için WebSocket yok). K-44:
+ * - Taze = son farklı konum zamanını (`at`) istemcinin ilk gördüğü andan bu yana en çok 3 aralık (15 sn).
+ *   `at` değerleri yalnızca birbiriyle karşılaştırılır, istemci saatiyle kıyaslanmaz (saat farkı yok).
+ * - Eskime yoklamanın bitmesini beklemez: saniyede bir duvar saatiyle denetlenir (asılı istek de eskitir).
+ * - Yoklamalar üst üste binmez: istek sürerken yeni yoklama atlanır, istek aralıktan önce iptal edilir.
  */
 function useDriverLocation(code: string, enabled: boolean) {
   const sessionExpired = useSessionExpired();
   const [location, setLocation] = useState<DriverLocation | null>(null);
   const [mode, setMode] = useState<LiveMode>("pending");
-  const lastOk = useRef<number | null>(null);
+  /** Son farklı konum zamanı (sunucu değeri, yalnızca eşitlik için). */
+  const lastAt = useRef<string | null>(null);
+  /** `lastAt`'ın istemcide ilk görüldüğü an (istemci saati). */
+  const seenAt = useRef<number | null>(null);
+  const inFlight = useRef<AbortController | null>(null);
+  /** İzleme kapanıp açılınca eski isteklerin sonucu yok sayılır. */
+  const generation = useRef(0);
 
   const poll = useCallback(async () => {
-    const fresh = () => lastOk.current !== null && Date.now() - lastOk.current <= STALE_MS;
+    if (inFlight.current) return;
+    const gen = generation.current;
+    const ctrl = new AbortController();
+    inFlight.current = ctrl;
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    const fresh = () => seenAt.current !== null && Date.now() - seenAt.current <= STALE_MS;
     try {
-      const loc = await api<DriverLocation | null>(`me/bookings/${code}/driver-location`);
+      const loc = await api<DriverLocation | null>(`me/bookings/${code}/driver-location`, { signal: ctrl.signal });
+      if (gen !== generation.current) return;
       if (loc) {
-        lastOk.current = Date.now();
-        setLocation(loc);
-        setMode("live");
+        if (loc.at !== lastAt.current) {
+          lastAt.current = loc.at;
+          seenAt.current = Date.now();
+          setLocation(loc);
+        }
+        // Konum zamanı değişmediyse tazelenmez: başarılı yanıt tek başına "canlı" demek değildir.
+        setMode(fresh() ? "live" : "stale");
       } else {
-        // Sunucuda konum yok (sürücü göndermiyor, kayıt süresi doldu): eldeki konum artık canlı değildir.
+        // Sunucuda konum yok (sürücü göndermiyor, kayıt süresi doldu): eldeki konum hemen eskir.
+        seenAt.current = null;
         setMode((m) => (m === "live" || m === "stale" ? "stale" : "none"));
-        lastOk.current = null;
       }
     } catch (e) {
+      if (gen !== generation.current) return;
       if (isUnauthorized(e)) {
         sessionExpired();
         return;
       }
-      setMode((m) => (m === "live" || m === "stale" ? (fresh() ? "live" : "stale") : "none"));
+      // Eldeki konumu saat eskitir; hiç konum yoksa "konum yok" değil, hata durumu.
+      setMode((m) => (m === "live" || m === "stale" ? m : "failed"));
+    } finally {
+      clearTimeout(timer);
+      if (inFlight.current === ctrl) inFlight.current = null;
     }
   }, [code, sessionExpired]);
 
   useEffect(() => {
     if (!enabled) return;
     void poll();
-    const id = setInterval(() => void poll(), POLL_MS);
-    return () => clearInterval(id);
+    const pollId = setInterval(() => void poll(), POLL_MS);
+    const tickId = setInterval(() => {
+      if (seenAt.current !== null && Date.now() - seenAt.current > STALE_MS) {
+        setMode((m) => (m === "live" ? "stale" : m));
+      }
+    }, TICK_MS);
+    return () => {
+      clearInterval(pollId);
+      clearInterval(tickId);
+      // İzleme kapanınca (veya bacak değişince) durum sıfırlanır; sonraki açılış "bekleniyor"dan başlar.
+      generation.current += 1;
+      inFlight.current?.abort();
+      inFlight.current = null;
+      lastAt.current = null;
+      seenAt.current = null;
+      setLocation(null);
+      setMode("pending");
+    };
   }, [enabled, poll]);
 
   return { location, mode, refresh: poll };
@@ -332,7 +380,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
         </dl>
       </section>
 
-      {actionError && (
+      {actionError && !refund && (
         <p className="alert error" role="alert" tabIndex={-1} ref={errorRef}>
           {actionError}
         </p>
@@ -383,6 +431,11 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
             {tb("cancelTiers")}{" "}
             <Link href="/legal/cancellation">{tf("cancellation")}</Link>
           </p>
+          {actionError && (
+            <p className="alert error cancel-error" role="alert" tabIndex={-1} ref={errorRef}>
+              {actionError}
+            </p>
+          )}
           <div className="cancel-actions">
             <button
               className="btn danger"
@@ -417,9 +470,10 @@ function LiveBox(props: { location: DriverLocation | null; mode: LiveMode; refre
   const locale = useLocale();
   const { location, mode } = props;
   const isLive = mode === "live";
-  const title = mode === "stale" ? t("liveStale") : mode === "pending" ? t("liveLoading") : t("live");
+  const failing = mode === "stale" || mode === "failed";
+  const title = failing ? t("liveStale") : mode === "pending" ? t("liveLoading") : t("live");
   return (
-    <div className={`live-box is-${mode}${mode === "stale" ? " stale" : ""}`}>
+    <div className={`live-box is-${mode}${failing ? " stale" : ""}`}>
       {/* Yalnızca durum değişince duyurulur; saat ayrı satırdadır, her güncellemede okunmaz. */}
       <p className="live-title" role="status">
         <span className={isLive ? "live-dot" : "live-dot-off"} aria-hidden="true" />
@@ -439,7 +493,7 @@ function LiveBox(props: { location: DriverLocation | null; mode: LiveMode; refre
         </p>
       )}
       {mode === "none" && <p className="live-meta">{t("liveNone")}</p>}
-      {(mode === "stale" || mode === "none") && (
+      {(failing || mode === "none") && (
         <div>
           <button className="btn secondary small" type="button" onClick={() => void props.refresh()}>
             {t("liveRefresh")}

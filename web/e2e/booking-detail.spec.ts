@@ -441,6 +441,108 @@ test("live dot does not pulse with reduced motion", async ({ page }) => {
   expect(await dot.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
 });
 
+// --- Düzeltme turu 1: duvar saati eskime, değişmeyen konum zamanı, ilk hata, boş yanıt ---
+
+const loc = (at: string) => ({ leg_id: "x", lat: 36.9, lng: 30.8, heading: null, at });
+
+test("a hung location request turns the box stale on a timer without overlapping polls", async ({ page }) => {
+  const code = await createBooking(page);
+  await enRoute(page, code);
+  let hang = false;
+  const calls = { hung: 0 };
+  await page.route(`**/bff/me/bookings/${code}/driver-location`, async (route) => {
+    if (!hang) return route.fulfill({ json: loc(new Date().toISOString()) });
+    calls.hung += 1;
+    await new Promise(() => {}); // yanıt hiç gelmez
+  });
+  const aborted = { n: 0 };
+  page.on("requestfailed", (r) => {
+    if (r.url().endsWith("/driver-location")) aborted.n += 1;
+  });
+  await page.clock.install();
+  await page.goto(`/tr/bookings/${code}`);
+  const box = detail(page).locator(".live-box");
+  await expect(box).toHaveClass(/\bis-live\b/, { timeout: 30_000 });
+
+  hang = true;
+  await page.clock.runFor(10_000);
+  await expect(box).toHaveClass(/\bis-live\b/);
+  // İstek asılı kalsa da 15 sn'den sonra saat kendisi eskitir.
+  await page.clock.runFor(7_000);
+  await expect(box).toHaveClass(/\bstale\b/);
+  await expect(box.getByRole("status")).toContainText("Konum güncellenemiyor");
+  await expect(box).toContainText("Son güncelleme");
+  // Yoklamalar üst üste binmez: her asılı istek bir sonraki aralıktan önce iptal edilir.
+  expect(calls.hung).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => aborted.n).toBeGreaterThanOrEqual(calls.hung - 1);
+});
+
+test("an unchanged location time is not shown as live", async ({ page }) => {
+  const code = await createBooking(page);
+  await enRoute(page, code);
+  const at = new Date().toISOString();
+  // Sunucu her yoklamada başarılı yanıt verir ama konum zamanı hiç değişmez (sürücü göndermeyi bıraktı).
+  await page.route(`**/bff/me/bookings/${code}/driver-location`, (route) => route.fulfill({ json: loc(at) }));
+  await page.clock.install();
+  await page.goto(`/tr/bookings/${code}`);
+  const box = detail(page).locator(".live-box");
+  await expect(box).toHaveClass(/\bis-live\b/, { timeout: 30_000 });
+  await page.clock.runFor(10_000);
+  await expect(box).toHaveClass(/\bis-live\b/);
+  await page.clock.runFor(7_000);
+  await expect(box).toHaveClass(/\bstale\b/);
+  await expect(box.getByRole("status")).toContainText("Konum güncellenemiyor");
+  await expect(box).toContainText("Son güncelleme");
+});
+
+test("first location poll failure shows the failure state", async ({ page }) => {
+  const code = await createBooking(page);
+  await enRoute(page, code);
+  await page.route(`**/bff/me/bookings/${code}/driver-location`, (route) => route.abort());
+  await page.goto(`/tr/bookings/${code}`);
+  const box = detail(page).locator(".live-box");
+  await expect(box.getByRole("status")).toContainText("Konum güncellenemiyor", { timeout: 30_000 });
+  await expect(box).toHaveClass(/\bstale\b/);
+  await expect(box).not.toContainText("Sürücü konumu şu an alınamıyor");
+  await expect(box.getByRole("button", { name: "Yenile" })).toBeVisible();
+});
+
+test("null location: not available when nothing is known, stale once a position was shown", async ({ page }) => {
+  const code = await createBooking(page);
+  await enRoute(page, code);
+  let reply: "null" | "loc" = "null";
+  await page.route(`**/bff/me/bookings/${code}/driver-location`, (route) =>
+    route.fulfill({ json: reply === "null" ? null : loc(new Date().toISOString()) }),
+  );
+  await page.clock.install();
+  await page.goto(`/tr/bookings/${code}`);
+  const box = detail(page).locator(".live-box");
+  await expect(box).toContainText("Sürücü konumu şu an alınamıyor.", { timeout: 30_000 });
+  await expect(box).not.toHaveClass(/\bis-live\b/);
+  reply = "loc";
+  await page.clock.runFor(5_000);
+  await expect(box).toHaveClass(/\bis-live\b/);
+  // Konum gösterildikten sonra sunucu konum döndürmezse (kayıt süresi doldu) eldeki konum hemen eskir.
+  reply = "null";
+  await page.clock.runFor(5_000);
+  await expect(box).toHaveClass(/\bstale\b/);
+  await expect(box).toContainText("Son güncelleme");
+});
+
+test("cancel error is shown inside the panel next to the confirm button", async ({ page }) => {
+  const code = await createBooking(page);
+  await paid(page, code);
+  await mockRefund(page, code, { refund_percent: 100, refund_amount: "4190.00" });
+  await page.route(`**/bff/me/bookings/${code}/cancel`, (route) => route.abort());
+  await page.goto(`/tr/bookings/${code}`);
+  await clickUntil(openCancel(page), cancelPanel(page));
+  await cancelPanel(page).getByRole("button", { name: "İptali onayla" }).click();
+  const alert = cancelPanel(page).getByRole("alert");
+  await expect(alert).toContainText("Sunucuya ulaşılamadı");
+  await expect(cancelPanel(page).getByRole("button", { name: "İptali onayla" })).toBeVisible();
+  await expect(detail(page).getByRole("alert")).toHaveCount(1);
+});
+
 // --- Uyum: uzun Almanca metin, uzun ad ve adres, büyük TRY tutarı ---
 
 test("de detail has no horizontal overflow from 360 to 1440 px", async ({ page }, info) => {
@@ -519,4 +621,27 @@ test("bookings page shows loading state while the session is checked", async ({ 
   const card = page.locator(".login-card");
   await expect(card).toBeVisible({ timeout: 30_000 });
   expect(await card.getAttribute("style")).toBeNull();
+});
+
+test("bookings list load error shows ErrorState with retry", async ({ page }) => {
+  await login(page);
+  await page.route("**/bff/me/bookings", (route) => route.abort());
+  await page.goto("/tr/bookings");
+  const error = page.locator(".page").getByRole("alert");
+  await expect(error).toContainText("Sunucuya ulaşılamadı", { timeout: 30_000 });
+  await expect(page.getByText("Henüz rezervasyonunuz yok.")).toHaveCount(0);
+  await page.unroute("**/bff/me/bookings");
+  await error.getByRole("button", { name: "Tekrar dene" }).click();
+  await expect(page.getByText("Henüz rezervasyonunuz yok.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".page").getByRole("alert")).toHaveCount(0);
+});
+
+test("bookings list 401 returns to the login", async ({ page }) => {
+  await login(page);
+  await page.route("**/bff/me/bookings", (route) =>
+    route.fulfill({ status: 401, json: { error: { code: "unauthorized", message: "x" } } }),
+  );
+  await page.goto("/tr/bookings");
+  await expect(page.locator(".login-card #otp-phone")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Henüz rezervasyonunuz yok.")).toHaveCount(0);
 });

@@ -70,7 +70,7 @@ Gelir akışı eşiği %85: sonra **%90**.
 
 ## Kontrolcü kararlarının uygulanışı
 
-- **Eskiyen konum:** "3 yoklama aralığından uzun süre başarılı güncelleme yok" = son başarılı (konum içeren) yanıttan bu yana > 15 sn. Sunucu konum döndürmezse (backend 120 sn saklar) eldeki konum hemen eskimiş sayılır. Konumun kendi `at` zamanı istemci saatiyle karşılaştırılmadı (saat farkı riski). ETA eklenmedi. K-44.
+- **Eskiyen konum (düzeltme turu 1 sonrası):** taze = son *farklı* konum zamanını (`at`) istemcinin ilk gördüğü andan bu yana ≤ 15 sn (3 aralık). Süre saniyede bir duvar saatiyle denetlenir (asılı istek de eskitir); başarılı ama `at`'ı değişmeyen yanıt tazelemez. `at` değerleri yalnızca birbiriyle karşılaştırılır, istemci saatiyle kıyaslanmaz. Yoklamalar üst üste binmez (istek sürerken atlanır, 4,5 sn'de iptal). Sunucu konum döndürmezse eldeki konum hemen eskir. ETA eklenmedi. K-44.
 - **"Vazgeç" eşit görünürlük:** soluk metin bağlantısı değil, aynı boyutta çerçeveli düğme (`.btn.outline`); telefonda iki düğme de tam genişlik.
 
 ## Değişmezler
@@ -113,3 +113,21 @@ Gelir akışı eşiği %85: sonra **%90**.
 
 - Önce: `screenshots/before/web/{tr,de}-{1440,390}-{booking-detail-paid,booking-cancel-preview,booking-not-found,bookings-anon}.png`
 - Sonra: `screenshots/after/web/{tr,de}-{1440,390}-{booking-detail-paid,booking-cancel-preview,booking-not-found,bookings-anon}.png`; ek durumlar (`_shots` geçici testiyle, taklitli): `{tr-390,tr-1440,de-390}-booking-{live,live-stale,loading,error,cancel-long}.png`
+
+## Düzeltme turu 1 (inceleme `task-B-W6-review.md`)
+
+| # | Bulgu | Çözüm | Test |
+|---|---|---|---|
+| 1 (önemli) | Eskime yalnızca yoklama bitince değerlendiriliyordu; `api()` zaman aşımsız, asılı istekte kutu yeşil kalıyor, yoklamalar üst üste biniyordu | Saniyede bir duvar saati denetimi; istek sürerken yoklama atlanır, `AbortController` ile 4,5 sn'de iptal (`api()` isteğe bağlı `signal` aldı) | "a hung location request turns the box stale on a timer without overlapping polls" (asılı istekte 17 sn sonra kehribar; asılı istekler iptal ediliyor) |
+| 2 (önemli) | Her boş olmayan 200 yanıt konumu tazeliyordu (eski `at` 120 sn canlı görünebilirdi) | Son farklı `at` ve istemcinin onu ilk gördüğü an tutulur; `at` 3 aralıktan uzun değişmezse eski. `at`'lar yalnızca birbiriyle karşılaştırılır (saat farkı yok) | "an unchanged location time is not shown as live" |
+| 3 | İlk yoklama hatasında "konum yok" | Yeni `failed` durumu: kehribar "Konum güncellenemiyor" + "Yenile"; boş yanıt dalları test edildi | "first location poll failure shows the failure state", "null location: …" |
+| 4 | İzleme kapanıp açılınca durum taşınıyordu | Kapanışta durum, konum, `at` ve süre sıfırlanır, yoldaki istek iptal edilir, eski isteklerin sonucu yok sayılır (nesil sayacı) | (kod; ayrı test yok: bacak durumu değişimi taklidi gerektirir) |
+| 5 | `proje_rehberi.md` karar tablosunda K-44 yok | Satır eklendi, aralık K-01 ... K-44 | — |
+| 6 | İptal hatası panelin dışında, onay düğmesinden uzakta | Panel açıkken uyarı panelin içinde, onay düğmesinin hemen üstünde; 409'da panel kapanır, uyarı eylemlerin üstünde | "cancel error is shown inside the panel next to the confirm button" |
+| 7 | `BookingsHome` liste hatasında "Henüz rezervasyonunuz yok." | `ErrorState` + "Tekrar dene"; 401 → oturum akışı (giriş); liste yüklenirken `LoadingState` "Rezervasyonlarınız yükleniyor…" (yeni `bookings.listLoading`, 4 dil) | "bookings list load error shows ErrorState with retry", "bookings list 401 returns to the login" |
+| 8 | Tüm izlenebilir bacaklar tek `LiveBox` / tek konum (`leg_id` kullanılmıyor) | Ertelendi (B-W6'dan önce de böyleydi): `acik_konular.md` P3 | — |
+
+Kırmızı (değişiklikten önce, desktop): 7 yeni testten 6 FAIL. "unchanged location" → `"live-box is-live"`, "first location poll failure" → "Canlı takip", "cancel error inside the panel" → panelde `alert` yok, "bookings list load error" → `alert` boş, "bookings list 401" → giriş yok, "hung location" → `"live-box is-live"` (ilk toplu koşuda yeniden başlatılan dev sunucuda `page.goto` zaman aşımı; tek başına tekrarında anlamlı FAIL). "null location" ilk koşuda geçti (mevcut dalı belgeleyen test, inceleme bunun testini istedi).
+
+Sonra: `npx playwright test booking-detail --workers=1` (iki proje): **45 geçti, 1 atlandı** (23 test; Almanca genişlik testi yalnızca desktop). Gerileme (desktop): `pay.spec` + `payment-result` **35/35**. `npx tsc --noEmit` ve `npx eslint` (`BookingDetail.tsx`, `BookingsHome.tsx`, `lib/api.ts`, spec) temiz.
+

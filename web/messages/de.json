@@ -266,6 +266,7 @@
     "openMapLast": "Letzten bekannten Standort in Karten öffnen",
     "liveRefresh": "Aktualisieren",
     "newTab": "öffnet in neuem Tab",
+    "listLoading": "Ihre Buchungen werden geladen…",
     "status": {
       "odeme_bekliyor": "Zahlung ausstehend",
       "onaylandi": "Bestätigt",
