@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 
 // Ortak e2e oturum yardımcıları: kurgusal test numaraları, BFF ile SMS girişi ve ödeme bekleyen rezervasyon.
 // Testler geliştirme veritabanında müşteri, rezervasyon ve ödeme kaydı bırakır (temizlik yok; acik_konular.md).
@@ -127,4 +127,19 @@ export async function bookingWithPhone(page: Page, locale = "tr"): Promise<{ cod
 /** Giriş yapar ve ödeme bekleyen bir rezervasyon oluşturur; kodu döner. */
 export async function bookingAwaitingPayment(page: Page, locale = "tr"): Promise<string> {
   return (await bookingWithPhone(page, locale)).code;
+}
+
+/**
+ * Geliştirme sunucusu rotayı ilk istekte derler (soğuk derleme 60 sn'yi aşabilir). Dosyanın `beforeAll`'ında
+ * her rota bir kez, cömert süreyle açılır; böylece ilk test derleme beklemesiyle zaman aşımına düşmez.
+ */
+export async function warmUp(browser: Browser, info: TestInfo, paths: string[]) {
+  info.setTimeout(240_000);
+  const baseURL = info.project.use.baseURL ?? "http://localhost:3000";
+  const page = await browser.newPage({ baseURL });
+  try {
+    for (const path of paths) await page.goto(path, { waitUntil: "domcontentloaded", timeout: 180_000 });
+  } finally {
+    await page.close();
+  }
 }

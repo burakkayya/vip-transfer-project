@@ -294,7 +294,8 @@
     "codeHintOptional": "8 characters starting with GA; you will find it in your confirmation SMS. You can leave it empty.",
     "codeInvalid": "Booking codes start with GA and have 8 characters (e.g. GA7K3P9Q).",
     "emptyText": "Plan your transfer in a few minutes; you see the price before you book.",
-    "listTitle": "Your bookings"
+    "listTitle": "Your bookings",
+    "codeRequired": "Enter your booking code."
   },
   "account": {
     "title": "My account",

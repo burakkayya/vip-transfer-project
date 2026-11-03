@@ -1,11 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./a11y";
-import { bookingAwaitingPayment as createBooking, login } from "./session";
+import { bookingAwaitingPayment as createBooking, login, warmUp } from "./session";
 
 // Rezervasyonlarım (B-W8): `/bookings`, `BookingsHome`. Kodla sorgulama alanı, liste, boş ve hata durumları.
 // Oturum denetimi, liste ağ hatası ve 401 testleri `booking-detail.spec.ts` sonundadır (B-W6/B-W7).
 
 test.describe.configure({ timeout: 60_000 });
+// Soğuk derleme ilk testi zaman aşımına düşürmesin.
+test.beforeAll(async ({ browser }, info) => warmUp(browser, info, ["/tr/bookings", "/de/bookings"]));
 test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
@@ -13,7 +15,20 @@ test.afterEach(async ({ page }) => {
 const codeInput = (page: Page) => page.locator("#code");
 const codeError = (page: Page) => page.locator("#code-error");
 
-/** Liste yanıtını taklit eder (yalnızca GET; oluşturma POST'u gerçek API'ye gider). */
+// Kod alanı ve liste istemcide, oturum denetiminden sonra çizilir: göründüklerinde sayfa hidrate olmuştur.
+// Bu yüzden tıklamalar `toPass` döngüsüne alınmaz (döngü yarış durumunu gizler).
+
+/** Liste GET'ini durağan yanıtla taklit eder (geliştirme sunucusundaki gerçek isteği beklemez). */
+async function staticList(page: Page, reply: { json: unknown } | { status: number; code: string }) {
+  await page.route("**/bff/me/bookings", (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    return "json" in reply
+      ? route.fulfill({ json: reply.json })
+      : route.fulfill({ status: reply.status, json: { error: { code: reply.code, message: reply.code } } });
+  });
+}
+
+/** Gerçek liste yanıtını değiştirerek taklit eder (yalnızca gerçek rezervasyon gereken testte). */
 async function mockList(page: Page, reply: (body: Record<string, unknown>[]) => unknown) {
   await page.route("**/bff/me/bookings", async (route) => {
     if (route.request().method() !== "GET") return route.continue();
@@ -36,12 +51,10 @@ test("lookup code validates format (signed out)", async ({ page }) => {
   const hint = page.locator("#code-hint");
   await expect(hint).toHaveText("GA ile başlayan 8 karakter; onay SMS'inizde yazar. İsterseniz boş bırakın.");
   await expect(input).toHaveAttribute("aria-describedby", /code-hint/);
-  // Yanlış biçim alandan çıkınca söylenir.
-  await expect(async () => {
-    await input.fill("ab12");
-    await input.blur();
-    await expect(codeError(page)).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  // Yanlış biçim, odak başka bir alana (ülke seçimi) geçince söylenir.
+  await input.fill("ab12");
+  await input.press("Tab");
+  await expect(codeError(page)).toBeVisible();
   await expect(input).toHaveValue("AB12");
   await expect(codeError(page)).toHaveText("Rezervasyon kodu GA ile başlar ve 8 karakterdir (ör. GA7K3P9Q).");
   await expect(input).toHaveAttribute("aria-invalid", "true");
@@ -52,7 +65,11 @@ test("lookup code validates format (signed out)", async ({ page }) => {
   await expect(input).not.toHaveAttribute("aria-invalid", "true");
   // Boş alan hata değildir (kod isteğe bağlı: giriş sonrası liste açılır).
   await input.fill("");
-  await input.blur();
+  await input.press("Tab");
+  await expect(codeError(page)).toHaveCount(0);
+  // Boş bir yere tıklamak (odak hiçbir alana geçmez) hata göstermez: düğmeye dokunuş kaymasın.
+  await input.fill("ab12");
+  await page.locator("h1").click();
   await expect(codeError(page)).toHaveCount(0);
 });
 
@@ -64,11 +81,14 @@ test("lookup code validates format", async ({ page }) => {
   await expect(find).toBeVisible({ timeout: 30_000 });
   // Devre dışı düğme yerine alan hatası (OTP ile aynı desen, B-W3).
   await expect(find).toBeEnabled();
-  await expect(async () => {
-    await input.fill("GA12");
-    await find.click();
-    await expect(codeError(page)).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  // Alandan düğmeye geçmek hata göstermez (düzen kaymaz); gönderim gösterir.
+  await input.fill("GA12");
+  await input.press("Tab");
+  await expect(find).toBeFocused();
+  await expect(codeError(page)).toHaveCount(0);
+  await find.click();
+  await expect(codeError(page)).toBeVisible();
+  await expect(codeError(page)).toHaveText("Rezervasyon kodu GA ile başlar ve 8 karakterdir (ör. GA7K3P9Q).");
   await expect(codeError(page)).toHaveAttribute("role", "alert");
   await expect(input).toBeFocused();
   await expect(page).toHaveURL(/\/tr\/bookings$/);
@@ -80,9 +100,25 @@ test("lookup code validates format", async ({ page }) => {
   await expect(page).toHaveURL(/\/tr\/bookings\/GAZZ0000$/, { timeout: 30_000 });
 });
 
+test("lookup with an empty code asks for the code", async ({ page }) => {
+  await login(page);
+  await staticList(page, { json: [] });
+  await page.goto("/tr/bookings");
+  const find = page.locator(".lookup-form").getByRole("button", { name: "Bul" });
+  await expect(find).toBeVisible({ timeout: 30_000 });
+  await find.click();
+  await expect(codeError(page)).toHaveText("Rezervasyon kodunu girin.");
+  await expect(codeInput(page)).toBeFocused();
+  await expect(codeInput(page)).toHaveAttribute("aria-invalid", "true");
+  await expect(page).toHaveURL(/\/tr\/bookings$/);
+  // Yazmaya başlayınca kalkar.
+  await codeInput(page).fill("G");
+  await expect(codeError(page)).toHaveCount(0);
+});
+
 test("empty list EmptyState", async ({ page }) => {
   await login(page);
-  await mockList(page, () => []);
+  await staticList(page, { json: [] });
   await page.goto("/tr/bookings");
   const empty = page.locator(".state-empty");
   await expect(empty.getByRole("heading", { level: 2, name: "Henüz rezervasyonunuz yok." })).toBeVisible({
@@ -96,7 +132,7 @@ test("empty list EmptyState", async ({ page }) => {
 test("bookings empty state has no axe violations", async ({ page }) => {
   test.setTimeout(120_000);
   await login(page);
-  await mockList(page, () => []);
+  await staticList(page, { json: [] });
   await page.goto("/tr/bookings");
   await expect(page.locator(".state-empty")).toBeVisible({ timeout: 30_000 });
   await expectNoAxeViolations(page, { include: "main" });
@@ -104,7 +140,7 @@ test("bookings empty state has no axe violations", async ({ page }) => {
 
 test("bookings error state", async ({ page }) => {
   await login(page);
-  await mockList(page, () => ({ status: 500, code: "internal" }));
+  await staticList(page, { status: 500, code: "internal" });
   await page.goto("/tr/bookings");
   const error = page.locator(".page").getByRole("alert");
   await expect(error).toContainText("Bir hata oluştu", { timeout: 30_000 });
@@ -119,11 +155,9 @@ test("bookings has no axe violations", async ({ page }) => {
   // Oturumsuz: sorgulama ve giriş, alan hatası açıkken.
   await page.goto("/tr/bookings");
   const input = codeInput(page);
-  await expect(async () => {
-    await input.fill("AB12");
-    await input.blur();
-    await expect(codeError(page)).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  await input.fill("AB12");
+  await input.press("Tab");
+  await expect(codeError(page)).toBeVisible();
   await expectNoAxeViolations(page, { include: "main" });
   // Oturumlu: liste.
   await createBooking(page);

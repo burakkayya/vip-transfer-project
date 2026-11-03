@@ -294,7 +294,8 @@
     "codeHintOptional": "8 Zeichen, beginnend mit GA; Sie finden ihn in der Bestätigungs-SMS. Sie können das Feld leer lassen.",
     "codeInvalid": "Buchungscodes beginnen mit GA und haben 8 Zeichen (z. B. GA7K3P9Q).",
     "emptyText": "Planen Sie Ihren Transfer in wenigen Minuten; den Preis sehen Sie vor der Buchung.",
-    "listTitle": "Ihre Buchungen"
+    "listTitle": "Ihre Buchungen",
+    "codeRequired": "Geben Sie Ihren Buchungscode ein."
   },
   "account": {
     "title": "Mein Konto",

@@ -294,7 +294,8 @@
     "codeHintOptional": "GA ile başlayan 8 karakter; onay SMS'inizde yazar. İsterseniz boş bırakın.",
     "codeInvalid": "Rezervasyon kodu GA ile başlar ve 8 karakterdir (ör. GA7K3P9Q).",
     "emptyText": "Transferinizi birkaç dakikada planlayın; fiyatı rezervasyondan önce görürsünüz.",
-    "listTitle": "Rezervasyonlarınız"
+    "listTitle": "Rezervasyonlarınız",
+    "codeRequired": "Rezervasyon kodunu girin."
   },
   "account": {
     "title": "Hesabım",

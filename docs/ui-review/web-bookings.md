@@ -85,3 +85,14 @@ Kararlar (soru sorulmadı): kod alanı oturumsuzken isteğe bağlı kalır (boş
 
 - Önce: `screenshots/before/web/{tr,de}-{1440,390}-{bookings-anon,bookings-list}.png`
 - Sonra: `screenshots/after/web/{tr,de}-{1440,390}-{bookings-anon,bookings-list}.png`
+
+## Düzeltme turu 1 (2026-11-03, inceleme `task-B-W8-10-review.md`)
+
+| Bulgu | Çözüm |
+|---|---|
+| Önemli 1: oturumluyken boş kodla **Bul** sessizce hiçbir şey yapmıyordu | Gönderimde "Rezervasyon kodunu girin." alan hatası (`role="alert"`, `aria-invalid`), odak alana; yazmaya başlayınca kalkar. Oturumsuzken boş kod hâlâ isteğe bağlı (girişten sonra boş kod hata vermez, liste açılır). Yeni anahtar `bookings.codeRequired` (4 dil). Test: "lookup with an empty code asks for the code" |
+| Küçük 7: blur'da `relatedTarget instanceof HTMLButtonElement` Safari'de güvenilmez (düğmeye odak verilmez) | Hata yalnızca odak formun **dışındaki başka bir alana** geçince gösterilir; `relatedTarget` boşsa (Safari dokunuşu, boş alana tıklama) veya hedef bir düğme/aynı formdaysa gösterilmez. Gönderimde ve girişten sonra her durumda denetlenir. Testte: Tab ile düğmeye geçiş ve başlığa tıklama hata göstermez, ülke seçimine Tab gösterir |
+| Küçük 6: test kararsızlığı | `beforeAll` ısınması (`warmUp`, `e2e/session.ts`: `/tr/bookings`, `/de/bookings` 180 sn ile bir kez açılır); boş liste ve hata testleri `route.fetch()` yerine durağan yanıt; `toPass` tıklama döngüleri kaldırıldı (alan istemcide oturum denetiminden sonra çizilir, göründüğünde hidrasyon bitmiştir) |
+| Küçük 8: `_log-only.json` gürültüsü | `9461a81` içeriğine geri alındı |
+
+Puan değişmedi (35/40): "Hata önleme" ve "Hata kurtarma" zaten 3/4 idi; boş gönderim boşluğu, P1 sayılmadan kapanmış oldu. Doğrulama: `npx playwright test bookings.spec --workers=1` **17 geçti, 1 atlandı**; `tsc` ve `eslint` temiz.

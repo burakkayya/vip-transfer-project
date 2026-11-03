@@ -6,36 +6,16 @@
       "hOverflowPx": 0
     },
     {
-      "file": "tr-1440-data-request.png",
-      "url": "http://localhost:3000/tr/data-request",
-      "hOverflowPx": 0
-    },
-    {
-      "prefix": "tr-1440",
-      "bookingCode": "GAXHFAAU"
-    },
-    {
       "file": "tr-390-data-request-anon.png",
       "url": "http://localhost:3000/tr/data-request",
       "hOverflowPx": 0
-    },
-    {
-      "file": "tr-390-data-request.png",
-      "url": "http://localhost:3000/tr/data-request",
-      "hOverflowPx": 0
-    },
-    {
-      "prefix": "tr-390",
-      "bookingCode": "GAYF3WYA"
     }
   ],
   "consoleErrors": {
     "tr-1440": [
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
       "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
     ],
     "tr-390": [
-      "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)",
       "console: Failed to load resource: the server responded with a status of 401 (Unauthorized)"
     ]
   },

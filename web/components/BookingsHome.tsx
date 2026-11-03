@@ -23,8 +23,11 @@ export default function BookingsHome() {
   const { loggedIn, setLoggedIn, error: sessionError, recheck } = useSession();
   const [expired, setExpired] = useState(false);
   const [code, setCode] = useState("");
-  /** Biçim hatası yalnızca alandan çıkınca veya gönderimde gösterilir (yazarken değil). */
-  const [codeChecked, setCodeChecked] = useState(false);
+  /**
+   * Alan ne zaman denetlendi: yazarken hiç; odak formun dışına (başka bir alana) geçince "blur";
+   * gönderimde veya girişten sonra "submit". Boş kod yalnızca oturumluyken gönderimde hatadır (oturumsuzken isteğe bağlı).
+   */
+  const [checked, setChecked] = useState<"none" | "blur" | "submit">("none");
   const codeRef = useRef<HTMLInputElement>(null);
   const errorText = useApiError();
   const [list, setList] = useState<Booking[] | null>(null);
@@ -48,8 +51,16 @@ export default function BookingsHome() {
   }, [loggedIn, loadList]);
 
   const validCode = BOOKING_CODE_RE.test(code);
-  // Kod isteğe bağlıdır (oturumsuzken boş bırakılırsa giriş sonrası liste açılır); doluysa biçimi denetlenir.
-  const codeInvalid = codeChecked && code !== "" && !validCode;
+  // Kod oturumsuzken isteğe bağlıdır (boşsa giriş sonrası liste açılır); doluysa biçimi denetlenir.
+  const codeErrorText =
+    code === ""
+      ? checked === "submit" && loggedIn
+        ? t("codeRequired")
+        : null
+      : checked !== "none" && !validCode
+        ? t("codeInvalid")
+        : null;
+  const codeInvalid = codeErrorText !== null;
   const codeField = (
     <div className="field">
       <label htmlFor="code">{t("code")}</label>
@@ -67,17 +78,22 @@ export default function BookingsHome() {
         onChange={(e) => {
           // `maxLength` yok: "GA7K-3P9Q" gibi yapıştırılan kod ayraçlar atılmadan kesilmesin; 8 karakterden sonrası atılır.
           setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8));
-          setCodeChecked(false);
+          setChecked("none");
         }}
-        // Düğmeye geçerken hata gösterilmez: hata satırı düğmeyi kaydırır ve dokunuş boşa gider (telefonda alt satır).
-        // Gönderimde (veya girişten sonra) yine denetlenir.
+        // Hata yalnızca odak formun dışında başka bir alana geçince gösterilir. Düğmeye dokunurken (Safari düğmeye
+        // odak vermez: `relatedTarget` boş) veya boş alana tıklarken gösterilmez: hata satırı düğmeyi kaydırır ve
+        // dokunuş boşa gider. Gönderimde ve girişten sonra her durumda denetlenir.
         onBlur={(e) => {
-          if (!(e.relatedTarget instanceof HTMLButtonElement)) setCodeChecked(true);
+          const next = e.relatedTarget;
+          const form = e.currentTarget.form;
+          if (next instanceof HTMLElement && !(next instanceof HTMLButtonElement) && !form?.contains(next)) {
+            setChecked("blur");
+          }
         }}
       />
       {codeInvalid && (
         <span className="field-error" id="code-error" role="alert">
-          {t("codeInvalid")}
+          {codeErrorText}
         </span>
       )}
       <span className="hint" id="code-hint">
@@ -107,7 +123,8 @@ export default function BookingsHome() {
             // Yanlış biçimli kod girişten sonra da alanda hatasıyla kalır (liste görünümündeki aynı alan).
             if (validCode) router.push(`/bookings/${code}`);
             else {
-              setCodeChecked(true);
+              // Boş kod: liste açılır, hata yok. Hatalı kod: liste görünümündeki aynı alanda hatasıyla kalır.
+              if (code !== "") setChecked("submit");
               setExpired(false);
               setLoggedIn(true);
             }
@@ -125,7 +142,7 @@ export default function BookingsHome() {
           e.preventDefault();
           if (validCode) router.push(`/bookings/${code}`);
           else {
-            setCodeChecked(true);
+            setChecked("submit");
             codeRef.current?.focus();
           }
         }}
