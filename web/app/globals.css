@@ -2280,3 +2280,20 @@ input.readonly:focus {
 .request-list .hint {
   flex-basis: 100%;
 }
+
+/* Silme talebi onayı: satır içi, kırmızı ince çerçeve ve yumuşak zemin; metin tam kontrastlı. */
+.confirm-panel {
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--danger) 22%, var(--paper));
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+
+.confirm-panel h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.confirm-panel p {
+  margin: 0;
+}

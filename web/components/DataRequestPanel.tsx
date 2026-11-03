@@ -41,6 +41,25 @@ export default function DataRequestPanel() {
   const [listError, setListError] = useState<string | null>(null);
   const firstRadio = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
+  /** Silme talebi gönderilmeden önce satır içi onay (rezervasyon iptaliyle aynı desen). */
+  const [confirming, setConfirming] = useState(false);
+  const confirmTitle = useRef<HTMLHeadingElement>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  /** Bir sonraki çizimden sonra odaklanacak öğe: onay açılınca başlığı, "Vazgeç"te gönder düğmesi. */
+  const pendingFocus = useRef<"confirm" | "submit" | null>(null);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (!target) return;
+    pendingFocus.current = null;
+    (target === "confirm" ? confirmTitle.current : submitRef.current)?.focus();
+  });
+
+  /** Yeni bir talebe başlanınca önceki sonuç ve hata kalkar. */
+  function startNew() {
+    setSent(null);
+    setSubmitError(null);
+  }
 
   // Oturum düştüyse (401) `RequireLogin` girişi yeniden gösterir.
   const load = useCallback(() => {
@@ -65,6 +84,12 @@ export default function DataRequestPanel() {
       firstRadio.current?.focus();
       return;
     }
+    // Silme talebi geri çekilemez: önce satır içi onay istenir.
+    if (type === "silme" && !confirming) {
+      setConfirming(true);
+      pendingFocus.current = "confirm";
+      return;
+    }
     busy.current = true;
     setSending(true);
     try {
@@ -74,6 +99,7 @@ export default function DataRequestPanel() {
       setList((l) => [req, ...(l ?? [])]);
       setNote("");
       setType(null);
+      setConfirming(false);
       setSent(req);
     } catch (err) {
       if (isUnauthorized(err)) sessionExpired();
@@ -106,6 +132,8 @@ export default function DataRequestPanel() {
                 onChange={() => {
                   setType(v);
                   setTypeError(false);
+                  if (v !== "silme") setConfirming(false);
+                  startNew();
                 }}
               />
               <label htmlFor={`type-${v}`}>{t(`types.${v}`)}</label>
@@ -125,7 +153,10 @@ export default function DataRequestPanel() {
             maxLength={1000}
             value={note}
             aria-describedby="note-hint"
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => {
+              setNote(e.target.value);
+              startNew();
+            }}
           />
           <span className="hint" id="note-hint">
             {t("noteHint", { count: 1000 - note.length })}
@@ -140,11 +171,35 @@ export default function DataRequestPanel() {
             {submitError}
           </p>
         )}
-        <div>
-          <button className="btn" type="submit" disabled={sending}>
-            {sending ? t("sending") : t("submit")}
-          </button>
-        </div>
+        {confirming ? (
+          <section className="confirm-panel stack" aria-labelledby="delete-confirm-title">
+            <h2 id="delete-confirm-title" tabIndex={-1} ref={confirmTitle}>
+              {t("deleteConfirmTitle")}
+            </h2>
+            <p>{t("deleteConfirmText")}</p>
+            <div className="cancel-actions">
+              <button className="btn danger" type="submit" aria-disabled={sending || undefined}>
+                {sending ? t("sending") : t("deleteConfirm")}
+              </button>
+              <button
+                className="btn outline"
+                type="button"
+                onClick={() => {
+                  setConfirming(false);
+                  pendingFocus.current = "submit";
+                }}
+              >
+                {t("keep")}
+              </button>
+            </div>
+          </section>
+        ) : (
+          <div>
+            <button ref={submitRef} className="btn" type="submit" disabled={sending}>
+              {sending ? t("sending") : t("submit")}
+            </button>
+          </div>
+        )}
       </form>
 
       <section className="card stack data-request-list" aria-labelledby="data-request-list-title">

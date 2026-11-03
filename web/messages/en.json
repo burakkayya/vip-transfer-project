@@ -344,7 +344,11 @@
     "sending": "Sending…",
     "sentDue": "We have received your request. Due by {date}.",
     "listLoading": "Loading your requests…",
-    "empty": "You have no requests yet."
+    "empty": "You have no requests yet.",
+    "deleteConfirmTitle": "Confirm your deletion request",
+    "deleteConfirmText": "You are about to send a request to delete the personal data in your account. Once sent, you cannot withdraw it from this page.",
+    "deleteConfirm": "Send deletion request",
+    "keep": "Go back"
   },
   "footer": {
     "legal": "Legal",

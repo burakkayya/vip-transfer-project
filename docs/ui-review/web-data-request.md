@@ -84,3 +84,29 @@ Kararlar: tür önceden seçilmez (Global Constraints'teki "önceden işaretli k
 
 - Önce: `screenshots/before/web/{tr,de}-{1440,390}-{data-request,data-request-anon}.png`
 - Sonra: `screenshots/after/web/{tr,de}-{1440,390}-{data-request,data-request-anon}.png`
+
+## Düzeltme turu 1 (2026-11-03, inceleme `task-B-W8-10-review.md`)
+
+| Bulgu | Çözüm |
+|---|---|
+| Küçük 3: "Talebiniz alındı." yeni talebe başlanınca da kalıyordu | Tür seçimi veya not düzenlemesi önceki sonucu ve gönderim hatasını kaldırır. Test: "starting a new request clears the sent message" |
+| Küçük 4 (kontrolcü kararı): geri çekilemeyen "silme" talebi tek tıklamayla gidiyordu | Satır içi onay (rezervasyon iptaliyle aynı desen): "Silme talebini onaylayın" başlığı (odak buraya), nötr UX metni "Hesabınızdaki kişisel verilerin silinmesi talebini göndermek üzeresiniz. Gönderdikten sonra bu ekrandan geri çekemezsiniz.", kırmızı **Silme talebini gönder** (`btn danger`) ve eşit boyutta çerçeveli **Vazgeç** (`btn outline`; odak gönder düğmesine döner). Tür değişince onay kapanır; erişim/düzeltme onaysız gider. Yasal hak metni eklenmedi. Yeni anahtarlar `dataRequest.deleteConfirmTitle`, `deleteConfirmText`, `deleteConfirm`, `keep` (4 dil). Test: "deletion request asks for confirmation before sending" (POST yok → Vazgeç → odak → tür değişimi → onayla → tek POST `silme`); axe testi onay paneli açıkken de çalışır |
+| Küçük 6: kararsızlık | `beforeAll` ısınması (`/tr/legal/cookies`, `/tr/data-request`, `/de/data-request`); `toPass` döngüleri kaldırıldı (form istemcide çizilir) |
+
+### Yeniden critique (in-thread, dürüst puan)
+
+| # | Sezgisel | Tur 0 | Tur 1 | Gerekçe |
+|---|---|---|---|---|
+| 1 | Sistem durumu | 4 | 4 | Eski sonuç artık yeni talebe taşınmaz (tur 0'da bu yüzden gerçekte 3'tü) |
+| 2 | Gerçek dünya | 3 | 3 | |
+| 3 | Kullanıcı kontrolü | 3 | 4 | Geri çekilemeyen adımda "Vazgeç"; tür değişimi onayı kapatır |
+| 4 | Tutarlılık | 4 | 4 | Onay, iptal paneliyle aynı sınıflar ve davranış |
+| 5 | Hata önleme | 4 | 4 | Önceden seçimsiz tür + silme onayı + kilit (tur 0'da onay yokken 4 iyimserdi) |
+| 6 | Tanıma | 4 | 4 | |
+| 7 | Esneklik | 2 | 2 | |
+| 8 | Estetik | 3 | 3 | Onay paneli kırmızı ince çerçeve, yumuşak zemin, metin tam kontrastlı (360 px görüntüye bakıldı) |
+| 9 | Hata kurtarma | 3 | 3 | |
+| 10 | Yardım | 3 | 3 | Onay metni sonucu söyler; hak açıklamaları hâlâ yok (yasal metin uydurulmaz) |
+| **Toplam** | | 33/40 | **34/40 (%85)** | Tur 0 puanı dürüst ölçüldüğünde 31/40 olurdu (madde 1 ve 5 iyimser) |
+
+Doğrulama: `npx playwright test data-request.spec --workers=1` **17 geçti, 1 atlandı**; `tsc`, `eslint` temiz. Onay paneli telefon genişliğinde Almanca görüntüyle denetlendi (düğmeler tam genişlik, taşma yok).

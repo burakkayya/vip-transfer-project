@@ -344,7 +344,11 @@
     "sending": "Wird gesendet…",
     "sentDue": "Ihr Antrag ist eingegangen. Frist: {date}.",
     "listLoading": "Ihre Anträge werden geladen…",
-    "empty": "Sie haben noch keine Anträge."
+    "empty": "Sie haben noch keine Anträge.",
+    "deleteConfirmTitle": "Löschantrag bestätigen",
+    "deleteConfirmText": "Sie sind dabei, die Löschung der personenbezogenen Daten in Ihrem Konto zu beantragen. Nach dem Senden können Sie den Antrag auf dieser Seite nicht zurückziehen.",
+    "deleteConfirm": "Löschantrag senden",
+    "keep": "Zurück"
   },
   "footer": {
     "legal": "Rechtliches",

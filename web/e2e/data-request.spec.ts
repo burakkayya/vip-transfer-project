@@ -1,11 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./a11y";
-import { login } from "./session";
+import { login, warmUp } from "./session";
 
 // Veri talebi (B-W10): `/data-request`, `DataRequestPanel`. KVKK m.11 / GDPR talep formu ve talep listesi.
 // Talep oluşturma (POST) taklit edilir: geliştirme veritabanında admin'in KVKK kuyruğuna test talebi düşmesin.
 
 test.describe.configure({ timeout: 60_000 });
+// Soğuk derleme ilk testi zaman aşımına düşürmesin. Form istemcide oturum denetiminden sonra çizilir: göründüğünde
+// sayfa hidrate olmuştur, bu yüzden tıklamalar `toPass` döngüsüne alınmaz.
+test.beforeAll(async ({ browser }, info) =>
+  warmUp(browser, info, ["/tr/legal/cookies", "/tr/data-request", "/de/data-request"]),
+);
 test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
@@ -45,10 +50,7 @@ test("request type radio group; sent state", async ({ page }) => {
   // Tür önceden seçili değildir: seçmeden gönderilirse alan hatası ve odak ilk seçeneğe.
   for (let i = 0; i < 3; i++) await expect(radios.nth(i)).not.toBeChecked();
   const error = page.locator("#type-error");
-  await expect(async () => {
-    await submit(page).click();
-    await expect(error).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  await submit(page).click();
   await expect(error).toHaveText("Talep türünü seçin.");
   await expect(error).toHaveAttribute("role", "alert");
   await expect(radios.nth(0)).toBeFocused();
@@ -77,10 +79,7 @@ test("data request submit is locked while sending", async ({ page }) => {
   const posted = await mockRequests(page, { hold });
   await page.goto("/tr/data-request");
   await expect(typeGroup(page)).toBeVisible({ timeout: 30_000 });
-  await expect(async () => {
-    await typeGroup(page).getByRole("radio", { name: "Verilerime erişim" }).check();
-    await expect(typeGroup(page).getByRole("radio", { name: "Verilerime erişim" })).toBeChecked({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  await typeGroup(page).getByRole("radio", { name: "Verilerime erişim" }).check();
   await submit(page).click();
   const busy = page.getByRole("button", { name: "Gönderiliyor…" });
   await expect(busy).toBeDisabled();
@@ -145,11 +144,75 @@ test("data-request has no axe violations", async ({ page }) => {
   });
   await page.goto("/tr/data-request");
   await expect(page.getByRole("list", { name: "Taleplerim" })).toBeVisible({ timeout: 30_000 });
-  await expect(async () => {
-    await submit(page).click();
-    await expect(page.locator("#type-error")).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  await submit(page).click();
+  await expect(page.locator("#type-error")).toBeVisible();
   await expectNoAxeViolations(page, { include: "main" });
+  // Silme onayı açıkken de.
+  await typeGroup(page).getByRole("radio", { name: "Verilerimin silinmesi" }).check();
+  await submit(page).click();
+  await expect(page.locator(".confirm-panel")).toBeVisible();
+  await expectNoAxeViolations(page, { include: "main" });
+});
+
+test("deletion request asks for confirmation before sending", async ({ page }) => {
+  await login(page);
+  const posted = await mockRequests(page);
+  await page.goto("/tr/data-request");
+  await expect(typeGroup(page)).toBeVisible({ timeout: 30_000 });
+  await typeGroup(page).getByRole("radio", { name: "Verilerimin silinmesi" }).check();
+  await submit(page).click();
+  // Satır içi onay: gönderilmez, odak onay başlığına.
+  const panel = page.locator(".confirm-panel");
+  const title = panel.getByRole("heading", { level: 2, name: "Silme talebini onaylayın" });
+  await expect(title).toBeFocused();
+  await expect(panel).toContainText(
+    "Hesabınızdaki kişisel verilerin silinmesi talebini göndermek üzeresiniz. Gönderdikten sonra bu ekrandan geri çekemezsiniz.",
+  );
+  expect(posted).toHaveLength(0);
+  const confirm = panel.getByRole("button", { name: "Silme talebini gönder" });
+  const keep = panel.getByRole("button", { name: "Vazgeç" });
+  // Kırmızı onay ile eşit görünür "Vazgeç" (rezervasyon iptaliyle aynı sınıflar ve boyut).
+  const classes = async (l: typeof confirm) => ((await l.getAttribute("class")) ?? "").split(/\s+/);
+  expect(await classes(confirm)).toEqual(expect.arrayContaining(["btn", "danger"]));
+  expect(await classes(keep)).toEqual(expect.arrayContaining(["btn", "outline"]));
+  const h = async (l: typeof confirm) => l.evaluate((el) => el.getBoundingClientRect().height);
+  expect(await h(keep)).toBe(await h(confirm));
+  // Vazgeç: panel kapanır, odak gönder düğmesine, istek yok.
+  await keep.click();
+  await expect(panel).toHaveCount(0);
+  await expect(submit(page)).toBeFocused();
+  expect(posted).toHaveLength(0);
+  // Tür değişince onay kapanır; erişim talebi onaysız gider.
+  await submit(page).click();
+  await expect(panel).toBeVisible();
+  await typeGroup(page).getByRole("radio", { name: "Verilerime erişim" }).check();
+  await expect(panel).toHaveCount(0);
+  // Yeniden silme seçilip onaylanınca gönderilir.
+  await typeGroup(page).getByRole("radio", { name: "Verilerimin silinmesi" }).check();
+  await submit(page).click();
+  await panel.getByRole("button", { name: "Silme talebini gönder" }).click();
+  await expect(page.locator(".data-request-form").getByRole("status")).toContainText("Talebiniz alındı.");
+  expect(posted).toEqual([{ request_type: "silme", note: null }]);
+  await expect(panel).toHaveCount(0);
+});
+
+test("starting a new request clears the sent message", async ({ page }) => {
+  await login(page);
+  await mockRequests(page);
+  await page.goto("/tr/data-request");
+  await expect(typeGroup(page)).toBeVisible({ timeout: 30_000 });
+  await typeGroup(page).getByRole("radio", { name: "Verilerime erişim" }).check();
+  await submit(page).click();
+  const status = page.locator(".data-request-form").getByRole("status");
+  await expect(status).toContainText("Talebiniz alındı.");
+  // Yeni tür seçmek önceki sonucu kaldırır.
+  await typeGroup(page).getByRole("radio", { name: "Verilerimin düzeltilmesi" }).check();
+  await expect(status).toHaveText("");
+  // Nota yazmak da.
+  await submit(page).click();
+  await expect(status).toContainText("Talebiniz alındı.");
+  await page.fill("#note", "Yeni");
+  await expect(status).toHaveText("");
 });
 
 test("data-request fits 360px in German", async ({ page }, info) => {

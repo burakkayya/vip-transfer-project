@@ -344,7 +344,11 @@
     "sending": "Gönderiliyor…",
     "sentDue": "Talebiniz alındı. Son tarih: {date}.",
     "listLoading": "Talepleriniz yükleniyor…",
-    "empty": "Henüz bir talebiniz yok."
+    "empty": "Henüz bir talebiniz yok.",
+    "deleteConfirmTitle": "Silme talebini onaylayın",
+    "deleteConfirmText": "Hesabınızdaki kişisel verilerin silinmesi talebini göndermek üzeresiniz. Gönderdikten sonra bu ekrandan geri çekemezsiniz.",
+    "deleteConfirm": "Silme talebini gönder",
+    "keep": "Vazgeç"
   },
   "footer": {
     "legal": "Yasal",
