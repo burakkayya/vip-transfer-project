@@ -1893,8 +1893,92 @@ dl.summary.booking-facts {
   background: var(--paper);
 }
 
-.legal h2 {
-  margin-top: 1.6em;
+/* --- Yasal sayfalar (app/[locale]/legal/[slug]) ------------------------- */
+/* Read modu: yalnızca tipografi ve düzen. Satır uzunluğu 65–75ch; yön bağımsız (mantıksal özellikler). */
+
+.legal {
+  font-size: 1.0625rem;
+}
+
+/* Kapsayıcı tam 70ch metin + kenar boşluğu: taslak notu ve başlık metinle aynı hizada biter. */
+.legal.narrow {
+  max-width: calc(70ch + 2 * var(--gutter));
+}
+
+.legal-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-block-end: 36px;
+}
+
+.legal-head .page-title {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.legal-head .alert,
+.legal-head .hint {
+  margin: 0;
+}
+
+.legal-body {
+  line-height: 1.65;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+.legal-body > * {
+  max-inline-size: 70ch;
+}
+
+.legal-body p {
+  margin-block: 0 1em;
+  text-wrap: pretty;
+}
+
+/* Başlığın üstü altından açık: bölüm bir öncekinden ayrılır, kendi paragrafına bağlanır. */
+.legal-body h2 {
+  font-size: 1.25rem;
+  margin-block: 2.2em 0.5em;
+  text-wrap: balance;
+  scroll-margin-block-start: 96px;
+}
+
+.legal-body h2:first-child {
+  margin-block-start: 0;
+}
+
+@media print {
+  body:has(.legal) .header,
+  body:has(.legal) .footer {
+    display: none;
+  }
+
+  .legal.page {
+    padding-block: 0;
+  }
+
+  .legal-body {
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  .legal-body h2 {
+    break-after: avoid;
+  }
+
+  .legal-body p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Taslak notu kâğıtta da görünür: zemin rengi basılmayabilir, kenar ve metin kalır. */
+  .legal-draft {
+    background: none;
+    color: var(--text);
+    border-color: var(--text);
+  }
 }
 
 /* --- SMS doğrulama (OtpLogin) ------------------------------------------- */

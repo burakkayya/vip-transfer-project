@@ -49,14 +49,24 @@ export default async function LegalPage({ params }: Props) {
     tursab: company.tursabNo,
   };
 
+  // Yalnızca düzen: anahtarlar, metin ve sıra `PAGES`'tekiyle aynı kalır. Bölüm başlıkları bağlantı hedefi olur
+  // (`dataTitle` → `#data`).
   return (
-    <article className="container narrow page legal">
-      <h1 className="page-title">{t("title")}</h1>
-      <p className="alert info">{common("draft")}</p>
-      <p className="hint">{common("updated", { version: page.version })}</p>
-      {page.paragraphs.map((p) =>
-        p.endsWith("Title") ? <h2 key={p}>{t(p)}</h2> : <p key={p}>{t(p, values)}</p>,
-      )}
+    <article className="container narrow page legal" aria-labelledby="legal-title">
+      <div className="legal-head">
+        <h1 id="legal-title" className="page-title">{t("title")}</h1>
+        <p className="alert info legal-draft">{common("draft")}</p>
+        <p className="hint">{common("updated", { version: page.version })}</p>
+      </div>
+      <div className="legal-body">
+        {page.paragraphs.map((p) =>
+          p.endsWith("Title") ? (
+            <h2 key={p} id={p.slice(0, -"Title".length)}>{t(p)}</h2>
+          ) : (
+            <p key={p}>{t(p, values)}</p>
+          ),
+        )}
+      </div>
     </article>
   );
 }
