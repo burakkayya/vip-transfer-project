@@ -215,6 +215,9 @@
     "refresh": "Refresh status",
     "backToPayment": "Back to payment",
     "pollPaused": "Automatic updates have paused: the server cannot be reached.",
+    "sessionLost": "Your session has expired. If you completed the payment, you will see its status after you log in again.",
+    "loginAgain": "Log in again",
+    "resumed": "Checking the result of your previous payment. If you completed it, the confirmation appears here within a few seconds; if your card was charged, do not pay again.",
     "resultLoading": "Getting your payment result…",
     "resultStalled": "Redirecting is taking longer than expected. You can check your payment status in your bookings."
   },
@@ -381,6 +384,7 @@
   "errors": {
     "unknown": "Something went wrong. Please try again.",
     "network": "Could not reach the server. Check your connection.",
+    "unauthorized": "Your session has expired. Please log in again to continue.",
     "validation_error": "Please check your details.",
     "price_changed": "The price has been updated. Please confirm the new price.",
     "lead_time_too_short": "Scheduled bookings must be made at least 2 hours before pick-up. For sooner, use \"Pick me up now\".",

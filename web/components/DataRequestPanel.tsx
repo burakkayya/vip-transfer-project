@@ -3,9 +3,11 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { isUnauthorized } from "@/lib/booking";
 import { dateTime } from "@/lib/format";
 import { useApiError } from "@/lib/hooks";
 import type { DataRequest } from "@/lib/types";
+import { useSessionExpired } from "./RequireLogin";
 
 const TYPES = ["erisim", "duzeltme", "silme"] as const;
 
@@ -14,14 +16,18 @@ export default function DataRequestPanel() {
   const t = useTranslations("dataRequest");
   const locale = useLocale();
   const errorText = useApiError();
+  const sessionExpired = useSessionExpired();
   const [type, setType] = useState<(typeof TYPES)[number]>("erisim");
   const [note, setNote] = useState("");
   const [list, setList] = useState<DataRequest[]>([]);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Oturum düştüyse (401) `RequireLogin` girişi yeniden gösterir; diğer liste hataları şimdilik yutulur (B-W9).
   useEffect(() => {
-    api<DataRequest[]>("me/data-requests").then(setList).catch(() => undefined);
-  }, []);
+    api<DataRequest[]>("me/data-requests")
+      .then(setList)
+      .catch((e) => isUnauthorized(e) && sessionExpired());
+  }, [sessionExpired]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +39,8 @@ export default function DataRequestPanel() {
       setNote("");
       setMessage({ ok: true, text: t("sent") });
     } catch (err) {
-      setMessage({ ok: false, text: errorText(err) });
+      if (isUnauthorized(err)) sessionExpired();
+      else setMessage({ ok: false, text: errorText(err) });
     }
   }
 

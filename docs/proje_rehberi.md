@@ -42,7 +42,7 @@ Mimari notlar ve güvenlik ilkeleri: kök `README.md` ve `yasal_ve_guvenlik.md`.
 
 ## 5. Kararlar
 
-Tam liste: `kararlar.md` (K-01 ... K-44). Son eklenenler (2026-10-31, 2026-11-02 ve 2026-11-03):
+Tam liste: `kararlar.md` (K-01 ... K-45). Son eklenenler (2026-10-31, 2026-11-02 ve 2026-11-03):
 
 | No | Karar | Uygulama durumu |
 |---|---|---|
@@ -62,6 +62,7 @@ Tam liste: `kararlar.md` (K-01 ... K-44). Son eklenenler (2026-10-31, 2026-11-02
 | K-42 | Web ödeme: sağlayıcı sayfası açıkken yeniden deneme yok, tek başlatma isteği, "ok" dönüşünde 75 sn onay beklemesi ve iki seçenek | Uygulandı: web `PaymentPanel` (B-W4) |
 | K-43 | Ortak iskelet parıltısı yalnızca hareket serbestken | Uygulandı: `web/app/home.css` (B-W4) |
 | K-44 | Web canlı takipte eski konum canlı gösterilmez: son farklı konum zamanı 3 yoklama aralığından (15 sn) uzun süredir görülmediyse (duvar saati; asılı istek veya değişmeyen `at` dahil) kehribar "Konum güncellenemiyor" + son güncelleme saati, ETA yok | Uygulandı: web `BookingDetail` (B-W6, düzeltme turu 1) |
+| K-45 | Web ödeme ekranı açıkken oturum düşerse iFrame kalır, yoklama durur, engellemeyen not + kullanıcının bastığı "Yeniden giriş yap"; yeniden girişte yeni ödeme otomatik açılmaz, aynı rezervasyon yoklanır | Uygulandı: web `PaymentPanel` (yüzey 1 incelemesi) |
 
 ## 6. Durum matrisi (2026-11-02)
 

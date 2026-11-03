@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./a11y";
+import { fictionalPhone, login, loginOnScreen } from "./session";
 
 // Rezervasyon sihirbazı (B-W2): araç, bilgiler, doğrulama, onay.
 
@@ -24,18 +25,13 @@ async function detailsStep(page: Page, url = BOOK()) {
   await expect(page.locator("#name")).toBeVisible();
 }
 
-let phoneSeq = 0;
-/** Bilgiler → telefon doğrulama (geliştirme kodu) → onay adımı. */
+/** Bilgiler → telefon doğrulama (geliştirme kodu, kurgusal numara) → onay adımı. */
 async function confirmStep(page: Page) {
   await detailsStep(page);
   await page.fill("#name", "Test Yolcu");
   await page.locator("form.wizard-step button[type=submit]").click();
   await page.waitForSelector("#otp-phone");
-  phoneSeq += 1;
-  await page.fill("#otp-phone", `555${String(Date.now()).slice(-5)}${String(phoneSeq % 100).padStart(2, "0")}`);
-  await page.locator("form:has(#otp-phone) button[type=submit]").click();
-  await page.locator(".dev-hint").click();
-  await page.locator("form:has(#otp-code) button[type=submit]").click();
+  await loginOnScreen(page, fictionalPhone().e164);
   await expect(page.locator(".confirm-total")).toBeVisible({ timeout: 30_000 });
 }
 
@@ -50,11 +46,7 @@ test("book has no axe violations at each step", async ({ page }) => {
   await page.locator("form.wizard-step button[type=submit]").click();
   await page.waitForSelector("#otp-phone");
   await expectNoAxeViolations(page);
-  phoneSeq += 1;
-  await page.fill("#otp-phone", `556${String(Date.now()).slice(-5)}${String(phoneSeq % 100).padStart(2, "0")}`);
-  await page.locator("form:has(#otp-phone) button[type=submit]").click();
-  await page.locator(".dev-hint").click();
-  await page.locator("form:has(#otp-code) button[type=submit]").click();
+  await loginOnScreen(page, fictionalPhone().e164);
   await expect(page.locator(".confirm-total")).toBeVisible({ timeout: 30_000 });
   await expectNoAxeViolations(page);
 });
@@ -67,8 +59,13 @@ test("consent boxes start unchecked and pay is disabled until both required are 
   for (let i = 0; i < 3; i++) await expect(boxes.nth(i)).not.toBeChecked();
   const pay = page.locator("button.btn.primary.big");
   await expect(pay).toBeDisabled();
-  // Neden devre dışı olduğu metinle söylenir.
+  // Neden devre dışı olduğu metinle söylenir ve düğmeye bağlıdır.
   await expect(page.locator("#pay-hint")).toBeVisible();
+  await expect(pay).toHaveAttribute("aria-describedby", "pay-hint");
+  // Yeni sekmede açılan yasal bağlantılar bunu söyler.
+  for (const link of await page.locator(".consents a[target=_blank]").all()) {
+    await expect(link).toHaveAccessibleName(/yeni sekmede açılır/);
+  }
   await boxes.nth(0).check();
   await expect(pay).toBeDisabled();
   await boxes.nth(1).check();
@@ -161,25 +158,8 @@ test("TRY price fits on one line at 360px", async ({ page }, info) => {
   expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
 });
 
-/** OTP'yi BFF üzerinden (geliştirme kodu) tamamlar; oturum çerezi tarayıcı bağlamına yazılır. */
-async function logIn(page: Page) {
-  const base = test.info().project.use.baseURL ?? "http://localhost:3000";
-  const headers = { origin: new URL(base).origin };
-  phoneSeq += 1;
-  const phone = `+90557${String(Date.now()).slice(-5)}${String(phoneSeq % 100).padStart(2, "0")}`;
-  const req = await page.request.post("/bff/auth/otp/request", { headers, data: { phone, purpose: "customer", locale: "tr" } });
-  expect(req.ok()).toBe(true);
-  const { dev_code } = (await req.json()) as { dev_code?: string };
-  expect(dev_code, "geliştirme kodu dönmedi").toBeTruthy();
-  const verify = await page.request.post("/bff/auth/otp/verify", {
-    headers,
-    data: { phone, code: dev_code, purpose: "customer", country_code: "TR", locale: "tr" },
-  });
-  expect(verify.ok()).toBe(true);
-}
-
 test("logged-in user sees 3 steps without a 4-step frame", async ({ page }) => {
-  await logIn(page);
+  await login(page);
   // Sayfa açılmadan önce gözlemci kurulur: göstergedeki en büyük adım sayısı kaydedilir.
   await page.addInitScript(() => {
     const w = window as unknown as { __maxSteps: number };
@@ -221,6 +201,41 @@ test("verify stays in the step indicator after phone verification", async ({ pag
   const bar = page.getByRole("list", { name: "Rezervasyon adımları" });
   await expect(bar.locator("li")).toHaveCount(4);
   await expect(bar.locator('[aria-current="step"]')).toContainText("Onay");
+});
+
+test("session check failure shows ErrorState with retry and does not treat the user as logged out", async ({ page }) => {
+  await page.route("**/bff/auth/me", (route) => route.abort());
+  await vehicleStep(page);
+  const sessionError = page.locator(".wizard-session-error");
+  await expect(sessionError).toContainText("Sunucuya ulaşılamadı");
+  // Bilgiler gönderilince doğrulama adımına sessizce geçilmez.
+  await page.locator(".vehicle-card:not([disabled])").first().click();
+  await page.fill("#name", "Test Yolcu");
+  await page.locator("form.wizard-step button[type=submit]").click();
+  await expect(page.locator("form.wizard-step").getByRole("alert")).toContainText("Sunucuya ulaşılamadı");
+  await expect(page.locator("#otp-phone")).toHaveCount(0);
+  // Bağlantı dönünce yeniden dene: oturumsuz kullanıcı için adım göstergesi gelir.
+  await page.unroute("**/bff/auth/me");
+  await sessionError.getByRole("button", { name: "Tekrar dene" }).click();
+  await expect(page.getByRole("list", { name: "Rezervasyon adımları" }).locator("li")).toHaveCount(4);
+  await page.locator("form.wizard-step button[type=submit]").click();
+  await expect(page.locator("#otp-phone")).toBeVisible();
+});
+
+test("401 on booking create returns to verification with a session-expired message", async ({ page }) => {
+  test.setTimeout(90_000);
+  await confirmStep(page);
+  await page.route("**/bff/me/bookings", (route) =>
+    route.request().method() === "POST"
+      ? route.fulfill({ status: 401, json: { error: { code: "unauthorized", message: "giriş gerekli" } } })
+      : route.continue(),
+  );
+  const boxes = page.locator(".wizard-step .check input[type=checkbox]");
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await page.locator("button.btn.primary.big").click();
+  await expect(page.locator("#otp-phone")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".wizard-step").getByRole("alert")).toContainText("Oturumunuz sona erdi");
 });
 
 test("route form on /book names missing address and focuses it", async ({ page }) => {

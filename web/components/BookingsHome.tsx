@@ -2,25 +2,26 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { BOOKING_CODE_RE, isUnauthorized, statusClass } from "@/lib/booking";
 import { dateTime, money } from "@/lib/format";
 import { useApiError, useSession } from "@/lib/hooks";
+import { regionLabel } from "@/lib/regions";
 import type { Booking } from "@/lib/types";
 import { Link, useRouter } from "@/i18n/navigation";
-import { statusClass } from "./BookingDetail";
 import { ErrorState } from "./ErrorState";
 import OtpLogin from "./OtpLogin";
 import { LoadingState } from "./States";
-
-const CODE_RE = /^GA[A-Z0-9]{6}$/;
 
 /** Ekran 8: rezervasyon sorgulama (kod ve telefon) ve girişliyse rezervasyon listesi. */
 export default function BookingsHome() {
   const t = useTranslations("bookings");
   const to = useTranslations("otp");
+  const te = useTranslations("errors");
   const locale = useLocale();
   const router = useRouter();
-  const { loggedIn, setLoggedIn } = useSession();
+  const { loggedIn, setLoggedIn, error: sessionError, recheck } = useSession();
+  const [expired, setExpired] = useState(false);
   const [code, setCode] = useState("");
   const errorText = useApiError();
   const [list, setList] = useState<Booking[] | null>(null);
@@ -32,8 +33,10 @@ export default function BookingsHome() {
     try {
       setList(await api<Booking[]>("me/bookings"));
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setLoggedIn(false);
-      else setListError(errorText(e));
+      if (isUnauthorized(e)) {
+        setExpired(true);
+        setLoggedIn(false);
+      } else setListError(errorText(e));
     }
   }, [errorText, setLoggedIn]);
 
@@ -41,7 +44,7 @@ export default function BookingsHome() {
     if (loggedIn) void loadList();
   }, [loggedIn, loadList]);
 
-  const validCode = CODE_RE.test(code);
+  const validCode = BOOKING_CODE_RE.test(code);
   const codeField = (
     <div className="field">
       <label htmlFor="code">{t("code")}</label>
@@ -55,6 +58,8 @@ export default function BookingsHome() {
     </div>
   );
 
+  // Oturum durumu bilinemiyorsa (ağ, süre aşımı, 5xx) giriş değil hata ve yeniden dene; yalnızca 401 girişe götürür.
+  if (sessionError) return <ErrorState text={errorText(sessionError)} onRetry={recheck} />;
   // Oturum denetlenirken boş alan yerine yükleniyor durumu (RequireLogin ile aynı metin).
   if (loggedIn === null) return <LoadingState label={to("checking")} />;
 
@@ -62,12 +67,20 @@ export default function BookingsHome() {
     return (
       <div className="card stack login-card">
         <h2>{t("lookupTitle")}</h2>
+        {expired && (
+          <p className="alert info" role="status">
+            {te("unauthorized")}
+          </p>
+        )}
         <p className="muted">{t("lookupText")}</p>
         {codeField}
         <OtpLogin
           onDone={() => {
             if (validCode) router.push(`/bookings/${code}`);
-            else setLoggedIn(true);
+            else {
+              setExpired(false);
+              setLoggedIn(true);
+            }
           }}
         />
       </div>
@@ -109,7 +122,7 @@ export default function BookingsHome() {
             <strong>{b.booking_code}</strong>{" "}
             <span className={`badge ${statusClass(b.status)}`}>{t(`status.${b.status}`)}</span>
             <div className="muted">
-              {b.legs[0].pickup_region.name} → {b.legs[0].dropoff_region.name} ·{" "}
+              {regionLabel(b.legs[0].pickup_region)} → {regionLabel(b.legs[0].dropoff_region)} ·{" "}
               {dateTime(b.legs[0].pickup_at, locale)}
             </div>
           </div>

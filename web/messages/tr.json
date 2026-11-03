@@ -215,6 +215,9 @@
     "refresh": "Durumu yenile",
     "backToPayment": "Ödemeye dön",
     "pollPaused": "Otomatik güncelleme durdu: sunucuya ulaşılamıyor.",
+    "sessionLost": "Oturumunuz sona erdi. Ödemeyi tamamladıysanız durumu, yeniden giriş yaptıktan sonra görürsünüz.",
+    "loginAgain": "Yeniden giriş yap",
+    "resumed": "Önceki ödemenizin sonucu denetleniyor. Ödemeyi tamamladıysanız onay birkaç saniye içinde burada görünür; kartınızdan çekim yapıldıysa yeniden ödemeyin.",
     "resultLoading": "Ödeme sonucu alınıyor…",
     "resultStalled": "Yönlendirme beklenenden uzun sürüyor. Ödemenizin durumunu rezervasyonlarınızdan görebilirsiniz."
   },
@@ -381,6 +384,7 @@
   "errors": {
     "unknown": "Bir hata oluştu. Lütfen tekrar deneyin.",
     "network": "Sunucuya ulaşılamadı. Bağlantınızı kontrol edin.",
+    "unauthorized": "Oturumunuz sona erdi. Devam etmek için yeniden giriş yapın.",
     "validation_error": "Lütfen bilgileri kontrol edin.",
     "price_changed": "Fiyat güncellendi, lütfen yeni fiyatı onaylayın.",
     "lead_time_too_short": "Planlı rezervasyon alış saatinden en az 2 saat önce yapılmalı. Daha erken için \"Hemen al\" seçeneğini kullanın.",

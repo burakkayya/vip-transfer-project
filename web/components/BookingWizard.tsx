@@ -66,11 +66,13 @@ function described(id: string, error: string | undefined, hint = true) {
 export default function BookingWizard(props: { regions: Region[]; vehicleTypes: VehicleType[]; initial: Trip }) {
   const t = useTranslations("book");
   const tTrip = useTranslations("trip");
+  const tErr = useTranslations("errors");
+  const tBk = useTranslations("bookings");
   const locale = useLocale();
   const router = useRouter();
   const errorText = useApiError();
   const regions = useRegions(props.regions);
-  const { loggedIn, setLoggedIn } = useSession();
+  const { loggedIn, setLoggedIn, error: sessionError, check: checkSession, recheck } = useSession();
 
   const [trip, setTrip] = useState(props.initial);
   const [editing, setEditing] = useState(false);
@@ -183,11 +185,13 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
     setFinalQuote(null);
   }
 
+  async function confirmQuote() {
+    setFinalQuote(await api<Quote>("quotes", { body: quoteRequest(trip, vehicle!, details, true) }));
+    setStep("confirm");
+  }
+
   function goConfirm() {
-    return run(async () => {
-      setFinalQuote(await api<Quote>("quotes", { body: quoteRequest(trip, vehicle!, details, true) }));
-      setStep("confirm");
-    });
+    return run(confirmQuote);
   }
 
   function submitDetails(e: React.FormEvent) {
@@ -204,8 +208,16 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
       document.getElementById(first)?.focus();
       return;
     }
-    if (loggedIn) void goConfirm();
-    else goStep("verify");
+    if (loggedIn === true) void goConfirm();
+    else if (loggedIn === false) goStep("verify");
+    else {
+      // Oturum durumu bilinmiyor (denetim sürüyor veya ağ/sunucu hatası): müşteri sessizce doğrulamaya gönderilmez.
+      // Yeniden denetlenir; yine bilinemezse hata bu formda gösterilir.
+      void run(async () => {
+        if (await checkSession()) await confirmQuote();
+        else goStep("verify");
+      });
+    }
   }
 
   function createBooking() {
@@ -242,6 +254,8 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
         if (e instanceof ApiError && e.status === 401) {
           setLoggedIn(false);
           goStep("verify");
+          // Neden yeniden doğrulama istendiği söylenir (genel "bir hata oluştu" değil).
+          throw new Shown(tErr("unauthorized"));
         }
         throw e;
       }
@@ -294,6 +308,8 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   const transientQuoteError = Object.values(quotes).find((q) => q instanceof ApiError && isTransient(q)) as ApiError | undefined;
   const canPay = consents.disclosure && consents.distanceSales;
   const errorBox = error && <p className="alert error" role="alert">{error}</p>;
+  // Yeni sekmede açılan yasal bağlantılar bunu ekran okuyucuya söyler (detaydaki harita bağlantısıyla aynı metin).
+  const newTab = <span className="sr-only"> ({tBk("newTab")})</span>;
 
   const back = (to: Step) => (
     <button className="btn link wizard-back" type="button" onClick={() => setStep(to)}>
@@ -310,7 +326,12 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   return (
     <div className="wizard" ref={top}>
       <div className="wizard-main">
-        {loggedIn === null ? (
+        {sessionError ? (
+          // Oturum durumu bilinemedi (ağ, süre aşımı, 5xx): müşteri oturumsuz sayılmaz, hata ve yeniden dene.
+          <div className="wizard-session-error">
+            <ErrorState text={errorText(sessionError)} onRetry={recheck} />
+          </div>
+        ) : loggedIn === null ? (
           // Oturum durumu bilinmeden adım sayısı (3 veya 4) çizilmez; yer tutucu yüksekliği korur, gösterge sıçramaz.
           <div className="stepper-bar stepper-pending" aria-hidden="true" />
         ) : (
@@ -526,15 +547,15 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
               <label className="check">
                 <input type="checkbox" aria-required="true" checked={consents.disclosure}
                   onChange={(e) => setConsents((c) => ({ ...c, disclosure: e.target.checked }))} />
-                <span>{t.rich("acceptDisclosure", { link: (c) => <Link href="/legal/privacy" target="_blank">{c}</Link> })}</span>
+                <span>{t.rich("acceptDisclosure", { link: (c) => <Link href="/legal/privacy" target="_blank">{c}{newTab}</Link> })}</span>
               </label>
               <label className="check">
                 <input type="checkbox" aria-required="true" checked={consents.distanceSales}
                   onChange={(e) => setConsents((c) => ({ ...c, distanceSales: e.target.checked }))} />
                 <span>
                   {t.rich("acceptDistanceSales", {
-                    link: (c) => <Link href="/legal/distance-sales" target="_blank">{c}</Link>,
-                    policy: (c) => <Link href="/legal/cancellation" target="_blank">{c}</Link>,
+                    link: (c) => <Link href="/legal/distance-sales" target="_blank">{c}{newTab}</Link>,
+                    policy: (c) => <Link href="/legal/cancellation" target="_blank">{c}{newTab}</Link>,
                   })}
                 </span>
               </label>
@@ -550,7 +571,8 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
             </div>
             {errorBox}
             <div className="wizard-actions">
-              <button className="btn primary big" type="button" onClick={createBooking} disabled={busy || !canPay}>
+              <button className="btn primary big" type="button" onClick={createBooking} disabled={busy || !canPay}
+                aria-describedby={canPay ? undefined : "pay-hint"}>
                 <Icon name="lock" size={18} /> {busy ? t("creating") : t("payNow")}
               </button>
               {!canPay && <p className="hint" id="pay-hint">{t("payHint")}</p>}

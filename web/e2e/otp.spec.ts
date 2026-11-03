@@ -1,14 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./a11y";
+import { fictionalPhone, fictionalUkMobile, requireDevSms } from "./session";
 
 // SMS doğrulama (B-W3): `OtpLogin` ve onu saran `RequireLogin` (/account, /bookings, /data-request).
 // Telefon başına saatlik kod sınırı ve yanlış kod sayacı olduğu için her test yeni bir numara kullanır.
+// Numaralar kurgusaldır (ABD 555-01XX, `session.ts`): ülke ABD seçilip ulusal kısım yazılır.
 
-let seq = 0;
-/** Türkiye için 10 haneli, test başına benzersiz ulusal numara. */
-function freshNational() {
-  seq += 1;
-  return `558${String(Date.now()).slice(-5)}${String(seq % 100).padStart(2, "0")}`;
+/** Ülkeyi ABD yapar; kod gönderen testlerde kurgusal numara bu seçimle yazılır. */
+async function selectUs(page: Page) {
+  await page.selectOption("#otp-country", "US");
 }
 
 /** /account oturumsuz açılır; telefon alanı oturum denetimi bittikten (hidrasyon sonrası) görünür. */
@@ -17,8 +17,10 @@ async function openLogin(page: Page, locale = "tr") {
   await expect(page.locator("#otp-phone")).toBeVisible({ timeout: 30_000 });
 }
 
-/** Telefonu yazar ve kodu ister; kod adımına geçildiğini bekler. */
-async function requestCode(page: Page, national = freshNational()) {
+/** ABD'yi seçer, kurgusal numarayı (veya verilen yazımı) yazar ve kodu ister; kod adımına geçildiğini bekler. */
+async function requestCode(page: Page, national = fictionalPhone().national) {
+  requireDevSms();
+  await selectUs(page);
   await page.fill("#otp-phone", national);
   await page.locator("form:has(#otp-phone) button[type=submit]").click();
   await expect(page.locator("#otp-code")).toBeVisible({ timeout: 15_000 });
@@ -58,7 +60,7 @@ test("wrong code shows error and keeps phone", async ({ page }) => {
   const describedBy = (await code.getAttribute("aria-describedby")) ?? "";
   expect(describedBy.split(" ")).toContain("otp-error");
   // Kodun gönderildiği numara değişmez.
-  await expect(page.locator(".otp-sent")).toContainText(`+90 ${national}`);
+  await expect(page.locator(".otp-sent")).toContainText(`+1 ${national}`);
   // Numarayı değiştir: yazılan numara korunur ve odak telefon alanına gider.
   await page.getByRole("button", { name: "Numarayı değiştir" }).click();
   const phone = page.locator("#otp-phone");
@@ -80,7 +82,7 @@ test("resend is rate-limited visually", async ({ page }) => {
   await resend.click();
   // Yeni kod gönderildiği duyurulur ve bekleme yeniden başlar.
   const live = page.locator(".otp").getByRole("status");
-  await expect(live).toHaveText(/Yeni kodu \+90 \d+ numarasına gönderdik/);
+  await expect(live).toHaveText(/Yeni kodu \+1 \d+ numarasına gönderdik/);
   await expect(resend).toBeDisabled();
   await expect(resend).toHaveAccessibleName(/\d+ sn/);
   // İkinci tekrar gönderim de duyurulur: metin aynı olsa da bölge boşaltılıp yeniden yazılır.
@@ -128,21 +130,25 @@ test("phone input announces dial code", async ({ page }) => {
 
 test("number typed with country code is not prefixed twice", async ({ page }) => {
   await openLogin(page);
-  const national = freshNational();
-  await requestCode(page, `+90 ${national}`);
-  await expect(page.locator(".otp-sent")).toContainText(`+90 ${national}`);
-  await expect(page.locator(".otp-sent")).not.toContainText("+90 90");
+  const { national } = fictionalPhone();
+  await requestCode(page, `+1 ${national}`);
+  await expect(page.locator(".otp-sent")).toContainText(`+1 ${national}`);
+  await expect(page.locator(".otp-sent")).not.toContainText("+1 1");
 });
 
 test("international number with another country's code switches the country", async ({ page }) => {
   await openLogin(page);
-  const digits = freshNational().slice(-8);
-  await requestCode(page, `(+49) 151 ${digits}`);
-  // Müşteri ülkesi numarayla tutarlı: seçim Almanya'ya döner (para birimi TRY değil EUR olur).
-  await expect(page.locator(".otp-sent")).toContainText(`+49 151${digits}`);
+  requireDevSms();
+  // Kurgusal Birleşik Krallık numarası, Türkiye seçiliyken uluslararası yazılır.
+  const uk = fictionalUkMobile();
+  await page.fill("#otp-phone", `(+44) 7700 ${uk.national.slice(4)}`);
+  await page.locator("form:has(#otp-phone) button[type=submit]").click();
+  await expect(page.locator("#otp-code")).toBeVisible({ timeout: 15_000 });
+  // Müşteri ülkesi numarayla tutarlı: seçim Birleşik Krallık'a döner (para birimi TRY değil GBP/EUR olur).
+  await expect(page.locator(".otp-sent")).toContainText(`+44 ${uk.national}`);
   await page.getByRole("button", { name: "Numarayı değiştir" }).click();
-  await expect(page.locator("#otp-country")).toHaveValue("DE");
-  await expect(page.locator(".phone-dial")).toHaveText("+49");
+  await expect(page.locator("#otp-country")).toHaveValue("GB");
+  await expect(page.locator(".phone-dial")).toHaveText("+44");
 });
 
 test("country code outside the list shows field error", async ({ page }) => {
@@ -164,7 +170,8 @@ const TOO_MANY = {
 test("rate limit (429) on send shows API message and keeps phone", async ({ page }) => {
   await openLogin(page);
   await page.route("**/bff/auth/otp/request", (r) => r.fulfill(TOO_MANY));
-  const national = freshNational();
+  const { national } = fictionalPhone();
+  await selectUs(page);
   await page.fill("#otp-phone", national);
   await page.locator("form:has(#otp-phone) button[type=submit]").click();
   await expect(page.locator(".otp").getByRole("alert")).toHaveText("Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.");
@@ -182,7 +189,7 @@ test("rate limit (429) on resend shows API message and keeps phone", async ({ pa
   await expect(resend).toBeEnabled();
   await resend.click();
   await expect(page.locator(".otp").getByRole("alert")).toHaveText("Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.");
-  await expect(page.locator(".otp-sent")).toContainText(`+90 ${national}`);
+  await expect(page.locator(".otp-sent")).toContainText(`+1 ${national}`);
   await expect(page.locator("#otp-code")).toBeVisible();
   // Başarısız istek beklemeyi yeniden başlatmaz.
   await expect(resend).toBeEnabled();
@@ -203,7 +210,9 @@ test("too short phone number shows field error instead of a silent disabled butt
 test("send code network failure shows alert and retry works", async ({ page }) => {
   await openLogin(page);
   await page.route("**/bff/auth/otp/request", (r) => r.abort());
-  await page.fill("#otp-phone", freshNational());
+  requireDevSms();
+  await selectUs(page);
+  await page.fill("#otp-phone", fictionalPhone().national);
   const send = page.locator("form:has(#otp-phone) button[type=submit]");
   await send.click();
   await expect(page.locator(".otp").getByRole("alert")).toContainText("Sunucuya ulaşılamadı");
@@ -231,7 +240,9 @@ for (const width of [360, 390, 768, 1024, 1440]) {
     };
     await openLogin(page, "de");
     await check();
-    await page.fill("#otp-phone", freshNational());
+    requireDevSms();
+    await selectUs(page);
+    await page.fill("#otp-phone", fictionalPhone().national);
     await page.locator("form:has(#otp-phone) button[type=submit]").click();
     await expect(page.locator("#otp-code")).toBeVisible({ timeout: 15_000 });
     await check();

@@ -3,11 +3,13 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { isUnauthorized } from "@/lib/booking";
 import { useApiError } from "@/lib/hooks";
 import { MARKETING_CONSENT_VERSION } from "@/lib/site";
 import type { Profile } from "@/lib/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import CountrySelect from "./CountrySelect";
+import { useSessionExpired } from "./RequireLogin";
 
 type ConsentRow = { consent_type: string; accepted: boolean; accepted_at: string };
 
@@ -18,16 +20,20 @@ export default function AccountPanel() {
   const tf = useTranslations("footer");
   const router = useRouter();
   const errorText = useApiError();
+  const sessionExpired = useSessionExpired();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [marketing, setMarketing] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Oturum düştüyse (401) `RequireLogin` girişi "oturumunuz sona erdi" notuyla yeniden gösterir.
   useEffect(() => {
-    api<Profile>("me/profile").then(setProfile).catch((e) => setMessage({ ok: false, text: errorText(e) }));
+    api<Profile>("me/profile")
+      .then(setProfile)
+      .catch((e) => (isUnauthorized(e) ? sessionExpired() : setMessage({ ok: false, text: errorText(e) })));
     api<ConsentRow[]>("me/consents")
       .then((rows) => setMarketing(rows.find((r) => r.consent_type === "pazarlama")?.accepted ?? false))
-      .catch(() => undefined);
-  }, [errorText]);
+      .catch((e) => isUnauthorized(e) && sessionExpired());
+  }, [errorText, sessionExpired]);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +50,8 @@ export default function AccountPanel() {
       setProfile(next);
       setMessage({ ok: true, text: t("saved") });
     } catch (err) {
-      setMessage({ ok: false, text: errorText(err) });
+      if (isUnauthorized(err)) sessionExpired();
+      else setMessage({ ok: false, text: errorText(err) });
     }
   }
 
@@ -52,7 +59,7 @@ export default function AccountPanel() {
     setMarketing(accepted);
     await api("me/consents", {
       body: { consent_type: "pazarlama", accepted, version: MARKETING_CONSENT_VERSION },
-    }).catch((err) => setMessage({ ok: false, text: errorText(err) }));
+    }).catch((err) => (isUnauthorized(err) ? sessionExpired() : setMessage({ ok: false, text: errorText(err) })));
   }
 
   async function logout() {

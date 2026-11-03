@@ -188,7 +188,7 @@
     "resendIn": "Erneut senden in {s} s",
     "changePhone": "Nummer ändern",
     "devCode": "Entwicklung: Ihr Code lautet {code}",
-    "checking": "Anmeldung wird geprüft …"
+    "checking": "Anmeldung wird geprüft…"
   },
   "pay": {
     "title": "Zahlung",
@@ -215,6 +215,9 @@
     "refresh": "Status aktualisieren",
     "backToPayment": "Zurück zur Zahlung",
     "pollPaused": "Automatische Aktualisierung angehalten: Server nicht erreichbar.",
+    "sessionLost": "Ihre Sitzung ist abgelaufen. Wenn Sie die Zahlung abgeschlossen haben, sehen Sie den Status nach der erneuten Anmeldung.",
+    "loginAgain": "Erneut anmelden",
+    "resumed": "Das Ergebnis Ihrer vorherigen Zahlung wird geprüft. Wenn Sie sie abgeschlossen haben, erscheint die Bestätigung hier in wenigen Sekunden; wurde Ihre Karte belastet, zahlen Sie bitte nicht erneut.",
     "resultLoading": "Zahlungsergebnis wird abgerufen…",
     "resultStalled": "Die Weiterleitung dauert länger als erwartet. Den Status Ihrer Zahlung sehen Sie unter Ihren Buchungen."
   },
@@ -249,7 +252,7 @@
     "openMap": "In Karten öffnen",
     "liveNone": "Der Standort des Fahrers ist gerade nicht verfügbar.",
     "changeText": "Für Änderungen von Datum oder Adresse schreiben Sie uns mit Ihrem Buchungscode an <mail>{email}</mail>.",
-    "loading": "Buchung wird geladen…",
+    "loading": "Buchungsdaten werden geladen…",
     "notFoundTitle": "Buchung nicht gefunden",
     "notFoundHint": "Buchungscodes beginnen mit GA und haben 8 Zeichen; Ihren Code finden Sie in der Bestätigungs-SMS. Haben Sie mit einer anderen Telefonnummer gebucht, melden Sie sich mit dieser Nummer an.",
     "total": "Gesamtbetrag",
@@ -381,6 +384,7 @@
   "errors": {
     "unknown": "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
     "network": "Server nicht erreichbar. Bitte prüfen Sie Ihre Verbindung.",
+    "unauthorized": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an, um fortzufahren.",
     "validation_error": "Bitte prüfen Sie Ihre Angaben.",
     "price_changed": "Der Preis wurde aktualisiert. Bitte bestätigen Sie den neuen Preis.",
     "lead_time_too_short": "Geplante Buchungen müssen mindestens 2 Stunden vor der Abholung erfolgen. Für frühere Fahrten nutzen Sie \"Jetzt abholen\".",

@@ -3,8 +3,10 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
+import { PAID, isFinal, isUnauthorized, statusClass } from "@/lib/booking";
 import { clockTime, dateTime, money } from "@/lib/format";
 import { useApiError } from "@/lib/hooks";
+import { usePoll } from "@/lib/poll";
 import { regionLabel } from "@/lib/regions";
 import { company } from "@/lib/site";
 import type { Booking, BookingStatus, DriverLocation, RefundQuote } from "@/lib/types";
@@ -18,7 +20,6 @@ import { LoadingState } from "./States";
 const TRACKABLE = new Set(["yolda", "vardi", "basladi"]);
 const LEG_FLOW = ["beklemede", "atandi", "yolda", "vardi", "basladi", "bitti"];
 const CANCELLABLE = new Set<BookingStatus>(["odeme_bekliyor", "onaylandi", "atandi"]);
-const PAID = new Set<BookingStatus>(["onaylandi", "atandi", "yolculukta", "tamamlandi"]);
 /** Canlı konum yoklama aralığı. */
 const POLL_MS = 5000;
 /** Konum zamanı bu süreden uzun değişmediyse konum canlı gösterilmez (3 yoklama aralığı, K-44). */
@@ -27,16 +28,6 @@ const STALE_MS = 3 * POLL_MS;
 const REQUEST_TIMEOUT_MS = POLL_MS - 500;
 /** Eskime denetimi yoklamadan bağımsız, saniyede bir (duvar saati). */
 const TICK_MS = 1000;
-
-/** Yeniden denemenin anlamsız olduğu hatalar: rezervasyon yok veya bu müşterinin değil. */
-const isFinal = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 403);
-const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401;
-
-export function statusClass(s: BookingStatus) {
-  if (s === "iptal" || s === "odeme_basarisiz") return "danger";
-  if (s === "odeme_bekliyor") return "warn";
-  return "ok";
-}
 
 /**
  * pending: ilk yanıt bekleniyor · live: konum taze · stale: eldeki konum eskidi ·
@@ -49,7 +40,8 @@ type LiveMode = "pending" | "live" | "stale" | "failed" | "none";
  * - Taze = son farklı konum zamanını (`at`) istemcinin ilk gördüğü andan bu yana en çok 3 aralık (15 sn).
  *   `at` değerleri yalnızca birbiriyle karşılaştırılır, istemci saatiyle kıyaslanmaz (saat farkı yok).
  * - Eskime yoklamanın bitmesini beklemez: saniyede bir duvar saatiyle denetlenir (asılı istek de eskitir).
- * - Yoklamalar üst üste binmez: istek sürerken yeni yoklama atlanır, istek aralıktan önce iptal edilir.
+ * - Yoklamalar üst üste binmez: istek sürerken yeni yoklama atlanır, istek aralıktan önce iptal edilir (`usePoll`,
+ *   ödeme ekranıyla ortak).
  */
 function useDriverLocation(code: string, enabled: boolean) {
   const sessionExpired = useSessionExpired();
@@ -59,69 +51,56 @@ function useDriverLocation(code: string, enabled: boolean) {
   const lastAt = useRef<string | null>(null);
   /** `lastAt`'ın istemcide ilk görüldüğü an (istemci saati). */
   const seenAt = useRef<number | null>(null);
-  const inFlight = useRef<AbortController | null>(null);
-  /** İzleme kapanıp açılınca eski isteklerin sonucu yok sayılır. */
-  const generation = useRef(0);
 
-  const poll = useCallback(async () => {
-    if (inFlight.current) return;
-    const gen = generation.current;
-    const ctrl = new AbortController();
-    inFlight.current = ctrl;
-    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-    const fresh = () => seenAt.current !== null && Date.now() - seenAt.current <= STALE_MS;
-    try {
-      const loc = await api<DriverLocation | null>(`me/bookings/${code}/driver-location`, { signal: ctrl.signal });
-      if (gen !== generation.current) return;
-      if (loc) {
-        if (loc.at !== lastAt.current) {
-          lastAt.current = loc.at;
-          seenAt.current = Date.now();
-          setLocation(loc);
+  const poll = usePoll(
+    async ({ signal, current }) => {
+      const fresh = () => seenAt.current !== null && Date.now() - seenAt.current <= STALE_MS;
+      try {
+        const loc = await api<DriverLocation | null>(`me/bookings/${code}/driver-location`, { signal });
+        if (!current()) return;
+        if (loc) {
+          if (loc.at !== lastAt.current) {
+            lastAt.current = loc.at;
+            seenAt.current = Date.now();
+            setLocation(loc);
+          }
+          // Konum zamanı değişmediyse tazelenmez: başarılı yanıt tek başına "canlı" demek değildir.
+          setMode(fresh() ? "live" : "stale");
+        } else {
+          // Sunucuda konum yok (sürücü göndermiyor, kayıt süresi doldu): eldeki konum hemen eskir.
+          seenAt.current = null;
+          setMode((m) => (m === "live" || m === "stale" ? "stale" : "none"));
         }
-        // Konum zamanı değişmediyse tazelenmez: başarılı yanıt tek başına "canlı" demek değildir.
-        setMode(fresh() ? "live" : "stale");
-      } else {
-        // Sunucuda konum yok (sürücü göndermiyor, kayıt süresi doldu): eldeki konum hemen eskir.
-        seenAt.current = null;
-        setMode((m) => (m === "live" || m === "stale" ? "stale" : "none"));
+      } catch (e) {
+        if (!current()) return;
+        if (isUnauthorized(e)) {
+          sessionExpired();
+          return;
+        }
+        // Eldeki konumu saat eskitir; hiç konum yoksa "konum yok" değil, hata durumu.
+        setMode((m) => (m === "live" || m === "stale" ? m : "failed"));
       }
-    } catch (e) {
-      if (gen !== generation.current) return;
-      if (isUnauthorized(e)) {
-        sessionExpired();
-        return;
-      }
-      // Eldeki konumu saat eskitir; hiç konum yoksa "konum yok" değil, hata durumu.
-      setMode((m) => (m === "live" || m === "stale" ? m : "failed"));
-    } finally {
-      clearTimeout(timer);
-      if (inFlight.current === ctrl) inFlight.current = null;
-    }
-  }, [code, sessionExpired]);
+    },
+    { enabled, intervalMs: POLL_MS, timeoutMs: REQUEST_TIMEOUT_MS, immediate: true },
+  );
 
   useEffect(() => {
     if (!enabled) return;
-    void poll();
-    const pollId = setInterval(() => void poll(), POLL_MS);
     const tickId = setInterval(() => {
       if (seenAt.current !== null && Date.now() - seenAt.current > STALE_MS) {
         setMode((m) => (m === "live" ? "stale" : m));
       }
     }, TICK_MS);
     return () => {
-      clearInterval(pollId);
       clearInterval(tickId);
       // İzleme kapanınca (veya bacak değişince) durum sıfırlanır; sonraki açılış "bekleniyor"dan başlar.
-      generation.current += 1;
-      inFlight.current?.abort();
-      inFlight.current = null;
+      // Süren yoklama isteğini `usePoll` iptal eder ve sonucunu yok sayar.
       lastAt.current = null;
       seenAt.current = null;
       setLocation(null);
       setMode("pending");
     };
-  }, [enabled, poll]);
+  }, [enabled]);
 
   return { location, mode, refresh: poll };
 }
@@ -147,13 +126,18 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
   const panelHeadingRef = useRef<HTMLHeadingElement>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
-  /** Bir sonraki çizimden sonra odaklanacak öğe (panel açılınca başlık, kapanınca açan düğme, iptalde sonuç). */
-  const pendingFocus = useRef<"panel" | "open" | "notice" | "error" | null>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  /**
+   * Bir sonraki çizimden sonra odaklanacak öğe (panel açılınca başlık, kapanınca açan düğme, iptalde sonuç,
+   * yükleme hatasında "Tekrar dene"den sonra rezervasyon başlığı).
+   */
+  const pendingFocus = useRef<"panel" | "open" | "notice" | "error" | "title" | null>(null);
 
   useEffect(() => {
     const target = pendingFocus.current;
     if (!target) return;
-    const el = { panel: panelHeadingRef, open: openRef, notice: noticeRef, error: errorRef }[target].current;
+    const el = { panel: panelHeadingRef, open: openRef, notice: noticeRef, error: errorRef, title: titleRef }[target]
+      .current;
     if (!el) return;
     pendingFocus.current = null;
     el.focus();
@@ -234,7 +218,13 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
         {loadError.final ? (
           <BookingNotFound announce />
         ) : (
-          <ErrorState text={loadError.text} onRetry={() => void load()} />
+          <ErrorState
+            text={loadError.text}
+            onRetry={() => {
+              pendingFocus.current = "title";
+              void load();
+            }}
+          />
         )}
       </div>
     );
@@ -269,7 +259,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
       <section className="card elevated booking-head" aria-labelledby="booking-code">
         <div className="booking-head-main">
           <span className="label">{t("code")}</span>
-          <h1 className="booking-code" id="booking-code">
+          <h1 className="booking-code" id="booking-code" tabIndex={-1} ref={titleRef}>
             {booking.booking_code}
           </h1>
           <p className="muted booking-meta">

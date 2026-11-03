@@ -1190,6 +1190,30 @@ dl.summary dd {
 
 /* --- Durum bileşenleri (components/States.tsx) ---------------------- */
 
+/* Ortak iskelet (LoadingState ve sihirbazın araç kartı fiyat yer tutucusu). K-43: parıltı yalnızca
+   hareket serbestken; azaltılmış harekette iskelet durağan kalır. */
+.skeleton {
+  display: block;
+  width: 110px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--soft) 0%, var(--soft-2) 50%, var(--soft) 100%);
+  background-size: 200% 100%;
+}
+
+/* Parıltı yalnızca hareket serbestken; azaltılmış harekette iskelet durağan kalır. */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: shimmer 1.2s linear infinite;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
 .state {
   display: flex;
   flex-direction: column;
@@ -1556,9 +1580,15 @@ dl.summary.booking-facts {
   gap: 12px;
 }
 
-.booking-not-found h1 {
+.booking-not-found h1,
+.booking-not-found h2 {
   margin: 0;
   font-size: clamp(1.9rem, 4vw, 2.8rem);
+}
+
+/* Ödeme ekranında sayfa başlığının altında: daha küçük ikinci düzey. */
+.booking-not-found h2 {
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
 }
 
 .booking-not-found p {

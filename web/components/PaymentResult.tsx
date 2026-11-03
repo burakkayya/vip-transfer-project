@@ -3,19 +3,19 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
-import { PENDING_KEY } from "./PaymentPanel";
+import { BOOKING_CODE_RE, PENDING_KEY, session } from "@/lib/booking";
 import { LoadingState } from "./States";
 
 /** Yönlendirme bu süreden uzun sürerse müşteriye çıkış yolu gösterilir (ağ yavaş veya üst pencereye geçiş engelli). */
 const STALL_MS = 8000;
 
-/** Bekleyen rezervasyon kodu; depolama kapalı veya engelliyse yok sayılır (ekran çökmez, liste açılır). */
+/**
+ * Bekleyen rezervasyon kodu; depolama kapalı veya engelliyse yok sayılır (ekran çökmez, liste açılır).
+ * Adrese girmeden önce biçimi denetlenir: geçersiz değer yok sayılır.
+ */
 function pendingCode(): string | null {
-  try {
-    return sessionStorage.getItem(PENDING_KEY);
-  } catch {
-    return null;
-  }
+  const code = session.get(PENDING_KEY);
+  return code && BOOKING_CODE_RE.test(code) ? code : null;
 }
 
 /**

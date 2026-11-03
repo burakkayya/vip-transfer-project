@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./a11y";
+import { bookingAwaitingPayment, bookingWithPhone, login, loginOnScreen } from "./session";
 
 test.describe.configure({ timeout: 60_000 });
 
@@ -7,93 +8,15 @@ test.describe.configure({ timeout: 60_000 });
 // Her test BFF üzerinden yeni bir numarayla giriş yapar (geliştirme kodu) ve ödeme bekleyen bir rezervasyon açar;
 // ödeme geliştirme ortamının sahte sağlayıcı sayfasında ("Ödemeyi onayla" / "Reddet") yapılır.
 
-let seq = 0;
-/** Test başına benzersiz Türkiye numarası (E.164). */
-function freshPhone() {
-  seq += 1;
-  return `+90557${String(Date.now()).slice(-5)}${String(seq % 100).padStart(2, "0")}`;
-}
-
-/** Bugünden 5 gün sonra 10:00, Türkiye saatiyle ISO-8601. */
-function pickupAt() {
-  const d = new Date(Date.now() + 5 * 864e5 + 3 * 3600_000);
-  return `${d.toISOString().slice(0, 10)}T10:00:00+03:00`;
-}
-
-/** Hafif bir sayfa açar ve BFF ile SMS girişini yapar (oturum çerezi tarayıcı bağlamına yazılır). */
-async function login(page: Page, locale = "tr") {
-  await page.goto(`/${locale}/legal/cookies`);
-  await page.evaluate(
-    async ({ phone, locale }) => {
-      const post = async (path: string, body: unknown) => {
-        const r = await fetch(`/bff/${path}`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!r.ok) throw new Error(`${path} ${r.status} ${await r.text()}`);
-        return r.json().catch(() => null);
-      };
-      const req = await post("auth/otp/request", { phone, purpose: "customer", locale });
-      await post("auth/otp/verify", { phone, code: req.dev_code, purpose: "customer", country_code: "TR", locale });
-    },
-    { phone: freshPhone(), locale },
-  );
-}
-
-/** Giriş yapar ve Antalya Havalimanı → Kemer için ödeme bekleyen bir rezervasyon oluşturur (TRY). Kodu döner. */
-async function bookingAwaitingPayment(page: Page, locale = "tr"): Promise<string> {
-  await login(page, locale);
-  return page.evaluate(
-    async ({ locale, at }) => {
-      const call = async (path: string, body?: unknown) => {
-        const r = await fetch(`/bff/${path}`, {
-          method: body === undefined ? "GET" : "POST",
-          headers: body === undefined ? undefined : { "content-type": "application/json" },
-          body: body === undefined ? undefined : JSON.stringify(body),
-        });
-        if (!r.ok) throw new Error(`${path} ${r.status} ${await r.text()}`);
-        return r.json();
-      };
-      const regions: { id: number; code: string }[] = await call("regions");
-      const id = (code: string) => regions.find((r) => r.code === code)!.id;
-      const req = {
-        pickup: { region_id: id("ayt"), address: null },
-        dropoff: { region_id: id("kemer"), address: null },
-        vehicle_type_code: "minivan",
-        pickup_at: at,
-        return_pickup_at: null,
-        passenger_count: 2,
-        luggage_count: 2,
-        country_code: "TR",
-        with_guarantee: false,
-      };
-      const quote = await call("quotes", req);
-      const booking = await call("me/bookings", {
-        ...req,
-        booking_type: "planli",
-        expected_total: quote.total,
-        passenger_name: "Test Yolcu",
-        note: null,
-        flights: [],
-        locale,
-        accept_disclosure: true,
-        accept_distance_sales: true,
-      });
-      return booking.booking_code as string;
-    },
-    { locale, at: pickupAt() },
-  );
-}
-
 const panel = (page: Page) => page.locator(".pay");
 const providerFrame = (page: Page) => page.frameLocator(".iframe-wrap iframe");
 
-type BookingPatch = Record<string, unknown> | { abort: true } | { status: number; code: string };
+type BookingPatch = Record<string, unknown> | { abort: true } | { hang: true } | { status: number; code: string };
 
 /**
  * Rezervasyon GET yanıtını taklit eder: `patch(n)` n'inci çağrıda (1'den başlar) gerçek yanıtın üstüne
- * yazılacak alanları, ağ hatası (`{ abort: true }`) veya hata yanıtını (`{ status, code }`) döner.
+ * yazılacak alanları, ağ hatası (`{ abort: true }`), hiç yanıtlanmayan istek (`{ hang: true }`) veya hata yanıtını
+ * (`{ status, code }`) döner.
  */
 async function mockBooking(page: Page, code: string, patch: (n: number) => BookingPatch) {
   let n = 0;
@@ -102,6 +25,7 @@ async function mockBooking(page: Page, code: string, patch: (n: number) => Booki
     n += 1;
     const p = patch(n);
     if ("abort" in p) return route.abort();
+    if ("hang" in p) return;
     if (typeof p.status === "number" && typeof p.code === "string") {
       return route.fulfill({ status: p.status, json: { error: { code: p.code, message: p.code } } });
     }
@@ -191,17 +115,59 @@ test("failed payment shows alert and retry", async ({ page }) => {
 
 test("network error shows ErrorState with retry", async ({ page }) => {
   const code = await bookingAwaitingPayment(page);
-  // Oturum denetimi geçer; rezervasyon ve ödeme istekleri ağda düşer.
-  await page.route("**/bff/**", (route) =>
-    route.request().url().includes("/bff/auth/") ? route.continue() : route.abort(),
-  );
+  // Tam kesinti: oturum denetimi dahil tüm BFF istekleri ağda düşer. Giriş formu değil, hata ve yeniden dene.
+  await page.route("**/bff/**", (route) => route.abort());
   await page.goto(`/tr/bookings/${code}/pay`);
-  const error = panel(page).getByRole("alert");
+  const error = page.locator(".page").getByRole("alert");
   await expect(error).toContainText("Sunucuya ulaşılamadı", { timeout: 30_000 });
+  await expect(page.locator("#otp-phone")).toHaveCount(0);
   await page.unroute("**/bff/**");
   await error.getByRole("button", { name: "Tekrar dene" }).click();
   await expect(providerFrame(page).locator("button.ok")).toBeVisible({ timeout: 30_000 });
-  await expect(panel(page).getByRole("alert")).toHaveCount(0);
+  await expect(page.locator(".page").getByRole("alert")).toHaveCount(0);
+});
+
+for (const [kind, abort] of [
+  ["network error", true],
+  ["500", false],
+] as const) {
+  test(`session check ${kind} shows ErrorState with retry, not the login`, async ({ page }) => {
+    const code = await bookingAwaitingPayment(page);
+    await page.route("**/bff/auth/me", (route) =>
+      abort ? route.abort() : route.fulfill({ status: 500, body: "Internal Server Error" }),
+    );
+    await page.goto(`/tr/bookings/${code}/pay`);
+    const error = page.locator(".page").getByRole("alert");
+    await expect(error).toBeVisible({ timeout: 30_000 });
+    await expect(error.getByRole("button", { name: "Tekrar dene" })).toBeVisible();
+    await expect(page.locator("#otp-phone")).toHaveCount(0);
+    await expect(page.locator(".login-card")).toHaveCount(0);
+    await page.unroute("**/bff/auth/me");
+    await error.getByRole("button", { name: "Tekrar dene" }).click();
+    await expect(providerFrame(page).locator("button.ok")).toBeVisible({ timeout: 30_000 });
+    // Odak sayfanın başına düşmez: yeniden denemeden sonra bölge başlığına gider.
+    await expect(page.getByRole("heading", { level: 1, name: "Ödeme" })).toBeFocused();
+  });
+}
+
+test("first load timeout shows ErrorState with retry", async ({ page }) => {
+  const code = await bookingAwaitingPayment(page);
+  let hang = true;
+  await page.route(`**/bff/me/bookings/${code}`, async (route) => {
+    if (hang) return; // yanıt hiç gelmez
+    await route.continue();
+  });
+  await page.clock.install();
+  await page.goto(`/tr/bookings/${code}/pay`);
+  await expect(page.getByRole("status").filter({ hasText: "Rezervasyon bilgileri yükleniyor" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.clock.runFor(16_000);
+  const error = panel(page).getByRole("alert");
+  await expect(error).toContainText("Sunucuya ulaşılamadı");
+  hang = false;
+  await error.getByRole("button", { name: "Tekrar dene" }).click();
+  await expect(providerFrame(page).locator("button.ok")).toBeVisible({ timeout: 30_000 });
 });
 
 test("checkout start failure keeps amount and offers retry", async ({ page }) => {
@@ -376,12 +342,79 @@ test("retry double click starts only one payment", async ({ page }) => {
   expect(new URL(page.url()).searchParams.has("result")).toBe(false);
 });
 
-test("poll 401 sends the user to login", async ({ page }) => {
+test("poll 401 before the payment page opens sends the user to login", async ({ page }) => {
   const code = await bookingAwaitingPayment(page);
+  // Ödeme sayfası açılmaz (başlatma isteği yanıtlanmaz); yoklama 401 alınca giriş istenir.
+  await page.route(`**/bff/me/bookings/${code}/payments`, () => {});
   await mockBooking(page, code, (n) => (n <= 1 ? {} : { status: 401, code: "unauthorized" }));
-  await openPay(page, code);
+  await page.goto(`/tr/bookings/${code}/pay`);
   await expect(page.locator("#otp-phone")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".login-card")).toContainText("Oturumunuz sona erdi");
   await expect(page.locator(".pay")).toHaveCount(0);
+});
+
+test("poll 401 while the payment page is open keeps it, and after login the same booking is polled again", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const { code, phone } = await bookingWithPhone(page);
+  const checkouts = await countCheckouts(page, code);
+  let mode: "ok" | "401" | "paid" = "ok";
+  let gets = 0;
+  await mockBooking(page, code, () => {
+    gets += 1;
+    return mode === "401" ? { status: 401, code: "unauthorized" } : mode === "paid" ? { status: "onaylandi" } : {};
+  });
+  await openPay(page, code);
+  mode = "401";
+  // Engellemeyen bildirim: ödeme sayfası (iFrame) yerinde kalır, giriş formu açılmaz, yeni ödeme başlamaz.
+  const notice = panel(page).locator(".pay-session");
+  await expect(notice).toContainText("Oturumunuz sona erdi", { timeout: 30_000 });
+  await expect(providerFrame(page).locator("button.ok")).toBeVisible();
+  await expect(page.locator("#otp-phone")).toHaveCount(0);
+  // Yoklama durur.
+  const before = gets;
+  await page.waitForTimeout(7_000);
+  expect(gets).toBe(before);
+  expect(checkouts.n).toBe(1);
+
+  // Giriş kullanıcının eylemiyle açılır.
+  await notice.getByRole("button", { name: "Yeniden giriş yap" }).click();
+  await expect(page.locator("#otp-phone")).toBeVisible();
+  mode = "ok";
+  await loginOnScreen(page, phone);
+  // Aynı rezervasyon yeniden yoklanır; otomatik yeni ödeme başlatılmaz.
+  await expect(panel(page).locator(".pay-resumed")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".iframe-wrap")).toHaveCount(0);
+  expect(checkouts.n).toBe(1);
+  mode = "paid";
+  await expect(page).toHaveURL((url) => url.pathname === `/tr/bookings/${code}` && url.searchParams.get("paid") === "1", {
+    timeout: 30_000,
+  });
+  expect(checkouts.n).toBe(1);
+});
+
+test("a hung poll request is cancelled and counts toward pausing updates", async ({ page }) => {
+  const code = await bookingAwaitingPayment(page);
+  let hang = false;
+  let hung = 0;
+  await mockBooking(page, code, () => {
+    if (!hang) return {};
+    hung += 1;
+    return { hang: true };
+  });
+  await page.clock.install();
+  await openPay(page, code);
+  hang = true;
+  await page.clock.runFor(15_000);
+  const paused = panel(page).locator(".pay-paused");
+  await expect(paused).toContainText("Otomatik güncelleme durdu");
+  // Yoklamalar üst üste binmez: asılı istek iptal edilmeden yenisi gönderilmez (3 başarısız deneme, sonra durur).
+  expect(hung).toBeLessThanOrEqual(3);
+  await expect(providerFrame(page).locator("button.ok")).toBeVisible();
+  hang = false;
+  await paused.getByRole("button", { name: "Durumu yenile" }).click();
+  await expect(paused).toHaveCount(0);
 });
 
 test("repeated poll network errors pause updates with a refresh action", async ({ page }) => {
@@ -410,6 +443,9 @@ for (const [status, code] of [
     await mockBooking(page, booking, () => ({ status, code }));
     await page.goto(`/tr/bookings/${booking}/pay`);
     await expect(panel(page).getByRole("alert")).toBeVisible({ timeout: 30_000 });
+    // Detaydaki gibi ayrılmış "bulunamadı" görünümü; sayfada tek h1 kalır.
+    await expect(panel(page).locator(".booking-not-found")).toContainText("Bu koda ait rezervasyon bulunamadı.");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     await expect(panel(page).getByRole("button", { name: "Tekrar dene" })).toHaveCount(0);
     await expect(panel(page).getByRole("link", { name: "Rezervasyonlarım" })).toHaveAttribute("href", "/tr/bookings");
   });

@@ -2,34 +2,35 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, api } from "@/lib/api";
+import { api } from "@/lib/api";
+import { PAID, PENDING_KEY, RESUME_KEY, isFinal, isUnauthorized, session } from "@/lib/booking";
 import { dateTime, money } from "@/lib/format";
 import { useApiError } from "@/lib/hooks";
+import { usePoll } from "@/lib/poll";
 import { regionLabel } from "@/lib/regions";
 import type { Booking, Checkout } from "@/lib/types";
 import { Link, useRouter } from "@/i18n/navigation";
+import BookingNotFound from "./BookingNotFound";
 import { ErrorState } from "./ErrorState";
 import Icon from "./Icon";
 import { useSessionExpired } from "./RequireLogin";
 import { EmptyState, LoadingState } from "./States";
 
-export const PENDING_KEY = "ga_pending_booking";
-const PAID = new Set(["onaylandi", "atandi", "yolculukta", "tamamlandi"]);
 /** Durum yoklama aralığı. */
 const POLL_MS = 3000;
-/** Art arda bu kadar yoklama hatasından sonra otomatik güncelleme durur ve müşteriye söylenir. */
+/** Asılı yoklama isteği bir sonrakinden önce iptal edilir ve başarısız sayılır. */
+const POLL_TIMEOUT_MS = POLL_MS - 500;
+/** Art arda bu kadar yoklama hatasından (iptal dahil) sonra otomatik güncelleme durur ve müşteriye söylenir. */
 const MAX_POLL_FAILURES = 3;
 /** Sağlayıcıdan "ok" ile dönüldükten sonra onayın beklendiği süre; dolunca müşteriye seçenek sunulur (yoklama sürer). */
 const CONFIRM_WAIT_MS = 75_000;
-
-/** Yeniden denemenin anlamsız olduğu hatalar: rezervasyon yok veya bu müşterinin değil. */
-const isFinal = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 403);
-const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401;
 
 /**
  * Ekran 6: ödeme. Kart bilgisi sağlayıcının iFrame'inde girilir (K-17).
  * Sonuç, sağlayıcının sunucumuza bildirimiyle kesinleşir; bu ekran rezervasyon durumunu yoklar.
  * Tutar API'nin döndürdüğü haliyle yalnızca biçimlenerek gösterilir.
+ * Ödeme sayfası açıkken oturum düşerse (yoklama 401) iFrame kaldırılmaz: yoklama durur, engellemeyen bir not girişi
+ * müşterinin eylemine bırakır. Yeniden girişte yeni ödeme açılmaz, aynı rezervasyon yoklanır (K-45).
  */
 export default function PaymentPanel(props: { code: string; result?: "ok" | "fail" }) {
   const t = useTranslations("pay");
@@ -47,9 +48,17 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
   const [pollPaused, setPollPaused] = useState(false);
   const [confirmSlow, setConfirmSlow] = useState(false);
   const [confirmRound, setConfirmRound] = useState(0);
+  /** Ödeme sayfası açıkken oturum düştü: yoklama durdu, not gösteriliyor, iFrame yerinde. */
+  const [sessionLost, setSessionLost] = useState(false);
+  /** Yeniden girişten sonra: önceki ödeme sayfasının sonucu bekleniyor, otomatik yeni ödeme açılmadı. */
+  const [resumed, setResumed] = useState(false);
   const started = useRef(false);
   const starting = useRef(false);
   const pollFailures = useRef(0);
+  const checkoutOpen = useRef(false);
+  useEffect(() => {
+    checkoutOpen.current = checkout !== null;
+  }, [checkout]);
 
   /** Sağlayıcı dönüşündeki `result` adresten kalkar: yenilemede eski sonuç tekrar gösterilmez. */
   const clearResult = useCallback(() => {
@@ -68,9 +77,11 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
     setCheckoutError(null);
     setFailed(false);
     setCheckout(null);
+    setResumed(false);
     try {
       const c = await api<Checkout>(`me/bookings/${props.code}/payments`, { body: {} });
-      sessionStorage.setItem(PENDING_KEY, props.code);
+      // Depolama engelliyse yalnızca sağlayıcı dönüşündeki kısayol kaybolur; ödeme sayfası yine açılır.
+      session.set(PENDING_KEY, props.code);
       setCheckout(c);
     } catch (e) {
       if (isUnauthorized(e)) sessionExpired();
@@ -85,25 +96,17 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
     try {
       const b = await api<Booking>(`me/bookings/${props.code}`);
       setBooking(b);
-      if (b.status === "odeme_bekliyor" && !props.result) void start();
+      // Ödeme sayfası açıkken oturum düşmüştü: yeni ödeme açılmaz, aynı rezervasyon yoklanır (K-45).
+      const resume = session.get(RESUME_KEY) === props.code;
+      session.remove(RESUME_KEY);
+      if (b.status !== "odeme_bekliyor" || props.result) return;
+      if (resume) setResumed(true);
+      else void start();
     } catch (e) {
       if (isUnauthorized(e)) sessionExpired();
       else setLoadError({ text: errorText(e), final: isFinal(e) });
     }
   }, [props.code, props.result, start, errorText, sessionExpired]);
-
-  /** Durumu hemen yeniden okur; başarılıysa duran otomatik güncelleme yeniden başlar. */
-  const refresh = useCallback(async () => {
-    try {
-      const b = await api<Booking>(`me/bookings/${props.code}`);
-      pollFailures.current = 0;
-      setPollPaused(false);
-      setBooking(b);
-    } catch (e) {
-      if (isUnauthorized(e)) sessionExpired();
-      else setPollPaused(true);
-    }
-  }, [props.code, sessionExpired]);
 
   useEffect(() => {
     if (started.current) return;
@@ -111,33 +114,48 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
     void load();
   }, [load]);
 
-  // Ödeme bildirimi gelene kadar durum yoklanır. Oturum düşerse giriş istenir; art arda ağ hatasında durur.
-  useEffect(() => {
-    if (!booking || booking.status !== "odeme_bekliyor" || pollPaused) return;
-    const id = setInterval(async () => {
+  // Ödeme bildirimi gelene kadar durum yoklanır (ortak yoklama: üst üste binmez, asılı istek iptal edilip başarısız
+  // sayılır). Art arda hatada durur. Oturum düşerse: ödeme sayfası açıksa engellemeyen not, değilse giriş.
+  const poll = usePoll(
+    async ({ signal, current }) => {
       try {
-        const b = await api<Booking>(`me/bookings/${props.code}`);
+        const b = await api<Booking>(`me/bookings/${props.code}`, { signal });
+        if (!current()) return;
         pollFailures.current = 0;
-        if (b.status !== booking.status) setBooking(b);
+        setPollPaused(false);
+        setBooking((prev) => (prev && prev.status === b.status ? prev : b));
       } catch (e) {
+        if (!current()) return;
         if (isUnauthorized(e)) {
-          clearInterval(id);
-          sessionExpired();
+          if (checkoutOpen.current) {
+            session.set(RESUME_KEY, props.code);
+            setSessionLost(true);
+          } else sessionExpired();
           return;
         }
         pollFailures.current += 1;
-        if (pollFailures.current >= MAX_POLL_FAILURES) {
-          clearInterval(id);
-          setPollPaused(true);
-        }
+        if (pollFailures.current >= MAX_POLL_FAILURES) setPollPaused(true);
       }
-    }, POLL_MS);
-    return () => clearInterval(id);
-  }, [booking, pollPaused, props.code, sessionExpired]);
+    },
+    {
+      enabled: booking?.status === "odeme_bekliyor" && !pollPaused && !sessionLost,
+      intervalMs: POLL_MS,
+      timeoutMs: POLL_TIMEOUT_MS,
+    },
+  );
+
+  /** Durumu hemen yeniden okur; başarılıysa duran otomatik güncelleme yeniden başlar. */
+  const refresh = useCallback(() => void poll(), [poll]);
+
+  /** Giriş müşterinin eylemiyle açılır (ör. ödemeyi bitirdikten sonra); iFrame ancak o zaman kalkar. */
+  function loginAgain() {
+    session.set(RESUME_KEY, props.code);
+    sessionExpired();
+  }
 
   useEffect(() => {
     if (booking && PAID.has(booking.status)) {
-      sessionStorage.removeItem(PENDING_KEY);
+      session.remove(PENDING_KEY);
       router.replace(`/bookings/${props.code}?paid=1`);
     }
   }, [booking, props.code, router]);
@@ -154,7 +172,7 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
   function refreshConfirmation() {
     setConfirmSlow(false);
     setConfirmRound((r) => r + 1);
-    void refresh();
+    refresh();
   }
 
   function retryPayment() {
@@ -166,11 +184,11 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
   if (loadError) {
     return (
       <div className="pay stack">
-        <ErrorState text={loadError.text} onRetry={loadError.final ? undefined : () => void load()} />
-        {loadError.final && (
-          <Link className="btn secondary pay-link" href="/bookings">
-            {tb("title")}
-          </Link>
+        {loadError.final ? (
+          // Detaydaki gibi: rezervasyon yok veya bu müşterinin değil; yeniden deneme yerine çıkış yolları.
+          <BookingNotFound announce level={2} />
+        ) : (
+          <ErrorState text={loadError.text} onRetry={() => void load()} />
         )}
       </div>
     );
@@ -256,10 +274,19 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
         </div>
       </section>
 
-      {pollPaused && (
+      {sessionLost && (
+        <div className="alert info pay-session" role="status">
+          <span>{t("sessionLost")}</span>
+          <button className="btn secondary small" type="button" onClick={loginAgain}>
+            {t("loginAgain")}
+          </button>
+        </div>
+      )}
+
+      {pollPaused && !sessionLost && (
         <div className="alert info pay-paused" role="status">
           <span>{t("pollPaused")}</span>
-          <button className="btn secondary small" type="button" onClick={() => void refresh()}>
+          <button className="btn secondary small" type="button" onClick={refresh}>
             {t("refresh")}
           </button>
         </div>
@@ -287,6 +314,17 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
             <iframe src={checkout.iframe_url} title={t("frameTitle")} allow="payment" />
           </div>
         </>
+      ) : resumed ? (
+        <div className="pay-resumed stack">
+          <p className="alert info" role="status">
+            {t("resumed")}
+          </p>
+          <div className="pay-actions">
+            <button className="btn secondary" type="button" onClick={retryPayment}>
+              {t("backToPayment")}
+            </button>
+          </div>
+        </div>
       ) : confirming ? (
         confirmSlow ? (
           <div className="pay-confirm-slow stack">
