@@ -1,16 +1,24 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
-import { api } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { ApiError, api } from "@/lib/api";
 import { useApiError } from "@/lib/hooks";
+import { displayPhone, toE164 } from "@/lib/phone";
 import { countries, defaultCountry } from "@/lib/site";
 import CountrySelect from "./CountrySelect";
+
+/**
+ * Tekrar gönderme beklemesi (sn). Mobil girişle aynı değer (`mobile/app/login.tsx`).
+ * Yalnızca görsel bir frendir: asıl sınır backend'in saatlik kod sınırıdır (429 → `too_many_requests`).
+ */
+const RESEND_SECONDS = 45;
 
 /** Ekran 4: telefon ile OTP doğrulama. Hesap yoksa backend oluşturur (K-16). */
 export default function OtpLogin(props: { onDone: (country: string) => void; country?: string }) {
   const t = useTranslations("otp");
   const tb = useTranslations("book");
+  const te = useTranslations("errors");
   const locale = useLocale();
   const errorText = useApiError();
   const [country, setCountry] = useState(props.country ?? defaultCountry[locale] ?? "GB");
@@ -19,103 +27,263 @@ export default function OtpLogin(props: { onDone: (country: string) => void; cou
   const [code, setCode] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Sunucu veya ağ hatası (her iki adımda). */
   const [error, setError] = useState<string | null>(null);
+  /** Alan hatası: telefon adımında numara, kod adımında kod alanına bağlanır. */
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
+  /** Yalnızca ekran okuyucuya: her tekrar gönderimde boşaltılıp yeniden yazılır, aynı metin de yeniden duyurulur. */
+  const [announce, setAnnounce] = useState("");
+  const announceTimer = useRef<number | undefined>(undefined);
+  const [waitUntil, setWaitUntil] = useState(0);
+  const [now, setNow] = useState(0);
+  /** Bir sonraki çizimden sonra odaklanacak alan (autoFocus yerine; yalnızca kullanıcı eylemiyle). */
+  const focusNext = useRef<"phone" | "code" | null>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
 
   const dial = countries.find((c) => c.code === country)?.dial ?? "+";
+  const wait = Math.max(0, Math.ceil((waitUntil - now) / 1000));
 
-  async function run(fn: () => Promise<void>) {
+  // Bekleme sayacı: kalan süre her zaman saklanan bitiş anından (Date.now) hesaplanır, adım saymaz.
+  // Arka planda kısılan sekme geri gelince (visibilitychange) hemen yeniden hesaplanır.
+  useEffect(() => {
+    if (waitUntil === 0) return;
+    const tick = () => {
+      const at = Date.now();
+      setNow(at);
+      if (at >= waitUntil) {
+        window.clearInterval(id);
+        document.removeEventListener("visibilitychange", tick);
+      }
+    };
+    const id = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [waitUntil]);
+
+  useEffect(() => () => window.clearTimeout(announceTimer.current), []);
+
+  // Adım değişince veya hatadan sonra odak ilgili alana gider.
+  useEffect(() => {
+    const target = focusNext.current;
+    if (!target) return;
+    focusNext.current = null;
+    if (target === "phone") phoneRef.current?.focus();
+    else {
+      codeRef.current?.focus();
+      codeRef.current?.select();
+    }
+  });
+
+  async function run(fn: () => Promise<void>, onError?: (e: unknown) => void) {
     setBusy(true);
     setError(null);
+    setFieldError(null);
     try {
       await fn();
     } catch (e) {
-      setError(errorText(e));
+      if (onError) onError(e);
+      else setError(errorText(e));
     } finally {
       setBusy(false);
     }
   }
 
-  const send = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const digits = national.replace(/\D/g, "").replace(/^0+/, "");
-    const full = `${dial}${digits}`;
-    return run(async () => {
+  const request = (full: string, again: boolean) =>
+    run(async () => {
       const r = await api<{ dev_code?: string | null }>("auth/otp/request", { body: { phone: full, purpose: "customer", locale } });
       setDevCode(r.dev_code ?? null);
       setPhone(full);
+      setCode("");
+      setResent(again);
+      if (again) {
+        // Bölge önce boşalır, sonra metin yazılır: ikinci ve sonraki gönderimler de duyurulur.
+        const text = t.markup("resent", { phone: displayPhone(full, dial), num: (c) => c });
+        setAnnounce("");
+        window.clearTimeout(announceTimer.current);
+        announceTimer.current = window.setTimeout(() => setAnnounce(text), 150);
+      }
+      const at = Date.now();
+      setNow(at);
+      setWaitUntil(at + RESEND_SECONDS * 1000);
+      focusNext.current = "code";
     });
+
+  const send = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = toE164(national, { code: country, dial }, countries);
+    if (!parsed.ok) {
+      setError(null);
+      setFieldError(parsed.reason === "unknown_country" ? t("unknownCountry") : te("phone"));
+      phoneRef.current?.focus();
+      return;
+    }
+    // Uluslararası yazımın ülkesi seçimden farklıysa seçim ona döner: müşteri ülkesi (para birimi) numarayla tutarlı kalır.
+    if (parsed.country !== country) setCountry(parsed.country);
+    return request(parsed.full, false);
   };
 
   const verify = (e: React.FormEvent) => {
     e.preventDefault();
-    return run(async () => {
-      await api("auth/otp/verify", {
-        body: { phone, code, purpose: "customer", country_code: country, locale },
-      });
-      props.onDone(country);
-    });
+    if (code.length < 4) {
+      setError(null);
+      setFieldError(t("codeRequired"));
+      codeRef.current?.focus();
+      return;
+    }
+    return run(
+      async () => {
+        await api("auth/otp/verify", {
+          body: { phone, code, purpose: "customer", country_code: country, locale },
+        });
+        props.onDone(country);
+      },
+      (err) => {
+        // Yanlış veya süresi dolmuş kod alana bağlanır; ağ ve sınır hataları genel kalır.
+        if (err instanceof ApiError && err.code === "otp_invalid") setFieldError(errorText(err));
+        else setError(errorText(err));
+        focusNext.current = "code";
+      },
+    );
   };
 
+  const changePhone = () => {
+    setPhone(null);
+    setCode("");
+    setDevCode(null);
+    setError(null);
+    setFieldError(null);
+    setResent(false);
+    setAnnounce("");
+    focusNext.current = "phone";
+  };
+
+  const alertBox = error && (
+    <p className="alert error" role="alert" id="otp-send-error">
+      {error}
+    </p>
+  );
+
   if (phone === null) {
+    const describedBy = [fieldError ? "otp-phone-error" : null, "otp-phone-hint"].filter(Boolean).join(" ");
     return (
-      <form onSubmit={send} className="stack">
+      <form onSubmit={send} className="otp stack" noValidate>
         <div className="grid grid-2">
           <CountrySelect id="otp-country" label={tb("country")} value={country} onChange={setCountry} showDial />
           <div className="field">
-            <label htmlFor="otp-phone">{t("phone")}</label>
-            <input
-              id="otp-phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel-national"
-              required
-              placeholder={country === "TR" ? "532 123 45 67" : ""}
-              value={national}
-              onChange={(e) => setNational(e.target.value)}
-            />
-            <span className="hint">{t("phoneHint")}</span>
+            <label htmlFor="otp-phone" id="otp-phone-label">
+              {t("phone")}
+            </label>
+            <div className="phone-input">
+              <span className="phone-dial" id="otp-dial" dir="ltr">
+                {dial}
+              </span>
+              <input
+                ref={phoneRef}
+                id="otp-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel-national"
+                dir="ltr"
+                required
+                aria-labelledby="otp-phone-label otp-dial"
+                aria-describedby={describedBy}
+                aria-invalid={fieldError ? true : undefined}
+                placeholder={country === "TR" ? "532 123 45 67" : ""}
+                value={national}
+                onChange={(e) => {
+                  setNational(e.target.value);
+                  if (fieldError) setFieldError(null);
+                }}
+              />
+            </div>
+            {fieldError && (
+              <span className="field-error" id="otp-phone-error">
+                {fieldError}
+              </span>
+            )}
+            <span className="hint" id="otp-phone-hint">
+              {t("phoneHint")}
+            </span>
           </div>
         </div>
-        {error && <p className="alert error">{error}</p>}
-        <button className="btn" type="submit" disabled={busy || national.replace(/\D/g, "").length < 6}>
-          {t("sendCode")}
-        </button>
+        {alertBox}
+        <div className="otp-actions">
+          <button className="btn primary" type="submit" disabled={busy}>
+            {busy ? t("sending") : t("sendCode")}
+          </button>
+        </div>
       </form>
     );
   }
 
+  const shown = displayPhone(phone, dial);
+  const num = (c: React.ReactNode) => (
+    <bdi className="otp-number" dir="ltr">
+      {c}
+    </bdi>
+  );
+  const codeDescribedBy = [fieldError ? "otp-error" : null, "otp-sent"].filter(Boolean).join(" ");
+
   return (
-    <form onSubmit={verify} className="stack">
-      <p className="muted">{t("codeSent", { phone })}</p>
+    <form onSubmit={verify} className="otp stack" noValidate>
+      <p className="otp-sent muted" id="otp-sent">
+        {resent ? t.rich("resent", { phone: shown, num }) : t.rich("codeSent", { phone: shown, num })}
+      </p>
+      {/* Canlı bölge her zaman DOM'da; tekrar gönderimde boşaltılıp yeniden yazılır. */}
+      <p className="sr-only" role="status" id="otp-announce">
+        {announce}
+      </p>
       {devCode && (
-        <button type="button" className="dev-hint" onClick={() => setCode(devCode)}>
+        <button type="button" className="dev-hint" onClick={() => { setCode(devCode); setFieldError(null); }}>
           {t("devCode", { code: devCode })}
         </button>
       )}
       <div className="field">
         <label htmlFor="otp-code">{t("code")}</label>
         <input
+          ref={codeRef}
           id="otp-code"
           className="code-input"
           inputMode="numeric"
           autoComplete="one-time-code"
-          pattern="\d{4,8}"
+          dir="ltr"
           maxLength={8}
           required
-          autoFocus
+          aria-describedby={codeDescribedBy}
+          aria-invalid={fieldError ? true : undefined}
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+          onChange={(e) => {
+            setCode(e.target.value.replace(/\D/g, ""));
+            if (fieldError) setFieldError(null);
+          }}
         />
+        {fieldError && (
+          <span className="field-error" id="otp-error" role="alert">
+            {fieldError}
+          </span>
+        )}
       </div>
-      {error && <p className="alert error">{error}</p>}
-      <div className="row">
-        <button className="btn" type="submit" disabled={busy || code.length < 4}>
-          {t("verify")}
+      {alertBox}
+      <div className="otp-actions">
+        <button className="btn primary" type="submit" disabled={busy}>
+          {busy ? t("verifying") : t("verify")}
         </button>
-        <button type="button" className="btn link" disabled={busy} onClick={() => send()}>
-          {t("resend")}
+      </div>
+      <div className="otp-links">
+        <button
+          type="button"
+          className="btn link otp-resend"
+          disabled={busy || wait > 0}
+          onClick={() => void request(phone, true)}
+        >
+          {wait > 0 ? t("resendIn", { s: wait }) : t("resend")}
         </button>
-        <button type="button" className="btn link" onClick={() => { setPhone(null); setCode(""); }}>
+        <button type="button" className="btn link" onClick={changePhone}>
           {t("changePhone")}
         </button>
       </div>

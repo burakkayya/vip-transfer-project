@@ -8,6 +8,7 @@ htmlcov/
 
 # --- Node / Next.js (web, admin) ---
 node_modules/
+scripts/ui-shots/node_modules/
 .next/
 out/
 next-env.d.ts
@@ -39,7 +40,20 @@ yarn-error.log*
 
 # --- Editör ve yerel ayarlar ---
 .claude/settings.local.json
+# Impeccable: ikili dosya ilk çalışmada indirilir; kişisel ayar ve oturum verisi yereldir.
+.claude/skills/impeccable/scripts/bin/
+.impeccable/config.local.json
+.impeccable/live/
+.impeccable/critique/
 .idea/
 *.swp
 .DS_Store
 Thumbs.db
+*.stackdump
+
+# --- Playwright çıktıları ---
+web/test-results/
+web/playwright-report/
+admin/test-results/
+admin/playwright-report/
+admin/e2e/.auth/

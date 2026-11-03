@@ -18,6 +18,7 @@ from app.models.enums import (
     RegionType,
 )
 from app.security.crypto import normalize_phone
+from app.services import route_line
 
 MoneyStr = Annotated[Decimal, PlainSerializer(lambda v: f"{v:.2f}", return_type=str)]
 SUPPORTED_LOCALES = ("tr", "en", "de", "ru", "fr", "es", "it", "zh", "ja", "ar")
@@ -192,9 +193,10 @@ class BookingLegOut(BaseModel):
     duration_minutes: int | None
     flight: FlightOut | None
     driver: DriverBrief | None
+    route_polyline: str | None = None
 
     @classmethod
-    def build(cls, leg: BookingLeg) -> "BookingLegOut":
+    def build(cls, leg: BookingLeg, with_route: bool = False) -> "BookingLegOut":
         driver = None
         if leg.driver is not None and leg.vehicle is not None:
             driver = DriverBrief(
@@ -215,6 +217,7 @@ class BookingLegOut(BaseModel):
             duration_minutes=leg.duration_minutes,
             flight=FlightOut.model_validate(leg.flight) if leg.flight else None,
             driver=driver,
+            route_polyline=route_line.route_polyline(leg) if with_route else None,
         )
 
 
@@ -238,7 +241,7 @@ class BookingOut(BaseModel):
     legs: list[BookingLegOut]
 
     @classmethod
-    def build(cls, b: Booking) -> "BookingOut":
+    def build(cls, b: Booking, with_route: bool = False) -> "BookingOut":
         return cls(
             id=b.id,
             booking_code=b.booking_code,
@@ -256,7 +259,7 @@ class BookingOut(BaseModel):
             currency=b.currency,
             created_at=b.created_at,
             cancelled_at=b.cancelled_at,
-            legs=[BookingLegOut.build(leg) for leg in b.legs],
+            legs=[BookingLegOut.build(leg, with_route) for leg in b.legs],
         )
 
 

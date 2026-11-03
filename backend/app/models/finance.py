@@ -36,6 +36,8 @@ class Payment(Base):
         str_enum(PaymentStatus), default=PaymentStatus.PENDING
     )
     failure_reason: Mapped[str | None] = mapped_column(String(255))
+    # Sağlayıcı ödeme sayfası adresi: açık ödeme süresi içinde yeniden kullanılır (çift ödeme önlemi, K-46).
+    checkout_url: Mapped[str | None] = mapped_column(String(1000))
     paid_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = created_at()
 

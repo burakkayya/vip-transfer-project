@@ -9,7 +9,9 @@
     "web": "expo start --web --port 8081",
     "web:driver": "cross-env APP_VARIANT=driver expo start --web --port 8082",
     "typecheck": "tsc --noEmit",
-    "doctor": "expo-doctor"
+    "doctor": "expo-doctor",
+    "lint": "eslint .",
+    "test": "jest"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
@@ -25,6 +27,7 @@
     "expo-linking": "~58.0.15",
     "expo-localization": "~58.0.5",
     "expo-location": "~58.0.20",
+    "expo-modules-core": "~58.0.29",
     "expo-router": "~58.0.28",
     "expo-secure-store": "~58.0.2",
     "expo-status-bar": "~58.0.4",
@@ -33,6 +36,7 @@
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
     "react-native-gesture-handler": "~3.3.0",
+    "react-native-maps": "1.29.11",
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
@@ -41,8 +45,14 @@
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "30.0.0",
     "@types/react": "~19.3.0",
     "cross-env": "^7.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "^58.0.4",
+    "jest": "~30.5.2",
+    "jest-expo": "~58.0.13",
     "typescript": "~6.0.3"
   }
 }

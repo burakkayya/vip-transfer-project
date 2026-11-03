@@ -1,0 +1,472 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T02:58:28.162Z",
+  "title": "Design System: Getaway Transfers",
+  "extensions": {
+    "colorMeta": {
+      "lacquer-black": {
+        "role": "primary",
+        "displayName": "Lake Siyah",
+        "canonical": "#0b0b0c",
+        "tonalRamp": [
+          "#030303",
+          "#060606",
+          "#080809",
+          "#0b0b0c",
+          "#545455",
+          "#919192",
+          "#c9c9ca",
+          "#ebebec"
+        ]
+      },
+      "lacquer-black-raised": {
+        "role": "primary",
+        "displayName": "Yükselmiş Lake",
+        "canonical": "#1c1c1f",
+        "tonalRamp": [
+          "#070708",
+          "#0e0e10",
+          "#151517",
+          "#1c1c1f",
+          "#606062",
+          "#99999a",
+          "#cdcdce",
+          "#ededed"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Kâğıt",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#404040",
+          "#808080",
+          "#bfbfbf",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "limestone": {
+        "role": "neutral",
+        "displayName": "Kireçtaşı",
+        "canonical": "#f5f5f3",
+        "tonalRamp": [
+          "#3d3d3d",
+          "#7b7b7a",
+          "#b8b8b6",
+          "#f5f5f3",
+          "#f8f8f7",
+          "#fbfbfa",
+          "#fdfdfc",
+          "#fefefe"
+        ]
+      },
+      "limestone-deep": {
+        "role": "neutral",
+        "displayName": "Derin Kireçtaşı",
+        "canonical": "#ececea",
+        "tonalRamp": [
+          "#3b3b3b",
+          "#767675",
+          "#b1b1b0",
+          "#ececea",
+          "#f2f2f0",
+          "#f6f6f6",
+          "#fbfbfa",
+          "#fdfdfd"
+        ]
+      },
+      "harbor-canvas": {
+        "role": "neutral",
+        "displayName": "Liman Tuvali",
+        "canonical": "#f6f6f4",
+        "tonalRamp": [
+          "#3e3e3d",
+          "#7b7b7a",
+          "#b9b9b7",
+          "#f6f6f4",
+          "#f9f9f7",
+          "#fbfbfa",
+          "#fdfdfd",
+          "#fefefe"
+        ]
+      },
+      "slate-text": {
+        "role": "neutral",
+        "displayName": "Arduvaz Metin",
+        "canonical": "#6b6b70",
+        "tonalRamp": [
+          "#1b1b1c",
+          "#363638",
+          "#505054",
+          "#6b6b70",
+          "#97979b",
+          "#bcbcbf",
+          "#dedee0",
+          "#f3f3f4"
+        ]
+      },
+      "slate-faint": {
+        "role": "neutral",
+        "displayName": "Soluk Arduvaz",
+        "canonical": "#76767b",
+        "tonalRamp": [
+          "#1e1e1f",
+          "#3b3b3e",
+          "#59595c",
+          "#76767b",
+          "#9f9fa3",
+          "#c1c1c4",
+          "#e1e1e2",
+          "#f4f4f4"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Saç Çizgisi",
+        "canonical": "#e8e7e3",
+        "tonalRamp": [
+          "#3a3a39",
+          "#747472",
+          "#aeadaa",
+          "#e8e7e3",
+          "#efeeeb",
+          "#f5f4f2",
+          "#fafaf9",
+          "#fdfdfd"
+        ]
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Güçlü Saç Çizgisi",
+        "canonical": "#d6d5d0",
+        "tonalRamp": [
+          "#363534",
+          "#6b6b68",
+          "#a1a09c",
+          "#d6d5d0",
+          "#e2e2de",
+          "#edecea",
+          "#f6f6f5",
+          "#fcfcfb"
+        ]
+      },
+      "champagne-brass": {
+        "role": "secondary",
+        "displayName": "Şampanya Pirinci",
+        "canonical": "#a8875a",
+        "tonalRamp": [
+          "#2a2217",
+          "#54442d",
+          "#7e6544",
+          "#a8875a",
+          "#c2ab8c",
+          "#d8c9b5",
+          "#ece5db",
+          "#f8f5f2"
+        ]
+      },
+      "champagne-brass-ink": {
+        "role": "secondary",
+        "displayName": "Pirinç Mürekkebi",
+        "canonical": "#8a6a3c",
+        "tonalRamp": [
+          "#231b0f",
+          "#45351e",
+          "#68502d",
+          "#8a6a3c",
+          "#ad9777",
+          "#cabca7",
+          "#e5ded4",
+          "#f6f3ef"
+        ]
+      },
+      "signal-red": {
+        "role": "status",
+        "displayName": "Sinyal Kırmızısı",
+        "canonical": "#c0261d",
+        "tonalRamp": [
+          "#300a07",
+          "#60130f",
+          "#901d16",
+          "#c0261d",
+          "#d36761",
+          "#e39d99",
+          "#f1cfcd",
+          "#faeeed"
+        ]
+      },
+      "signal-red-soft": {
+        "role": "status",
+        "displayName": "Sinyal Kırmızısı Zemin",
+        "canonical": "#fcebea",
+        "tonalRamp": [
+          "#3f3b3b",
+          "#7e7675",
+          "#bdb0b0",
+          "#fcebea",
+          "#fdf1f0",
+          "#fef6f6",
+          "#fefbfa",
+          "#fffdfd"
+        ]
+      },
+      "pine-green": {
+        "role": "status",
+        "displayName": "Çam Yeşili",
+        "canonical": "#18794e",
+        "tonalRamp": [
+          "#061e14",
+          "#0c3d27",
+          "#125b3b",
+          "#18794e",
+          "#5da183",
+          "#97c3af",
+          "#cce2d8",
+          "#edf4f1"
+        ]
+      },
+      "pine-green-soft": {
+        "role": "status",
+        "displayName": "Çam Yeşili Zemin",
+        "canonical": "#e6f4ec",
+        "tonalRamp": [
+          "#3a3d3b",
+          "#737a76",
+          "#adb7b1",
+          "#e6f4ec",
+          "#eef7f2",
+          "#f4faf6",
+          "#fafdfb",
+          "#fdfefd"
+        ]
+      },
+      "amber-ink": {
+        "role": "status",
+        "displayName": "Kehribar Mürekkebi",
+        "canonical": "#8a6100",
+        "tonalRamp": [
+          "#231800",
+          "#453100",
+          "#684900",
+          "#8a6100",
+          "#ad904d",
+          "#cab88c",
+          "#e5dcc7",
+          "#f6f2eb"
+        ]
+      },
+      "amber-soft": {
+        "role": "status",
+        "displayName": "Kehribar Zemin",
+        "canonical": "#fbf7ee",
+        "tonalRamp": [
+          "#3f3e3c",
+          "#7e7c77",
+          "#bcb9b3",
+          "#fbf7ee",
+          "#fcf9f3",
+          "#fdfbf7",
+          "#fefdfb",
+          "#fffefe"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Ana sayfa giriş başlığı ve çağrı bandı."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Sayfa ve bölüm başlıkları."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Kart ve adım başlıkları."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Akış metni."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Büyük harfli üst etiket."
+      },
+      "admin-body": {
+        "displayName": "Admin Body",
+        "purpose": "Panelin yoğun gövde metni."
+      },
+      "admin-heading": {
+        "displayName": "Admin Heading",
+        "purpose": "Panel sayfa başlığı."
+      }
+    },
+    "shadows": [
+      {
+        "name": "rest",
+        "value": "0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.05)",
+        "purpose": "Yükseltilmiş ikincil kart."
+      },
+      {
+        "name": "float",
+        "value": "0 2px 8px rgba(0,0,0,0.06), 0 30px 60px rgba(0,0,0,0.14)",
+        "purpose": "Rota kartı, özet kartı, açılır pencere."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Giriş, açılma ve kaydırmaya bağlı ortaya çıkış."
+      },
+      {
+        "name": "duration-quick",
+        "value": "150ms",
+        "purpose": "Üzerine gelme, renk ve kenar geçişleri."
+      },
+      {
+        "name": "duration-reveal",
+        "value": "600-900ms",
+        "purpose": "Web ana sayfada bölüm ortaya çıkışı; işlem ekranlarında kullanılmaz."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce → süre 0.01ms, Lenis kapalı",
+        "purpose": "Zorunlu."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "lg",
+        "value": "1080px"
+      },
+      {
+        "name": "md",
+        "value": "720px"
+      },
+      {
+        "name": "sm",
+        "value": "480px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Her ekranın tek birincil eylemi.",
+      "html": "<button class=\"ds-btn\">Fiyatları göster</button>",
+      "css": ".ds-btn{font-family: Inter, system-ui, sans-serif;font-weight:600;font-size:.96rem;padding:12px 22px;border-radius:12px;border:1px solid #0b0b0c;background:#0b0b0c;color:#fff;cursor:pointer;transition:background .15s ease,transform .08s ease}.ds-btn:hover{background:#1c1c1f}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid #0b0b0c;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Geri, vazgeç, ikincil eylemler.",
+      "html": "<button class=\"ds-btn-2\">Geri</button>",
+      "css": ".ds-btn-2{font-family: Inter, system-ui, sans-serif;font-weight:600;font-size:.96rem;padding:12px 22px;border-radius:12px;border:1px solid #f5f5f3;background:#f5f5f3;color:#0b0b0c;cursor:pointer;transition:background .15s ease}.ds-btn-2:hover{background:#ececea}.ds-btn-2:focus-visible{outline:2px solid #0b0b0c;outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Etiket üstte, kireçtaşı zemin, odakta siyah kenar.",
+      "html": "<label class=\"ds-field\"><span>Yolcu adı soyadı</span><input placeholder=\"Ad Soyad\"></label>",
+      "css": ".ds-field{font-family: Inter, system-ui, sans-serif;display:flex;flex-direction:column;gap:6px}.ds-field span{font-weight:600;font-size:.82rem;color:#0b0b0c}.ds-field input{font:inherit;padding:13px 14px;border:1.5px solid transparent;border-radius:12px;background:#f5f5f3;color:#0b0b0c}.ds-field input::placeholder{color:#76767b}.ds-field input:hover{background:#ececea}.ds-field input:focus{outline:none;border-color:#0b0b0c;background:#fff}"
+    },
+    {
+      "name": "Route Rail",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "İmza: iki adresi birleştiren daire, kesikli çizgi, kare.",
+      "html": "<div class=\"ds-rail\"><div class=\"ds-stop\"><i class=\"ds-dot\"></i>Antalya Havalimanı (AYT)</div><div class=\"ds-stop\"><i class=\"ds-sq\"></i>Kemer</div></div>",
+      "css": ".ds-rail{font-family: Inter, system-ui, sans-serif;position:relative;background:#fff;border-radius:18px;padding:18px 20px 18px 44px;box-shadow:0 2px 8px rgba(0,0,0,.06),0 30px 60px rgba(0,0,0,.14);display:grid;gap:18px;font-weight:600;color:#0b0b0c}.ds-rail:before{content:\"\";position:absolute;inset-inline-start:23px;top:30px;bottom:30px;border-inline-start:2px dashed #d6d5d0}.ds-stop{position:relative}.ds-dot,.ds-sq{position:absolute;inset-inline-start:-27px;top:5px;width:10px;height:10px;background:#0b0b0c}.ds-dot{border-radius:50%}"
+    },
+    {
+      "name": "Elevated Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Elde tutulan kart: yüzen gölge, kenarsız.",
+      "html": "<div class=\"ds-card\"><strong>Özet</strong><p>Toplam <b>75,00 €</b></p></div>",
+      "css": ".ds-card{font-family: Inter, system-ui, sans-serif;background:#fff;border-radius:18px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.06),0 30px 60px rgba(0,0,0,.14);color:#0b0b0c}.ds-card p{color:#6b6b70;margin:.5em 0 0}.ds-card b{color:#0b0b0c;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-ok",
+      "description": "Durum hapı; renk yalnızca durum bildirir.",
+      "html": "<span class=\"ds-badge\">Onaylandı</span> <span class=\"ds-badge ds-vip\">VIP</span>",
+      "css": ".ds-badge{font-family: Inter, system-ui, sans-serif;display:inline-block;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:600;background:#e6f4ec;color:#18794e}.ds-vip{background:#0b0b0c;color:#fff}"
+    },
+    {
+      "name": "Admin Table",
+      "kind": "custom",
+      "refersTo": "admin-card",
+      "description": "Yoğun satırlar, büyük harfli başlık, tabular tutar.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Kod</th><th>Durum</th><th class=\"n\">Tutar</th></tr></thead><tbody><tr><td>GA7K2P</td><td>Onaylandı</td><td class=\"n\">75,00 €</td></tr><tr><td>GA9X4M</td><td>Ödeme bekliyor</td><td class=\"n\">₺4.190,00</td></tr></tbody></table>",
+      "css": ".ds-table{font-family: Inter, system-ui, sans-serif;font-size:14px;border-collapse:collapse;width:100%;background:#fff;border:1px solid #e8e7e3;border-radius:14px}.ds-table th,.ds-table td{text-align:start;padding:10px 12px;border-bottom:1px solid #e8e7e3}.ds-table th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#6b6b70;font-weight:600}.ds-table tbody tr:hover{background:#fafaf8}.ds-table .n{text-align:end;font-variant-numeric:tabular-nums}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Kıyı Yolu",
+    "overview": "Havalimanından otele uzanan Akdeniz kıyı yolu: yolcu indiği andan kapıya varana kadar tek, kesintisiz bir hat üzerindedir. Sistem bu hattı görünür kılar. Rota rayı (nokta, kesikli çizgi, kare), gerçek kıyı ve araç fotoğrafları ve yolculuğun bir sonraki adımını işaret eden hareket bu dünyanın taşıyıcılarıdır. Zemin lake siyah ve kâğıt beyazıdır; şampanya pirinci yalnızca yolun özel anlarında parlar.\n\nMüşteri web sitesi bu yolu cesurca anlatır (Persuade): kenardan kenara fotoğraf, iri ve sıkı Inter başlıklar, belirgin biçimde yükselen kartlar, kaydırmaya bağlı hareket. Rezervasyon, ödeme ve hesap ekranlarında (Operate) yol sakinleşir: aynı malzemeler, daha az hareket, tek bir sonraki adım. Admin paneli aynı ailedendir ama bir işletme masasıdır: yoğun, hizalı, sessiz; marka yalnızca hassas ayrıntılarda yaşar.",
+    "keyCharacteristics": [
+      "Lake siyah ve kâğıt beyazı zıtlığı; renk değil kontrast taşır.",
+      "Rota rayı imzası: alış noktası daire, varış kare, arada kesikli çizgi.",
+      "Gerçek fotoğraf (kıyı yolu, Vito, V-Class, Sprinter); illüstrasyon yok.",
+      "Belirgin yükselti: elde tutulan öğeler (rota kartı, özet, alt panel) gölgeyle öne çıkar.",
+      "Şampanya pirinci nadirdir ve anlamlıdır."
+    ],
+    "rules": [
+      {
+        "name": "The Brass Is Rare Rule",
+        "body": "Şampanya pirinci bir ekranın %10'unu geçmez ve yalnızca \"özel\" anlarda görünür (VIP, teklif, seçili durum). Birincil eylem her zaman lake siyahtır.",
+        "section": "colors"
+      },
+      {
+        "name": "The Text Floor Rule",
+        "body": "Metin rengi, zemininde 4,5:1'in altına düşmez. Yer tutucu metin dahil hiçbir metin `slate-faint`'ten açık olamaz.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Means Status Rule",
+        "body": "Kırmızı, yeşil ve kehribar yalnızca durum bildirir; süs olarak kullanılmaz.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Tüm yüzeylerde yalnızca Inter. Vurgu ağırlık ve ölçekle yapılır, ikinci bir yazı tipiyle değil.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Money Rule",
+        "body": "Tutarlar, saatler ve kodlar tabular rakamla (`font-variant-numeric: tabular-nums`) yazılır; tablolarda sağa hizalanır.",
+        "section": "typography"
+      },
+      {
+        "name": "The Held Object Rule",
+        "body": "Gölge yalnızca kullanıcının etkileşimde olduğu veya elinde tuttuğu öğede bulunur. Bir ekranda en fazla iki \"yüzen\" öğe olur.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do birincil eylemi her ekranda tek ve lake siyah tut.",
+      "Do fiyatı yalnızca backend'den geldiği haliyle, para birimi biçimiyle (`Intl.NumberFormat`) göster.",
+      "Do her yükleniyor, boş ve hata durumunu görünür yap; iskelet, yükleme bekleyen fiyatın yerini korur.",
+      "Do mantıksal CSS özellikleri kullan; düzen Almanca uzunluğunda ve `dir=\"rtl\"` altında kırılmamalı.",
+      "Do her animasyonu `prefers-reduced-motion` altında kapat veya anlık geçişe indir."
+    ],
+    "donts": [
+      "Don't şampanya pirincini birincil düğme, büyük yüzey ya da beyaz zeminde küçük metin rengi olarak kullanma (küçük metinde `champagne-brass-ink`).",
+      "Don't `slate-faint`'ten açık gri metin kullanma.",
+      "Don't önceden işaretli onay kutusu veya reddi gizleyen rıza deseni kullanma; KVKK aydınlatma, açık rıza ve pazarlama onayı ayrı kalır.",
+      "Don't doğrulanmamış güven kanıtı (yorum, puan, sayı, logo) ekleme.",
+      "Don't admin'e pazarlama hareketi veya dekoratif gölge ekleme."
+    ]
+  }
+}

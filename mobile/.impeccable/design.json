@@ -1,0 +1,435 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T02:58:28.176Z",
+  "title": "Design System: Getaway Transfers Mobil",
+  "extensions": {
+    "colorMeta": {
+      "lacquer-black": {
+        "role": "primary",
+        "displayName": "Lake Siyah",
+        "canonical": "#0b0b0c",
+        "tonalRamp": [
+          "#030303",
+          "#060606",
+          "#080809",
+          "#0b0b0c",
+          "#545455",
+          "#919192",
+          "#c9c9ca",
+          "#ebebec"
+        ]
+      },
+      "lacquer-black-raised": {
+        "role": "primary",
+        "displayName": "Yükselmiş Lake",
+        "canonical": "#1c1c1f",
+        "tonalRamp": [
+          "#070708",
+          "#0e0e10",
+          "#151517",
+          "#1c1c1f",
+          "#606062",
+          "#99999a",
+          "#cdcdce",
+          "#ededed"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Kâğıt",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#404040",
+          "#808080",
+          "#bfbfbf",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "limestone": {
+        "role": "neutral",
+        "displayName": "Kireçtaşı",
+        "canonical": "#f5f5f3",
+        "tonalRamp": [
+          "#3d3d3d",
+          "#7b7b7a",
+          "#b8b8b6",
+          "#f5f5f3",
+          "#f8f8f7",
+          "#fbfbfa",
+          "#fdfdfc",
+          "#fefefe"
+        ]
+      },
+      "limestone-deep": {
+        "role": "neutral",
+        "displayName": "Derin Kireçtaşı",
+        "canonical": "#ececea",
+        "tonalRamp": [
+          "#3b3b3b",
+          "#767675",
+          "#b1b1b0",
+          "#ececea",
+          "#f2f2f0",
+          "#f6f6f6",
+          "#fbfbfa",
+          "#fdfdfd"
+        ]
+      },
+      "harbor-canvas": {
+        "role": "neutral",
+        "displayName": "Liman Tuvali",
+        "canonical": "#f6f6f4",
+        "tonalRamp": [
+          "#3e3e3d",
+          "#7b7b7a",
+          "#b9b9b7",
+          "#f6f6f4",
+          "#f9f9f7",
+          "#fbfbfa",
+          "#fdfdfd",
+          "#fefefe"
+        ]
+      },
+      "slate-text": {
+        "role": "neutral",
+        "displayName": "Arduvaz Metin",
+        "canonical": "#6b6b70",
+        "tonalRamp": [
+          "#1b1b1c",
+          "#363638",
+          "#505054",
+          "#6b6b70",
+          "#97979b",
+          "#bcbcbf",
+          "#dedee0",
+          "#f3f3f4"
+        ]
+      },
+      "slate-faint": {
+        "role": "neutral",
+        "displayName": "Soluk Arduvaz",
+        "canonical": "#76767b",
+        "tonalRamp": [
+          "#1e1e1f",
+          "#3b3b3e",
+          "#59595c",
+          "#76767b",
+          "#9f9fa3",
+          "#c1c1c4",
+          "#e1e1e2",
+          "#f4f4f4"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Saç Çizgisi",
+        "canonical": "#e8e7e3",
+        "tonalRamp": [
+          "#3a3a39",
+          "#747472",
+          "#aeadaa",
+          "#e8e7e3",
+          "#efeeeb",
+          "#f5f4f2",
+          "#fafaf9",
+          "#fdfdfd"
+        ]
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Güçlü Saç Çizgisi",
+        "canonical": "#d6d5d0",
+        "tonalRamp": [
+          "#363534",
+          "#6b6b68",
+          "#a1a09c",
+          "#d6d5d0",
+          "#e2e2de",
+          "#edecea",
+          "#f6f6f5",
+          "#fcfcfb"
+        ]
+      },
+      "champagne-brass": {
+        "role": "secondary",
+        "displayName": "Şampanya Pirinci",
+        "canonical": "#a8875a",
+        "tonalRamp": [
+          "#2a2217",
+          "#54442d",
+          "#7e6544",
+          "#a8875a",
+          "#c2ab8c",
+          "#d8c9b5",
+          "#ece5db",
+          "#f8f5f2"
+        ]
+      },
+      "champagne-brass-ink": {
+        "role": "secondary",
+        "displayName": "Pirinç Mürekkebi",
+        "canonical": "#8a6a3c",
+        "tonalRamp": [
+          "#231b0f",
+          "#45351e",
+          "#68502d",
+          "#8a6a3c",
+          "#ad9777",
+          "#cabca7",
+          "#e5ded4",
+          "#f6f3ef"
+        ]
+      },
+      "signal-red": {
+        "role": "status",
+        "displayName": "Sinyal Kırmızısı",
+        "canonical": "#c0261d",
+        "tonalRamp": [
+          "#300a07",
+          "#60130f",
+          "#901d16",
+          "#c0261d",
+          "#d36761",
+          "#e39d99",
+          "#f1cfcd",
+          "#faeeed"
+        ]
+      },
+      "signal-red-soft": {
+        "role": "status",
+        "displayName": "Sinyal Kırmızısı Zemin",
+        "canonical": "#fcebea",
+        "tonalRamp": [
+          "#3f3b3b",
+          "#7e7675",
+          "#bdb0b0",
+          "#fcebea",
+          "#fdf1f0",
+          "#fef6f6",
+          "#fefbfa",
+          "#fffdfd"
+        ]
+      },
+      "pine-green": {
+        "role": "status",
+        "displayName": "Çam Yeşili",
+        "canonical": "#18794e",
+        "tonalRamp": [
+          "#061e14",
+          "#0c3d27",
+          "#125b3b",
+          "#18794e",
+          "#5da183",
+          "#97c3af",
+          "#cce2d8",
+          "#edf4f1"
+        ]
+      },
+      "pine-green-soft": {
+        "role": "status",
+        "displayName": "Çam Yeşili Zemin",
+        "canonical": "#e6f4ec",
+        "tonalRamp": [
+          "#3a3d3b",
+          "#737a76",
+          "#adb7b1",
+          "#e6f4ec",
+          "#eef7f2",
+          "#f4faf6",
+          "#fafdfb",
+          "#fdfefd"
+        ]
+      },
+      "amber-ink": {
+        "role": "status",
+        "displayName": "Kehribar Mürekkebi",
+        "canonical": "#8a6100",
+        "tonalRamp": [
+          "#231800",
+          "#453100",
+          "#684900",
+          "#8a6100",
+          "#ad904d",
+          "#cab88c",
+          "#e5dcc7",
+          "#f6f2eb"
+        ]
+      },
+      "amber-soft": {
+        "role": "status",
+        "displayName": "Kehribar Zemin",
+        "canonical": "#fbf7ee",
+        "tonalRamp": [
+          "#3f3e3c",
+          "#7e7c77",
+          "#bcb9b3",
+          "#fbf7ee",
+          "#fcf9f3",
+          "#fdfbf7",
+          "#fefdfb",
+          "#fffefe"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Giriş başlığı, teklif tutarı."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Ekran başlığı."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Bölüm başlığı."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Varsayılan metin."
+      },
+      "hint": {
+        "displayName": "Hint",
+        "purpose": "İpucu ve ikincil bilgi."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Büyük harfli üst etiket."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Düğme metni."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "iOS shadowOpacity 0.07 radius 16 y 6; Android elevation 3; web 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)",
+        "purpose": "Yükseltilmiş kart."
+      },
+      {
+        "name": "float",
+        "value": "iOS shadowOpacity 0.16 radius 24 y 10; Android elevation 10; web 0 12px 40px rgba(0,0,0,0.16)",
+        "purpose": "Alt panel, teklif kartı."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Giriş, açılma ve kaydırmaya bağlı ortaya çıkış."
+      },
+      {
+        "name": "duration-quick",
+        "value": "150ms",
+        "purpose": "Üzerine gelme, renk ve kenar geçişleri."
+      },
+      {
+        "name": "duration-reveal",
+        "value": "600-900ms",
+        "purpose": "Web ana sayfada bölüm ortaya çıkışı; işlem ekranlarında kullanılmaz."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce → süre 0.01ms, Lenis kapalı",
+        "purpose": "Zorunlu."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "360px"
+      },
+      {
+        "name": "phone",
+        "value": "390px"
+      },
+      {
+        "name": "tablet",
+        "value": "768px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Alt çubukta, 56 px, başparmak alanında.",
+      "html": "<button class=\"ds-mbtn\">Minivan seç · 75,00 €</button>",
+      "css": ".ds-mbtn{font-family: Inter, system-ui, sans-serif;font-weight:700;font-size:16px;letter-spacing:-.2px;min-height:56px;padding:0 20px;width:100%;border:0;border-radius:14px;background:#0b0b0c;color:#fff;cursor:pointer;transition:transform .1s ease}.ds-mbtn:active{transform:scale(.98)}.ds-mbtn:focus-visible{outline:2px solid #0b0b0c;outline-offset:2px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "54 px, ikon solda, odakta siyah kenar.",
+      "html": "<label class=\"ds-minput\"><span>Yolcu adı soyadı</span><input placeholder=\"Ad Soyad\"></label>",
+      "css": ".ds-minput{font-family: Inter, system-ui, sans-serif;display:flex;flex-direction:column;gap:6px}.ds-minput span{font-weight:600;font-size:13px}.ds-minput input{font:inherit;font-size:15.5px;min-height:54px;padding:0 14px;border:1.5px solid #f5f5f3;border-radius:14px;background:#f5f5f3}.ds-minput input::placeholder{color:#76767b}.ds-minput input:focus{outline:none;border-color:#0b0b0c;background:#fff}"
+    },
+    {
+      "name": "Offer Card",
+      "kind": "custom",
+      "refersTo": "offer-card",
+      "description": "Sürücü teklif kartı: koyu, iri tutar, eşit iki eylem.",
+      "html": "<div class=\"ds-offer\"><small>YENİ İŞ TEKLİFİ</small><strong>₺3.142,50</strong><em>Kazancınız</em><div><button class=\"r\">Reddet</button><button class=\"a\">Kabul et</button></div></div>",
+      "css": ".ds-offer{font-family: Inter, system-ui, sans-serif;background:#0b0b0c;color:#fff;border-radius:28px;padding:20px;display:grid;gap:6px;box-shadow:0 12px 40px rgba(0,0,0,.16)}.ds-offer small{color:#a8875a;font-weight:700;font-size:11px;letter-spacing:1.6px}.ds-offer strong{font-size:32px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}.ds-offer em{font-style:normal;color:rgba(255,255,255,.72);font-size:13px}.ds-offer div{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;margin-top:10px}.ds-offer button{font:inherit;font-weight:700;min-height:56px;border-radius:14px;cursor:pointer}.ds-offer .r{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.28)}.ds-offer .a{background:#fff;color:#0b0b0c;border:0}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "button-secondary",
+      "description": "Planla / Şimdi, Yaklaşan / Geçmiş.",
+      "html": "<div class=\"ds-seg\"><button class=\"on\">Planla</button><button>Şimdi</button></div>",
+      "css": ".ds-seg{font-family: Inter, system-ui, sans-serif;display:inline-flex;background:#f5f5f3;border-radius:999px;padding:4px}.ds-seg button{font:inherit;font-weight:700;font-size:14px;border:0;background:transparent;color:#6b6b70;min-height:44px;padding:0 16px;border-radius:999px;cursor:pointer}.ds-seg .on{background:#0b0b0c;color:#fff}"
+    },
+    {
+      "name": "GO Button",
+      "kind": "custom",
+      "refersTo": "go-button",
+      "description": "Sürücüyü çevrimiçi yapan tam daire düğme.",
+      "html": "<button class=\"ds-go\">GO</button>",
+      "css": ".ds-go{font-family: Inter, system-ui, sans-serif;width:128px;height:128px;border-radius:50%;border:0;background:#0b0b0c;color:#fff;font-weight:800;font-size:26px;letter-spacing:1px;box-shadow:0 12px 40px rgba(0,0,0,.16);cursor:pointer}.ds-go:focus-visible{outline:3px solid #a8875a;outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Kıyı Yolu",
+    "overview": "Telefonda yol bir haritadır. Üstte harita, altta elde tutulan bir panel; panel yolun o anki adımını taşır: nereye, hangi araç, sürücü nerede. Sistem web ile aynı malzemeden yapılır (lake siyah, kâğıt, tek pirinç vurgu, gerçek araç fotoğrafı) ama dokunma için ölçeklenir.\n\nİki uygulama aynı dünyayı farklı yoğunlukta konuşur. Müşteri uygulaması dokunsal ve kendinden emindir: iri başlık, dolgun düğme, yumuşak hareket, haptik geri bildirim. Sürücü uygulaması bir pano gibidir: tek bakışta okunur, iri hedefli, güneş altında yüksek kontrastlı; teklif kartı ve karşılama tabelası onun imzasıdır.",
+    "keyCharacteristics": [
+      "Harita + alt panel düzeni (`MapSheet`), panel yükselir ve sürüklenir.",
+      "Lake siyah birincil eylem, 56 px yükseklik, başparmak alanında alt çubukta.",
+      "Rota rayı web ile aynı: daire, kesikli çizgi, kare.",
+      "Sürücüde iri ve az: GO düğmesi, geri sayım halkalı teklif kartı, tam ekran tabela."
+    ],
+    "rules": [
+      {
+        "name": "The Sunlight Rule",
+        "body": "Sürücü uygulamasında hiçbir metin veya simge 4,5:1'in altına düşmez; birincil bilgi (tutar, adres, geri sayım) 7:1'i hedefler.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dynamic Type Rule",
+        "body": "Metin sistem yazı boyutuyla büyür; düzen %200'de kırılmaz, kritik etiketler kesilmez (`numberOfLines` yalnızca ikincil metinde).",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do birincil eylemi alt çubukta, başparmak alanında tut.",
+      "Do sürücü uygulamasında tüm dokunma hedeflerini en az 48 dp yap.",
+      "Do her Reanimated animasyonunda sistem \"hareketi azalt\" ayarına uy (`ReduceMotion.System`, döngülerde `useReducedMotion`).",
+      "Do her eyleme `accessibilityRole` ve `accessibilityLabel` ver.",
+      "Do bağlantı yokken ve konum gelmezken bunu açıkça yaz; eski veriyi canlıymış gibi gösterme."
+    ],
+    "donts": [
+      "Don't `#A1A1A6` gibi 4,5:1'in altındaki grileri metin rengi olarak kullanma.",
+      "Don't beyaz zeminde küçük metni şampanya pirinciyle yazma.",
+      "Don't fiyatı istemcide hesaplama veya yuvarlama; backend tutarını göster.",
+      "Don't sürücü ekranında uzun paragraf veya ikinci bir birincil eylem koyma.",
+      "Don't önceden işaretli onay kutusu kullanma."
+    ]
+  }
+}

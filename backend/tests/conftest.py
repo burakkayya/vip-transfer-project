@@ -72,6 +72,18 @@ def client(db_app):
 
 
 @pytest.fixture
+def route_line_cleanup():
+    """Testin yeni oluşturduğu `route_line:*` Redis anahtarlarını siler (öncesinden var olanlara dokunmaz)."""
+    from app.services import route_line
+
+    r = route_line._redis()
+    before = set(r.scan_iter("route_line:*"))
+    yield
+    for key in set(r.scan_iter("route_line:*")) - before:
+        r.delete(key)
+
+
+@pytest.fixture
 def db(db_app):
     from app.db import SessionLocal
 

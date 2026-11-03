@@ -1,0 +1,199 @@
+[
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "h1 > span"
+      },
+      {
+        "id": "label-content-name-mismatch",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "a[aria-label=\"Getaway Transfers\"]"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/de",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "h1 > span"
+      },
+      {
+        "id": "label-content-name-mismatch",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "a[aria-label=\"Getaway Transfers\"]"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/book?from=ayt&to=kemer",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "label-content-name-mismatch",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "a[aria-label=\"Getaway Transfers\"]"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/bookings",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "label-content-name-mismatch",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "a[aria-label=\"Getaway Transfers\"]"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/account",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "label-content-name-mismatch",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "a[aria-label=\"Getaway Transfers\"]"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/data-request",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "label-content-name-mismatch",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "a[aria-label=\"Getaway Transfers\"]"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/legal/privacy",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "label-content-name-mismatch",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "a[aria-label=\"Getaway Transfers\"]"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/yok",
+    "width": 1440,
+    "violations": [
+      {
+        "id": "html-has-lang",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "html"
+      }
+    ]
+  },
+  {
+    "surface": "admin",
+    "url": "http://localhost:3001/login",
+    "width": 1440,
+    "violations": []
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr",
+    "width": 390,
+    "violations": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "h1 > span"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/de",
+    "width": 390,
+    "violations": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "h1 > span"
+      }
+    ]
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/book?from=ayt&to=kemer",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/bookings",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/account",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/data-request",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/legal/privacy",
+    "width": 390,
+    "violations": []
+  },
+  {
+    "surface": "web",
+    "url": "http://localhost:3000/tr/yok",
+    "width": 390,
+    "violations": [
+      {
+        "id": "html-has-lang",
+        "impact": "serious",
+        "nodes": 1,
+        "sample": "html"
+      }
+    ]
+  },
+  {
+    "surface": "admin",
+    "url": "http://localhost:3001/login",
+    "width": 390,
+    "violations": []
+  }
+]

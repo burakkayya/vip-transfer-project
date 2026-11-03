@@ -1,17 +1,22 @@
 /* Getaway Admin — web sitesiyle aynı dil: siyah-beyaz, sade, yoğun veri için okunaklı. */
 :root {
-  --ink: #0b0b0c;
-  --bg: #f6f6f4;
-  --surface: #ffffff;
-  --soft: #f3f3f1;
-  --text: #0b0b0c;
-  --muted: #6b6b70;
-  --line: #e8e7e3;
-  --line-strong: #d6d5d0;
-  --accent: #a8875a;
-  --danger: #c0261d;
-  --ok: #18794e;
-  --warn: #8a6100;
+  --ink: var(--color-lacquer-black);
+  --bg: var(--color-harbor-canvas);
+  --soft: var(--color-limestone);
+  --surface: var(--color-paper);
+  --text: var(--color-lacquer-black);
+  --muted: var(--color-slate-text);
+  --faint: var(--color-slate-faint);
+  --line: var(--color-hairline);
+  --line-strong: var(--color-hairline-strong);
+  --accent: var(--color-champagne-brass);
+  --brass-ink: var(--color-champagne-brass-ink);
+  --danger: var(--color-signal-red);
+  --danger-soft: var(--color-signal-red-soft);
+  --ok: var(--color-pine-green);
+  --ok-soft: var(--color-pine-green-soft);
+  --warn: var(--color-amber-ink);
+  --warn-soft: var(--color-amber-soft);
   --font-sans: system-ui, sans-serif;
   color-scheme: light;
 }

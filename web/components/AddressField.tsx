@@ -31,17 +31,24 @@ export default function AddressField(props: {
   regions: Region[];
   value: Endpoint | null;
   onChange: (e: Endpoint | null) => void;
+  /** Formun bildirdiği hata (ör. gönderimde boş alan). */
+  error?: string | null;
 }) {
   const t = useTranslations("trip");
+  const tErrors = useTranslations("errors");
   const locale = useLocale();
   const errorText = useApiError();
   const listId = useId();
+  const errorId = `${props.id}-error`;
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [places, setPlaces] = useState<PlaceSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const [active, setActive] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Arama hatasında "Tekrar dene" aynı sorguyu yeniden gönderir.
+  const [searchTry, setSearchTry] = useState(0);
+  const [searchFailed, setSearchFailed] = useState(false);
   const session = useRef(newSession());
   const box = useRef<HTMLDivElement>(null);
 
@@ -71,6 +78,7 @@ export default function AddressField(props: {
     const q = query.trim();
     if (q.length < 3) {
       setPlaces([]);
+      setSearchFailed(false);
       return;
     }
     const timer = setTimeout(async () => {
@@ -79,14 +87,16 @@ export default function AddressField(props: {
         const qs = new URLSearchParams({ q, session: session.current, lang: locale });
         setPlaces(await api<PlaceSuggestion[]>(`places/autocomplete?${qs}`));
         setError(null);
+        setSearchFailed(false);
       } catch (e) {
         setError(errorText(e));
+        setSearchFailed(true);
       } finally {
         setSearching(false);
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, locale, errorText]);
+  }, [query, locale, errorText, searchTry]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -99,6 +109,7 @@ export default function AddressField(props: {
   async function choose(o: Option) {
     setOpen(false);
     setError(null);
+    setSearchFailed(false);
     if (o.kind === "region") {
       props.onChange(regionEndpoint(o.region));
     } else {
@@ -119,7 +130,12 @@ export default function AddressField(props: {
   function onKey(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setOpen(true);
+      // Kapalı liste önce açılır (ilk öneri etkin); açıksa bir sonrakine geçer.
+      if (!open) {
+        setOpen(true);
+        setActive(0);
+        return;
+      }
       setActive((a) => Math.min(a + 1, options.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -131,6 +147,10 @@ export default function AddressField(props: {
       setOpen(false);
     }
   }
+
+  const shownError = props.error ?? error;
+  const optionId = (i: number) => `${listId}-o${i}`;
+  const showList = open && !props.value;
 
   return (
     <div className={`field address ${props.icon === "plane" ? "from" : "to"}`} ref={box}>
@@ -152,9 +172,12 @@ export default function AddressField(props: {
           <input
             id={props.id}
             role="combobox"
-            aria-expanded={open}
+            aria-expanded={showList}
             aria-controls={listId}
             aria-autocomplete="list"
+            aria-activedescendant={showList && options[active] ? optionId(active) : undefined}
+            aria-invalid={props.error ? true : undefined}
+            aria-describedby={shownError ? errorId : undefined}
             autoComplete="off"
             placeholder={props.label}
             aria-label={`${props.label}: ${t("searchPlaceholder")}`}
@@ -169,12 +192,13 @@ export default function AddressField(props: {
           />
         </div>
       )}
-      {open && !props.value && (
+      {showList && (
         <ul className="suggestions" id={listId} role="listbox">
           {query.trim().length < 3 && <li className="tip-row" role="presentation">{t("searchPlaceholder")}</li>}
           {options.map((o, i) => (
             <li
               key={o.key}
+              id={optionId(i)}
               role="option"
               aria-selected={i === active}
               className={i === active ? "active" : ""}
@@ -195,7 +219,14 @@ export default function AddressField(props: {
           {!searching && query.trim().length >= 3 && options.length === 0 && <li className="muted-row">{t("noResults")}</li>}
         </ul>
       )}
-      {error && <span className="field-error">{error}</span>}
+      {shownError && <span className="field-error" id={errorId} role={props.error ? "alert" : undefined}>{shownError}</span>}
+      {!props.error && searchFailed && !props.value && (
+        <div>
+          <button type="button" className="btn link" onClick={() => setSearchTry((n) => n + 1)}>
+            {tErrors("retry")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

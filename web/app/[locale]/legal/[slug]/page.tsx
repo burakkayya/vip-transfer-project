@@ -24,6 +24,17 @@ type Props = { params: Promise<{ locale: string; slug: string }> };
 
 const isSlug = (s: string): s is Slug => s in PAGES;
 
+/** Ardışık `tier*` anahtarlarını tek listede toplar; diğer anahtarlar olduğu gibi kalır. */
+function blocks(keys: readonly string[]): (string | string[])[] {
+  const out: (string | string[])[] = [];
+  for (const k of keys) {
+    const last = out[out.length - 1];
+    if (k.startsWith("tier") && Array.isArray(last)) last.push(k);
+    else out.push(k.startsWith("tier") ? [k] : k);
+  }
+  return out;
+}
+
 export function generateStaticParams() {
   return Object.keys(PAGES).map((slug) => ({ slug }));
 }
@@ -48,15 +59,46 @@ export default async function LegalPage({ params }: Props) {
     email: slug === "privacy" ? company.kvkkEmail : company.email,
     tursab: company.tursabNo,
   };
+  const sections = page.paragraphs.filter((p) => p.endsWith("Title"));
 
+  // Yalnızca düzen: anahtarlar, metin ve sıra `PAGES`'tekiyle aynı kalır. Bölüm başlıkları bağlantı hedefi olur
+  // (`dataTitle` → `#data`).
   return (
-    <article className="container narrow page legal">
-      <h1 className="page-title">{t("title")}</h1>
-      <p className="alert info">{common("draft")}</p>
-      <p className="hint">{common("updated", { version: page.version })}</p>
-      {page.paragraphs.map((p) =>
-        p.endsWith("Title") ? <h2 key={p}>{t(p)}</h2> : <p key={p}>{t(p, values)}</p>,
+    <article className="container narrow page legal" aria-labelledby="legal-title">
+      <div className="legal-head">
+        <h1 id="legal-title" className="page-title">{t("title")}</h1>
+        <p className="alert info legal-draft">{common("draft")}</p>
+        <p className="hint">{common("updated", { version: page.version })}</p>
+      </div>
+      {sections.length >= 3 && (
+        // İçindekiler yalnızca mevcut bölüm başlıklarından kurulur; adı sayfa başlığıdır (üst bilgideki "Bölümler"
+        // menüsüyle aynı adı taşımaz).
+        <nav className="legal-toc" aria-labelledby="legal-title">
+          <ol>
+            {sections.map((k) => (
+              <li key={k}>
+                <a href={`#${k.slice(0, -"Title".length)}`}>{t(k)}</a>
+              </li>
+            ))}
+          </ol>
+        </nav>
       )}
+      <div className="legal-body">
+        {blocks(page.paragraphs).map((b) =>
+          Array.isArray(b) ? (
+            // İptal kademeleri (K-14) ayrı bir liste olarak taranır; metin ve sıra aynı kalır.
+            <ul key={b[0]} className="legal-tiers">
+              {b.map((k) => (
+                <li key={k}>{t(k, values)}</li>
+              ))}
+            </ul>
+          ) : b.endsWith("Title") ? (
+            <h2 key={b} id={b.slice(0, -"Title".length)}>{t(b)}</h2>
+          ) : (
+            <p key={b}>{t(b, values)}</p>
+          ),
+        )}
+      </div>
     </article>
   );
 }

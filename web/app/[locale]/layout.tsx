@@ -9,6 +9,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { company } from "@/lib/site";
+import "../tokens.css";
 import "../globals.css";
 import "../home.css";
 
@@ -65,7 +66,7 @@ export default async function LocaleLayout({ children, params }: Props) {
           <SiteHeader
             labels={{
               services: t("services"), fleet: t("fleet"), faq: t("faq"), bookings: t("bookings"),
-              account: t("account"), book: t("book"), menu: t("menu"), home: company.name,
+              account: t("account"), book: t("book"), menu: t("menu"), sections: t("sections"), home: company.name,
             }}
           />
           <main>{children}</main>

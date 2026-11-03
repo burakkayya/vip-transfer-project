@@ -10,8 +10,11 @@
 6. Ödeme (PayTR, yedek iyzico)
 7. Rezervasyon onayı ve özet
 8. Rezervasyon sorgulama (kod ve telefon ile giriş)
-9. Rezervasyon detayı, değişiklik ve iptal
-10. Sabit sayfalar: iptal ve iade politikası, KVKK aydınlatma, çerez, veri talep formu
+9. Rezervasyon detayı ve iptal. Rezervasyon değişikliği ekranı yok: değişiklik e-postayla (info@getawaytransfers.com, rezervasyon koduyla) istenir.
+10. Sabit sayfalar: iptal ve iade politikası, KVKK aydınlatma, mesafeli satış, çerez, veri talep formu
+11. Hesabım (`/account`): profil ve pazarlama onayı
+12. Ödeme sonucu (`/booking/payment-result`): ödeme penceresinden çıkaran kısa geçiş ekranı ("Ödeme sonucu alınıyor…"; gecikirse Rezervasyonlarım bağlantısı)
+13. 404 sayfası
 
 ## Müşteri mobil uygulaması (iOS ve Android)
 
@@ -19,8 +22,8 @@
 2. Rezervasyonlarım ve detaylar
 3. Yeni rezervasyon (web ile aynı akış)
 4. Aktif yolculukta sürücü canlı takibi
-5. Rezervasyon iptali ve değişikliği
-6. Profil, bildirim tercihleri, veri talebi
+5. Rezervasyon iptali. Değişiklik e-postayla istenir (ekran yok)
+6. Profil, pazarlama tercihi (push bildirim tercihi FCM bekliyor), veri talebi
 
 ## Sürücü mobil uygulaması
 
@@ -36,8 +39,10 @@
 
 ## Admin paneli (web)
 
+Toplam 23 rota (ekran). Aşağıdaki liste işlevsel gruplamadır.
+
 1. Giriş ve 2FA
-2. Genel panel: bugünkü rezervasyonlar, canlı harita, açık eşleştirmeler, ödeme durumu
+2. Genel panel: durum sayaçları ve OpenStreetMap bağlantısı (canlı harita yok)
 3. Rezervasyonlar: liste, detay, durum değişikliği, manuel atama
 4. Eşleştirme: bekleyen işler ve uygun sürücüler
 5. Sürücüler: başvuru kuyruğu, onay ve red, belge inceleme, askıya alma
@@ -55,3 +60,7 @@
 17. Kullanıcılar ve roller
 18. Denetim kayıtları (filtrelenebilir)
 19. Sistem ayarları
+20. Kurlar (`/exchange-rates`): TCMB kuru ve elle giriş
+21. Hesabım (`/account`): parola değiştirme
+22. Rezervasyon detayı (`/bookings/[id]`)
+23. Sürücü detayı (`/drivers/[id]`)

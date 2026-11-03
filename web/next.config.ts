@@ -30,6 +30,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Geliştirme göstergesi ("N" dairesi) ekran görüntülerine ve testlere karışmasın; yalnızca `next dev`'i etkiler.
+  devIndicators: false,
+  // Lint ayrı çalıştırılır (`npm run lint`); mevcut taban ihlalleri docs/ui-review/lint-taban.md'de.
+  // Plan kapanışında lint zorunlu hale getirilir.
+  eslint: { ignoreDuringBuilds: true },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

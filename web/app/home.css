@@ -8,9 +8,9 @@
   min-height: clamp(640px, 88vh, 900px);
   display: flex;
   align-items: center;
-  color: #fff;
+  color: var(--paper);
   overflow: hidden;
-  background: #0b0b0c;
+  background: var(--ink);
 }
 
 .hero-media {
@@ -34,7 +34,7 @@
   z-index: -1;
   background:
     linear-gradient(90deg, rgba(5, 5, 6, 0.84) 0%, rgba(5, 5, 6, 0.58) 38%, rgba(5, 5, 6, 0.12) 70%, rgba(5, 5, 6, 0.28) 100%),
-    linear-gradient(0deg, rgba(5, 5, 6, 0.55) 0%, transparent 35%);
+    linear-gradient(0deg, var(--ink) 0%, rgba(5, 5, 6, 0.55) 14%, transparent 40%);
 }
 
 .hero-inner {
@@ -51,31 +51,13 @@
   max-width: 680px;
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 14px 7px 12px;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(10px);
-  color: #fff;
-}
-
-.chip .live-dot {
-  background: #4ade80;
-}
-
 .hero h1 {
-  color: #fff;
+  color: var(--paper);
   font-size: clamp(2.6rem, 5.4vw, 5.1rem);
   line-height: 1.02;
-  margin: 24px 0;
+  letter-spacing: -0.045em;
+  margin: 0 0 24px;
+  text-wrap: balance;
 }
 
 .hero h1 .word {
@@ -87,6 +69,7 @@
   color: rgba(255, 255, 255, 0.84);
   max-width: 540px;
   margin-bottom: 36px;
+  text-wrap: pretty;
 }
 
 .hero-stats {
@@ -101,9 +84,9 @@
 .hero-stats li {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-left: 16px;
-  border-left: 2px solid var(--accent);
+  gap: 6px;
+  padding-inline-start: 16px;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.32);
 }
 
 .hero-stats strong {
@@ -111,19 +94,21 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .hero-stats span {
   font-size: 0.86rem;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.76);
 }
 
+/* Elde tutulan öğe: "yüzen" gölge (DESIGN.md Elevation), koyu fotoğraf üstünde biraz daha derin. */
 .hero-card {
   color: var(--text);
-  background: #fff;
+  background: var(--paper);
   border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 30px 80px rgba(0, 0, 0, 0.35);
 }
 
 .hero-card-title {
@@ -139,63 +124,136 @@
 
 .flight-tag {
   position: absolute;
-  right: var(--gutter);
+  inset-inline-end: var(--gutter);
   bottom: 28px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
   border-radius: 14px;
-  background: rgba(10, 10, 12, 0.55);
+  background: rgba(10, 10, 12, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(12px);
   font-size: 0.84rem;
   color: rgba(255, 255, 255, 0.9);
 }
 
-.flight-tag b {
-  color: #fff;
+/*
+ * Giriş sahnesi (yalnızca CSS; JS beklemez, hareket azaltılmışsa hiç çalışmaz):
+ * görsel yavaşça yerine oturur, başlık kelime kelime yükselir, ardından metin, sayılar ve rota kartı;
+ * en son kartın rota rayı daireden kareye çizilir. Tek sahne, toplam ~1,6 sn.
+ */
+.hero-media .zoom,
+.hero-media picture {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-/* Güven şeridi */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-media .zoom {
+    animation: hero-zoom 2.4s var(--ease) both;
+  }
+  .hero h1 .word {
+    animation: rise-in 0.9s var(--ease) both;
+    animation-delay: calc(0.08s + var(--i, 0) * 0.06s);
+  }
+  .hero .lead {
+    animation: rise-in 0.8s var(--ease) 0.4s both;
+  }
+  .hero-stats {
+    animation: rise-in 0.8s var(--ease) 0.52s both;
+  }
+  .hero-card {
+    animation: card-in 0.9s var(--ease) 0.2s both;
+  }
+  .hero-card .route-rail b {
+    transform-origin: top;
+    animation: rail-draw 0.7s var(--ease) 0.9s both;
+  }
+  .hero-card .route-rail i:last-child {
+    animation: node-in 0.35s var(--ease) 1.5s both;
+  }
+}
+
+@keyframes hero-zoom {
+  from {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45em);
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+}
+
+@keyframes rail-draw {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes node-in {
+  from {
+    transform: scale(0);
+  }
+}
+
+/* Güven şeridi: girişin koyu zemini aşağı uzar; dört söz ince çizgilerle ayrılır (kart yok). */
+
+.trust-band {
+  background: var(--ink);
+  color: var(--paper);
+  --focus: var(--paper);
+}
 
 .trust-strip {
+  list-style: none;
+  margin-block: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 28px;
+  padding-block: 8px 40px;
 }
 
 .trust-item {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  padding: 22px;
-  border-radius: var(--radius);
-  background: var(--soft);
-  height: 100%;
+  padding-block: 24px 4px;
+  padding-inline: 0 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.trust-item .ico {
+.trust-item + .trust-item {
+  padding-inline-start: 24px;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trust-item svg {
   flex: none;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  background: var(--ink);
-  color: #fff;
+  margin-top: 1px;
+  color: var(--accent);
 }
 
-.trust-item h3 {
+.trust-item strong {
+  display: block;
   font-size: 1rem;
-  margin: 2px 0 4px;
+  margin-bottom: 4px;
 }
 
 .trust-item p {
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.9rem;
   margin: 0;
+  text-wrap: pretty;
 }
 
 /* --- Bölümler ------------------------------------------------------------ */
@@ -218,16 +276,12 @@
   margin-bottom: 44px;
 }
 
-.section-head .eyebrow {
-  display: block;
-  margin-bottom: 14px;
-  color: var(--accent);
-}
-
 .section-title {
   font-size: clamp(2.1rem, 4.2vw, 3.6rem);
   line-height: 1.02;
+  letter-spacing: -0.04em;
   margin: 0;
+  text-wrap: balance;
 }
 
 .section-head p {
@@ -236,6 +290,7 @@
   max-width: 460px;
   justify-self: end;
   font-size: 1.04rem;
+  text-wrap: pretty;
 }
 
 /* Hizmetler: bento ızgara */
@@ -265,7 +320,7 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  color: #fff;
+  color: var(--paper);
   text-decoration: none;
   display: flex;
   align-items: flex-end;
@@ -301,7 +356,7 @@
 }
 
 .service h3 {
-  color: #fff;
+  color: var(--paper);
   font-size: clamp(1.2rem, 1.6vw, 1.6rem);
   margin-bottom: 6px;
 }
@@ -314,7 +369,7 @@
 }
 
 .service .text-link {
-  color: #fff;
+  color: var(--paper);
 }
 
 .service .text-link svg,
@@ -345,7 +400,7 @@
   height: 100%;
   text-decoration: none;
   color: var(--ink);
-  background: #fff;
+  background: var(--paper);
   border-radius: var(--radius-lg);
   padding: 10px 10px 22px;
   border: 1px solid var(--line);
@@ -364,7 +419,7 @@
   border-radius: 20px;
   overflow: hidden;
   aspect-ratio: 3 / 2;
-  background: radial-gradient(120% 90% at 50% 100%, #e4e3de 0%, #f3f2ee 60%, #f9f9f7 100%);
+  background: radial-gradient(120% 90% at 50% 100%, var(--line) 0%, var(--soft) 60%, var(--canvas) 100%);
 }
 
 .fleet-card .media img {
@@ -389,7 +444,7 @@
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 2px solid #fff;
+  border: 2px solid var(--paper);
   box-shadow: 0 0 0 1px var(--line-strong);
   cursor: pointer;
   padding: 0;
@@ -397,11 +452,11 @@
 }
 
 .swatch.white {
-  background: #f4f4f2;
+  background: var(--soft);
 }
 
 .swatch.black {
-  background: #111;
+  background: var(--ink-2);
 }
 
 .swatch.on {
@@ -412,7 +467,7 @@
 .fleet-card .tag {
   position: absolute;
   top: 12px;
-  left: 12px;
+  inset-inline-start: 12px;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -420,7 +475,7 @@
   padding: 5px 10px;
   border-radius: 999px;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 
 .fleet-card .meta {
@@ -472,57 +527,97 @@
   border-radius: 999px;
 }
 
-/* Nasıl çalışır */
+/* Nasıl çalışır: rota rayı. Alış dairesi, ara durak halkası, varış karesi; aralarında kesikli hat. */
 
-.steps-row {
+.route-steps {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 16px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  --node: 14px;
 }
 
-.steps-row > * {
+.route-steps li {
+  position: relative;
   min-width: 0;
+  padding-top: calc(var(--node) + 28px);
+  padding-inline-end: clamp(16px, 3vw, 48px);
 }
 
-.step {
-  height: 100%;
-  padding: 32px 28px 30px;
-  border-radius: var(--radius-lg);
-  background: #fff;
-  border: 1px solid var(--line);
-}
-
-.step-num {
-  display: block;
-  font-size: clamp(3.2rem, 5vw, 4.6rem);
-  font-weight: 700;
-  letter-spacing: -0.05em;
-  line-height: 1;
-  color: var(--ink);
-}
-
-.step-bar {
-  height: 2px;
-  margin: 24px 0 22px;
-  background: var(--line-strong);
-  overflow: hidden;
-}
-
-.step-bar span {
-  display: block;
-  height: 100%;
+.route-steps .node {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  width: var(--node);
+  height: var(--node);
+  border-radius: 999px;
   background: var(--ink);
-  transform-origin: left;
+  z-index: 1;
 }
 
-.step p {
-  font-size: 1.12rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+.route-steps li:nth-child(2) .node {
+  background: var(--paper);
+  box-shadow: inset 0 0 0 2.5px var(--ink);
+}
+
+.route-steps li:last-child .node {
+  border-radius: 2px;
+}
+
+/* Bir sonraki durağa uzanan kesikli hat. */
+.route-steps li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--node) / 2 - 1px);
+  inset-inline: calc(var(--node) + 6px) 6px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--ink) 0 8px, transparent 8px 14px);
+}
+
+.route-steps p {
+  font-size: clamp(1.15rem, 1.6vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
   margin: 0;
+  max-width: 22ch;
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .route-steps li:not(:last-child)::before {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 0.9s var(--ease);
+    transition-delay: calc(0.15s + var(--n, 0) * 0.7s);
+  }
+  .route-steps li:nth-child(1) {
+    --n: 0;
+  }
+  .route-steps li:nth-child(2) {
+    --n: 1;
+  }
+  .route-steps li:nth-child(3) {
+    --n: 2;
+  }
+  .route-steps .node,
+  .route-steps p {
+    transition: transform 0.45s var(--ease), opacity 0.6s var(--ease);
+    transition-delay: calc(var(--n, 0) * 0.7s);
+  }
+  .route-steps.armed li:not(:last-child)::before {
+    clip-path: inset(0 100% 0 0);
+  }
+  [dir="rtl"] .route-steps.armed li:not(:last-child)::before {
+    clip-path: inset(0 0 0 100%);
+  }
+  .route-steps.armed .node {
+    transform: scale(0);
+  }
+  .route-steps.armed p {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
 /* Grup ve aile: yandan Vito kaydırdıkça yola girer */
@@ -540,14 +635,12 @@
   overflow: hidden;
 }
 
-.feature-band .eyebrow {
-  color: var(--accent);
-}
-
 .feature-band h2 {
-  color: #fff;
+  color: var(--paper);
   font-size: clamp(2rem, 3.6vw, 3rem);
-  margin-top: 14px;
+  letter-spacing: -0.035em;
+  margin-top: 0;
+  text-wrap: balance;
 }
 
 .feature-band ul {
@@ -562,13 +655,14 @@
 .feature-band li {
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
   font-size: 0.96rem;
-  color: #fff;
+  color: var(--paper);
 }
 
 .feature-band li svg {
   flex: none;
+  margin-top: 3px;
   color: var(--accent);
 }
 
@@ -577,12 +671,18 @@
   min-height: 320px;
   display: flex;
   align-items: flex-end;
+  --dir: 1;
 }
 
+[dir="rtl"] .drive-stage {
+  --dir: -1;
+}
+
+/* Yol: rota rayının kesikli hattı, araç yola girerken geriye akar. */
 .drive-stage .road {
   position: absolute;
-  left: -30%;
-  right: -80px;
+  inset-inline-start: -30%;
+  inset-inline-end: -80px;
   bottom: 40px;
   height: 2px;
   background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.35) 0 28px, transparent 28px 52px);
@@ -590,8 +690,8 @@
 
 .drive-stage .glow {
   position: absolute;
-  left: 10%;
-  right: 0;
+  inset-inline-start: 10%;
+  inset-inline-end: 0;
   bottom: 0;
   height: 140px;
   background: radial-gradient(50% 50% at 50% 50%, rgba(168, 135, 90, 0.4), transparent 70%);
@@ -602,20 +702,66 @@
   position: relative;
   width: 100%;
   max-width: 660px;
-  margin-left: auto;
+  margin-inline-start: auto;
   margin-bottom: 30px;
 }
 
 .drive-car img {
   width: 100%;
+  height: auto;
   display: block;
   filter: drop-shadow(0 24px 22px rgba(0, 0, 0, 0.6));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .drive-stage.armed .drive-car {
+    opacity: 0;
+    transform: translateX(calc(-70% * var(--dir)));
+  }
+  .drive-stage.armed .glow {
+    opacity: 0;
+  }
+  .drive-stage.in .drive-car {
+    animation: drive-in 1.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  /* Varışta süspansiyon bir kez oturur. */
+  .drive-stage.in .drive-car img {
+    animation: settle 0.5s ease-out 1.15s both;
+  }
+  .drive-stage.in .road {
+    animation: road-run 1.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .drive-stage .glow {
+    transition: opacity 1.2s var(--ease) 0.6s;
+  }
+}
+
+@keyframes drive-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-70% * var(--dir)));
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+@keyframes settle {
+  40% {
+    transform: translateY(3px);
+  }
+}
+
+@keyframes road-run {
+  from {
+    background-position: calc(260px * var(--dir)) 0;
+  }
 }
 
 .capacity-pill {
   position: absolute;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -623,14 +769,14 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #fff;
+  color: var(--paper);
   font-size: 0.86rem;
 }
 
 .btn.on-dark {
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
-  border-color: #fff;
+  border-color: var(--paper);
 }
 
 .btn.on-dark:hover:not(:disabled) {
@@ -646,6 +792,7 @@
 }
 
 .airport-row {
+  --dir: 1;
   display: grid;
   grid-template-columns: 96px 1fr auto;
   gap: 20px;
@@ -654,25 +801,36 @@
   border-top: 1px solid var(--line);
   text-decoration: none;
   color: var(--ink);
-  transition: padding 0.3s var(--ease);
 }
 
-.airport-row:hover {
-  padding-left: 16px;
+[dir="rtl"] .airport-row {
+  --dir: -1;
+}
+
+.airport-row .iata,
+.airport-row .airport-name {
+  transition: transform 0.35s var(--ease);
+}
+
+.airport-row:hover .iata,
+.airport-row:hover .airport-name {
+  transform: translateX(calc(12px * var(--dir)));
 }
 
 .airport-row:hover svg {
-  transform: translateX(6px);
+  transform: translateX(calc(6px * var(--dir)));
 }
 
 .iata {
   font-weight: 700;
   font-size: 2rem;
   letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
-.airport-row span:nth-child(2) {
+.airport-name {
   font-size: 1.05rem;
+  min-width: 0;
 }
 
 /* Kıyı yolu çağrısı */
@@ -685,7 +843,7 @@
   min-height: 480px;
   display: flex;
   align-items: flex-end;
-  color: #fff;
+  color: var(--paper);
 }
 
 .cta-band .bg {
@@ -715,7 +873,7 @@
 }
 
 .cta-band h2 {
-  color: #fff;
+  color: var(--paper);
   font-size: clamp(2rem, 4vw, 3.4rem);
   line-height: 1.04;
 }
@@ -732,6 +890,11 @@
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: 48px;
+}
+
+.faq-lead {
+  color: var(--muted);
+  margin: 16px 0 0;
 }
 
 .faq details {
@@ -774,13 +937,33 @@
   padding-bottom: 24px;
   margin: 0;
   max-width: 640px;
-  animation: faq-in 0.4s var(--ease);
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .faq details[open] p {
+    animation: faq-in 0.35s var(--ease);
+  }
 }
 
 @keyframes faq-in {
   from {
     opacity: 0;
     transform: translateY(-6px);
+  }
+}
+
+/* --- Görünür alana girişte belirme (Motion.tsx Reveal) -------------------
+ * Varsayılan görünür. "armed" yalnızca JS çalışınca ve ekran dışındaki öğede eklenir; hareket
+ * azaltılmışsa gizli başlangıç hiç uygulanmaz.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal.armed {
+    opacity: 0;
+    transform: translateY(var(--y, 24px));
+  }
+  .reveal.in {
+    transition: opacity 0.8s var(--ease) var(--d, 0s), transform 0.8s var(--ease) var(--d, 0s);
   }
 }
 
@@ -817,7 +1000,7 @@
 
 .segmented button.on {
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 
 /*
@@ -835,7 +1018,7 @@
 
 .route-rail {
   position: absolute;
-  left: 18px;
+  inset-inline-start: 18px;
   top: calc(var(--addr-h) / 2 - 5px);
   height: calc(var(--addr-h) + 11px);
   width: 10px;
@@ -870,7 +1053,7 @@
 
 .route-row > .address.to {
   border-top: 1px solid var(--line-strong);
-  margin-left: 44px;
+  margin-inline-start: 44px;
 }
 
 .route-row .address-input input,
@@ -879,12 +1062,12 @@
   height: var(--addr-h);
   min-height: var(--addr-h);
   border-radius: 16px;
-  padding-left: 44px;
+  padding-inline-start: 44px;
 }
 
 .route-row > .address.to .address-input input,
 .route-row > .address.to .address-chosen {
-  padding-left: 0;
+  padding-inline-start: 0;
 }
 
 .route-row .address-input input:focus {
@@ -892,7 +1075,7 @@
 }
 
 .route-row .address-chosen .icon-btn {
-  right: 56px;
+  inset-inline-end: 56px;
 }
 
 .route-row .address-chosen {
@@ -915,7 +1098,7 @@
 
 .swap {
   position: absolute;
-  right: 12px;
+  inset-inline-end: 12px;
   top: var(--addr-h);
   transform: translateY(-50%);
   z-index: 4;
@@ -923,7 +1106,7 @@
   height: 38px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
   display: grid;
   place-items: center;
@@ -963,7 +1146,8 @@
   gap: 6px;
   border-radius: var(--radius-sm);
   background: var(--soft);
-  padding: 0 6px 0 12px;
+  padding-block: 0;
+  padding-inline: 12px 6px;
   height: 50px;
 }
 
@@ -994,13 +1178,19 @@
   background: transparent;
 }
 
+/* Sayaç alanı kenarsızdır; odak halkası kutunun tamamına çizilir. */
+.stepper:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .stepper button {
   flex: none;
   width: 30px;
   height: 30px;
   border-radius: 999px;
   border: none;
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
   font-size: 1.05rem;
   cursor: pointer;
@@ -1014,6 +1204,20 @@
 .stepper button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* Dar formda (360 px, Almanca) tür seçici iki eşit yarıya bölünür; uzun etiket kendi yarısında kalır. */
+@container (max-width: 330px) {
+  .segmented {
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .segmented button {
+    padding: 8px 10px;
+    font-size: 0.84rem;
+    line-height: 1.25;
+  }
 }
 
 /* Geniş alanda (rezervasyon sayfası) form yatay dizilir. */
@@ -1034,18 +1238,18 @@
   }
   .route-row > .address.to {
     border-top: none;
-    margin-left: 0;
+    margin-inline-start: 0;
   }
   .route-row .address-input input,
   .route-row .address-chosen,
   .route-row > .address.to .address-input input,
   .route-row > .address.to .address-chosen {
     background: var(--soft);
-    padding-left: 42px;
+    padding-inline-start: 42px;
     border-radius: var(--radius-sm);
   }
   .route-row .address-chosen .icon-btn {
-    right: 10px;
+    inset-inline-end: 10px;
   }
   .swap {
     position: static;
@@ -1069,16 +1273,17 @@
 
 /* --- Rezervasyon sihirbazı (Uber tarzı araç seçimi) ----------------------- */
 
-.wizard-main > section,
-.wizard-main > .card,
-.wizard-main > form {
-  animation: step-in 0.5s var(--ease);
+/* Yeni adım yerine kısa bir kayışla oturur; hareket azaltılmışsa hiç animasyon yok. */
+@media (prefers-reduced-motion: no-preference) {
+  .wizard-step {
+    animation: step-in 0.32s var(--ease);
+  }
 }
 
 @keyframes step-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
 }
 
@@ -1089,7 +1294,8 @@
 .vehicle-card {
   grid-template-columns: 210px 1fr auto;
   gap: 24px;
-  padding: 12px 26px 12px 12px;
+  padding-block: 12px;
+  padding-inline: 12px 26px;
   border-radius: 22px;
   border: 1.5px solid var(--line);
   transition: border-color 0.2s ease, box-shadow 0.35s var(--ease), transform 0.35s var(--ease);
@@ -1112,7 +1318,7 @@
 .vehicle-media {
   width: 210px;
   border-radius: 16px;
-  background: radial-gradient(120% 90% at 50% 100%, #e4e3de 0%, #f3f2ee 60%, #f9f9f7 100%);
+  background: radial-gradient(120% 90% at 50% 100%, var(--line) 0%, var(--soft) 60%, var(--canvas) 100%);
 }
 
 .vehicle-media img {
@@ -1129,24 +1335,15 @@
   font-size: 1.25rem;
 }
 
+/* Kapasite hapının içindeki sayı ve ekran okuyucu metni ayrı hap çizmez. */
+.vehicle-info .specs span span {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+}
+
 .vehicle-price .price {
   font-size: 1.6rem;
-}
-
-.skeleton {
-  display: block;
-  width: 110px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(90deg, var(--soft) 0%, var(--soft-2) 50%, var(--soft) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.2s linear infinite;
-}
-
-@keyframes shimmer {
-  to {
-    background-position: -200% 0;
-  }
 }
 
 .stepper-bar li::before {
@@ -1162,7 +1359,8 @@
   .vehicle-card {
     grid-template-columns: 120px 1fr;
     gap: 14px;
-    padding: 10px 16px 14px 10px;
+    padding-block: 10px 14px;
+    padding-inline: 10px 16px;
   }
   .vehicle-media {
     width: 120px;
@@ -1190,7 +1388,7 @@
   position: fixed;
   inset: 64px 0 auto 0;
   z-index: 39;
-  background: #fff;
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
   padding: 12px var(--gutter) 24px;
@@ -1213,7 +1411,7 @@
   width: 100%;
   justify-content: center;
   border-bottom: none;
-  color: #fff;
+  color: var(--paper);
 }
 
 .header.scrolled {
@@ -1225,6 +1423,10 @@
 @media (max-width: 1180px) {
   .trust-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .trust-item:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-start: none;
   }
 }
 
@@ -1272,8 +1474,13 @@
   .feature-band {
     grid-template-columns: 1fr;
   }
+  /* Tek sütunda kapasite hapı akışta durur; araç onu örtmez. */
   .drive-stage {
-    min-height: 220px;
+    min-height: 0;
+    padding-top: 56px;
+  }
+  .drive-car {
+    max-width: 560px;
   }
   .faq,
   .section-head {
@@ -1282,9 +1489,41 @@
   .section-head p {
     justify-self: start;
   }
-  .steps-row,
   .airport-list {
     grid-template-columns: 1fr;
+  }
+  /* Telefonda ray dikey: rota formundaki gibi daire üstte, kare altta. */
+  .route-steps {
+    grid-template-columns: 1fr;
+  }
+  .route-steps li {
+    padding-top: 0;
+    padding-inline: calc(var(--node) + 22px) 0;
+    padding-bottom: 36px;
+  }
+  .route-steps li:last-child {
+    padding-bottom: 0;
+  }
+  .route-steps .node {
+    top: 6px;
+  }
+  .route-steps li:not(:last-child)::before {
+    top: calc(6px + var(--node) + 6px);
+    bottom: 0;
+    inset-inline: calc(var(--node) / 2 - 1px) auto;
+    width: 2px;
+    height: auto;
+    background: repeating-linear-gradient(180deg, var(--ink) 0 8px, transparent 8px 14px);
+  }
+  .route-steps p {
+    max-width: none;
+  }
+}
+
+@media (max-width: 960px) and (prefers-reduced-motion: no-preference) {
+  .route-steps.armed li:not(:last-child)::before,
+  [dir="rtl"] .route-steps.armed li:not(:last-child)::before {
+    clip-path: inset(0 0 100% 0);
   }
 }
 
@@ -1325,8 +1564,8 @@
   .hero-media {
     bottom: auto;
     height: 820px;
-    -webkit-mask-image: linear-gradient(180deg, #000 68%, transparent 96%);
-    mask-image: linear-gradient(180deg, #000 68%, transparent 96%);
+    -webkit-mask-image: linear-gradient(180deg, black 68%, transparent 96%);
+    mask-image: linear-gradient(180deg, black 68%, transparent 96%);
     /* Paralaks telefonda kapalı: görselin alt kenarı katmanın dışına kaymasın. */
     transform: none !important;
   }
@@ -1336,7 +1575,7 @@
   .hero::before {
     height: 820px;
     bottom: auto;
-    background: linear-gradient(180deg, rgba(5, 5, 6, 0.72) 0%, rgba(5, 5, 6, 0.35) 42%, rgba(5, 5, 6, 0.2) 62%, #0b0b0c 100%);
+    background: linear-gradient(180deg, rgba(5, 5, 6, 0.72) 0%, rgba(5, 5, 6, 0.35) 42%, rgba(5, 5, 6, 0.2) 62%, var(--ink) 100%);
   }
   .hero-card {
     padding: 18px;
@@ -1349,10 +1588,14 @@
   }
   .trust-strip {
     grid-template-columns: 1fr;
-    gap: 10px;
+    padding-block: 0 24px;
   }
-  .trust-item {
-    padding: 16px;
+  .trust-item,
+  .trust-item:nth-child(odd),
+  .trust-item + .trust-item {
+    padding-block: 18px;
+    padding-inline: 0;
+    border-inline-start: none;
   }
   .services {
     grid-template-columns: 1fr;
@@ -1386,10 +1629,21 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Sonsuz döngüler (iskelet parıltısı, nabız) 0,01 ms'de titremesin: tek tur, son karede durur. */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Paralaks katmanları (motion satır içi transform yazar) hareket azaltılmışsa yerinde durur. */
+  .hero-media,
+  .cta-band .bg {
+    transform: none !important;
   }
 }

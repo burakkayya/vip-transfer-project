@@ -1,11 +1,12 @@
 "use client";
 
-// Animasyon yardımcıları (motion kütüphanesi). Hareket azaltma tercihi olan ziyaretçide animasyon kapanır.
+// Animasyon yardımcıları. Kural: varsayılan (sunucu) çizim her zaman görünürdür. Gizli başlangıç durumu
+// yalnızca JavaScript çalışıp öğeyi "armed" olarak işaretlediğinde ve ziyaretçi hareketi azaltmadıysa
+// CSS'te uygulanır (home.css: .reveal, .inview). Böylece JS yüklenmezse veya geç yüklenirse bölüm boş kalmaz.
 import Lenis from "lenis";
-import { motion, useInView, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
-import { useEffect, useRef } from "react";
-
-const EASE = [0.22, 1, 0.36, 1] as const;
+import Image from "next/image";
+import { motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { createElement, useEffect, useRef, useState } from "react";
 
 /** Yumuşak kaydırma (Lenis). Ana sayfada bir kez çizilir. */
 export function SmoothScroll() {
@@ -39,62 +40,77 @@ export function SmoothScroll() {
   return null;
 }
 
-/** Görünür alana girince aşağıdan yukarı belirir. */
-export function Reveal(props: { children: React.ReactNode; delay?: number; y?: number; className?: string; as?: "div" | "li" | "section" }) {
-  const reduce = useReducedMotion();
-  const Tag = motion[props.as ?? "div"];
-  return (
-    <Tag
-      className={props.className}
-      initial={reduce ? false : { opacity: 0, y: props.y ?? 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "0px 0px -10% 0px" }}
-      transition={{ duration: 0.8, ease: EASE, delay: props.delay ?? 0 }}
-    >
-      {props.children}
-    </Tag>
+type Phase = "idle" | "armed" | "in";
+
+/**
+ * Öğe görünür alana girince "in" olur. Hidrasyon anında zaten ekrandaysa doğrudan "in" (titreme yok);
+ * ekran dışındaysa "armed" (CSS gizler) ve kaydırınca "in". Sunucu çizimi "idle" = görünür.
+ */
+function useInViewPhase<T extends HTMLElement>(threshold = 0.9) {
+  const ref = useRef<T>(null);
+  const [phase, setPhase] = useState<Phase>("idle");
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.top < window.innerHeight * threshold && r.bottom > 0) {
+      setPhase("in");
+      return;
+    }
+    setPhase("armed");
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        setPhase("in");
+        io.disconnect();
+      },
+      { rootMargin: `0px 0px -${Math.round((1 - threshold) * 100)}% 0px` },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [threshold]);
+  return [ref, phase] as const;
+}
+
+type Tag = "div" | "li" | "ol" | "ul" | "section";
+
+/** Görünür alana girince aşağıdan yukarı belirir (CSS geçişi; hareket azaltılmışsa anında görünür). */
+export function Reveal(props: { children: React.ReactNode; delay?: number; y?: number; className?: string; as?: Tag }) {
+  const [ref, phase] = useInViewPhase<HTMLElement>();
+  const style = { "--d": `${props.delay ?? 0}s`, "--y": `${props.y ?? 24}px` } as React.CSSProperties;
+  return createElement(
+    props.as ?? "div",
+    { ref, className: ["reveal", phase, props.className].filter(Boolean).join(" "), style },
+    props.children,
   );
 }
 
-/** Başlığı kelime kelime açar. */
-export function WordsIn(props: { text: string; delay?: number }) {
-  const reduce = useReducedMotion();
-  const words = props.text.split(" ");
-  return (
-    <span aria-label={props.text}>
-      {words.map((w, i) => (
-        <motion.span
-          key={i}
-          aria-hidden
-          className="word"
-          initial={reduce ? false : { opacity: 0, y: "0.5em", filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.9, ease: EASE, delay: (props.delay ?? 0) + i * 0.06 }}
-        >
-          {w}
-          {i < words.length - 1 ? " " : ""}
-        </motion.span>
-      ))}
-    </span>
+/** Görünür alana girince "in" sınıfı alan kap. Çocukların sahnelenmesi CSS'tedir (ör. rota adımları, Vito). */
+export function InView(props: { children: React.ReactNode; className?: string; as?: Tag; threshold?: number }) {
+  const [ref, phase] = useInViewPhase<HTMLElement>(props.threshold);
+  return createElement(
+    props.as ?? "div",
+    { ref, className: ["inview", phase, props.className].filter(Boolean).join(" ") },
+    props.children,
   );
 }
 
-/** Giriş görseli: yavaş yakınlaşma ve kaydırmada hafif paralaks. */
+/**
+ * Giriş görseli: ilk boyamada CSS ile yavaş yakınlaşma (home.css .hero-media .zoom) ve kaydırmada hafif
+ * paralaks. Sanat yönetimi (dar ekranda ayrı kadraj) için düz <picture>; LCP görseli öncelikli yüklenir.
+ */
 export function HeroMedia(props: { src: string; mobileSrc: string; alt: string }) {
   const reduce = useReducedMotion();
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 800], [0, reduce ? 0 : 140]);
   return (
     <motion.div className="hero-media" style={{ y }}>
-      <motion.picture
-        initial={reduce ? false : { scale: 1.12 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 2.4, ease: EASE }}
-        style={{ display: "block", width: "100%", height: "100%" }}
-      >
-        <source media="(max-width: 720px)" srcSet={props.mobileSrc} />
-        <img src={props.src} alt={props.alt} fetchPriority="high" />
-      </motion.picture>
+      <div className="zoom">
+        <picture>
+          <source media="(max-width: 720px)" srcSet={props.mobileSrc} />
+          <img src={props.src} alt={props.alt} fetchPriority="high" decoding="async" />
+        </picture>
+      </div>
     </motion.div>
   );
 }
@@ -107,48 +123,12 @@ export function ParallaxBg(props: { src: string; className?: string }) {
   const y = useTransform(scrollYProgress, [0, 1], reduce ? ["0%", "0%"] : ["-8%", "8%"]);
   return (
     <motion.div ref={ref} className={props.className} style={{ y }}>
-      <img src={props.src} alt="" loading="lazy" />
+      <Image src={props.src} alt="" fill sizes="(max-width: 1440px) 100vw, 1440px" />
     </motion.div>
   );
 }
 
-/** Yandan Vito: bölüm ekrana girerken soldan yola girer ve hafifçe süzülür. */
-export function DriveIn(props: { src: string; alt: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
-  const smooth = useSpring(scrollYProgress, { stiffness: 80, damping: 22, mass: 0.6 });
-  const x = useTransform(smooth, [0, 1], reduce ? ["0%", "0%"] : ["-70%", "0%"]);
-  const opacity = useTransform(smooth, [0, 0.35], reduce ? [1, 1] : [0, 1]);
-  return (
-    <motion.div ref={ref} className="drive-car" style={{ x, opacity }}>
-      <motion.img
-        src={props.src}
-        alt={props.alt}
-        loading="lazy"
-        animate={reduce ? undefined : { y: [0, -2, 0] }}
-        transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
-      />
-    </motion.div>
-  );
-}
-
-/** "Nasıl çalışır" adımlarındaki çizgi, kart görününce dolar. */
-export function StepBar(props: { delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "0px 0px -15% 0px" });
-  return (
-    <div className="step-bar" ref={ref}>
-      <motion.span
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: inView ? 1 : 0 }}
-        transition={{ duration: 1.2, ease: EASE, delay: props.delay ?? 0 }}
-      />
-    </div>
-  );
-}
-
-/** Sayı görününce sıfırdan sayar. */
+/** Sayı görününce sıfırdan sayar. Sunucu çizimi ve hareket azaltma son değeri gösterir. */
 export function CountUp(props: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });

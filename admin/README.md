@@ -10,7 +10,13 @@ npm install
 copy .env.example .env.local      # GETAWAY_API_URL: backend adresi
 npm run dev                       # http://localhost:3001
 npm run typecheck
+npm run lint                      # ESLint (taban: docs/ui-review/lint-taban.md)
 ```
+
+## Test (Playwright + axe)
+
+Sunucu ayakta olmalıdır (`npm run start` veya `npm run dev`, 3001). `npm run test:e2e`.
+Girişli testler için yerelde ayrı bir e2e admin hesabı kullanılır: `ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD` ve (ilk girişte otomatik yazılan) `ADMIN_E2E_TOTP_SECRET` değerleri yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasında tutulur; repoya yazılmaz. Değerler yoksa bu testler atlanır. Oturum `e2e/.auth/admin.json` (gitignore) dosyasına kaydedilir.
 
 İlk kullanıcı backend'den oluşturulur: `.venv\Scripts\python -m app.cli create-admin --email siz@getawaytransfers.com`.
 İlk girişte doğrulama uygulamasıyla QR okutulur (2FA zorunlu, K-22).

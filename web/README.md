@@ -41,7 +41,7 @@ Paylaşılabilir linkler bölge koduyla çalışır: `/tr/book?from=ayt&to=kemer
 
 ## Tasarım
 
-Değişkenler ve bileşen stilleri `app/globals.css` içindedir. Yazı tipleri (Inter, Playfair Display) `next/font` ile derlemede indirilip kendi sunucumuzdan verilir. İkonlar satır içi SVG'dir (`components/Icon.tsx`).
+Değişkenler ve bileşen stilleri `app/globals.css` içindedir. Yazı tipi (yalnızca Inter) `next/font` ile derlemede indirilip kendi sunucumuzdan verilir. İkonlar satır içi SVG'dir (`components/Icon.tsx`).
 
 ## Güvenlik
 

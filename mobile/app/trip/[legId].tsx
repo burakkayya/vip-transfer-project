@@ -6,6 +6,7 @@ import { Linking, Modal, Platform, Pressable, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
+import type { LatLng } from "@/components/mapTypes";
 import {
   Alert, Avatar, Badge, Button, Card, H2, IconButton, Info, Loading, ProgressSegments, RouteStops, Row, Screen, T, colors, s,
   statusTone,
@@ -39,12 +40,14 @@ export default function TripScreen() {
   const [busy, setBusy] = useState(false);
   const [sharing, setSharing] = useState<"off" | "on" | "denied">("off");
   const [simulated, setSimulated] = useState(0);
+  // Son paylaşılan konum: haritada sürücünün kendi işaretçisi olarak gösterilir.
+  const [shared, setShared] = useState<LatLng | null>(null);
   const [sign, setSign] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const all = await api<Trip[]>("driver/trips?include_past=true");
-      setTrip(all.find((x) => x.leg_id === legId) ?? null);
+      // Tekil uç rota çizgisini (route_polyline) de döndürür; atanmamış iş için 404 hata durumunu gösterir.
+      setTrip(await api<Trip>(`driver/trips/${legId}`));
     } catch (e) {
       setError(errorTextTr(e));
     }
@@ -75,6 +78,7 @@ export default function TripScreen() {
         { accuracy: Location.Accuracy.High, timeInterval: LOCATION_INTERVAL_MS, distanceInterval: 25 },
         (pos) => {
           const heading = pos.coords.heading !== null && pos.coords.heading >= 0 ? pos.coords.heading : null;
+          setShared({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
           void api(`driver/trips/${legId}/location`, {
             body: { lat: pos.coords.latitude, lng: pos.coords.longitude, heading },
           }).catch(() => undefined);
@@ -103,10 +107,11 @@ export default function TripScreen() {
   async function simulateLocation() {
     if (!trip?.pickup_lat || !trip.pickup_lng) return;
     const jitter = () => (Math.random() - 0.5) * 0.01;
+    const lat = Number(trip.pickup_lat) + jitter();
+    const lng = Number(trip.pickup_lng) + jitter();
     try {
-      await api(`driver/trips/${legId}/location`, {
-        body: { lat: Number(trip.pickup_lat) + jitter(), lng: Number(trip.pickup_lng) + jitter(), heading: null },
-      });
+      await api(`driver/trips/${legId}/location`, { body: { lat, lng, heading: null } });
+      setShared({ latitude: lat, longitude: lng });
       setError(null);
       setSimulated((n) => n + 1);
     } catch (e) {
@@ -137,7 +142,9 @@ export default function TripScreen() {
   return (
     <>
       <MapSheet
-        map={<MapCanvas seed={trip.booking_code} mode={active ? "driver" : "route"} progress={trip.status === "vardi" ? 0 : undefined} focusTop={0.55} />}
+        map={<MapCanvas seed={trip.booking_code} mode={active ? "driver" : "route"} progress={trip.status === "vardi" ? 0 : undefined} focusTop={0.55}
+          route={trip.route_polyline} driver={active ? shared : null}
+          accessibilitySummary={`Harita: ${trip.pickup_region} → ${trip.dropoff_region}${active && shared ? ". Konumunuz haritada işaretli." : ""}`} />}
         mapRatio={0.4}
         refreshing={false}
         onRefresh={load}

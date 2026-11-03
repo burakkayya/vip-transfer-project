@@ -1,19 +1,26 @@
 /* Getaway Transfers — sade, siyah-beyaz, VIP. Vurgu rengi yalnızca küçük etiketlerde. */
 :root {
-  --ink: #0b0b0c;
-  --ink-2: #1c1c1f;
-  --bg: #ffffff;
-  --soft: #f5f5f3;
-  --soft-2: #ececea;
-  --surface: #ffffff;
-  --text: #0b0b0c;
-  --muted: #6b6b70;
-  --line: #e8e7e3;
-  --line-strong: #d6d5d0;
-  --accent: #a8875a;
-  --danger: #c0261d;
-  --ok: #18794e;
-  --warn: #8a6100;
+  --ink: var(--color-lacquer-black);
+  --ink-2: var(--color-lacquer-black-raised);
+  --bg: var(--color-paper);
+  --paper: var(--color-paper);
+  --canvas: var(--color-harbor-canvas);
+  --soft: var(--color-limestone);
+  --soft-2: var(--color-limestone-deep);
+  --surface: var(--color-paper);
+  --text: var(--color-lacquer-black);
+  --muted: var(--color-slate-text);
+  --faint: var(--color-slate-faint);
+  --line: var(--color-hairline);
+  --line-strong: var(--color-hairline-strong);
+  --accent: var(--color-champagne-brass);
+  --brass-ink: var(--color-champagne-brass-ink);
+  --danger: var(--color-signal-red);
+  --danger-soft: var(--color-signal-red-soft);
+  --ok: var(--color-pine-green);
+  --ok-soft: var(--color-pine-green-soft);
+  --warn: var(--color-amber-ink);
+  --warn-soft: var(--color-amber-soft);
   --radius: 18px;
   --radius-lg: 28px;
   --radius-sm: 12px;
@@ -22,6 +29,8 @@
   --font-sans: system-ui, sans-serif;
   --gutter: clamp(16px, 4vw, 56px);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Klavye odak halkası rengi. Koyu yüzeyler bunu kâğıt beyazına çevirir (aşağıda). */
+  --focus: var(--ink);
   color-scheme: light;
 }
 
@@ -43,6 +52,29 @@ body {
 
 a {
   color: inherit;
+}
+
+/* --- Klavye odağı (DESIGN.md: 2 px lake siyah halka, koyu zeminde beyaz) --- */
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.hero,
+.feature-band,
+.cta-band,
+.footer-box {
+  --focus: var(--paper);
+}
+
+.hero-card {
+  --focus: var(--ink);
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 /* width/height öznitelikleri yalnızca yer ayırmak içindir; boyutu CSS belirler. */
@@ -154,7 +186,7 @@ main {
 }
 
 .brand.inverted {
-  color: #fff;
+  color: var(--paper);
 }
 
 .brand.inverted .brand-sub {
@@ -236,7 +268,7 @@ main {
   border-radius: 12px;
   border: 1px solid var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   cursor: pointer;
   text-decoration: none;
   transition: background 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
@@ -259,13 +291,13 @@ main {
 .btn.primary,
 .btn.accent {
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 
 .btn.light {
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
-  border-color: #fff;
+  border-color: var(--paper);
 }
 
 .btn.light:hover:not(:disabled) {
@@ -284,9 +316,30 @@ main {
   background: var(--soft-2);
 }
 
+/* Çerçeveli düğme: tehlikeli eylemin yanındaki güvenli seçenek ("Vazgeç") aynı boyut ve belirginlikte. */
+.btn.outline {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.btn.outline:hover:not(:disabled) {
+  background: var(--soft);
+}
+
+/* İstek sürerken odağı korumak için `disabled` yerine `aria-disabled` kullanılan düğmeler. */
+.btn[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .btn.danger {
   background: var(--danger);
   border-color: var(--danger);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 86%, var(--ink));
 }
 
 .btn.small {
@@ -425,23 +478,34 @@ textarea {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+/* Yer tutucu kireçtaşı zeminde 4,86:1 (slate-text). slate-faint yalnızca kâğıt/tuval zemininde metindir. */
 input::placeholder,
 textarea::placeholder {
-  color: #9a9a9f;
+  color: var(--muted);
+  opacity: 1;
 }
 
+/* Üzerine gelme zemini koyulaştırmaz (yer tutucu kontrastı korunur); kenar belirir. */
 input:hover,
 select:hover,
 textarea:hover {
-  background: var(--soft-2);
+  border-color: var(--line-strong);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  outline: none;
+  /* Odak göstergesi lake siyah kenardır; saydam çizgi Windows yüksek karşıtlık modunda görünür kalır. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
   border-color: var(--ink);
-  background: #fff;
+  background: var(--paper);
+}
+
+/* Yerel onay kutusu ve radyo kenar çizmez; bunlarda halka gösterilir. */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid var(--focus);
 }
 
 input[type="checkbox"],
@@ -458,7 +522,7 @@ input[type="radio"] {
 
 .with-icon > svg {
   position: absolute;
-  left: 14px;
+  inset-inline-start: 14px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted);
@@ -466,7 +530,7 @@ input[type="radio"] {
 }
 
 .with-icon > input {
-  padding-left: 44px;
+  padding-inline-start: 44px;
 }
 
 .check {
@@ -491,17 +555,25 @@ input[type="radio"] {
   padding: 16px 18px;
   border: 1.5px solid var(--line);
   border-radius: var(--radius-sm);
-  cursor: pointer;
 }
 
 .option-card:has(input:checked) {
   border-color: var(--ink);
 }
 
-.option-card span {
+.option-card input {
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+/* Etiket kartın kalanını kaplar; tıklama alanı kutu + metindir. */
+.option-card label {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  cursor: pointer;
 }
 
 .alert {
@@ -512,32 +584,41 @@ input[type="radio"] {
 
 .alert.error {
   color: var(--danger);
-  background: #fdf2f1;
-  border-color: #f4cdc9;
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--paper));
 }
 
 .alert.ok {
   color: var(--ok);
-  background: #eff8f3;
-  border-color: #c6e6d4;
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 22%, var(--paper));
 }
 
 .alert.info {
   color: var(--warn);
-  background: #fbf7ee;
-  border-color: #eedfbd;
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 22%, var(--paper));
 }
 
+/* Geliştirme kodu kutusu: yalnızca API `dev_code` döndürdüğünde (konsol SMS, üretim dışı) çizilir.
+   Kehribar durum rengiyle sınırlı (amber-soft zemin, amber-ink metin); pirinç kullanılmaz. */
 .dev-hint {
   font: inherit;
   font-size: 0.9rem;
-  background: #fbf7ee;
-  border: 1px dashed #d4b977;
-  color: #5c4a1c;
+  font-variant-numeric: tabular-nums;
+  background: var(--warn-soft);
+  border: 1px dashed color-mix(in srgb, var(--warn) 45%, var(--warn-soft));
+  color: var(--warn);
   border-radius: var(--radius-sm);
   padding: 9px 12px;
+  min-block-size: 44px;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.dev-hint:hover {
+  border-style: solid;
 }
 
 .badge {
@@ -554,17 +635,17 @@ input[type="radio"] {
 }
 
 .badge.ok {
-  background: #e7f4ec;
+  background: var(--ok-soft);
   color: var(--ok);
 }
 
 .badge.warn {
-  background: #f8f0dc;
+  background: var(--warn-soft);
   color: var(--warn);
 }
 
 .badge.danger {
-  background: #fbe6e4;
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -616,7 +697,7 @@ dl.summary dd {
 
 .marker {
   position: absolute;
-  left: 17px;
+  inset-inline-start: 17px;
   top: 50%;
   transform: translateY(-50%);
   width: 10px;
@@ -634,8 +715,8 @@ dl.summary dd {
 }
 
 .address-input input {
-  padding-left: 42px;
-  padding-right: 52px;
+  padding-inline-start: 42px;
+  padding-inline-end: 52px;
   height: 54px;
   font-weight: 500;
 }
@@ -646,7 +727,8 @@ dl.summary dd {
   align-items: center;
   gap: 12px;
   min-height: 54px;
-  padding: 6px 52px 6px 42px;
+  padding-block: 6px;
+  padding-inline: 42px 52px;
   background: var(--soft);
   border-radius: var(--radius-sm);
 }
@@ -671,19 +753,18 @@ dl.summary dd {
 
 .address-chosen .icon-btn {
   position: absolute;
-  right: 52px;
+  inset-inline-end: 52px;
 }
 
 .suggestions {
   position: absolute;
   z-index: 30;
   top: calc(100% + 6px);
-  left: 0;
-  right: 0;
+  inset-inline: 0;
   list-style: none;
   margin: 0;
   padding: 6px;
-  background: #fff;
+  background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
@@ -771,6 +852,20 @@ dl.summary dd {
   gap: 8px;
 }
 
+/* Oturum durumu bilinene kadar nötr yer tutucu: tek soluk çizgi, göstergeyle aynı yükseklik. */
+.stepper-pending {
+  /* Çizgi 4 px + aralık 8 px + bir satır ad (0.86rem × 1.55); ölçülen gösterge yüksekliği 33,3 px. */
+  min-height: calc(12px + 0.86rem * 1.55);
+}
+
+.stepper-pending::before {
+  content: "";
+  flex: 1;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
 .stepper-bar li {
   flex: 1;
   display: flex;
@@ -798,8 +893,130 @@ dl.summary dd {
   background: var(--ink);
 }
 
-.stepper-bar .dot {
-  display: none;
+/* Dar ekranda yalnızca etkin adımın adı görünür (çubuklar adım sayısını gösterir); diğer adlar ekran okuyucuda kalır. */
+@media (max-width: 480px) {
+  .stepper-bar li.active {
+    flex: 3;
+  }
+  .stepper-bar li:not(.active) .name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Ekran okuyucuya özel metin (görünmez, okunur). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wizard-start .lead {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 1.05rem;
+  text-wrap: pretty;
+}
+
+.wizard-step-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+
+.wizard-step-head h2 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* Adım değişince odak başlığa programla gelir; başlık etkileşimli değildir, halka çizilmez. */
+.wizard-step-head h2:focus {
+  outline: none;
+}
+
+.wizard-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.wizard-back svg {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .wizard-back svg {
+  transform: none;
+}
+
+/* Bilgiler adımında alanlar çift çift (ad + ülke, alış + bırakış, uçuş + dönüş uçuşu); geniş ekranda üçüncü sütun eşleri ayırıyordu. */
+.wizard-step .grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 560px) {
+  .wizard-step .grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.wizard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.wizard-actions .hint {
+  margin: 0;
+  max-width: 46ch;
+}
+
+.wizard .price,
+.wizard .amount {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.cancel-tiers {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
+  color: var(--ink);
+  font-size: 0.9rem;
+  text-wrap: pretty;
+}
+
+.cancel-tiers svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.consents {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
 }
 
 .vehicle-list {
@@ -813,12 +1030,13 @@ dl.summary dd {
   grid-template-columns: 150px 1fr auto;
   gap: 20px;
   align-items: center;
-  text-align: left;
+  text-align: start;
   font: inherit;
   color: inherit;
   width: 100%;
-  padding: 12px 20px 12px 12px;
-  background: #fff;
+  padding-block: 12px;
+  padding-inline: 12px 20px;
+  background: var(--paper);
   border: 1.5px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
@@ -830,9 +1048,19 @@ dl.summary dd {
   border-color: var(--ink);
 }
 
+/* Uygun olmayan araç: kart okunur kalır (neden metni), yalnızca görsel soluklaşır. */
 .vehicle-card:disabled {
-  opacity: 0.45;
   cursor: not-allowed;
+}
+
+.vehicle-card:disabled:not([aria-busy="true"]) {
+  background: var(--soft);
+  border-color: transparent;
+}
+
+.vehicle-card:disabled:not([aria-busy="true"]) .vehicle-media {
+  opacity: 0.45;
+  filter: grayscale(1);
 }
 
 .vehicle-media {
@@ -840,7 +1068,7 @@ dl.summary dd {
   aspect-ratio: 16 / 10;
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--paper);
 }
 
 .vehicle-media img {
@@ -884,17 +1112,18 @@ dl.summary dd {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-left: 26px;
+  padding-inline-start: 26px;
 }
 
+/* Rota rayı (DESIGN.md imzası): daire, kesikli hat, kare. */
 .route-summary::before {
   content: "";
   position: absolute;
-  left: 4px;
-  top: 10px;
-  bottom: 10px;
-  width: 1.5px;
-  background: var(--ink);
+  inset-inline-start: 4px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: repeating-linear-gradient(to bottom, var(--ink) 0 4px, transparent 4px 8px);
 }
 
 .route-summary > div:not(.route-line) {
@@ -905,7 +1134,7 @@ dl.summary dd {
 .route-summary > div:not(.route-line)::before {
   content: "";
   position: absolute;
-  left: -26px;
+  inset-inline-start: -26px;
   top: 7px;
   width: 10px;
   height: 10px;
@@ -916,10 +1145,6 @@ dl.summary dd {
   border-radius: 999px;
 }
 
-.route-summary svg,
-.route-line {
-  display: none;
-}
 
 .trust-list {
   list-style: none;
@@ -935,55 +1160,471 @@ dl.summary dd {
 .trust-list li {
   display: inline-flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .trust-list svg {
   color: var(--ink);
+  flex: none;
+  margin-top: 2px;
 }
 
-/* --- Rezervasyon detayı ------------------------------------------------ */
+/* Özet kartında etiket değerin üstündedir: uzun Almanca etiket ("Fahrgäste und Gepäck") değeri sıkıştırmaz. */
+.wizard-summary dl.summary {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.wizard-summary dl.summary dt {
+  font-size: 0.82rem;
+}
+
+.wizard-summary dl.summary dt:not(:first-of-type) {
+  margin-top: 10px;
+}
+
+.wizard-summary dl.summary dd {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Durum bileşenleri (components/States.tsx) ---------------------- */
+
+/* Ortak iskelet (LoadingState ve sihirbazın araç kartı fiyat yer tutucusu). K-43: parıltı yalnızca
+   hareket serbestken; azaltılmış harekette iskelet durağan kalır. */
+.skeleton {
+  display: block;
+  width: 110px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--soft) 0%, var(--soft-2) 50%, var(--soft) 100%);
+  background-size: 200% 100%;
+}
+
+/* Parıltı yalnızca hareket serbestken; azaltılmış harekette iskelet durağan kalır. */
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: shimmer 1.2s linear infinite;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.state-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.state-lines .skeleton {
+  width: 100%;
+  height: 16px;
+}
+
+.state-lines .skeleton:nth-child(2) {
+  width: 82%;
+}
+
+.state-lines .skeleton:nth-child(3) {
+  width: 64%;
+}
+
+.state-label,
+.state-text {
+  margin: 0;
+}
+
+.state-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.state-empty {
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.state-empty .state-title {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.state-empty .state-text {
+  color: var(--muted);
+  max-width: 46ch;
+}
+
+.state-error {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--danger) 22%, var(--paper));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.state-error .state-text {
+  flex: 1 1 24ch;
+}
+
+/* Ödeme sonucu geçiş ekranı (components/PaymentResult.tsx): gecikme notu */
+.result-stalled {
+  margin-block: 16px 0;
+  max-width: 46ch;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.result-stalled a {
+  color: var(--text);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+/* --- Bulunamadı (404) --------------------------------------------------- */
+
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding-block: clamp(56px, 10vw, 120px);
+}
+
+.not-found h1 {
+  margin: 0;
+  font-size: clamp(3.2rem, 9vw, 6rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.not-found .lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.08rem;
+  max-width: 52ch;
+}
+
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-block-start: 8px;
+}
+
+/* --- Rezervasyon detayı (components/BookingDetail.tsx) ------------------ */
 
 .booking-head {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 16px 24px;
+}
+
+.booking-head-main {
+  min-width: 0;
 }
 
 .booking-code {
   font-size: 2.2rem;
   letter-spacing: 0.06em;
-  margin: 4px 0;
+  margin-block: 4px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.booking-meta {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-head-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  text-align: end;
+}
+
+.booking-total-box,
+.cancel-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-total-box {
+  align-items: flex-end;
+}
+
+.booking-total-label,
+.cancel-refund-label {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.booking-total,
+.cancel-refund {
+  margin: 0;
+  line-height: 1.15;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.booking-paid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-detail .alert:focus {
+  outline-offset: 2px;
+}
+
+.leg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.leg-title {
+  flex: 1 1 24ch;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.08rem;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.leg-when,
+.leg-note {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+dl.summary.booking-facts {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+.booking-facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-facts dt {
+  align-self: start;
+}
+
+/* Çok dar ekranda etiket değerin üstünde: uzun ad ve adres tam genişliği kullanır. */
+@media (max-width: 480px) {
+  dl.summary.booking-facts {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+  }
+  .booking-facts dd + dt {
+    margin-block-start: 10px;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.driver-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.booking-actions,
+.cancel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cancel-panel h2 {
+  margin: 0;
+}
+
+.cancel-text,
+.cancel-policy {
+  margin: 0;
+}
+
+.cancel-policy {
+  color: var(--muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.cancel-policy a,
+.booking-change a {
+  color: var(--text);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.booking-change {
+  overflow-wrap: anywhere;
+}
+
+/* Canlı takip: yalnızca son güncelleme taze iken yeşil ve nabızlı; eskiyince kehribar, nabız yok. */
+.live-box {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--text);
+}
+
+.live-box.is-live {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 22%, var(--paper));
+}
+
+.live-box.stale {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 22%, var(--paper));
+}
+
+.live-title,
+.live-meta {
+  margin: 0;
+}
+
+.live-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.live-meta a {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.live-dot,
+.live-dot-off {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.live-dot {
+  background: var(--ok);
+}
+
+.live-dot-off {
+  border: 2px solid currentColor;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot {
+    animation: pulse 1.6s infinite;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--ok) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 0%, transparent);
+  }
+}
+
+/* Bulunamadı: geçersiz kod (404 sayfası) veya API 404/403 */
+.booking-not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.booking-not-found h1,
+.booking-not-found h2 {
+  margin: 0;
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+}
+
+/* Ödeme ekranında sayfa başlığının altında: daha küçük ikinci düzey. */
+.booking-not-found h2 {
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+}
+
+.booking-not-found p {
+  margin: 0;
+  max-width: 60ch;
 }
 
 .timeline {
   list-style: none;
   padding: 0;
-  margin: 8px 0 0;
+  margin: 0;
   display: flex;
 }
 
 .timeline li {
   flex: 1;
+  min-width: 0;
   position: relative;
   text-align: center;
   font-size: 0.76rem;
   color: var(--muted);
-  padding-top: 24px;
+  padding-block-start: 24px;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .timeline li::before {
   content: "";
   position: absolute;
-  top: 6px;
-  left: 50%;
+  inset-block-start: 6px;
+  inset-inline-start: 50%;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
+  margin-inline-start: -6px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--paper);
   border: 2px solid var(--line-strong);
   z-index: 1;
 }
@@ -991,8 +1632,8 @@ dl.summary dd {
 .timeline li::after {
   content: "";
   position: absolute;
-  top: 11px;
-  left: -50%;
+  inset-block-start: 11px;
+  inset-inline-start: -50%;
   width: 100%;
   height: 2px;
   background: var(--line);
@@ -1020,7 +1661,7 @@ dl.summary dd {
 }
 
 .timeline li.current::before {
-  box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--ink) 10%, transparent);
 }
 
 .driver-card {
@@ -1037,31 +1678,12 @@ dl.summary dd {
   height: 46px;
   border-radius: 999px;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   display: grid;
   place-items: center;
   font-weight: 700;
   font-size: 1.05rem;
   flex: none;
-}
-
-.live-dot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: var(--ok);
-  box-shadow: 0 0 0 0 rgba(24, 121, 78, 0.6);
-  animation: pulse 1.6s infinite;
-}
-
-@keyframes pulse {
-  70% {
-    box-shadow: 0 0 0 10px rgba(24, 121, 78, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(24, 121, 78, 0);
-  }
 }
 
 .booking-row {
@@ -1075,8 +1697,192 @@ dl.summary dd {
   transition: border-color 0.15s ease;
 }
 
+.booking-row .price {
+  font-size: 1.1rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rezervasyonlarım (B-W8): liste anlamı (ekran okuyucu adet söyler), kart satırı ve başlık. */
+.booking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bookings-list-title {
+  font-size: 1.15rem;
+  margin: 8px 0 0;
+}
+
+.booking-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 18rem;
+}
+
+.booking-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-row-route {
+  overflow-wrap: anywhere;
+}
+
+.booking-row-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-inline-start: auto;
+}
+
+.lookup-form .field {
+  flex: 1 1 16rem;
+}
+
+/* Alanın altında ipucu/hata olduğu için düğme girişin hizasına etiket yüksekliği kadar indirilir. */
+.lookup-form {
+  align-items: flex-start;
+}
+
+.lookup-form .btn {
+  margin-block-start: calc(0.82rem * 1.55 + 6px);
+}
+
+/* Dar ekranda düğme alanın altına iner: hizalama payı gerekmez, düğme tam genişlik (başparmak hedefi). */
+@media (max-width: 560px) {
+  .lookup-form .btn {
+    margin-block-start: 0;
+    inline-size: 100%;
+  }
+}
+
 .booking-row:hover {
   border-color: var(--ink);
+}
+
+/* Ödeme (B-W4): özet kartı, durumlar ve sağlayıcının iFrame'i. Tutar API'den geldiği gibi, tek satır ve tabular. */
+.pay-summary {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 20px 40px;
+  align-items: start;
+}
+
+.pay-total {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pay-total-label,
+.pay-facts dt {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.pay .pay-amount {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2rem);
+  line-height: 1.15;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-facts {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.pay-facts > div {
+  display: grid;
+  gap: 2px;
+}
+
+.pay-facts dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.pay-code {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-when {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pay-notes {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--line);
+}
+
+.pay-note {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.pay-note svg {
+  flex: none;
+  margin-block-start: 2px;
+}
+
+.pay-note.pay-expiry {
+  color: var(--text);
+}
+
+.pay-waiting {
+  margin: 0;
+  color: var(--muted);
+}
+
+.pay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Yoklama durdu: engellemeyen bildirim, metin ve "Durumu yenile" tek satırda (dar ekranda alt alta). */
+.pay-paused {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.pay-paused > span {
+  flex: 1 1 24ch;
+}
+
+.pay .state-empty .pay-actions {
+  justify-content: center;
+}
+
+.pay-link {
+  align-self: flex-start;
 }
 
 .iframe-wrap iframe {
@@ -1084,19 +1890,235 @@ dl.summary dd {
   min-height: 640px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--paper);
 }
 
-.legal h2 {
-  margin-top: 1.6em;
+/* --- Yasal sayfalar (app/[locale]/legal/[slug]) ------------------------- */
+/* Read modu: yalnızca tipografi ve düzen. Satır uzunluğu 65–75ch; yön bağımsız (mantıksal özellikler). */
+
+.legal {
+  font-size: 1.0625rem;
 }
 
+/* Kapsayıcı tam 70ch metin + kenar boşluğu: taslak notu ve başlık metinle aynı hizada biter. */
+.legal.narrow {
+  max-width: calc(70ch + 2 * var(--gutter));
+}
+
+.legal-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-block-end: 36px;
+}
+
+.legal-head .page-title {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.legal-head .alert,
+.legal-head .hint {
+  margin: 0;
+}
+
+.legal-body {
+  line-height: 1.65;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+.legal-body > * {
+  max-inline-size: 70ch;
+}
+
+.legal-body p {
+  margin-block: 0 1em;
+  text-wrap: pretty;
+}
+
+/* Başlığın üstü altından açık: bölüm bir öncekinden ayrılır, kendi paragrafına bağlanır. */
+.legal-body h2 {
+  font-size: 1.25rem;
+  margin-block: 2.2em 0.5em;
+  text-wrap: balance;
+  scroll-margin-block-start: 96px;
+}
+
+.legal-body h2:first-child {
+  margin-block-start: 0;
+}
+
+/* İçindekiler (yalnızca üç ve daha fazla bölümlü metin): saç çizgileri arasında sade bağlantı listesi. */
+.legal-toc {
+  max-inline-size: 70ch;
+  margin-block-end: 36px;
+  padding-block: 14px;
+  border-block: 1px solid var(--line);
+}
+
+.legal-toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+}
+
+.legal-toc a {
+  display: inline-block;
+  padding-block: 6px;
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 4px;
+}
+
+.legal-toc a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* İptal kademeleri: kireçtaşı blok, saç çizgisiyle ayrılan üç satır. Renkli kenar şeridi yok. */
+.legal-tiers {
+  list-style: none;
+  margin-block: 0.4em 1.4em;
+  padding: 4px 20px;
+  background: var(--soft);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.legal-tiers li {
+  padding-block: 12px;
+  font-weight: 500;
+}
+
+.legal-tiers li + li {
+  border-block-start: 1px solid var(--line-strong);
+}
+
+@media print {
+  body:has(.legal) .header,
+  body:has(.legal) .footer,
+  .legal-toc {
+    display: none;
+  }
+
+  .legal.page {
+    padding-block: 0;
+  }
+
+  .legal-body {
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  .legal-body h2 {
+    break-after: avoid;
+  }
+
+  .legal-tiers {
+    background: none;
+    border: 1px solid var(--line-strong);
+    break-inside: avoid;
+  }
+
+  .legal-body p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Taslak notu kâğıtta da görünür: zemin rengi basılmayabilir, kenar ve metin kalır. */
+  .legal-draft {
+    background: none;
+    color: var(--text);
+    border-color: var(--text);
+  }
+}
+
+/* --- SMS doğrulama (OtpLogin) ------------------------------------------- */
+
+.login-card {
+  max-inline-size: 560px;
+}
+
+/* Kod alanı: harf aralığı son rakamdan sonra da eklendiği için başlangıç boşluğu aynı kadar artırılır (görsel ortalama). */
 .code-input {
   letter-spacing: 0.4em;
   font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
   text-align: center;
-  max-width: 240px;
+  padding-inline-start: calc(14px + 0.4em);
+  max-inline-size: 240px;
   font-weight: 700;
+}
+
+/* Telefon alanı: seçili ülke kodu alanın başında görünür ve alanın erişilebilir adına katılır. */
+.phone-input {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+
+.phone-dial {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--soft-2);
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.phone-input input {
+  flex: 1;
+  min-width: 0;
+}
+
+.otp [aria-invalid="true"]:not(:focus) {
+  border-color: var(--danger);
+}
+
+.otp-sent {
+  overflow-wrap: anywhere;
+}
+
+.otp-number {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.otp-actions {
+  display: flex;
+}
+
+.otp-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+/* Bağlantı düğmeleri parmakla vurulabilir yükseklikte; uzun Almanca metin satır kırar. */
+.otp-links .btn.link {
+  min-block-size: 44px;
+  white-space: normal;
+  text-align: start;
+}
+
+/* Bekleme sırasında soluk düğme yerine okunur ikincil metin: bekleme süresi bilgidir. */
+.otp-links .otp-resend:disabled {
+  opacity: 1;
+  color: var(--muted);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Alt bilgi ---------------------------------------------------------- */
@@ -1120,7 +2142,7 @@ dl.summary dd {
 }
 
 .footer h4 {
-  color: #fff;
+  color: var(--paper);
   font-size: 0.9rem;
   letter-spacing: 0;
   margin-bottom: 16px;
@@ -1132,7 +2154,7 @@ dl.summary dd {
 }
 
 .footer a:hover {
-  color: #fff;
+  color: var(--paper);
 }
 
 .footer ul {
@@ -1152,11 +2174,14 @@ dl.summary dd {
 .footer li,
 .footer a {
   overflow-wrap: anywhere;
+  /* Uzun Almanca bileşik sözcükler harf ortasından değil heceden bölünür. */
+  hyphens: auto;
 }
 
 .footer-about p {
   margin-top: 18px;
   max-width: 260px;
+  text-wrap: pretty;
 }
 
 .footer-bottom {
@@ -1188,7 +2213,7 @@ dl.summary dd {
     display: none;
   }
   .nav {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 }
 
@@ -1221,6 +2246,19 @@ dl.summary dd {
   .card .row > .btn.primary {
     flex: 1;
   }
+  .wizard-actions .btn.primary {
+    flex: 1 1 100%;
+  }
+  .otp-actions .btn {
+    flex: 1 1 100%;
+  }
+  .pay-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .pay-actions .btn {
+    flex: 1 1 100%;
+  }
   .iframe-wrap iframe {
     min-height: 520px;
   }
@@ -1250,8 +2288,47 @@ dl.summary dd {
   .footer-about {
     grid-column: 1 / -1;
   }
+  /* Dar ekranda zaman çizelgesi dikey: altı etiket (Almanca uzun) yan yana sığmıyordu ve 0.66rem okunmuyordu. */
+  .timeline {
+    flex-direction: column;
+  }
   .timeline li {
-    font-size: 0.66rem;
+    text-align: start;
+    font-size: 0.86rem;
+    padding-block: 0 12px;
+    padding-inline-start: 26px;
+  }
+  .timeline li:last-child {
+    padding-block-end: 0;
+  }
+  .timeline li::before {
+    inset-block-start: 4px;
+    inset-inline-start: 0;
+    margin-inline-start: 0;
+  }
+  /* Önceki noktadan bu noktaya dikey çizgi (satır yükseklikleri eşit). */
+  .timeline li::after {
+    inset-block-start: calc(10px - 100%);
+    inset-inline-start: 5px;
+    width: 2px;
+    height: 100%;
+  }
+  .booking-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .booking-head-side {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    text-align: start;
+  }
+  .booking-total-box {
+    align-items: flex-end;
+  }
+  .booking-actions .btn,
+  .cancel-actions .btn {
+    flex: 1 1 100%;
   }
 }
 
@@ -1259,4 +2336,106 @@ dl.summary dd {
   .header .brand-text {
     display: none;
   }
+}
+
+/* --- Hesabım (B-W9, components/AccountPanel.tsx) ------------------------ */
+
+/* Salt okunur telefon: düzenlenebilir alanlardan ayrışır (kâğıt zemin, ince çizgi), metin tam kontrastlı kalır. */
+input.readonly,
+input.readonly:hover,
+input.readonly:focus {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+/* Boş canlı bölge akışta yer kaplamaz ama erişilebilirlik ağacında kalır (sonradan eklenen metin duyurulur). */
+.account-note:empty {
+  position: absolute;
+}
+
+.account-actions a {
+  text-underline-offset: 3px;
+}
+
+/* Onay kaydı sürerken: kutu soluk ve beklemede imleci; metin tam kontrastlı kalır. */
+.check.is-busy {
+  cursor: progress;
+}
+
+.check.is-busy input {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.consent-saving {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* --- Veri talebi (B-W10, components/DataRequestPanel.tsx) --------------- */
+
+/* Talep türü: fieldset + legend, seçenek kartları (`.option-card`). Tarayıcı fieldset çerçevesi kaldırılır. */
+.choice-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-group legend {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--ink);
+  padding: 0;
+  margin-block-end: 6px;
+}
+
+.request-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.request-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding-block: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.request-list li:first-child {
+  border-block-start: 0;
+  padding-block-start: 0;
+}
+
+.request-type {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.request-list .hint {
+  flex-basis: 100%;
+}
+
+/* Silme talebi onayı: satır içi, kırmızı ince çerçeve ve yumuşak zemin; metin tam kontrastlı. */
+.confirm-panel {
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--danger) 22%, var(--paper));
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+
+.confirm-panel h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.confirm-panel p {
+  margin: 0;
 }

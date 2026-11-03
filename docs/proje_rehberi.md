@@ -1,6 +1,6 @@
 # Proje Rehberi
 
-Bu dosya projenin tek yerden bakılan özetidir: ne olduğu, nasıl çalıştığı, hangi karar nerede, nelerin bittiği ve nelerin kaldığı. Ayrıntılar ilgili dosyalara bağlanır. Son güncelleme: 2026-10-31.
+Bu dosya projenin tek yerden bakılan özetidir: ne olduğu, nasıl çalıştığı, hangi karar nerede, nelerin bittiği ve nelerin kaldığı. Ayrıntılar ilgili dosyalara bağlanır. Son güncelleme: 2026-11-02.
 
 > Kural: Her değişiklikten sonra ilgili `.md` dosyaları güncellenir ve `degisiklik_gunlugu.md` dosyasına satır eklenir (kök `CLAUDE.md`).
 
@@ -37,13 +37,12 @@ Mimari notlar ve güvenlik ilkeleri: kök `README.md` ve `yasal_ve_guvenlik.md`.
 | Müşteri | Herhangi bir telefon numarası. SMS kodu ekranda sarı kutuda görünür. |
 | Sürücü 1 | +90 530 000 00 01, Mehmet Demir, Minivan, 07GA001 |
 | Sürücü 2 | +90 530 000 00 02, Ayşe Kaya, VIP Van, 48GA002 |
-
-Araç tipleri: Minivan, VIP Van, Minibüs, VIP Minibüs (K-35).
+| Araç tipleri | Minivan, VIP Van, Minibüs, VIP Minibüs (K-35) |
 | Admin | ebkaya.0637@gmail.com. Parola repoya yazılmaz; sohbette iletilen geçici parola kullanılır, ilk girişte 2FA QR kurulumu istenir, sonra **Parolamı değiştir**. |
 
 ## 5. Kararlar
 
-Tam liste: `kararlar.md` (K-01 ... K-34). Son eklenenler (2026-10-31):
+Tam liste: `kararlar.md` (K-01 ... K-46). Son eklenenler (2026-10-31, 2026-11-02 ve 2026-11-03):
 
 | No | Karar | Uygulama durumu |
 |---|---|---|
@@ -53,15 +52,27 @@ Tam liste: `kararlar.md` (K-01 ... K-34). Son eklenenler (2026-10-31):
 | K-32 | Tüm para birimleri 5'in katına yuvarlanır | Uygulandı |
 | K-33 | Kur manuel değil, TCMB'den otomatik | Uygulandı (saatlik görev) |
 | K-34 | MVP'de on dil | Bekliyor, şu an 4 dil (tr, en, de, ru) |
+| K-35 | VIP Minibüs ayrı araç tipi | Uygulandı (çarpan 2,40 yer tutucu) |
+| K-36 | Arayüz dilleri fr, es, it, zh, ja, ar; yasal metinler taslak çeviri | Bekliyor (K-34'ün uygulaması) |
+| K-37 | Mobil gerçek harita; backend `route_polyline` | Uygulandı: backend (rezervasyon detayı ve sürücü yolculuğu), mobil `MapCanvas` native gerçek harita (web SVG), iki ekrana bağlandı (D7); Android emülatörde doğrulandı, iOS Mac bekliyor |
+| K-38 | Renk tokenlarının tek kaynağı kök `DESIGN.md` | Üretici hazır (`scripts/sync-tokens.mjs`); web ve admin bağlı, mobil `ui.tsx` bağlantısı bekliyor |
+| K-39 | Görsel yön "Kıyı Yolu" | Bekliyor (arayüz taraması) |
+| K-40 | Ön yüz test altyapısı (ESLint, Playwright, axe, jest-expo) | Kuruldu: web (A3) ve admin (A4) ESLint + Playwright + axe; mobil (A5) ESLint + jest-expo + RNTL. Ekran bazlı testler arayüz taraması sırasında yazılacak |
+| K-41 | SMS kodu tekrar gönderme beklemesi 45 sn (yalnızca görsel; asıl sınır backend saatte 5 kod) | Uygulandı: web `OtpLogin` (B-W3), mobil giriş |
+| K-42 | Web ödeme: sağlayıcı sayfası açıkken yeniden deneme yok, tek başlatma isteği, "ok" dönüşünde 75 sn onay beklemesi ve iki seçenek | Uygulandı: web `PaymentPanel` (B-W4) |
+| K-43 | Ortak iskelet parıltısı yalnızca hareket serbestken | Uygulandı: `web/app/home.css` (B-W4) |
+| K-44 | Web canlı takipte eski konum canlı gösterilmez: son farklı konum zamanı 3 yoklama aralığından (15 sn) uzun süredir görülmediyse (duvar saati; asılı istek veya değişmeyen `at` dahil) kehribar "Konum güncellenemiyor" + son güncelleme saati, ETA yok | Uygulandı: web `BookingDetail` (B-W6, düzeltme turu 1) |
+| K-45 | Web ödeme ekranı açıkken oturum düşerse iFrame kalır, yoklama durur, engellemeyen not + kullanıcının bastığı "Yeniden giriş yap"; yeniden girişte yeni ödeme otomatik açılmaz, aynı rezervasyon yoklanır | Uygulandı: web `PaymentPanel` (yüzey 1 incelemesi) |
 
-## 6. Durum matrisi (2026-10-31)
+## 6. Durum matrisi (2026-11-02)
 
 | Alan | Durum | Eksik |
 |---|---|---|
-| Backend | Tamamlandı, 78 test geçiyor | PayTR gerçek doğrulama, iyzico yedeği, e-Arşiv, FCM, S3 depolama |
-| Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar | 6 dil daha, günlük kiralama ekranları |
-| Admin | Tamamlandı (19 ekran) | Günlük kiralama yönetimi |
-| Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi | Gerçek harita (Google/Apple Maps), 6 dil daha, push, mağaza derlemesi, günlük kiralama |
+| Backend | Tamamlandı, 94 test geçiyor | PayTR gerçek doğrulama, iyzico yedeği, e-Arşiv, FCM, S3 depolama |
+| Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar; 2026-11-02 ana sayfa Impeccable geçişi (B-W1, critique 31/36), rezervasyon sihirbazı geçişi (B-W2, critique 35/40), SMS doğrulama geçişi (B-W3, critique 36/40), ödeme ekranı geçişi (B-W4, critique 36/40), ödeme sonucu geçiş ekranı (B-W5, critique 22/24), rezervasyon detayı ve iptal (B-W6, critique 36/40); 2026-11-03 Rezervasyonlarım (B-W8, critique 35/40), Hesabım (B-W9, critique 34/40), veri talebi (B-W10, critique 34/40), yasal sayfalar (B-W11–14, critique 24/28, 28/32, 23/28, 23/28), 404 (B-W15, critique 30/36) | 6 dil daha, günlük kiralama ekranları |
+| Admin | Tamamlandı (23 rota) | Günlük kiralama yönetimi |
+| Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi | Android Maps anahtarı (kendi derlememiz için) ve iOS harita doğrulaması, 6 dil daha, push, mağaza derlemesi, günlük kiralama |
+| Ön yüz testleri | Altyapı kuruldu (K-40): web/admin Playwright + axe smoke, ESLint; mobil jest-expo + RNTL, ESLint; `scripts/` testleri; `scripts/ui-shots` | Lint taban ihlalleri (web 0, admin 3, mobil 9; `ui-review/lint-taban.md`), ekran bazlı e2e ve axe testleri (arayüz taraması; web ortak dosyalar B-W0, ana sayfa B-W1 ve rezervasyon sihirbazı B-W2 ve SMS doğrulama B-W3 ve ödeme B-W4 ve ödeme sonucu B-W5 ve rezervasyon detayı B-W6 tamamlandı: `web/e2e/shared.spec.ts`, `web/e2e/home.spec.ts`, `web/e2e/book.spec.ts`, `web/e2e/otp.spec.ts`, `web/e2e/pay.spec.ts`, `web/e2e/payment-result.spec.ts`, `web/e2e/booking-detail.spec.ts`) |
 | Yasal metinler | Taslak | Hukukçu onayı, şirket bilgileri (`web/lib/site.ts`) |
 
 ## 7. Açık konular

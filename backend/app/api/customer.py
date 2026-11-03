@@ -94,7 +94,7 @@ def list_bookings(customer: CurrentCustomer, db: DbSession):
 
 @router.get("/bookings/{code}", response_model=BookingOut)
 def get_booking(code: str, customer: CurrentCustomer, db: DbSession):
-    return BookingOut.build(_own_booking(db, customer, code))
+    return BookingOut.build(_own_booking(db, customer, code), with_route=True)
 
 
 @router.get("/bookings/{code}/cancellation", response_model=RefundQuoteOut)
