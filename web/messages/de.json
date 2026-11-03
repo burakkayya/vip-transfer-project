@@ -289,7 +289,12 @@
       "basladi": "Fahrt begonnen",
       "bitti": "Abgeschlossen",
       "iptal": "Storniert"
-    }
+    },
+    "codeHint": "8 Zeichen, beginnend mit GA; Sie finden ihn in der Bestätigungs-SMS.",
+    "codeHintOptional": "8 Zeichen, beginnend mit GA; Sie finden ihn in der Bestätigungs-SMS. Sie können das Feld leer lassen.",
+    "codeInvalid": "Buchungscodes beginnen mit GA und haben 8 Zeichen (z. B. GA7K3P9Q).",
+    "emptyText": "Planen Sie Ihren Transfer in wenigen Minuten; den Preis sehen Sie vor der Buchung.",
+    "listTitle": "Ihre Buchungen"
   },
   "account": {
     "title": "Mein Konto",

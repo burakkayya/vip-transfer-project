@@ -289,7 +289,12 @@
       "basladi": "Yolculuk başladı",
       "bitti": "Tamamlandı",
       "iptal": "İptal"
-    }
+    },
+    "codeHint": "GA ile başlayan 8 karakter; onay SMS'inizde yazar.",
+    "codeHintOptional": "GA ile başlayan 8 karakter; onay SMS'inizde yazar. İsterseniz boş bırakın.",
+    "codeInvalid": "Rezervasyon kodu GA ile başlar ve 8 karakterdir (ör. GA7K3P9Q).",
+    "emptyText": "Transferinizi birkaç dakikada planlayın; fiyatı rezervasyondan önce görürsünüz.",
+    "listTitle": "Rezervasyonlarınız"
   },
   "account": {
     "title": "Hesabım",

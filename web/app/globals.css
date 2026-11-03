@@ -1703,12 +1703,66 @@ dl.summary.booking-facts {
   font-variant-numeric: tabular-nums;
 }
 
+/* Rezervasyonlarım (B-W8): liste anlamı (ekran okuyucu adet söyler), kart satırı ve başlık. */
+.booking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bookings-list-title {
+  font-size: 1.15rem;
+  margin: 8px 0 0;
+}
+
+.booking-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 18rem;
+}
+
+.booking-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-row-route {
+  overflow-wrap: anywhere;
+}
+
+.booking-row-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-inline-start: auto;
+}
+
 .lookup-form .field {
-  flex: 1;
+  flex: 1 1 16rem;
+}
+
+/* Alanın altında ipucu/hata olduğu için düğme girişin hizasına etiket yüksekliği kadar indirilir. */
+.lookup-form {
+  align-items: flex-start;
 }
 
 .lookup-form .btn {
-  align-self: end;
+  margin-block-start: calc(0.82rem * 1.55 + 6px);
+}
+
+/* Dar ekranda düğme alanın altına iner: hizalama payı gerekmez, düğme tam genişlik (başparmak hedefi). */
+@media (max-width: 560px) {
+  .lookup-form .btn {
+    margin-block-start: 0;
+    inline-size: 100%;
+  }
 }
 
 .booking-row:hover {
