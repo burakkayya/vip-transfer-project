@@ -59,6 +59,7 @@ export default async function LegalPage({ params }: Props) {
     email: slug === "privacy" ? company.kvkkEmail : company.email,
     tursab: company.tursabNo,
   };
+  const sections = page.paragraphs.filter((p) => p.endsWith("Title"));
 
   // Yalnızca düzen: anahtarlar, metin ve sıra `PAGES`'tekiyle aynı kalır. Bölüm başlıkları bağlantı hedefi olur
   // (`dataTitle` → `#data`).
@@ -69,6 +70,19 @@ export default async function LegalPage({ params }: Props) {
         <p className="alert info legal-draft">{common("draft")}</p>
         <p className="hint">{common("updated", { version: page.version })}</p>
       </div>
+      {sections.length >= 3 && (
+        // İçindekiler yalnızca mevcut bölüm başlıklarından kurulur; adı sayfa başlığıdır (üst bilgideki "Bölümler"
+        // menüsüyle aynı adı taşımaz).
+        <nav className="legal-toc" aria-labelledby="legal-title">
+          <ol>
+            {sections.map((k) => (
+              <li key={k}>
+                <a href={`#${k.slice(0, -"Title".length)}`}>{t(k)}</a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
       <div className="legal-body">
         {blocks(page.paragraphs).map((b) =>
           Array.isArray(b) ? (
