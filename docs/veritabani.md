@@ -64,7 +64,7 @@ Fiyat ve komisyon geçmişi tutulur, eski rezervasyonların hangi kuralla hesapl
 
 | Tablo | Ana alanlar |
 |---|---|
-| payments | id, booking_id, provider (paytr, iyzico), provider_ref, amount, currency, status, paid_at |
+| payments | id, booking_id, provider (paytr, iyzico), provider_ref, amount, currency, status, checkout_url, paid_at |
 | payment_webhooks | id, provider, event_type, raw_payload (maskelenmiş), received_at, processed_at |
 | refunds | id, payment_id, amount, reason, policy_id, status, provider_ref, created_at |
 | driver_ledger | id, driver_id, booking_leg_id, gross_amount, commission_amount, net_amount_try, status (beklemede, ödendi), created_at |
@@ -98,7 +98,8 @@ Kod (`backend/app/models/`) yukarıdaki şemayı izler. Aşağıdaki farklar uyg
 | `exchange_rates` | Yeni tablo. EUR/TRY kuru burada tutulur (kaynak `tcmb`, saatlik görev otomatik yazar, K-33), TRY rezervasyonda `bookings.exchange_rate_id` ile dondurulur. |
 | `bookings` dondurulan alanlar | `pricing_rule_id`, `round_trip_discount_id`, `commission_rule_id`, `commission_rate`, `exchange_rate_id`, `price_eur`, `total_amount`. |
 | `booking_legs` | Durum (`status`), atanan sürücü ve araç, koordinatlar ve süre eklendi. |
-| `payments.merchant_oid` | Sağlayıcıya gönderilen sipariş numarası. Her ödeme denemesinde yeni üretilir. |
+| `payments.merchant_oid` | Sağlayıcıya gönderilen sipariş numarası. Her yeni ödeme denemesinde üretilir; açık ödeme 25 dk içinde yeniden kullanılır (K-46). |
+| `payments.checkout_url` | Sağlayıcı ödeme sayfası adresi (migration 0003). Açık ödeme yeniden kullanılırken aynı sayfa döner (K-46). |
 | `driver_ledger.net_amount_try` | EUR işlerde kur yoksa boş kalabilir. Hakediş ödemesi oluşturulurken o günün kuruyla doldurulur. |
 | `audit_logs` | Değiştirilemezlik PostgreSQL tetikleyicisiyle sağlanır (`0002` migration). |
 | Bölge konumu | `regions.location` alanı, enlem ve boylamdan türetilen PostGIS `geography` sütunudur. |

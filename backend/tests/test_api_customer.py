@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal as D
 
 from sqlalchemy import select, text
@@ -276,3 +277,35 @@ def test_customer_booking_list_omits_route_polyline(client, route_line_cleanup):
     assert r.json()["legs"][0]["route_polyline"] is None
     rows = client.get("/api/v1/me/bookings", headers=headers).json()
     assert rows and all(leg["route_polyline"] is None for b in rows for leg in b["legs"])
+
+
+def test_repeated_payment_start_reuses_open_checkout(client, db):
+    """Çift ödeme önlemi: açık (beklemede, süresi dolmamış) ödeme varsa yeni kayıt açılmaz, aynı sayfa döner."""
+    from app.models import Booking, Payment
+
+    headers = otp_login(client, random_phone())
+    code = client.post("/api/v1/me/bookings", json=booking_body(client), headers=headers).json()["booking_code"]
+    first = client.post(f"/api/v1/me/bookings/{code}/payments", headers=headers).json()
+    second = client.post(f"/api/v1/me/bookings/{code}/payments", headers=headers).json()
+    assert second["payment_id"] == first["payment_id"]
+    assert second["iframe_url"] == first["iframe_url"]
+    booking = db.scalar(select(Booking).where(Booking.booking_code == code))
+    assert len(db.scalars(select(Payment).where(Payment.booking_id == booking.id)).all()) == 1
+
+
+def test_expired_open_payment_is_not_reused(client, db):
+    from datetime import timedelta
+
+    from app.models import Booking, Payment
+    from app.services.payments import CHECKOUT_REUSE_WINDOW
+
+    headers = otp_login(client, random_phone())
+    code = client.post("/api/v1/me/bookings", json=booking_body(client), headers=headers).json()["booking_code"]
+    first = client.post(f"/api/v1/me/bookings/{code}/payments", headers=headers).json()
+    payment = db.get(Payment, uuid.UUID(first["payment_id"]))
+    payment.created_at = payment.created_at - CHECKOUT_REUSE_WINDOW - timedelta(minutes=1)
+    db.commit()
+    second = client.post(f"/api/v1/me/bookings/{code}/payments", headers=headers).json()
+    assert second["payment_id"] != first["payment_id"]
+    booking = db.scalar(select(Booking).where(Booking.booking_code == code))
+    assert len(db.scalars(select(Payment).where(Payment.booking_id == booking.id)).all()) == 2

@@ -42,7 +42,7 @@ Mimari notlar ve güvenlik ilkeleri: kök `README.md` ve `yasal_ve_guvenlik.md`.
 
 ## 5. Kararlar
 
-Tam liste: `kararlar.md` (K-01 ... K-45). Son eklenenler (2026-10-31, 2026-11-02 ve 2026-11-03):
+Tam liste: `kararlar.md` (K-01 ... K-46). Son eklenenler (2026-10-31, 2026-11-02 ve 2026-11-03):
 
 | No | Karar | Uygulama durumu |
 |---|---|---|
