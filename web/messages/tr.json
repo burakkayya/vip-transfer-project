@@ -155,6 +155,7 @@
     "acceptMarketing": "Kampanya ve fırsatlardan SMS ve e-posta ile haberdar olmak istiyorum (isteğe bağlı).",
     "payNow": "Rezervasyonu oluştur ve öde",
     "creating": "Rezervasyon oluşturuluyor...",
+    "createUncertain": "Rezervasyonunuz oluşturulurken yanıt gecikti; oluşmuş olabilir. Yeniden göndermeden önce Rezervasyonlarım'a bakın.",
     "priceChanged": "Fiyat güncellendi. Yeni toplam: {total}. Lütfen tekrar onaylayın.",
     "when": "Tarih",
     "people": "Yolcu ve bagaj",
@@ -218,6 +219,7 @@
     "sessionLost": "Oturumunuz sona erdi. Ödemeyi tamamladıysanız durumu, yeniden giriş yaptıktan sonra görürsünüz.",
     "loginAgain": "Yeniden giriş yap",
     "resumed": "Önceki ödemenizin sonucu denetleniyor. Ödemeyi tamamladıysanız onay birkaç saniye içinde burada görünür; kartınızdan çekim yapıldıysa yeniden ödemeyin.",
+    "startUncertain": "Ödeme sayfası zamanında açılamadı. Rezervasyonunuz henüz ödenmemiş görünüyor; yeniden deneyebilirsiniz.",
     "resultLoading": "Ödeme sonucu alınıyor…",
     "resultStalled": "Yönlendirme beklenenden uzun sürüyor. Ödemenizin durumunu rezervasyonlarınızdan görebilirsiniz."
   },

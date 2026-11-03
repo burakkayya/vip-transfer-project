@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, CREATE_TIMEOUT_MS, api, isAbort } from "@/lib/api";
 import { dateTime, localInputToIso, money } from "@/lib/format";
 import { useApiError, useSession } from "@/lib/hooks";
 import { MARKETING_CONSENT_VERSION, defaultCountry } from "@/lib/site";
@@ -103,6 +103,8 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   const [consents, setConsents] = useState({ disclosure: false, distanceSales: false, marketing: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Rezervasyon oluşturma yanıtı süresinde gelmedi: kayıt açılmış olabilir, yeniden gönderim kapalı. */
+  const [createUncertain, setCreateUncertain] = useState(false);
 
   const setD = <K extends keyof Details>(k: K, v: Details[K]) => setDetails((s) => ({ ...s, [k]: v }));
   const fmt = (amount: string, currency: string) => money(amount, currency, locale);
@@ -238,7 +240,7 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
         accept_distance_sales: consents.distanceSales,
       };
       try {
-        const booking = await api<Booking>("me/bookings", { body });
+        const booking = await api<Booking>("me/bookings", { body, timeoutMs: CREATE_TIMEOUT_MS });
         if (consents.marketing) {
           await api("me/consents", {
             body: { consent_type: "pazarlama", accepted: true, version: MARKETING_CONSENT_VERSION },
@@ -250,6 +252,11 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
           const q = await api<Quote>("quotes", { body: req });
           setFinalQuote(q);
           throw new Shown(t("priceChanged", { total: fmt(q.total, q.currency) }));
+        }
+        if (isAbort(e)) {
+          // Sonuç belirsiz: aynı isteği yeniden göndermek ikinci rezervasyon açabilir; müşteri önce listesine bakar.
+          setCreateUncertain(true);
+          return;
         }
         if (e instanceof ApiError && e.status === 401) {
           setLoggedIn(false);
@@ -570,8 +577,14 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
               <span className="price">{fmt(finalQuote.total, finalQuote.currency)}</span>
             </div>
             {errorBox}
+            {createUncertain && (
+              <p className="alert error create-uncertain" role="alert">
+                {t("createUncertain")}{" "}
+                <Link href="/bookings">{tBk("title")}</Link>
+              </p>
+            )}
             <div className="wizard-actions">
-              <button className="btn primary big" type="button" onClick={createBooking} disabled={busy || !canPay}
+              <button className="btn primary big" type="button" onClick={createBooking} disabled={busy || !canPay || createUncertain}
                 aria-describedby={canPay ? undefined : "pay-hint"}>
                 <Icon name="lock" size={18} /> {busy ? t("creating") : t("payNow")}
               </button>

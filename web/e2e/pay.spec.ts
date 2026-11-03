@@ -472,3 +472,47 @@ test("large TRY amount fits on one line at 360px", async ({ page }, info) => {
   }));
   expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
 });
+
+// --- Tur 2: kayıt oluşturan isteklerde uzun zaman aşımı ve belirsiz sonuç ---
+
+for (const paid of [false, true]) {
+  test(`payment start timeout re-checks the booking ${paid ? "and continues when it is paid" : "before offering retry"}`, async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const code = await bookingAwaitingPayment(page);
+    const checkouts = { n: 0 };
+    let asked!: () => void;
+    const startAsked = new Promise<void>((r) => (asked = r));
+    let hang = true;
+    await page.route(`**/bff/me/bookings/${code}/payments`, async (route) => {
+      checkouts.n += 1;
+      if (hang) return asked(); // yanıt hiç gelmez (backend sağlayıcıyı bekliyor gibi)
+      await route.continue();
+    });
+    await mockBooking(page, code, () => (paid && !hang ? { status: "onaylandi" } : {}));
+    await page.clock.install();
+    await page.goto(`/tr/bookings/${code}/pay`);
+    await startAsked;
+    // Varsayılan 15 sn'de vazgeçilmez: sağlayıcı çağrısı 20 sn sürebilir.
+    await page.clock.runFor(20_000);
+    await expect(panel(page).getByRole("status").filter({ hasText: "Güvenli ödeme sayfası hazırlanıyor" })).toBeVisible();
+    if (paid) hang = false; // bu arada ödeme alınmış: yeniden okuma "onaylandı" döner
+    await page.clock.runFor(26_000);
+    if (paid) {
+      await expect(page).toHaveURL(
+        (url) => url.pathname === `/tr/bookings/${code}` && url.searchParams.get("paid") === "1",
+        { timeout: 30_000 },
+      );
+      expect(checkouts.n).toBe(1);
+      return;
+    }
+    const error = panel(page).getByRole("alert");
+    await expect(error).toContainText("Ödeme sayfası zamanında açılamadı");
+    expect(checkouts.n).toBe(1);
+    hang = false;
+    await error.getByRole("button", { name: "Tekrar dene" }).click();
+    await expect(providerFrame(page).locator("button.ok")).toBeVisible({ timeout: 30_000 });
+    expect(checkouts.n).toBe(2);
+  });
+}

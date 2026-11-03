@@ -155,6 +155,7 @@
     "acceptMarketing": "Send me offers by SMS and e-mail (optional).",
     "payNow": "Create booking and pay",
     "creating": "Creating your booking...",
+    "createUncertain": "The response was delayed while creating your booking; it may have been created. Check My bookings before submitting again.",
     "priceChanged": "The price has been updated. New total: {total}. Please confirm again.",
     "when": "Date",
     "people": "Passengers & luggage",
@@ -218,6 +219,7 @@
     "sessionLost": "Your session has expired. If you completed the payment, you will see its status after you log in again.",
     "loginAgain": "Log in again",
     "resumed": "Checking the result of your previous payment. If you completed it, the confirmation appears here within a few seconds; if your card was charged, do not pay again.",
+    "startUncertain": "The payment page did not open in time. Your booking does not appear to be paid yet; you can try again.",
     "resultLoading": "Getting your payment result…",
     "resultStalled": "Redirecting is taking longer than expected. You can check your payment status in your bookings."
   },

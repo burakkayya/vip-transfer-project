@@ -155,6 +155,7 @@
     "acceptMarketing": "Ich möchte Angebote per SMS und E-Mail erhalten (optional).",
     "payNow": "Buchen und bezahlen",
     "creating": "Buchung wird erstellt...",
+    "createUncertain": "Beim Anlegen Ihrer Buchung kam die Antwort verspätet; sie wurde möglicherweise angelegt. Prüfen Sie Meine Buchungen, bevor Sie erneut senden.",
     "priceChanged": "Der Preis wurde aktualisiert. Neuer Gesamtpreis: {total}. Bitte erneut bestätigen.",
     "when": "Datum",
     "people": "Fahrgäste und Gepäck",
@@ -218,6 +219,7 @@
     "sessionLost": "Ihre Sitzung ist abgelaufen. Wenn Sie die Zahlung abgeschlossen haben, sehen Sie den Status nach der erneuten Anmeldung.",
     "loginAgain": "Erneut anmelden",
     "resumed": "Das Ergebnis Ihrer vorherigen Zahlung wird geprüft. Wenn Sie sie abgeschlossen haben, erscheint die Bestätigung hier in wenigen Sekunden; wurde Ihre Karte belastet, zahlen Sie bitte nicht erneut.",
+    "startUncertain": "Die Zahlungsseite wurde nicht rechtzeitig geöffnet. Ihre Buchung scheint noch nicht bezahlt zu sein; Sie können es erneut versuchen.",
     "resultLoading": "Zahlungsergebnis wird abgerufen…",
     "resultStalled": "Die Weiterleitung dauert länger als erwartet. Den Status Ihrer Zahlung sehen Sie unter Ihren Buchungen."
   },

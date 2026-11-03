@@ -14,6 +14,12 @@ export class ApiError extends Error {
 /** Varsayılan istek süresi: asılı backend'de yükleniyor durumu sonsuza dek dönmez, hata ve "Tekrar dene" çıkar. */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
+/**
+ * Kayıt oluşturan istekler (rezervasyon, ödeme başlatma) için süre: backend'in sağlayıcı çağrısı (PayTR jetonu 20 sn)
+ * bitmeden istemci vazgeçmesin. Vazgeçerse sonuç belirsizdir; yeniden gönderim ikinci kayıt açabilir (K-42).
+ */
+export const CREATE_TIMEOUT_MS = 45_000;
+
 /** İstek iptal edildi veya süresi doldu (ağ hatası sayılır; hiçbir zaman 401 değildir). */
 export const isAbort = (e: unknown) => e instanceof DOMException && (e.name === "AbortError" || e.name === "TimeoutError");
 

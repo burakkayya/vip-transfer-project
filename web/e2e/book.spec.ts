@@ -238,6 +238,36 @@ test("401 on booking create returns to verification with a session-expired messa
   await expect(page.locator(".wizard-step").getByRole("alert")).toContainText("Oturumunuz sona erdi");
 });
 
+test("booking create timeout does not resubmit and points to My bookings", async ({ page }) => {
+  test.setTimeout(120_000);
+  await confirmStep(page);
+  let posts = 0;
+  let asked!: () => void;
+  const createAsked = new Promise<void>((r) => (asked = r));
+  await page.route("**/bff/me/bookings", (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    posts += 1;
+    asked(); // yanıt hiç gelmez
+  });
+  await page.clock.install();
+  const boxes = page.locator(".wizard-step .check input[type=checkbox]");
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  const pay = page.locator("button.btn.primary.big");
+  await pay.click();
+  await createAsked;
+  // Varsayılan 15 sn'de vazgeçilmez.
+  await page.clock.runFor(20_000);
+  await expect(page.locator(".create-uncertain")).toHaveCount(0);
+  await page.clock.runFor(26_000);
+  const note = page.locator(".create-uncertain");
+  await expect(note).toContainText("oluşmuş olabilir");
+  await expect(note.getByRole("link", { name: "Rezervasyonlarım" })).toHaveAttribute("href", "/tr/bookings");
+  // Aynı istek yeniden gönderilemez.
+  await expect(pay).toBeDisabled();
+  expect(posts).toBe(1);
+});
+
 test("route form on /book names missing address and focuses it", async ({ page }) => {
   await page.goto("/tr/book");
   const submit = page.locator(".wizard-start button[type=submit]");

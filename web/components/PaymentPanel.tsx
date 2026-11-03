@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { CREATE_TIMEOUT_MS, api, isAbort } from "@/lib/api";
 import { PAID, PENDING_KEY, RESUME_KEY, isFinal, isUnauthorized, session } from "@/lib/booking";
 import { dateTime, money } from "@/lib/format";
 import { useApiError } from "@/lib/hooks";
@@ -70,6 +70,22 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
     }
   }, []);
 
+  /**
+   * Ödeme başlatma yanıtı süresinde gelmedi: sonuç belirsiz (backend ödeme kaydını açmış olabilir). Önce rezervasyon
+   * yeniden okunur; ödenmişse onunla devam edilir (detaya geçilir), değilse belirsizliği söyleyen not ve yeniden dene.
+   */
+  const afterStartTimeout = useCallback(async () => {
+    try {
+      const b = await api<Booking>(`me/bookings/${props.code}`);
+      setBooking(b);
+      if (b.status !== "odeme_bekliyor") return;
+      setCheckoutError(t("startUncertain"));
+    } catch (e) {
+      if (isUnauthorized(e)) sessionExpired();
+      else setCheckoutError(t("startUncertain"));
+    }
+  }, [props.code, t, sessionExpired]);
+
   // Aynı anda tek ödeme başlatma isteği: çift tıklama veya hızlı yeniden deneme ikinci ödeme açmaz.
   const start = useCallback(async () => {
     if (starting.current) return;
@@ -79,17 +95,18 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
     setCheckout(null);
     setResumed(false);
     try {
-      const c = await api<Checkout>(`me/bookings/${props.code}/payments`, { body: {} });
+      const c = await api<Checkout>(`me/bookings/${props.code}/payments`, { body: {}, timeoutMs: CREATE_TIMEOUT_MS });
       // Depolama engelliyse yalnızca sağlayıcı dönüşündeki kısayol kaybolur; ödeme sayfası yine açılır.
       session.set(PENDING_KEY, props.code);
       setCheckout(c);
     } catch (e) {
       if (isUnauthorized(e)) sessionExpired();
+      else if (isAbort(e)) await afterStartTimeout();
       else setCheckoutError(errorText(e));
     } finally {
       starting.current = false;
     }
-  }, [props.code, errorText, sessionExpired]);
+  }, [props.code, errorText, sessionExpired, afterStartTimeout]);
 
   const load = useCallback(async () => {
     setLoadError(null);
