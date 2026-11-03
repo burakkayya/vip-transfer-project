@@ -317,7 +317,8 @@
     "marketingSavedOn": "Tercihiniz kaydedildi. Kampanya iletileri açık.",
     "marketingSavedOff": "Tercihiniz kaydedildi. Kampanya iletileri kapalı.",
     "marketingFailed": "Tercihiniz kaydedilemedi.",
-    "consentLoading": "Tercihiniz yükleniyor…"
+    "consentLoading": "Tercihiniz yükleniyor…",
+    "emailInvalid": "E-posta adresini kontrol edin (ör. ad@ornek.com)."
   },
   "dataRequest": {
     "title": "Kişisel veri talebi",

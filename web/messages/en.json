@@ -317,7 +317,8 @@
     "marketingSavedOn": "Your choice is saved. Offers are on.",
     "marketingSavedOff": "Your choice is saved. Offers are off.",
     "marketingFailed": "Your choice could not be saved.",
-    "consentLoading": "Loading your choice…"
+    "consentLoading": "Loading your choice…",
+    "emailInvalid": "Check the e-mail address (e.g. name@example.com)."
   },
   "dataRequest": {
     "title": "Personal data request",

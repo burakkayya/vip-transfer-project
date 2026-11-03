@@ -317,7 +317,8 @@
     "marketingSavedOn": "Выбор сохранён. Предложения включены.",
     "marketingSavedOff": "Выбор сохранён. Предложения выключены.",
     "marketingFailed": "Не удалось сохранить выбор.",
-    "consentLoading": "Загружаем ваш выбор…"
+    "consentLoading": "Загружаем ваш выбор…",
+    "emailInvalid": "Проверьте адрес электронной почты (например, name@example.com)."
   },
   "dataRequest": {
     "title": "Запрос по персональным данным",

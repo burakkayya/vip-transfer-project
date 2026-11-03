@@ -317,7 +317,8 @@
     "marketingSavedOn": "Ihre Auswahl ist gespeichert. Angebote sind aktiviert.",
     "marketingSavedOff": "Ihre Auswahl ist gespeichert. Angebote sind deaktiviert.",
     "marketingFailed": "Ihre Auswahl konnte nicht gespeichert werden.",
-    "consentLoading": "Ihre Auswahl wird geladen…"
+    "consentLoading": "Ihre Auswahl wird geladen…",
+    "emailInvalid": "Bitte prüfen Sie die E-Mail-Adresse (z. B. name@beispiel.de)."
   },
   "dataRequest": {
     "title": "Antrag zu personenbezogenen Daten",

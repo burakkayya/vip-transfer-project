@@ -7,7 +7,7 @@ import { bookingAwaitingPayment as createBooking, login, warmUp } from "./sessio
 
 test.describe.configure({ timeout: 60_000 });
 // Soğuk derleme ilk testi zaman aşımına düşürmesin.
-test.beforeAll(async ({ browser }, info) => warmUp(browser, info, ["/tr/bookings", "/de/bookings"]));
+test.beforeAll(async ({ browser }, info) => warmUp(browser, info, ["/tr/legal/cookies", "/tr/bookings", "/de/bookings"]));
 test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });

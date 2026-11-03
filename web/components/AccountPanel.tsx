@@ -39,6 +39,8 @@ export default function AccountPanel() {
   const [consentNote, setConsentNote] = useState<Note>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const busyRef = useRef(false);
+  const [emailError, setEmailError] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   // Oturum düştüyse (401) `RequireLogin` girişi "oturumunuz sona erdi" notuyla yeniden gösterir.
   const loadProfile = useCallback(() => {
@@ -65,11 +67,18 @@ export default function AccountPanel() {
     if (!profile) return;
     setProfile({ ...profile, ...patch });
     setSaveNote(null);
+    if ("email" in patch) setEmailError(false);
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!profile || saving) return;
+    // E-posta biçimi istemcide denetlenir (tarayıcının kendi dilindeki baloncuğu yerine alan hatası).
+    if (emailRef.current && !emailRef.current.validity.valid) {
+      setEmailError(true);
+      emailRef.current.focus();
+      return;
+    }
     setSaving(true);
     setSaveNote(null);
     try {
@@ -125,7 +134,7 @@ export default function AccountPanel() {
 
   return (
     <div className="stack account">
-      <form className="card stack profile-card" onSubmit={save} aria-busy={saving || undefined}>
+      <form className="card stack profile-card" onSubmit={save} noValidate aria-busy={saving || undefined}>
         <h2>{t("profile")}</h2>
         <div className="grid grid-2">
           <div className="field">
@@ -161,14 +170,22 @@ export default function AccountPanel() {
           <div className="field">
             <label htmlFor="email">{t("email")}</label>
             <input
+              ref={emailRef}
               id="email"
               type="email"
+              aria-invalid={emailError ? true : undefined}
+              aria-describedby={emailError ? "email-error" : undefined}
               autoComplete="email"
               inputMode="email"
               dir="ltr"
               value={profile.email ?? ""}
               onChange={(e) => edit({ email: e.target.value })}
             />
+            {emailError && (
+              <span className="field-error" id="email-error" role="alert">
+                {t("emailInvalid")}
+              </span>
+            )}
           </div>
         </div>
         {/* Başarı kalıcı canlı bölgede duyurulur; hata `role="alert"`. */}
@@ -195,12 +212,15 @@ export default function AccountPanel() {
           <LoadingState label={t("consentLoading")} />
         ) : (
           <>
-            <label className="check">
+            {/* Kayıt sürerken kutu `aria-disabled` + `aria-busy` (odak kutuda kalır; `disabled` odağı `body`'ye
+                düşürür), görünür "Kaydediliyor…" durum satırı ikinci tıklamanın neden etkisiz olduğunu söyler. */}
+            <label className={`check${consentBusy ? " is-busy" : ""}`}>
               <input
                 type="checkbox"
                 checked={marketing}
                 aria-describedby="marketing-hint"
                 aria-busy={consentBusy || undefined}
+                aria-disabled={consentBusy || undefined}
                 onChange={(e) => void toggleMarketing(e.target.checked)}
               />
               <span>{t("marketingOn")}</span>
@@ -209,7 +229,11 @@ export default function AccountPanel() {
               {t("marketingHint")}
             </span>
             <div role="status" className="account-note">
-              {consentNote?.ok && <p className="alert ok">{consentNote.text}</p>}
+              {consentBusy ? (
+                <p className="consent-saving">{t("saving")}</p>
+              ) : (
+                consentNote?.ok && <p className="alert ok">{consentNote.text}</p>
+              )}
             </div>
             {consentNote && !consentNote.ok && (
               <p className="alert error" role="alert">

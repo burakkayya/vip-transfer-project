@@ -86,3 +86,30 @@ Kararlar: "account empty state" = adı/e-postası ve onay kaydı olmayan hesap (
 
 - Önce: `screenshots/before/web/{tr,de}-{1440,390}-{account,account-anon}.png`
 - Sonra: `screenshots/after/web/{tr,de}-{1440,390}-{account,account-anon}.png`
+
+## Düzeltme turu 1 (2026-11-03, inceleme `task-B-W8-10-review.md`)
+
+| Bulgu | Çözüm |
+|---|---|
+| Küçük 2: onay kaydı sürerken görünür geri bildirim yok, ikinci tıklama sessizce yutuluyor | Kayıt sürerken onay kartının durum satırında görünür ve duyurulan "Kaydediliyor…"; kutu `aria-busy` + `aria-disabled`, soluk ve `cursor: progress`. Karar: `disabled` yerine `aria-disabled` (odaklı kutu `disabled` olunca odak `body`'ye düşer); ikinci tıklama kayıt göndermez, "Kaydediliyor…" görünür kalır. Test: "consent save shows a visible in-progress state" (asılı POST, ikinci tıklama, 1 kayıt, odak kutuda) |
+| Küçük 5: `check()/uncheck()` `toPass` içinde, yeniden denemede ikinci onay kaydı | Tek `click()` + `toBeChecked()`; onay POST'ları sayılır ve her tıklama için tam bir kayıt beklenir (`accepted: true`, sonra `false`) |
+| Küçük 6: kararsızlık | `beforeAll` ısınması (`/tr/legal/cookies`, `/tr/account`, `/de/account`); 360 px testinde `route.fetch()` yerine tümüyle yapay profil; `toPass` döngüleri kaldırıldı |
+| Ek (critique yeniden puanlama): e-posta yalnızca tarayıcının kendi dilindeki baloncuğuyla denetleniyordu (önceki açık P3) | Form `noValidate`; geçersiz e-postada alan hatası "E-posta adresini kontrol edin (ör. ad@ornek.com)." (`role="alert"`, `aria-invalid`), odak alana, PATCH gönderilmez; yazınca kalkar. Yeni anahtar `account.emailInvalid` (4 dil). Test: "invalid e-mail shows a field error and is not sent" |
+
+### Yeniden critique (in-thread, dürüst puan)
+
+| # | Sezgisel | Tur 0 | Tur 1 | Gerekçe |
+|---|---|---|---|---|
+| 1 | Sistem durumu | 4 | 4 | Onay kaydı artık görünür "Kaydediliyor…"; tur 0 puanı bu boşluğa rağmen 4 verilmişti, şimdi hak ediliyor |
+| 2 | Gerçek dünya | 4 | 4 | |
+| 3 | Kullanıcı kontrolü | 3 | 3 | |
+| 4 | Tutarlılık | 4 | 4 | |
+| 5 | Hata önleme | 3 | 4 | İstemcide e-posta denetimi, kayıt ve onay kilitleri, iyimser olmayan onay |
+| 6 | Tanıma | 3 | 3 | |
+| 7 | Esneklik | 2 | 2 | |
+| 8 | Estetik | 3 | 3 | |
+| 9 | Hata kurtarma | 4 | 4 | E-posta hatası artık alanında ve sitenin dilinde |
+| 10 | Yardım | 3 | 3 | |
+| **Toplam** | | 33/40 | **34/40 (%85)** | Tur 0'daki 33 puanda madde 1 iyimserdi (gerçekte 3 → 32/40) |
+
+Doğrulama: `npx playwright test account.spec --workers=1`: desktop 11 geçti; phone ilk koşuda ilk test `goto` `net::ERR_ABORTED` (geliştirme sunucusu derlemesi) ile düştü, phone yeniden koşu 10 geçti + 1 atlandı. Isınmaya giriş sayfası (`/tr/legal/cookies`) eklendi. `tsc`, `eslint` temiz.
