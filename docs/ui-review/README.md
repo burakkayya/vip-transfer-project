@@ -130,4 +130,4 @@ Yüzey incelemesi (`.superpowers/sdd/2026-11-impeccable-tarama/surface1-review.m
 | 14 | `PaymentResult` saklanan kodu denetlemeden adrese koyuyordu | `BOOKING_CODE_RE` ile denetlenir |
 | 15 | Onay adımındaki yeni sekme bağlantıları bunu söylemiyordu | "(yeni sekmede açılır)" (`bookings.newTab`, 4 dil) |
 
-Doğrulama: `tsc` ve `eslint .` temiz, `npm run build` başarılı. Tam web e2e (`--workers=1`) sonucu ve ayrıntılar: `.superpowers/sdd/2026-11-impeccable-tarama/task-B-W7-report.md`. Kalan (P3): `AccountPanel`/`DataRequestPanel` durum bileşenleri (B-W9), sağlayıcı sayfası boş çizilirse kurtarma eylemi.
+Doğrulama: `tsc` ve `eslint .` temiz, `npm run build` başarılı. Tam web e2e (`--workers=1`, iki proje, `5d4e87d`): 254 geçti, 42 atlandı, 0 hata. Ayrıntılar: `.superpowers/sdd/2026-11-impeccable-tarama/task-B-W7-report.md`. Kalan (P3): `AccountPanel`/`DataRequestPanel` durum bileşenleri (B-W9), sağlayıcı sayfası boş çizilirse kurtarma eylemi.
