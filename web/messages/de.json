@@ -308,7 +308,15 @@
     "marketingOn": "Ich möchte Angebote und Aktionen erhalten.",
     "logout": "Abmelden",
     "loginTitle": "Anmelden",
-    "loginText": "Melden Sie sich mit dem Code an, den wir Ihnen per SMS senden."
+    "loginText": "Melden Sie sich mit dem Code an, den wir Ihnen per SMS senden.",
+    "loading": "Ihre Kontodaten werden geladen…",
+    "saving": "Wird gespeichert…",
+    "phoneHint": "Wird zur Anmeldung verwendet und kann hier nicht geändert werden.",
+    "marketingHint": "Sie können diese Einstellung hier jederzeit ändern.",
+    "marketingSavedOn": "Ihre Auswahl ist gespeichert. Angebote sind aktiviert.",
+    "marketingSavedOff": "Ihre Auswahl ist gespeichert. Angebote sind deaktiviert.",
+    "marketingFailed": "Ihre Auswahl konnte nicht gespeichert werden.",
+    "consentLoading": "Ihre Auswahl wird geladen…"
   },
   "dataRequest": {
     "title": "Antrag zu personenbezogenen Daten",

@@ -308,7 +308,15 @@
     "marketingOn": "Kampanya ve fırsat iletileri almak istiyorum.",
     "logout": "Çıkış yap",
     "loginTitle": "Giriş yap",
-    "loginText": "Telefon numaranıza gelen kodla giriş yapın."
+    "loginText": "Telefon numaranıza gelen kodla giriş yapın.",
+    "loading": "Hesap bilgileriniz yükleniyor…",
+    "saving": "Kaydediliyor…",
+    "phoneHint": "Giriş için kullanılır; buradan değiştirilemez.",
+    "marketingHint": "Bu tercihi istediğiniz zaman buradan değiştirebilirsiniz.",
+    "marketingSavedOn": "Tercihiniz kaydedildi. Kampanya iletileri açık.",
+    "marketingSavedOff": "Tercihiniz kaydedildi. Kampanya iletileri kapalı.",
+    "marketingFailed": "Tercihiniz kaydedilemedi.",
+    "consentLoading": "Tercihiniz yükleniyor…"
   },
   "dataRequest": {
     "title": "Kişisel veri talebi",

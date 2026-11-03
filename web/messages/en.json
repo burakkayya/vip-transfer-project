@@ -308,7 +308,15 @@
     "marketingOn": "I want to receive offers and promotions.",
     "logout": "Log out",
     "loginTitle": "Log in",
-    "loginText": "Log in with the code we text to your phone."
+    "loginText": "Log in with the code we text to your phone.",
+    "loading": "Loading your account…",
+    "saving": "Saving…",
+    "phoneHint": "Used to log in; it cannot be changed here.",
+    "marketingHint": "You can change this choice here at any time.",
+    "marketingSavedOn": "Your choice is saved. Offers are on.",
+    "marketingSavedOff": "Your choice is saved. Offers are off.",
+    "marketingFailed": "Your choice could not be saved.",
+    "consentLoading": "Loading your choice…"
   },
   "dataRequest": {
     "title": "Personal data request",

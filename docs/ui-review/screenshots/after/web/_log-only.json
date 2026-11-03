@@ -1,60 +1,60 @@
 {
   "log": [
     {
-      "file": "tr-1440-bookings-anon.png",
-      "url": "http://localhost:3000/tr/bookings",
+      "file": "tr-1440-account-anon.png",
+      "url": "http://localhost:3000/tr/account",
       "hOverflowPx": 0
     },
     {
-      "file": "tr-1440-bookings-list.png",
-      "url": "http://localhost:3000/tr/bookings",
+      "file": "tr-1440-account.png",
+      "url": "http://localhost:3000/tr/account",
       "hOverflowPx": 0
     },
     {
       "prefix": "tr-1440",
-      "bookingCode": "GAVXCUN6"
+      "bookingCode": "GAVQWFKJ"
     },
     {
-      "file": "tr-390-bookings-anon.png",
-      "url": "http://localhost:3000/tr/bookings",
+      "file": "tr-390-account-anon.png",
+      "url": "http://localhost:3000/tr/account",
       "hOverflowPx": 0
     },
     {
-      "file": "tr-390-bookings-list.png",
-      "url": "http://localhost:3000/tr/bookings",
+      "file": "tr-390-account.png",
+      "url": "http://localhost:3000/tr/account",
       "hOverflowPx": 0
     },
     {
       "prefix": "tr-390",
-      "bookingCode": "GAKEF7BM"
+      "bookingCode": "GA2H8527"
     },
     {
-      "file": "de-1440-bookings-anon.png",
-      "url": "http://localhost:3000/de/bookings",
+      "file": "de-1440-account-anon.png",
+      "url": "http://localhost:3000/de/account",
       "hOverflowPx": 0
     },
     {
-      "file": "de-1440-bookings-list.png",
-      "url": "http://localhost:3000/de/bookings",
+      "file": "de-1440-account.png",
+      "url": "http://localhost:3000/de/account",
       "hOverflowPx": 0
     },
     {
       "prefix": "de-1440",
-      "bookingCode": "GA43GYGT"
+      "bookingCode": "GADQH78P"
     },
     {
-      "file": "de-390-bookings-anon.png",
-      "url": "http://localhost:3000/de/bookings",
+      "file": "de-390-account-anon.png",
+      "url": "http://localhost:3000/de/account",
       "hOverflowPx": 0
     },
     {
-      "file": "de-390-bookings-list.png",
-      "url": "http://localhost:3000/de/bookings",
+      "file": "de-390-account.png",
+      "url": "http://localhost:3000/de/account",
       "hOverflowPx": 0
     },
     {
       "prefix": "de-390",
-      "bookingCode": "GAMENN7F"
+      "bookingCode": "GA3QV2GJ"
     }
   ],
   "consoleErrors": {

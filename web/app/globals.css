@@ -2195,3 +2195,22 @@ dl.summary.booking-facts {
     display: none;
   }
 }
+
+/* --- Hesabım (B-W9, components/AccountPanel.tsx) ------------------------ */
+
+/* Salt okunur telefon: düzenlenebilir alanlardan ayrışır (kâğıt zemin, ince çizgi), metin tam kontrastlı kalır. */
+input.readonly,
+input.readonly:hover,
+input.readonly:focus {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+/* Boş canlı bölge akışta yer kaplamaz ama erişilebilirlik ağacında kalır (sonradan eklenen metin duyurulur). */
+.account-note:empty {
+  position: absolute;
+}
+
+.account-actions a {
+  text-underline-offset: 3px;
+}
