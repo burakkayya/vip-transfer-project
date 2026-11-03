@@ -1949,6 +1949,25 @@ dl.summary.booking-facts {
   margin-block-start: 0;
 }
 
+/* İptal kademeleri: kireçtaşı blok, saç çizgisiyle ayrılan üç satır. Renkli kenar şeridi yok. */
+.legal-tiers {
+  list-style: none;
+  margin-block: 0.4em 1.4em;
+  padding: 4px 20px;
+  background: var(--soft);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.legal-tiers li {
+  padding-block: 12px;
+  font-weight: 500;
+}
+
+.legal-tiers li + li {
+  border-block-start: 1px solid var(--line-strong);
+}
+
 @media print {
   body:has(.legal) .header,
   body:has(.legal) .footer {
@@ -1966,6 +1985,12 @@ dl.summary.booking-facts {
 
   .legal-body h2 {
     break-after: avoid;
+  }
+
+  .legal-tiers {
+    background: none;
+    border: 1px solid var(--line-strong);
+    break-inside: avoid;
   }
 
   .legal-body p {

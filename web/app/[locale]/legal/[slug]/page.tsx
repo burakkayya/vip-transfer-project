@@ -24,6 +24,17 @@ type Props = { params: Promise<{ locale: string; slug: string }> };
 
 const isSlug = (s: string): s is Slug => s in PAGES;
 
+/** Ardışık `tier*` anahtarlarını tek listede toplar; diğer anahtarlar olduğu gibi kalır. */
+function blocks(keys: readonly string[]): (string | string[])[] {
+  const out: (string | string[])[] = [];
+  for (const k of keys) {
+    const last = out[out.length - 1];
+    if (k.startsWith("tier") && Array.isArray(last)) last.push(k);
+    else out.push(k.startsWith("tier") ? [k] : k);
+  }
+  return out;
+}
+
 export function generateStaticParams() {
   return Object.keys(PAGES).map((slug) => ({ slug }));
 }
@@ -59,11 +70,18 @@ export default async function LegalPage({ params }: Props) {
         <p className="hint">{common("updated", { version: page.version })}</p>
       </div>
       <div className="legal-body">
-        {page.paragraphs.map((p) =>
-          p.endsWith("Title") ? (
-            <h2 key={p} id={p.slice(0, -"Title".length)}>{t(p)}</h2>
+        {blocks(page.paragraphs).map((b) =>
+          Array.isArray(b) ? (
+            // İptal kademeleri (K-14) ayrı bir liste olarak taranır; metin ve sıra aynı kalır.
+            <ul key={b[0]} className="legal-tiers">
+              {b.map((k) => (
+                <li key={k}>{t(k, values)}</li>
+              ))}
+            </ul>
+          ) : b.endsWith("Title") ? (
+            <h2 key={b} id={b.slice(0, -"Title".length)}>{t(b)}</h2>
           ) : (
-            <p key={p}>{t(p, values)}</p>
+            <p key={b}>{t(b, values)}</p>
           ),
         )}
       </div>
