@@ -171,7 +171,12 @@
     "cancelEdit": "Cancel, back to vehicles",
     "cancelTiers": "Cancellation and refund: 100% if you cancel 48 hours or more before pick-up, 50% between 24 and 48 hours, no refund less than 24 hours before pick-up.",
     "consentsLegend": "Consents",
-    "payHint": "Tick the first two boxes to continue to payment. Offers by SMS and e-mail are optional."
+    "payHint": "Tick the first two boxes to continue to payment. Offers by SMS and e-mail are optional.",
+    "mapTitle": "Route map",
+    "mapLabel": "Route map: {from} → {to}",
+    "mapPickup": "Pickup",
+    "mapDropoff": "Drop-off",
+    "mapUnavailable": "The map can’t be shown right now; your route and price are not affected."
   },
   "otp": {
     "phone": "Phone number",

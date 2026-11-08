@@ -19,6 +19,10 @@ export interface MapCanvasProps {
   dark?: boolean;
   /** Google encoded polyline (hassasiyet 5). Yalnız native harita çizer. */
   route?: string | null;
+  /** Rota hesaplanmadan önce alış (ve varsa varış) noktası: yalnız native harita; iki nokta kesikli çizgiyle bağlanır. */
+  endpoints?: LatLng[];
+  /** Rota uçları yerine gösterilecek işaretler (alış = daire, varış = kare). Verilmeyen işaret çizilmez. */
+  stops?: { pickup?: LatLng | null; dropoff?: LatLng | null };
   /** Sürücünün anlık konumu. Yalnız native harita gösterir. */
   driver?: LatLng | null;
   /** Ekran okuyucu için haritanın tek cümlelik özeti (ör. "Havalimanı → Lara, 18 km"). */

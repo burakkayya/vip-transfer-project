@@ -1,8 +1,9 @@
 """Eşleştirme ve yolculuk akışı (is_modeli.md).
 
 Anlık: uygun ve çevrimiçi sürücülere teklif gider, ilk kabul eden atanır.
-Planlı: admin manuel atar (veya ileride otomatik kural).
-Sürücü yalnızca geçerli belgeleri varken iş alabilir.
+İş havuzu (K-47): ödemesi alınmış, sürücüsü olmayan anlık ve planlı işler, aracına, belgelerine
+ve takvimine uyan sürücülere listelenir; sürücü ayrıntıyı görüp kabul eder, ilk kabul eden atanır.
+Admin her zaman manuel atayabilir. Sürücü yalnızca geçerli belgeleri varken iş alabilir.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app import commission
-from app.errors import Conflict, Forbidden, NotFound
+from app.errors import Conflict, DomainError, Forbidden, NotFound
 from app.models import (
     Booking,
     BookingLeg,
@@ -41,7 +42,8 @@ from app.models.enums import (
     VehicleStatus,
 )
 from app.config import get_settings
-from app.services import audit, notifications, system_settings
+from app.providers.routing import Point, haversine_km
+from app.services import audit, eta, notifications, system_settings, trip_updates
 from app.services.quotes import latest_exchange_rate
 
 ACTIVE_LEG_STATUSES = (LegStatus.ASSIGNED, LegStatus.EN_ROUTE, LegStatus.ARRIVED, LegStatus.STARTED)
@@ -103,15 +105,17 @@ def _is_busy(db: Session, driver_id: uuid.UUID, leg: BookingLeg) -> bool:
 
 
 def eligible_candidates(
-    db: Session, leg: BookingLeg, *, require_online: bool, now: datetime
+    db: Session, leg: BookingLeg, *, require_online: bool, now: datetime, driver_id: uuid.UUID | None = None
 ) -> list[Candidate]:
     booking = leg.booking
+    only = [Driver.id == driver_id] if driver_id is not None else []
     rows = db.execute(
         select(Driver, Vehicle)
         .join(DriverVehicleAssignment, DriverVehicleAssignment.driver_id == Driver.id)
         .join(Vehicle, Vehicle.id == DriverVehicleAssignment.vehicle_id)
         .where(
             Driver.status == DriverStatus.APPROVED,
+            *only,
             *( [Driver.is_online.is_(True)] if require_online else [] ),
             DriverVehicleAssignment.valid_from <= now,
             or_(DriverVehicleAssignment.valid_to.is_(None), DriverVehicleAssignment.valid_to > now),
@@ -200,6 +204,7 @@ def assign(
     ):
         offer.status = OfferStatus.WITHDRAWN
     _refresh_booking_status(leg.booking)
+    trip_updates.to_customer(db, leg, "driver_assigned")
     audit.record(
         db,
         actor_id=actor_id,
@@ -283,9 +288,24 @@ def manual_assign(
     assign(db, leg, candidate, actor_id=actor_id, now=now, ip=ip)
 
 
+def finish_radius_m(leg: BookingLeg) -> int:
+    s = get_settings()
+    precise = leg.dropoff_lat is not None and leg.dropoff_lng is not None
+    return s.trip_finish_radius_m if precise else s.trip_finish_region_radius_m
+
+
+def distance_to_dropoff_m(leg: BookingLeg, at: Point) -> int:
+    return int(haversine_km(at, eta.dropoff_point(leg)) * 1000)
+
+
 def advance_trip(
-    db: Session, driver: Driver, leg: BookingLeg, event: TripEventType, *, now: datetime
+    db: Session, driver: Driver, leg: BookingLeg, event: TripEventType, *, now: datetime,
+    at: Point | None = None,
 ) -> None:
+    """Sürücü adımı. `at` sürücünün o anki konumudur (yoksa son paylaşılan konum kullanılır).
+
+    K-49: "Yolculuğu bitir" yalnızca varışa `finish_radius_m` içindeyken kabul edilir.
+    """
     if leg.driver_id != driver.id:
         raise NotFound("yolculuk bulunamadı")
     if event not in TRANSITIONS:
@@ -296,11 +316,154 @@ def advance_trip(
             f"bu adım için yolculuk '{expected.value}' durumunda olmalı",
             code="invalid_transition",
         )
+    if event is TripEventType.FINISHED:
+        if at is None:
+            raise DomainError("yolculuğu bitirmek için konumunuz gerekli", code="location_required")
+        radius = finish_radius_m(leg)
+        distance = distance_to_dropoff_m(leg, at)
+        if distance > radius:
+            raise DomainError(
+                f"varış noktasına {distance} m uzaktasınız; {radius} m içinde bitirebilirsiniz",
+                code="too_far_from_dropoff",
+            )
     leg.status = target
     db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=driver.user_id))
-    if event is TripEventType.FINISHED:
+    if event is TripEventType.DEPARTED:
+        eta.on_departed(db, leg, at)
+    elif event is TripEventType.ARRIVED:
+        trip_updates.to_customer(db, leg, "driver_arrived")
+    elif event is TripEventType.STARTED:
+        trip_updates.to_customer(db, leg, "trip_started", eta=leg.duration_minutes or "—")
+    elif event is TripEventType.FINISHED:
         _on_leg_finished(db, leg, now)
+        trip_updates.to_customer(db, leg, "trip_finished")
+        eta.clear(leg)
     _refresh_booking_status(leg.booking)
+
+
+def finish_by_customer(db: Session, booking: Booking, actor_id: uuid.UUID, *, now: datetime) -> BookingLeg:
+    """K-48: müşteri yolculuğu her an (yolcu araçtayken) bitirebilir; tamamlandı sayılır, iade yoktur."""
+    leg = next((leg for leg in booking.legs if leg.status is LegStatus.STARTED), None)
+    if leg is None:
+        raise Conflict("bitirilecek aktif yolculuk yok", code="no_active_trip")
+    db.refresh(leg, with_for_update={"of": BookingLeg})
+    if leg.status is not LegStatus.STARTED:
+        raise Conflict("bitirilecek aktif yolculuk yok", code="no_active_trip")
+    leg.status = LegStatus.COMPLETED
+    db.add(TripEvent(booking_leg_id=leg.id, event_type=TripEventType.FINISHED, actor_id=actor_id))
+    _on_leg_finished(db, leg, now)
+    trip_updates.to_driver(db, leg, "customer_finished")
+    eta.clear(leg)
+    _refresh_booking_status(booking)
+    audit.record(db, actor_id=actor_id, action="booking_leg.customer_finish", entity_type="booking_leg",
+                 entity_id=leg.id)
+    return leg
+
+
+# --- İş havuzu (K-47) ---------------------------------------------------------
+
+POOL_LOOKBACK = timedelta(minutes=30)
+POOL_LIMIT = 50
+
+
+def _pool_query(driver: Driver, now: datetime):
+    vehicle_types = (
+        select(Vehicle.vehicle_type_id)
+        .join(DriverVehicleAssignment, DriverVehicleAssignment.vehicle_id == Vehicle.id)
+        .where(
+            DriverVehicleAssignment.driver_id == driver.id,
+            DriverVehicleAssignment.valid_from <= now,
+            or_(DriverVehicleAssignment.valid_to.is_(None), DriverVehicleAssignment.valid_to > now),
+            Vehicle.status == VehicleStatus.ACTIVE,
+        )
+    )
+    declined = select(DispatchOffer.booking_leg_id).where(
+        DispatchOffer.driver_id == driver.id, DispatchOffer.status == OfferStatus.REJECTED
+    )
+    q = (
+        select(BookingLeg)
+        .join(Booking)
+        .where(
+            BookingLeg.status == LegStatus.PENDING,
+            BookingLeg.driver_id.is_(None),
+            Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.ASSIGNED, BookingStatus.IN_PROGRESS]),
+            Booking.vehicle_type_id.in_(vehicle_types),
+            BookingLeg.pickup_at > now - POOL_LOOKBACK,
+            BookingLeg.id.not_in(declined),
+        )
+    )
+    # Anlık işler yalnızca çevrimiçi sürücüye; planlı işler onaylı her uygun sürücüye görünür.
+    if not driver.is_online:
+        q = q.where(Booking.booking_type == BookingType.SCHEDULED)
+    return q.order_by(BookingLeg.pickup_at).limit(POOL_LIMIT)
+
+
+def open_jobs(db: Session, driver: Driver, now: datetime) -> list[tuple[BookingLeg, Candidate]]:
+    if driver.status is not DriverStatus.APPROVED:
+        return []
+    out: list[tuple[BookingLeg, Candidate]] = []
+    for leg in db.scalars(_pool_query(driver, now)):
+        candidate = _candidate_for(db, leg, driver, now)
+        if candidate is not None:
+            out.append((leg, candidate))
+    return out
+
+
+def _candidate_for(db: Session, leg: BookingLeg, driver: Driver, now: datetime) -> Candidate | None:
+    return next(iter(eligible_candidates(db, leg, require_online=False, now=now, driver_id=driver.id)), None)
+
+
+def job_for(db: Session, driver: Driver, leg_id: uuid.UUID, now: datetime) -> BookingLeg:
+    """Havuzdaki tek iş (ayrıntı ekranı). Sürücüye uygun değilse 404, alındıysa 409."""
+    leg = db.get(BookingLeg, leg_id)
+    if leg is None:
+        raise NotFound("iş bulunamadı")
+    if leg.driver_id == driver.id:
+        raise Conflict("bu işi zaten aldınız", code="already_yours")
+    if leg.driver_id is not None or leg.status is not LegStatus.PENDING:
+        raise Conflict("iş başka bir sürücüye atandı", code="already_taken")
+    if leg.booking.booking_type is BookingType.INSTANT and not driver.is_online:
+        raise Forbidden("anlık işler için çevrimiçi olun", code="driver_offline")
+    if _candidate_for(db, leg, driver, now) is None:
+        raise NotFound("iş bulunamadı")
+    return leg
+
+
+def accept_job(db: Session, driver: Driver, leg_id: uuid.UUID, *, now: datetime) -> BookingLeg:
+    leg = db.get(BookingLeg, leg_id, with_for_update={"of": BookingLeg})
+    if leg is None:
+        raise NotFound("iş bulunamadı")
+    db.refresh(leg)
+    if leg.driver_id is not None:
+        raise Conflict("iş başka bir sürücüye atandı", code="already_taken")
+    _assignable_booking(leg)
+    if leg.booking.booking_type is BookingType.INSTANT and not driver.is_online:
+        raise Forbidden("anlık işler için çevrimiçi olun", code="driver_offline")
+    candidate = _candidate_for(db, leg, driver, now)
+    if candidate is None:
+        raise Forbidden("bu işi almak için belgeleriniz, aracınız veya takviminiz uygun değil", code="not_eligible")
+    offer = db.scalar(select(DispatchOffer).where(DispatchOffer.booking_leg_id == leg.id,
+                                                  DispatchOffer.driver_id == driver.id))
+    if offer is not None:
+        offer.status = OfferStatus.ACCEPTED
+        offer.responded_at = now
+    assign(db, leg, candidate, actor_id=driver.user_id, now=now)
+    return leg
+
+
+def decline_job(db: Session, driver: Driver, leg_id: uuid.UUID, *, now: datetime) -> None:
+    """İş bu sürücünün havuzundan kalkar (reddedilmiş teklif olarak kaydedilir)."""
+    leg = db.get(BookingLeg, leg_id)
+    if leg is None:
+        raise NotFound("iş bulunamadı")
+    offer = db.scalar(select(DispatchOffer).where(DispatchOffer.booking_leg_id == leg.id,
+                                                  DispatchOffer.driver_id == driver.id))
+    if offer is None:
+        db.add(DispatchOffer(booking_leg_id=leg.id, driver_id=driver.id, status=OfferStatus.REJECTED,
+                             expires_at=now, responded_at=now))
+    elif offer.status in (OfferStatus.SENT, OfferStatus.EXPIRED):
+        offer.status = OfferStatus.REJECTED
+        offer.responded_at = now
 
 
 def _on_leg_finished(db: Session, leg: BookingLeg, now: datetime) -> None:

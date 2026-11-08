@@ -58,6 +58,7 @@ class LegPlan:
     distance_km: Decimal
     duration_minutes: int
     price: Decimal  # müşteri para biriminde
+    route_polyline: str | None = None
 
 
 @dataclass(frozen=True)
@@ -234,6 +235,7 @@ def build_quote(
             distance_km=route.distance_km,
             duration_minutes=route.duration_minutes,
             price=leg_price,
+            route_polyline=route.polyline,
         )
         for (pp, dp, pr, dr, at), route, leg_price in zip(places, routes, leg_prices)
     )

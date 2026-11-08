@@ -13,7 +13,18 @@ from sqlalchemy.orm import Session
 
 from app.errors import ServiceUnavailable
 from app.localtime import local_date
-from app.models import Booking, Document, Driver, ExchangeRate, FlightInfo, OtpChallenge, Vehicle
+from app.models import (
+    Booking,
+    BookingLeg,
+    Document,
+    Driver,
+    ExchangeRate,
+    FlightInfo,
+    OtpChallenge,
+    TripMessage,
+    TripUpdate,
+    Vehicle,
+)
 from app.providers import fx
 from app.services.quotes import latest_exchange_rate
 from app.models.enums import (
@@ -33,6 +44,15 @@ def purge_flight_data(db: Session, now: datetime) -> int:
     """K-18: uçuş bilgisi yolculuktan 24 saat sonra silinir."""
     result = db.execute(delete(FlightInfo).where(FlightInfo.purge_at <= now))
     return result.rowcount or 0
+
+
+def purge_trip_messages(db: Session, now: datetime) -> int:
+    """K-50: yolculuk sohbeti ve uygulama içi bildirimler alış zamanından 30 gün sonra silinir."""
+    cutoff = now - timedelta(days=30)
+    old_legs = select(BookingLeg.id).where(BookingLeg.pickup_at < cutoff)
+    removed = db.execute(delete(TripMessage).where(TripMessage.booking_leg_id.in_(old_legs))).rowcount or 0
+    removed += db.execute(delete(TripUpdate).where(TripUpdate.created_at < cutoff)).rowcount or 0
+    return removed
 
 
 def refresh_exchange_rate(db: Session, now: datetime) -> int:

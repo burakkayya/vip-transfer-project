@@ -171,7 +171,12 @@
     "cancelEdit": "Vazgeç, araçlara dön",
     "cancelTiers": "İptal ve iade: alış saatinden 48 saat veya daha önce iptalde %100, 24-48 saat kala %50 iade yapılır; 24 saatten az kala iade yapılmaz.",
     "consentsLegend": "Onaylar",
-    "payHint": "Ödemeye geçmek için ilk iki kutuyu işaretleyin. Kampanya izni isteğe bağlıdır."
+    "payHint": "Ödemeye geçmek için ilk iki kutuyu işaretleyin. Kampanya izni isteğe bağlıdır.",
+    "mapTitle": "Rota haritası",
+    "mapLabel": "Rota haritası: {from} → {to}",
+    "mapPickup": "Alış",
+    "mapDropoff": "Varış",
+    "mapUnavailable": "Harita şu an gösterilemiyor; rota ve fiyat etkilenmez."
   },
   "otp": {
     "phone": "Telefon numarası",

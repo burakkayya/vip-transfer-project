@@ -32,6 +32,7 @@ async def every_minute(ctx) -> None:
 async def every_hour(ctx) -> None:
     _run(jobs.purge_flight_data)
     _run(jobs.purge_otp_challenges)
+    _run(jobs.purge_trip_messages)
     _run(jobs.refresh_exchange_rate)
 
 

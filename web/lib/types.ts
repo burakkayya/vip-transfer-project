@@ -55,6 +55,8 @@ export interface Endpoint {
   label: string;
   region: Region;
   place_token?: string;
+  /** Adres aramasından seçilen yerin konumu (harita için); yoksa bölge merkezi kullanılır. */
+  point?: { lat: number; lng: number };
 }
 
 export interface QuoteRequest {
@@ -76,6 +78,8 @@ export interface QuoteLeg {
   distance_km: string;
   duration_minutes: number;
   price: string;
+  /** Google encoded polyline (hassasiyet 5): haritada gerçek rota. */
+  route_polyline?: string | null;
 }
 
 export interface Quote {

@@ -35,6 +35,8 @@ class Customer(Base):
     currency: Mapped[Currency] = mapped_column(str_enum(Currency), default=Currency.EUR)
     verified_at: Mapped[datetime | None]
     deleted_at: Mapped[datetime | None]
+    # Mobil push jetonu (FCM/APNs cihaz jetonu). Yalnızca bildirim için kullanılır.
+    push_token: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = created_at()
 
     user: Mapped[User] = relationship(lazy="joined")

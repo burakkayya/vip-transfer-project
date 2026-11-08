@@ -79,7 +79,7 @@ test("shows the last shared position as driver marker", async () => {
   mockedApi.mockImplementation(async (path: string) => (path === "driver/trips/leg-1" ? trip("yolda") : {}) as never);
   await render(<TripScreen />);
   await screen.findByTestId("map-polyline", all);
-  fireEvent.press(await screen.findByText(/Geliştirme: konum gönder/));
+  fireEvent.press(await screen.findByText(/Geliştirme: hedefe yakın konum/));
   const marker = await screen.findByTestId("map-driver", all);
   expect(marker.props.coordinate.latitude).toBeCloseTo(36.9, 1);
   expect(marker.props.coordinate.longitude).toBeCloseTo(30.8, 1);

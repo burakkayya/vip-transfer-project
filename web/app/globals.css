@@ -832,16 +832,196 @@ dl.summary dd {
 
 /* --- Rezervasyon sihirbazı ------------------------------------------- */
 
+/* Geniş ekran: solda harita, ortada adım (araçlar), sağda özet. Harita ve özet kaydırırken yerinde kalır. */
 .wizard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 32px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) 340px;
+  gap: 28px;
   align-items: start;
+}
+
+.wizard-main {
+  container-type: inline-size;
+  min-width: 0;
 }
 
 .wizard-summary {
   position: sticky;
   top: 96px;
+}
+
+.wizard-map {
+  position: sticky;
+  top: 96px;
+  height: clamp(460px, calc(100vh - 128px), 760px);
+}
+
+/* --- Rota haritası ---------------------------------------------------- */
+
+.route-map {
+  position: relative;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  isolation: isolate;
+}
+
+.route-map-canvas,
+.route-map-loading {
+  position: absolute;
+  inset: 0;
+}
+
+.route-map-loading {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+}
+
+/* Google kontrolleri tasarım diline yaklaşsın: yuvarlak köşe, ince gölge. */
+.route-map .gm-bundled-control .gmnoprint > div {
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow) !important;
+  overflow: hidden;
+}
+
+/* Sol üstte: alt köşelerdeki Google logosu ve atıf görünür kalmalı (kullanım koşulu). */
+.route-map-meta {
+  position: absolute;
+  inset-inline-start: 16px;
+  top: 16px;
+  z-index: 1;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+
+.route-pin {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-7px, -50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.route-pin.flip {
+  flex-direction: row-reverse;
+  transform: translate(calc(-100% + 7px), -50%);
+}
+
+.route-pin-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: var(--ink);
+  border: 3px solid var(--paper);
+  box-shadow: 0 0 0 1px var(--ink), var(--shadow);
+}
+
+.route-pin.pickup .route-pin-dot {
+  border-radius: 999px;
+}
+
+.route-pin.dropoff .route-pin-dot {
+  border-radius: 3px;
+}
+
+.route-pin-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 220px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.route-pin-pre {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.route-pin-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dar haritada etiket kısalır: önek gizlenir (işaret şekli alış/varışı zaten ayırır). */
+@media (max-width: 600px) {
+  .route-pin-chip {
+    max-width: 140px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+  .route-pin-pre {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .route-map-meta {
+    inset-inline-start: 12px;
+    top: 12px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+.route-map.is-fallback {
+  display: flex;
+  align-items: center;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 1px 1px, var(--line-strong) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--soft);
+}
+
+.route-map-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px;
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  max-width: 100%;
+}
+
+.route-map-fallback .hint {
+  margin: 0;
+}
+
+/* Orta sütun dar olduğunda araç kartı sıkışmasın: fiyat alta iner. */
+@container (max-width: 560px) {
+  .vehicle-card {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .vehicle-media {
+    width: 112px;
+  }
+  .vehicle-price {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 .stepper-bar {
@@ -2217,9 +2397,27 @@ dl.summary.booking-facts {
   }
 }
 
+/* Orta genişlik: harita üstte tam genişlik, altında adım ve özet. */
+@media (max-width: 1280px) {
+  .wizard {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .wizard-map {
+    grid-column: 1 / -1;
+    position: static;
+    height: 320px;
+  }
+}
+
 @media (max-width: 960px) {
   .wizard {
     grid-template-columns: 1fr;
+  }
+  .wizard-map {
+    height: 260px;
+  }
+  .route-map {
+    border-radius: var(--radius);
   }
   /* Telefonda önce adım, özet altta; toplam tutar onay adımında da gösterilir. */
   .wizard-summary {

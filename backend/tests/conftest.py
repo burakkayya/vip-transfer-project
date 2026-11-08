@@ -19,6 +19,7 @@ os.environ["GETAWAY_ENV"] = "test"
 os.environ["GETAWAY_SMS_PROVIDER"] = "console"
 os.environ["GETAWAY_PAYMENT_PROVIDER"] = "fake"
 os.environ["GETAWAY_ROUTING_PROVIDER"] = "haversine"
+os.environ["GETAWAY_PLACES_PROVIDER"] = "fake"
 os.environ["GETAWAY_STORAGE_DIR"] = tempfile.mkdtemp(prefix="getaway-test-")
 
 import pyotp  # noqa: E402

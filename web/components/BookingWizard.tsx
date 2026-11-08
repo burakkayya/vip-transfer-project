@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, CREATE_TIMEOUT_MS, api, isAbort } from "@/lib/api";
 import { dateTime, localInputToIso, money } from "@/lib/format";
 import { useApiError, useSession } from "@/lib/hooks";
 import { MARKETING_CONSENT_VERSION, defaultCountry } from "@/lib/site";
 import type { Trip } from "@/lib/trip";
 import { loadTrip, saveTrip, toPlace } from "@/lib/trip";
-import type { Booking, BookingCreate, Quote, QuoteRequest, Region, VehicleType } from "@/lib/types";
+import type { Booking, BookingCreate, Endpoint, Quote, QuoteRequest, Region, VehicleType } from "@/lib/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import CountrySelect from "./CountrySelect";
 import { ErrorState } from "./ErrorState";
@@ -17,6 +17,7 @@ import { LoadingState } from "./States";
 import { vehicleImage } from "@/lib/vehicles";
 import Icon, { vehicleIcon } from "./Icon";
 import OtpLogin from "./OtpLogin";
+import RouteMap, { type MapPoint } from "./RouteMap";
 import TripForm, { useRegions } from "./TripForm";
 
 type Step = "vehicle" | "details" | "verify" | "confirm";
@@ -108,6 +109,11 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
 
   const setD = <K extends keyof Details>(k: K, v: Details[K]) => setDetails((s) => ({ ...s, [k]: v }));
   const fmt = (amount: string, currency: string) => money(amount, currency, locale);
+  // Harita noktaları: adres aramasından gelen konum, yoksa bölge merkezi. Nesne kimliği rota değişmedikçe sabit
+  // kalır (harita her çizimde yeniden sığdırılmaz).
+  const mapFrom = useMemo(() => mapPoint(trip.from), [trip.from]);
+  const mapTo = useMemo(() => mapPoint(trip.to), [trip.to]);
+
   const clearFieldError = (k: keyof FieldErrors) =>
     setFieldErrors((s) => {
       if (!s[k]) return s;
@@ -310,6 +316,10 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   const selectedQuote = vehicle ? quotes[vehicle] : undefined;
   const listQuote = selectedQuote && !(selectedQuote instanceof ApiError) ? selectedQuote : null;
   const shownQuote = finalQuote ?? listQuote;
+  // Rota tüm araç tiplerinde aynıdır: seçili teklif yoksa ilk gelen teklifin rotası çizilir.
+  const routeQuote = shownQuote ?? (Object.values(quotes).find((q) => q && !(q instanceof ApiError)) as Quote | undefined);
+  const routeLeg = routeQuote?.legs[0];
+  const routeMeta = routeLeg ? t("distance", { km: Number(routeLeg.distance_km).toFixed(0), minutes: routeLeg.duration_minutes }) : null;
   const visibleSteps = loggedIn === true && !verifySeen ? STEPS.filter((s) => s !== "verify") : STEPS;
   const stepIndex = visibleSteps.indexOf(step);
   const transientQuoteError = Object.values(quotes).find((q) => q instanceof ApiError && isTransient(q)) as ApiError | undefined;
@@ -332,6 +342,9 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
 
   return (
     <div className="wizard" ref={top}>
+      <div className="wizard-map">
+        <RouteMap from={mapFrom} to={mapTo} route={routeLeg?.route_polyline} meta={routeMeta} />
+      </div>
       <div className="wizard-main">
         {sessionError ? (
           // Oturum durumu bilinemedi (ağ, süre aşımı, 5xx): müşteri oturumsuz sayılmaz, hata ve yeniden dene.
@@ -637,4 +650,12 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
       </aside>
     </div>
   );
+}
+
+function mapPoint(e: Endpoint | null): MapPoint | null {
+  if (!e) return null;
+  if (e.point) return { lat: e.point.lat, lng: e.point.lng, label: e.label };
+  const lat = Number(e.region.latitude);
+  const lng = Number(e.region.longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng, label: e.label } : null;
 }

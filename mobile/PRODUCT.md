@@ -26,8 +26,8 @@ Kök `PRODUCT.md` ile aynı: sabit ve önceden ödenen fiyat, yalnızca Antalya 
 ## Operating Context
 
 - **Müşteri:** telefon ve SMS kodu ile giriş (şifre yok, K-16) → "Nereye?" → rota, zaman (Planla / Şimdi), gidiş-dönüş, yolcu ve bagaj → araç ve fiyat → yolcu bilgileri ve onaylar → ödeme sayfası uygulama içi tarayıcıda → rezervasyon detayı, sürücü kartı, WebSocket ile canlı takip, iptal önizlemesi.
-- **Sürücü:** kayıt ve belge yükleme → admin onayı → GO ile çevrimiçi → teklif kartı (geri sayım; yolcu adı ve adres gösterilmez) → yolculuk ekranı: yola çıktım, vardım, yolcu alındı, tamamlandı; navigasyon bağlantısı; tam ekran karşılama tabelası; konum yalnızca yolculuk ekranı açıkken paylaşılır → kazanç ve hakediş geçmişi, belge takibi.
-- Push bildirimi yok (FCM bekliyor); sürücü çevrimiçiyken teklifler 8 saniyede bir yoklanır.
+- **Sürücü:** kayıt ve belge yükleme → admin onayı → iş havuzu (planlı işler her zaman, anlık işler GO ile çevrimiçiyken; K-47) → kabul öncesi iş ayrıntısı (kırpılmış rota haritası, kazanç; yolcu adı ve adres gösterilmez) → kabul/red → yolculuk ekranı: yola çıktım, vardım, yolcu alındı, yolculuğu bitir (varışa 500 m içinde, K-49); aşamaya göre alış/varışa uygulama içi rota ve telefonun harita uygulamasında yol tarifi; yolcuyla mesajlaşma; tam ekran karşılama tabelası; konum yalnızca aktif yolculukta, arka planda da paylaşılır (K-52) → kazanç ve hakediş geçmişi, belge takibi.
+- Bildirimler (K-51): backend olayları uygulama içi akışa yazar, uygulama akışı yoklayıp yerel bildirim gösterir. Uygulama tamamen kapalıyken bildirim için FCM/APNs bekleniyor. Müşteri sürücünün kalan süresini görür, sürücüye yazar ve yolcu araçtayken yolculuğu bitirebilir (K-48, K-50).
 - Geliştirmede web önizlemesi (8081 müşteri, 8082 sürücü) telefon çerçevesiyle çizilir; Android emülatörleri `getaway_pixel7` ve `getaway_driver`.
 
 ## Capabilities and Constraints
@@ -36,7 +36,7 @@ Kök `PRODUCT.md` ile aynı: sabit ve önceden ödenen fiyat, yalnızca Antalya 
 - Jetonlar cihazın güvenli deposunda; Google anahtarı uygulamada yok, adres araması backend üzerinden.
 - Harita: gerçek harita (iOS Apple Maps, Android Google Maps) eklenecek; anahtar gelene kadar ve web önizlemesinde stilize SVG harita kalır. Rota çizgisi backend'den gelecek.
 - Sürücü uygulaması yalnızca Türkçedir; metinler sözlükte tutulur ki ileride dil eklenebilsin.
-- Arka plan konumu ve push için mağaza izin gerekçesi henüz yok.
+- Arka plan konumu (sürücü, K-52) geliştirme derlemesinde çalışır; mağaza izin beyanı ve push (FCM/APNs) henüz yok.
 
 ## Brand Commitments
 

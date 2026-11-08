@@ -85,7 +85,12 @@ export function AddressSearch(props: {
     } else {
       try {
         const d = await api<PlaceDetails>(`places/${encodeURIComponent(o.place.place_id)}?session=${session.current}&lang=${LOCALE}`);
-        props.onPick({ label: o.title, region: d.region, place_token: d.place_token });
+        props.onPick({
+          label: o.title,
+          region: d.region,
+          place_token: d.place_token,
+          point: d.lat && d.lng ? { latitude: Number(d.lat), longitude: Number(d.lng) } : undefined,
+        });
       } catch (e) {
         setError(errorText(e));
         return;

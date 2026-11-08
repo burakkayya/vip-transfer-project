@@ -23,6 +23,24 @@ Ekranları VS Code içinde açmak için: `Ctrl+Shift+P` → **Simple Browser: Sh
 
 Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android emülatörünü aç** → **Getaway: Mobil müşteri (Android emülatör)** ve/veya **Getaway: Mobil sürücü (Android emülatör)**. Senaryolardaki 8081/8082 adımları emülatörde de aynen yapılabilir.
 
+Kullanıcı klasörü adında Türkçe karakter varsa (ör. `C:UsersMelisa Özel Kaya`) Android SDK ve AVD bu yola kurulamaz; o makinede SDK `C:AndroidSdk`, AVD `C:Androidavd` altındadır (Android 15, `getaway_pixel7`). Komut satırından: `ANDROID_AVD_HOME=C:Androidavd C:AndroidSdkemulatoremulator.exe -avd getaway_pixel7`, ardından `mobile` içinde `ANDROID_HOME=C:AndroidSdk GETAWAY_API_URL=http://10.0.2.2:8000 npx expo start --android --port 8083`.
+
+#### Sürücü geliştirme derlemesi (arka plan konumu için)
+
+Expo Go arka plan konumunu desteklemez; sürücü uygulaması kendi geliştirme derlemesiyle (`com.getawaytransfers.driver`, `expo-dev-client`) çalıştırılır. Bu makinede Windows'un 260 karakter yol sınırı ve Türkçe karakterli kullanıcı yolu nedeniyle yerel derleme kısa klasörde yapılır:
+
+1. `mobile` klasörünü `node_modules`, `android` ve `.expo` hariç `C:\g\m` klasörüne kopyalayın, orada `npm ci` ve `APP_VARIANT=driver npx expo prebuild --platform android --clean --no-install`.
+2. `C:\g\m\android\app\build.gradle` sonuna CMake ara klasörünü kısaltan blok ekleyin: `android { externalNativeBuild { cmake { buildStagingDirectory "C:/c" } } }`.
+3. Ortam: `JAVA_HOME=C:\PROGRA~2\Java\JDK-17~1\jdk-17`, `ANDROID_HOME=C:\Android\Sdk`, `GRADLE_USER_HOME=C:\Android\gradle`, `TMP=TEMP=C:\Android\tmp` ve `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:/Android/tmp` (Java geçici yolundaki "Ö" karakteri "loopback connection" hatası verir).
+4. `cd C:\g\m\android && gradlew.bat app:assembleDebug -PreactNativeDevServerPort=8084 -PreactNativeArchitectures=x86_64` (ilk derleme ~30 dk), `adb install -r app\build\outputs\apk\debug\app-debug.apk`.
+5. JavaScript çalışma klasöründen sunulur: `mobile` içinde `APP_VARIANT=driver GETAWAY_API_URL=http://10.0.2.2:8000 npx expo start --dev-client --port 8084`; uygulamayı `getawaydriver://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8084` adresiyle açın (127.0.0.1 ile geliştirme istemcisi WebSocket hatası veriyor).
+6. Emülatör konumu: `adb emu geo fix <boylam> <enlem>` (ör. havalimanı `30.8015 36.9002`, Kemer `30.5605 36.6003`). Yerel kod değişmedikçe yeniden derleme gerekmez.
+
+### Haritalar
+
+- **Web rezervasyon sayfası** (`/tr/book?from=ayt&to=kemer`): geniş ekranda solda harita, ortada araçlar, sağda özet. 1280 px altında harita üstte tam genişlik, 960 px altında tek sütun (harita 260 px). Rota seçilir seçilmez alış (daire) ve varış (kare) kesikli çizgiyle; fiyatlar gelince Google'ın gerçek karayolu rotası düz siyah çizgiyle çizilir, sol üstte "61 km, yaklaşık 63 dk". Tarayıcı anahtarı yoksa veya reddedilirse harita alanında rota özeti ve "Harita şu an gösterilemiyor" notu çıkar; rezervasyon etkilenmez.
+- **Mobil rezervasyon** (emülatör/telefon): rota adımında seçilen noktalar kesikli çizgiyle, araç seçiminde gerçek rota düz çizgiyle görünür. Web önizlemesi (8081) stilize SVG harita göstermeye devam eder.
+
 ## Test hesapları ve kolaylıklar
 
 | Rol | Giriş |
@@ -31,6 +49,11 @@ Mobil uygulamaları gerçek Android ortamında görmek için: **Getaway: Android
 | Demo sürücü 1 | +90 530 000 00 01, Mehmet Demir, Minivan (Vito), 07GA001 |
 | Demo sürücü 2 | +90 530 000 00 02, Ayşe Kaya, VIP Van (V-Class), 48GA002 |
 | Admin | ebkaya.0637@gmail.com. Parola repoya yazılmaz, sohbette iletilen geçici parola kullanılır (2026-10-31'de sıfırlandı, 2FA yeniden kuruldu). İlk girişte doğrulama uygulamasıyla (Google/Microsoft Authenticator) QR okutulur, sonra **Parolamı değiştir**. |
+| Admin (yerel yedek hesap) | admin@getawaytransfers.com (yerel; `.local` uzantısı e-posta doğrulamasında reddedilir). Yalnızca yerel veritabanında; parola repoya yazılmaz, proje ayağa kaldırıldığında sohbette verilir. İlk girişte 2FA QR'ı okutulur. Yeni makinede: `cd backend` → `.venv\Scripts\python -c "..."` ile `auth.create_staff_user` (ya da `python -m app.cli create-admin --email ...`, parolayı sorar). |
+
+**Giriş bilgileri sunumu:** Proje her ayağa kaldırıldığında (Claude oturumunda) müşteri, sürücü ve admin giriş bilgileri, adresleriyle birlikte, sohbette özet tablo olarak verilir. Parolalar bu dosyaya ve repoya yazılmaz.
+
+**Onaylı sürücü:** `seed-demo` iki sürücüyü onaylı (durum Onaylı, araç Aktif) yükler; yukarıdaki iki demo sürücü ile mobil sürücü uygulamasında (8082) doğrudan giriş yapılır, SMS kodu ekranda görünür. Yeni sürücü başvurusu onayı için senaryo 7.
 
 - **Adres araması:** Google anahtarı yokken örnek yerler kullanılır: Antalya Havalimanı, Kaleiçi, Lara, Rixos Downtown, Belek, Side, Kleopatra Plajı (Alanya), Kemer Marina, Kaş, Kalkan, Bodrum Marina, Turgutreis, Ölüdeniz, Fethiye, Göcek, Marmaris, Dalyan, Taksim (hizmet dışı).
 - **Ödeme:** iFrame içinde sahte ödeme sayfası açılır, **Ödemeyi onayla** veya **Reddet** seçilir.
@@ -167,6 +190,24 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 
 ### 13. Dil
 1. Web üst menüden dili değiştirin (şu an TR, EN, DE, RU; hedef on dil, K-34). Mobil müşteri uygulaması cihaz (tarayıcı) diline göre açılır.
+
+### 14. Uber tarzı akış: havuz, navigasyon, bildirim, sohbet, bitirme (mobil)
+
+Hazırlık: emülatörde müşteri Expo Go'da (8083), sürücü geliştirme derlemesinde (`com.getawaytransfers.driver`, Metro 8084). Ayrıntı: "Android emülatörü".
+
+1. Müşteri: AYT → Kemer, **Planla**, yarın; araç seç, öde. Rezervasyon detayı "Sürücü aranıyor".
+2. Sürücü (onaylı demo sürücü, çevrimdışı da olur): ana ekranda **İş havuzu** listesinde iş görünür (kazanç, zaman, km, "Planlı"). Anlık işlerde önce **GO** gerekir; size gönderilmiş anlık teklif üstte geri sayımlı koyu kartta çıkar.
+3. İşe dokunun: **iş ayrıntısı** açılır. Haritada rota uçları kırpılmış, yolcu yalnızca baş harfle, adres yok; mesafe, süre, yolcu/bagaj, "Size N km". **Reddet** işi havuzunuzdan kaldırır; **Kabul et** yolculuk ekranını açar. Aynı işi başka sürücü sonra açarsa "Bu iş artık havuzda değil" görür.
+4. Müşteri tarafında bildirim: "Sürücünüz belli oldu" (ad, araç, plaka). Detayda sürücü kartı ve **Sürücüye yaz**.
+5. Sürücü yolculuk ekranı: üstte "Alışa N dk · X km" kapsülü, haritada sürücüden alış noktasına rota. **Alışa yol tarifi** (veya sağ üst navigasyon düğmesi) Google Haritalar'da yol tarifini açar. **Yola çıktım** → müşteriye "Sürücünüz yola çıktı. Tahmini varış N dk". İlk kez "Konum izni: Her zaman" istenir; verilirse bildirim çubuğunda "Yolculuk sürüyor" görünür ve uygulamadan çıkılsa da konum paylaşılır.
+6. Emülatörde GPS yerine **Geliştirme: hedefe yakın konum** düğmesi alış noktasının yakınına konum yollar → müşteriye bir kez "Sürücünüz yaklaşıyor". (İlk tahmin 12 dk'dan uzunsa 10 dk kala "Sürücünüz 10 dk uzakta" da gelir.) Müşteri detayında "Sürücünüz ~N dk uzakta".
+7. **Vardım** → müşteriye "Sürücünüz geldi". **Yolcu alındı** → hedef varışa döner, yol tarifi düğmesi **Varışa yol tarifi** olur, müşteriye "Yolculuğunuz başladı".
+8. **Yolculuğu bitir** varışa uzakken kapalıdır ve altında "Varışa 42 km. 3 km içinde bitirebilirsiniz" yazar (adres koordinatı varsa 500 m). **Geliştirme: hedefe yakın konum** → düğme açılır → bitir. Müşteriye "Yolculuk tamamlandı".
+9. Alternatif: yolcu araçtayken müşteri **Yolculuğu bitir** → "Yolculuk tamamlandı sayılır, iade yapılmaz" onayı → tamamlanır; sürücüye "Yolcu yolculuğu bitirdi".
+10. Sohbet: iki taraf da hazır cevap veya serbest metin gönderir; karşı tarafa "… yazdı" bildirimi gelir (sohbet açıkken gelmez), okunmamış sayısı düğmede kırmızı rozet. Son mesajın altında "Okundu". Yolculuk bitince sohbet yalnızca okunur.
+11. Müşteri atanmış işi iptal ederse sürücüye "Yolculuk iptal edildi" bildirimi gider.
+
+Not: uygulama tamamen kapalıyken bildirim için FCM gerekir (açık konu); uygulama açık veya sürücüde yolculuk sürerken bildirimler yerel olarak gelir.
 
 ## Otomatik testler
 

@@ -1,7 +1,7 @@
 """Tüm modeller burada içe aktarılır ki Alembic metadata'yı eksiksiz görsün."""
 
 from app.models.base import Base
-from app.models.booking import Booking, BookingLeg, DispatchOffer, FlightInfo, TripEvent
+from app.models.booking import Booking, BookingLeg, DispatchOffer, FlightInfo, TripEvent, TripMessage, TripUpdate
 from app.models.customer import Consent, Customer, DataRequest
 from app.models.finance import (
     DriverLedger,
@@ -65,6 +65,8 @@ __all__ = [
     "RoundTripDiscount",
     "SystemSetting",
     "TripEvent",
+    "TripMessage",
+    "TripUpdate",
     "User",
     "Vehicle",
     "VehicleType",

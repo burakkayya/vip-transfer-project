@@ -15,10 +15,13 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
-      "connect-src 'self'",
+      // Google Maps JavaScript API (rezervasyon sayfası rota haritası).
+      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.ggpht.com",
+      "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com",
+      "worker-src 'self' blob:",
       `frame-src ${frameSrc.join(" ")}`,
       "frame-ancestors 'self'",
       "form-action 'self'",

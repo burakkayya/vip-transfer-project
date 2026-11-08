@@ -97,6 +97,19 @@ export default function Book() {
 
   const airports = useMemo(() => regions.filter((r) => r.type === "havalimani"), [regions]);
   const seed = `${from?.label ?? ""}>${to?.label ?? ""}`;
+  // Harita: teklif varsa gerçek rota (backend), yoksa seçilen iki nokta (adres konumu ya da bölge merkezi).
+  const endpoints = useMemo(() => {
+    const pt = (e: Endpoint | null) => {
+      if (!e) return null;
+      if (e.point) return e.point;
+      const { latitude, longitude } = e.region;
+      return latitude && longitude ? { latitude: Number(latitude), longitude: Number(longitude) } : null;
+    };
+    const a = pt(from);
+    const b = pt(to);
+    if (a && b) return [a, b];
+    return a ? [a] : undefined;
+  }, [from, to]);
 
   const request = (vt: string, withDetails: boolean) => ({
     pickup: place(from!, withDetails ? d.pickupNote : undefined),
@@ -251,7 +264,7 @@ export default function Book() {
   // --- 1. Rota, zaman, kişi -------------------------------------------------------
   if (step === "trip") {
     return (
-      <MapSheet map={<MapCanvas seed={seed} mode={from && to ? "route" : "idle"} focusTop={0.4} />} mapRatio={0.26} overlay={overlay}
+      <MapSheet map={<MapCanvas seed={seed} mode={from && to ? "route" : "idle"} focusTop={0.4} endpoints={endpoints} />} mapRatio={0.26} overlay={overlay}
         bottom={<Button title={t("book.showPrices")} iconRight="arrow-forward" onPress={loadQuotes} busy={busy} disabled={!from || !to || types.length === 0} />}>
         {stepper}
         <H2>{t("book.routeTitle")}</H2>
@@ -284,7 +297,7 @@ export default function Book() {
   // --- 2. Araç seçimi --------------------------------------------------------------
   if (step === "vehicle") {
     return (
-      <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.62} />} mapRatio={0.36} overlay={overlay}
+      <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.62} endpoints={endpoints} route={selectedQuote?.legs[0]?.route_polyline} />} mapRatio={0.36} overlay={overlay}
         bottom={
           <Button
             title={selectedType && selectedQuote ? `${t("book.select", { name: selectedType.name })} · ${money(selectedQuote.price, selectedQuote.currency, LOCALE)}` : t("book.chooseVehicle")}
@@ -357,7 +370,7 @@ export default function Book() {
 
   // --- 3. Bilgiler ve onay ------------------------------------------------------------
   return (
-    <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.7} />} mapRatio={0.2} overlay={overlay}
+    <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.7} endpoints={endpoints} route={selectedQuote?.legs[0]?.route_polyline} />} mapRatio={0.2} overlay={overlay}
       bottom={
         <>
           <Row spread>

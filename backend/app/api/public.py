@@ -78,6 +78,7 @@ def quote_out(q: quotes.Quote) -> QuoteOut:
                 distance_km=leg.distance_km,
                 duration_minutes=leg.duration_minutes,
                 price=leg.price,
+                route_polyline=leg.route_polyline,
             )
             for leg in q.legs
         ],

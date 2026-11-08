@@ -44,5 +44,5 @@ export const NEXT_STEP: Record<string, { event: string; label: string } | undefi
   atandi: { event: "yola_cikti", label: "Yola çıktım" },
   yolda: { event: "vardi", label: "Vardım" },
   vardi: { event: "basladi", label: "Yolcu alındı" },
-  basladi: { event: "bitti", label: "Tamamlandı" },
+  basladi: { event: "bitti", label: "Yolculuğu bitir" },
 };

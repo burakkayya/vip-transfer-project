@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image, Linking, Pressable, View } from "react-native";
+import { Alert as NativeAlert, Image, Linking, Pressable, View } from "react-native";
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
@@ -14,7 +14,7 @@ import { accessToken, api, wsUrl } from "@/lib/api";
 import { reachable } from "@/lib/config";
 import { dateTime, money } from "@/lib/format";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
-import type { Booking, DriverLocation, RefundQuote } from "@/lib/types";
+import type { Booking, DriverLocation, Eta, RefundQuote } from "@/lib/types";
 import { VEHICLE_IMAGE } from "@/lib/vehicles";
 
 const TRACKABLE = ["yolda", "vardi", "basladi"];
@@ -48,6 +48,8 @@ export default function BookingScreen() {
   const [location, setLocation] = useState<DriverLocation | null>(null);
   const [busy, setBusy] = useState(false);
   const [waitingPayment, setWaitingPayment] = useState(false);
+  const [eta, setEta] = useState<Eta | null>(null);
+  const [unread, setUnread] = useState(0);
   const autoPay = useRef(pay === "1");
 
   const load = useCallback(async () => {
@@ -91,13 +93,53 @@ export default function BookingScreen() {
   }, [waitingPayment, booking?.status, load]);
 
   // Atama ve yolculuk adımları için durum periyodik yenilenir.
+  const finished = !booking || ["iptal", "tamamlandi"].includes(booking.status);
   useEffect(() => {
-    if (!booking || ["iptal", "tamamlandi"].includes(booking.status)) return;
-    const id = setInterval(load, 15_000);
+    if (finished) return;
+    const id = setInterval(load, 10_000);
     return () => clearInterval(id);
-  }, [booking, load]);
+  }, [finished, load]);
 
   const tracking = booking?.legs.some((l) => TRACKABLE.includes(l.status)) ?? false;
+  const hasDriver = booking?.legs.some((l) => l.driver && !["bitti", "iptal"].includes(l.status)) ?? false;
+
+  // Sürücünün tahmini varış süresi (yolcu alınana kadar alışa, sonra varışa) (K-51).
+  useEffect(() => {
+    if (!tracking) return;
+    const tick = () => api<Eta>(`me/bookings/${code}/eta`).then(setEta).catch(() => undefined);
+    void tick();
+    const id = setInterval(tick, 10_000);
+    return () => clearInterval(id);
+  }, [tracking, code]);
+
+  // Okunmamış mesaj sayısı (K-50).
+  useEffect(() => {
+    if (!hasDriver) return;
+    const tick = () => api<{ unread: number }>(`me/bookings/${code}/messages/unread`).then((r) => setUnread(r.unread)).catch(() => undefined);
+    void tick();
+    const id = setInterval(tick, 10_000);
+    return () => clearInterval(id);
+  }, [hasDriver, code]);
+
+  // K-48: yolcu araçtayken yolculuk her an bitirilebilir; tamamlandı sayılır, iade yoktur.
+  function confirmFinish() {
+    NativeAlert.alert(t("finish.title"), t("finish.text"), [
+      { text: t("finish.cancel"), style: "cancel" },
+      { text: t("finish.confirm"), style: "destructive", onPress: () => void finishTrip() },
+    ]);
+  }
+
+  async function finishTrip() {
+    setBusy(true);
+    try {
+      setBooking(await api<Booking>(`me/bookings/${code}/finish`, { body: {} }));
+      setNotice(t("finish.done"));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Canlı konum WebSocket ile gelir; jeton URL'de değil ilk mesajda gönderilir.
   useEffect(() => {
@@ -170,6 +212,8 @@ export default function BookingScreen() {
       }
       bottom={booking.status === "odeme_bekliyor" ? (
         <Button title={`${t("bookings.payNow")} · ${fmt(booking.total_amount)}`} icon="card" onPress={startPayment} />
+      ) : leg.status === "basladi" ? (
+        <Button title={t("finish.button")} icon="flag" variant="secondary" busy={busy} onPress={confirmFinish} />
       ) : undefined}
     >
       <Animated.View entering={FadeInDown.duration(400)} style={{ gap: 10 }}>
@@ -202,6 +246,30 @@ export default function BookingScreen() {
                 <T style={{ fontWeight: "800", letterSpacing: 1, fontSize: 13 }}>{leg.driver.plate}</T>
               </View>
             </Row>
+            {tracking ? (
+              <View style={{ gap: 2 }}>
+                <T style={{ fontSize: 20, fontWeight: "800", letterSpacing: -0.4 }}>
+                  {leg.status === "vardi"
+                    ? t("track.arrived")
+                    : leg.status === "basladi"
+                      ? eta?.eta_minutes ? t("track.etaTrip", { min: eta.eta_minutes }) : t("track.onboard")
+                      : eta?.eta_minutes ? t("track.eta", { min: eta.eta_minutes }) : statusLabel("leg", leg.status)}
+                </T>
+              </View>
+            ) : null}
+            {!["bitti", "iptal"].includes(leg.status) ? (
+              <Pressable accessibilityRole="button" accessibilityLabel={unread ? `${t("chat.open")} (${unread})` : t("chat.open")}
+                onPress={() => router.push(`/chat/${booking.booking_code}`)}
+                style={({ pressed }) => [{ flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingVertical: 13, backgroundColor: colors.canvas }, pressed && { opacity: 0.8 }]}>
+                <Ionicons name="chatbubble-ellipses" size={18} color={colors.ink} />
+                <T style={{ fontWeight: "700" }}>{t("chat.open")}</T>
+                {unread > 0 ? (
+                  <View style={{ minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 }}>
+                    <T style={{ color: "#fff", fontSize: 12, fontWeight: "800" }}>{unread}</T>
+                  </View>
+                ) : null}
+              </Pressable>
+            ) : null}
             {tracking ? (
               <View style={{ backgroundColor: colors.okSoft, borderRadius: 14, padding: 12, gap: 4 }}>
                 <Row gap={8}>
