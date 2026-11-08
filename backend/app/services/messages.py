@@ -85,7 +85,9 @@ def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime) ->
     ) or 0
     if recent >= RATE_LIMIT:
         raise TooManyRequests("çok fazla mesaj gönderildi, biraz bekleyin")
-    msg = TripMessage(booking_leg_id=leg.id, sender=sender, body=body, created_at=now)
+    # Gönderen sürücü mesajla saklanır: iş başka sürücüye devredilse de şikâyet incelemesinde doğru kişi görünür.
+    msg = TripMessage(booking_leg_id=leg.id, sender=sender, body=body, created_at=now,
+                      driver_id=leg.driver_id if sender == "driver" else None)
     db.add(msg)
     preview = body if len(body) <= 120 else body[:117] + "…"
     if sender == "customer":

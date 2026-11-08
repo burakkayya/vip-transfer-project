@@ -178,3 +178,26 @@ export interface DriverLocation {
   heading: number | null;
   at: string;
 }
+
+/** Yolculuk sohbeti (K-50). */
+export interface ChatMessage {
+  id: string;
+  sender: "customer" | "driver";
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface Chat {
+  open: boolean;
+  unread: number;
+  other_name: string;
+  messages: ChatMessage[];
+}
+
+/** Sürücünün tahmini varışı (K-51): yolcu alınana kadar alışa, yolculukta varışa dakika. */
+export interface TripEta {
+  leg_id: string | null;
+  status: LegStatus | null;
+  eta_minutes: number | null;
+}

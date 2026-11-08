@@ -31,6 +31,7 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 - [ ] ARQ işçisi (`arq app.worker.WorkerSettings`) 2026-11-02 taban çizgisinde çalışmıyordu. Saatlik kur güncelleme ve uçuş verisi silme gibi zamanlanmış görevler işçi çalışmadan işlemez; geliştirmede ayrıca başlatılmalı, üretimde süreç yöneticisiyle ayakta tutulmalı.
 - [ ] CI kapsamı (`.github/workflows/ci.yml`, 2026-11-08): web ve admin Playwright + axe testleri ile `next build` henüz CI'da yok (çalışan backend, seed ve sunucu ister). İlk CI koşusu GitHub'da henüz görülmedi; Linux'ta `pip install` çözümü yerelde denenemedi.
 - [ ] Manuel rezervasyon (K-54): sürücüye nakit ödeme (yolcunun parayı sürücüye vermesi) desteklenmiyor; gerekirse sürücü hakedişinden mahsup modeli tasarlanmalı. WhatsApp Business API ile otomatik mesaj gönderimi yok (metin elle kopyalanır). Havale/EFT ile alınan tahsilatın fatura ve muhasebe akışı (e-Arşiv) ile mutabakatı doğrulanmalı. Ödeme bağlantılı SMS metni (`booking_created_admin`) hukuk ve ileti izni (İYS) açısından kontrol edilmeli.
+- [ ] Sohbet ve yeniden atama (K-50): atanmış iş başka sürücüye devredilirse yeni sürücü önceki sürücünün müşteriyle yazışmasını görür. Devirde eski yazışmanın yeni sürücüden gizlenmesi değerlendirilmeli (admin incelemesinde mesajı yazan sürücü doğru görünür, 0006).
 - [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı.
 
 ## Geliştirme sırasında ortaya çıkanlar
@@ -113,4 +114,4 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 - Mağaza: sürücü uygulamasının arka plan konum izni için Google Play "konum izni beyanı" ve kısa video, App Store için izin gerekçesi hazırlanmalı (K-52). Aydınlatma metnine sohbet (K-50) ve arka plan konumu eklenmeli; hukukçu onayı.
 - iOS: arka plan konumu, yerel bildirimler ve Google Haritalar iOS derlemesinde doğrulanmadı (Mac ve Apple Developer hesabı gerekir).
 - Admin panelinde müşteri–sürücü sohbetini görüntüleme (şikâyet incelemesi için) ve müşterinin erken bitirdiği yolculukların listesi henüz yok.
-- Müşteri web sitesinde (rezervasyon detayı) sohbet, kalan süre ve yolculuğu bitirme henüz yok; yalnızca mobil uygulamada (2026-11-08). Müşteri haritasında sürücünün alışa giden rotası çizilmiyor, yalnızca sürücü işareti ve kalan süre görünüyor.
+- ~~Müşteri web sitesinde sohbet, kalan süre ve yolculuğu bitirme yok~~ (2026-11-08, K-55 ile eklendi). Web'de bildirim yok: sayfa açık değilken mesaj ve yaklaşma bildirimi yalnızca SMS/mobil uygulamada (web push ayrı iş). Müşteri haritasında sürücünün alışa giden rotası çizilmiyor, yalnızca sürücü işareti ve kalan süre görünüyor.

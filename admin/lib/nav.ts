@@ -13,6 +13,7 @@ export const NAV: NavItem[] = [
   { href: "/", label: "Genel panel", roles: ["operasyon", "destek"], group: "Operasyon" },
   { href: "/bookings", label: "Rezervasyonlar", roles: ["operasyon", "destek"], group: "Operasyon" },
   { href: "/dispatch", label: "Eşleştirme", roles: ["operasyon"], group: "Operasyon" },
+  { href: "/trip-reviews", label: "Müşteri bitirişleri", roles: ["operasyon", "destek"], group: "Operasyon" },
   { href: "/drivers", label: "Sürücüler", roles: ["operasyon"], group: "Filo" },
   { href: "/vehicles", label: "Araçlar ve tipler", roles: ["operasyon"], group: "Filo" },
   { href: "/documents", label: "Belge takibi", roles: ["operasyon"], group: "Filo" },

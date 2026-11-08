@@ -42,7 +42,7 @@ Mimari notlar ve güvenlik ilkeleri: kök `README.md` ve `yasal_ve_guvenlik.md`.
 
 ## 5. Kararlar
 
-Tam liste: `kararlar.md` (K-01 ... K-54). Son eklenenler (2026-10-31, 2026-11-02 ve 2026-11-03):
+Tam liste: `kararlar.md` (K-01 ... K-55). Son eklenenler (2026-10-31, 2026-11-02 ve 2026-11-03):
 
 | No | Karar | Uygulama durumu |
 |---|---|---|
@@ -68,9 +68,9 @@ Tam liste: `kararlar.md` (K-01 ... K-54). Son eklenenler (2026-10-31, 2026-11-02
 
 | Alan | Durum | Eksik |
 |---|---|---|
-| Backend | Tamamlandı, 117 test geçiyor; iş havuzu, sohbet, ETA bildirimleri (K-47..K-52), admin manuel rezervasyon ve elle tahsilat (K-54) | PayTR gerçek doğrulama, iyzico yedeği, e-Arşiv, FCM, S3 depolama |
-| Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar; 2026-11-02 ana sayfa Impeccable geçişi (B-W1, critique 31/36), rezervasyon sihirbazı geçişi (B-W2, critique 35/40), SMS doğrulama geçişi (B-W3, critique 36/40), ödeme ekranı geçişi (B-W4, critique 36/40), ödeme sonucu geçiş ekranı (B-W5, critique 22/24), rezervasyon detayı ve iptal (B-W6, critique 36/40); 2026-11-03 Rezervasyonlarım (B-W8, critique 35/40), Hesabım (B-W9, critique 34/40), veri talebi (B-W10, critique 34/40), yasal sayfalar (B-W11–14, critique 24/28, 28/32, 23/28, 23/28), 404 (B-W15, critique 30/36); 2026-11-08 rezervasyon sayfasında Google rota haritası (harita | araçlar | özet, mobilde üstte) | 6 dil daha, günlük kiralama ekranları |
-| Admin | Tamamlandı (24 rota); 2026-11-08 manuel müşteri ve rezervasyon (WhatsApp/telefon, ödeme bağlantısı veya elle tahsilat, K-54) | Günlük kiralama yönetimi, WhatsApp Business entegrasyonu |
+| Backend | Tamamlandı, 118 test geçiyor; iş havuzu, sohbet, ETA bildirimleri (K-47..K-52), admin manuel rezervasyon ve elle tahsilat (K-54) | PayTR gerçek doğrulama, iyzico yedeği, e-Arşiv, FCM, S3 depolama |
+| Müşteri web | Tamamlandı (4 dil), 2026-10-31 yeni tasarım ve animasyonlar; 2026-11-02 ana sayfa Impeccable geçişi (B-W1, critique 31/36), rezervasyon sihirbazı geçişi (B-W2, critique 35/40), SMS doğrulama geçişi (B-W3, critique 36/40), ödeme ekranı geçişi (B-W4, critique 36/40), ödeme sonucu geçiş ekranı (B-W5, critique 22/24), rezervasyon detayı ve iptal (B-W6, critique 36/40); 2026-11-03 Rezervasyonlarım (B-W8, critique 35/40), Hesabım (B-W9, critique 34/40), veri talebi (B-W10, critique 34/40), yasal sayfalar (B-W11–14, critique 24/28, 28/32, 23/28, 23/28), 404 (B-W15, critique 30/36); 2026-11-08 rezervasyon sayfasında Google rota haritası (harita | araçlar | özet, mobilde üstte); rezervasyon detayında kalan süre, sürücüyle mesajlaşma ve yolculuğu bitirme (K-55) | 6 dil daha, günlük kiralama ekranları |
+| Admin | Tamamlandı (25 rota); 2026-11-08 manuel müşteri ve rezervasyon (WhatsApp/telefon, ödeme bağlantısı veya elle tahsilat, K-54); şikâyet incelemesi: gerekçeli sohbet görüntüleme ve müşteri bitirişleri listesi (K-55) | Günlük kiralama yönetimi, WhatsApp Business entegrasyonu |
 | Mobil müşteri ve sürücü | Tamamlandı, 2026-10-31 Uber tarzı yeni tasarım; web önizlemede uçtan uca denendi; 2026-11-08 Android emülatöründe gerçek Google haritası ve rezervasyon rotası doğrulandı; Uber tarzı akış (havuz, navigasyon, arka plan konum, sohbet, bitirme) | FCM/APNs (uygulama kapalıyken bildirim), mağaza konum izni beyanı, iOS doğrulaması; Android Maps anahtarı (kendi derlememiz için) ve iOS harita doğrulaması, 6 dil daha, push, mağaza derlemesi, günlük kiralama |
 | Ön yüz testleri | Altyapı kuruldu (K-40): web/admin Playwright + axe smoke, ESLint; mobil jest-expo + RNTL, ESLint; `scripts/` testleri; `scripts/ui-shots` | Lint taban ihlalleri (web 0, admin 3, mobil 9; `ui-review/lint-taban.md`), ekran bazlı e2e ve axe testleri (arayüz taraması; web ortak dosyalar B-W0, ana sayfa B-W1 ve rezervasyon sihirbazı B-W2 ve SMS doğrulama B-W3 ve ödeme B-W4 ve ödeme sonucu B-W5 ve rezervasyon detayı B-W6 tamamlandı: `web/e2e/shared.spec.ts`, `web/e2e/home.spec.ts`, `web/e2e/book.spec.ts`, `web/e2e/otp.spec.ts`, `web/e2e/pay.spec.ts`, `web/e2e/payment-result.spec.ts`, `web/e2e/booking-detail.spec.ts`) |
 | Geliştirme süreci | Claude ajan düzeni (K-53): `code-reviewer`, `qa-tester`, `ui-auditor`; riske göre çağrılır (kök `CLAUDE.md`); GitHub CI (backend, mobil, web, admin testleri ve lint tabanı) | Playwright e2e ve `next build` CI'da yok |
