@@ -184,6 +184,8 @@ class DispatchOffer(Base):
 
 class TripEvent(Base):
     __tablename__ = "trip_events"
+    # K-55: müşteri bitirişleri listesi bitiş olaylarını zamana göre sıralar.
+    __table_args__ = (Index("ix_trip_events_type_occurred", "event_type", "occurred_at"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     booking_leg_id: Mapped[uuid.UUID] = mapped_column(
@@ -207,6 +209,8 @@ class TripMessage(Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     booking_leg_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("booking_legs.id", ondelete="CASCADE"))
     sender: Mapped[str] = mapped_column(String(10))  # customer | driver
+    # Sürücü mesajında gönderen sürücü (K-55); 0006 öncesi mesajlarda boş.
+    driver_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("drivers.id"))
     body: Mapped[str] = mapped_column(EncryptedString)
     created_at: Mapped[datetime] = created_at()
     read_at: Mapped[datetime | None]

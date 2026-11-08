@@ -192,3 +192,60 @@ def test_trim_ends_hides_exact_endpoints():
     assert trimmed[0][0] > line[0][0] + 0.003 and trimmed[-1][0] < line[-1][0] - 0.003
     short = [(36.0, 30.0), (36.001, 30.0), (36.002, 30.0)]
     assert len(trim_ends(short, 400)) >= 2
+
+
+def test_admin_reviews_chat_with_reason_and_customer_finished_list(client, db, ops):
+    """K-55: personel sohbeti gerekçeyle açar (denetim kaydı, okundu değişmez), müşterinin bitirdiği yolculukları
+    listeler; sürücünün bitirdiği listede yer almaz."""
+    from datetime import date
+
+    from app.models import AuditLog, TripMessage
+    from tests.conftest import staff_headers
+
+    driver, customer, code, leg_id = _accepted(client, ops)
+    client.post(f"{API}/driver/trips/{leg_id}/messages", headers=driver, json={"body": "Girişteyim."})
+    client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "Geliyorum"})
+    for event in ("yola_cikti", "vardi", "basladi"):
+        assert _event(client, driver, leg_id, event).status_code == 200
+    assert client.post(f"{API}/me/bookings/{code}/finish", headers=customer).status_code == 200
+    booking = db.scalar(select(Booking).where(Booking.booking_code == code))
+
+    support = staff_headers(client, db, ["destek"])
+    finance = staff_headers(client, db, ["muhasebe"])
+    url = f"{API}/admin/bookings/{booking.id}/messages"
+    assert client.post(url, headers=support, json={"reason": "     "}).status_code == 422  # yalnızca boşluk
+    assert client.post(url, headers=finance, json={"reason": "Şikâyet #12"}).status_code == 403
+    r = client.post(url, headers=support, json={"reason": "  Şikâyet #12: erken bitirme  "})
+    assert r.status_code == 200, r.text
+    chat = r.json()
+    assert [m["sender"] for m in chat["messages"]] == ["driver", "customer"]
+    assert chat["messages"][0]["driver_name"] == chat["legs"][0]["driver_name"] and chat["retention_days"] == 30
+    log = db.scalar(select(AuditLog).where(AuditLog.entity_id == str(booking.id), AuditLog.action == "booking.chat_view"))
+    assert log is not None and log.changes["reason"] == "Şikâyet #12: erken bitirme"
+    # Personel okuması "okundu" işaretlemez: iki taraf da sohbeti açmadığı için ikisi de okunmamış kalır.
+    db.expire_all()
+    assert [m.read_at for m in db.scalars(select(TripMessage).where(TripMessage.booking_leg_id == booking.legs[0].id))]         == [None, None]
+
+    rows = client.get(f"{API}/admin/trips/customer-finished", headers=support).json()
+    row = next(x for x in rows if x["booking_code"] == code)
+    assert row["leg_id"] == leg_id and row["actual_minutes"] == 0 and row["early"] is True
+    assert row["started_at"] and row["finished_at"]
+    assert any(x["booking_code"] == code for x in
+               client.get(f"{API}/admin/trips/customer-finished", headers=support, params={"early": True}).json())
+    yesterday = date.today().replace(day=1).isoformat() if date.today().day > 1 else "2000-01-01"
+    assert all(x["booking_code"] != code for x in client.get(
+        f"{API}/admin/trips/customer-finished", headers=support,
+        params={"date_from": "2000-01-01", "date_to": "2000-01-02"}).json())
+    assert any(x["booking_code"] == code for x in client.get(
+        f"{API}/admin/trips/customer-finished", headers=support, params={"date_from": yesterday}).json())
+
+    # Sürücünün kendisinin bitirdiği yolculuk listede yer almaz.
+    driver2, _, code2, leg2 = _accepted(client, ops)
+    kemer = _region(client, "kemer")
+    for event in ("yola_cikti", "vardi", "basladi"):
+        assert _event(client, driver2, leg2, event).status_code == 200
+    assert _event(client, driver2, leg2, "bitti", (float(kemer["latitude"]), float(kemer["longitude"]))).status_code == 200
+    assert all(x["booking_code"] != code2 for x in
+               client.get(f"{API}/admin/trips/customer-finished", headers=support).json())
+
+    assert client.get(f"{API}/admin/trips/customer-finished", headers=finance).status_code == 403

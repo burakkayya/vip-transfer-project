@@ -224,6 +224,17 @@ Hazırlık: admin paneli (3001), operasyon yetkili personel. Müşteri web sites
 10. Ödeme süresi dolan ve ödenmeyen rezervasyon saatlik görevde "ödeme süresi doldu" ile iptal olur (genel 30 dk değil, rezervasyondaki süre).
 11. Elle tahsil edilmiş rezervasyon iptal edilirse iade **Beklemede** kalır; muhasebe **Ödemeler ve iadeler**de **Elle iade yapıldı** ile dekont bilgisini girip kapatır, ödeme "İade edildi" olur.
 12. Liste: **Kaynak = Admin girişi** filtresi ve "Admin · WhatsApp" sütunu.
+### 16. Web'de yolculuk araçları ve admin şikâyet incelemesi (K-55)
+
+Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürücü uygulamasında iş kabul edilmiş olmalı.
+
+1. Müşteri `http://localhost:3000/tr/bookings/{kod}` sayfasını açar. Sürücü atanınca sürücü kartının altında **Sürücüye yaz** çıkar; sürücü mesaj yazdıysa düğmede kırmızı sayı rozeti.
+2. **Sürücüye yaz** → "{ad} ile mesajlaşma" paneli. Hazır cevaplar (Geliyorum, Bagajları alıyorum, Kapıdayım, Neredesiniz?) tek dokunuşla gider; serbest metin Enter ile gönderilir (Shift+Enter yeni satır). Son mesajın altında karşı taraf okuyunca "Okundu". Sürücüye bildirim gider.
+3. Sürücü **Yola çıktım** deyince sayfa en geç 20 sn içinde yenilenir; kartta siyah satır "Sürücünüz ~N dk uzakta", **Vardım** sonrası "Sürücünüz alış noktasında", **Yolcu alındı** sonrası "Varışa ~N dk".
+4. Yolcu araçtayken **Yolculuğu bitir** → "Yolculuk tamamlandı sayılır. Sabit fiyat değişmez ve iade yapılmaz." **Vazgeç** paneli kapatır; onaylayınca "Yolculuğunuz tamamlandı", durum **Tamamlandı**, sohbet düğmesi **Mesajları gör** (salt okunur). Sürücüye "Yolcu yolculuğu bitirdi".
+5. Telefonda (390 px) sohbet paneli taşma yapmaz, yazma alanı ve **Gönder** alt alta.
+6. Admin **Müşteri bitirişleri**: yolculuğu müşterinin bitirdiği bacaklar; "Süre (gerçek / plan)" ve planın yarısından kısa bitenlerde **Erken**. **Yalnızca erken bitenler** filtresi.
+7. Koda tıklayıp rezervasyon detayı → **Müşteri–sürücü mesajları**: gerekçe (en az 5 karakter) yazılmadan **Mesajları göster** kapalı; gerekçeyle açılınca yazışma sürücü/müşteri adıyla ve okundu zamanıyla görünür, "Bu görüntüleme denetim kaydına yazıldı". **Denetim kayıtları**nda `booking.chat_view` ve gerekçe. Muhasebe rolü bu sayfaları görmez.
 
 ## Otomatik testler
 
@@ -231,7 +242,7 @@ Hazırlık: admin paneli (3001), operasyon yetkili personel. Müşteri web sites
 - **Lint taban çizgisi**: `node scripts/lint-baseline.mjs <web|admin|mobile>`. İhlal sayısı `scripts/lint-baseline.json` değerini aşarsa başarısız olur; ihlal giderildiyse aynı dosyadaki sayı düşürülür.
 - **Getaway: Backend testleri**: iş kuralları, API, adres ve ilçe çözümleme, ödeme, eşleştirme ve WebSocket.
 - **Getaway: Tip denetimi (web, admin, mobil)**.
-- **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır. Admin manuel rezervasyon akışı: `cd admin && npx playwright test manual-booking --workers=1` (müşteri ekleme, fiyat, oluşturma, elle tahsilat, axe).
+- **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır. Admin manuel rezervasyon akışı: `cd admin && npx playwright test manual-booking --workers=1`; şikâyet incelemesi: `npx playwright test trip-review --workers=1`; web yolculuk araçları: `cd web && npx playwright test trip-tools --workers=1` (müşteri ekleme, fiyat, oluşturma, elle tahsilat, axe).
 - **Lint**: `npm run lint` (`web`, `admin`, `mobile`). Taban çizgisindeki bilinen ihlaller nedeniyle sıfırdan farklı çıkış beklenir (web 3 hata/1 uyarı, admin 1/2, mobil 7/2; `docs/ui-review/lint-taban.md`); sayılar artmamalıdır.
 - **Web ortak dosyalar** (`cd web && npx playwright test shared`, iki proje): üst bilgide axe ihlali yok, eşleşmeyen adres (`/tr/yok`) yerel 404 çizer (`html[lang=tr]`, `h1` "404", durum 404, üst bilgi ve "Ana sayfaya dön"), Tab ile odaklanan düğmede 2 px lake siyah halka, yer tutucunun gerçek zemine karşı WCAG kontrastı dinlenme ve üzerine gelme halinde ≥ 4,5 (ana sayfa adres alanı, rezervasyon kodu alanı), 390 px'te açık mobil menü Esc ile kapanır ve odak menü düğmesine döner, hareket azaltmada adım çizgisi dolu. Geliştirme sunucusunda kararlı sonuç için `--workers=1`.
 - **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).

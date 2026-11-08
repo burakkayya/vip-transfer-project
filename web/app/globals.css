@@ -1669,6 +1669,194 @@ dl.summary.booking-facts {
   overflow-wrap: anywhere;
 }
 
+/* Yolculuk araçları: kalan süre, sürücüyle mesajlaşma, yolculuğu bitirme (K-48, K-50, K-51). */
+.eta-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-actions .btn {
+  position: relative;
+}
+
+.count-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--paper);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chat-head h2 {
+  margin: 0;
+}
+
+.chat-scroll {
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-sm);
+}
+
+.chat-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chat-head .btn.small {
+  min-height: 44px;
+}
+
+.chat-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-list li {
+  display: flex;
+  flex-direction: column;
+  max-width: min(80%, 520px);
+}
+
+.chat-list li.mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.chat-list li.theirs {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.chat-bubble {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.chat-list li.mine .chat-bubble {
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom-right-radius: 6px;
+}
+
+.chat-list li.theirs .chat-bubble {
+  background: var(--soft);
+  color: var(--text);
+  border-bottom-left-radius: 6px;
+}
+
+.chat-time {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-empty,
+.chat-closed {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--ink);
+  background: var(--soft);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chip[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.chat-compose {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.chat-compose textarea {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+}
+
+.chat-compose textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+@media (max-width: 560px) {
+  .chat-compose {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .chat-list li {
+    max-width: 88%;
+  }
+}
+
 /* Canlı takip: yalnızca son güncelleme taze iken yeşil ve nabızlı; eskiyince kehribar, nabız yok. */
 .live-box {
   display: grid;

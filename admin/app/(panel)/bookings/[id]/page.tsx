@@ -6,6 +6,7 @@ import { useCan } from "@/components/Shell";
 import { Badge, ErrorBox, Field, Msg, PageHead, Table, useAction, useData } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dt, money, pct } from "@/lib/format";
+import ChatReview from "@/components/ChatReview";
 import ManualBookingPanel, { type ManualInfo } from "@/components/ManualBookingPanel";
 import {
   BOOKING_STATUS,
@@ -189,6 +190,8 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             ]} />
         </div>
       </div>
+
+      {b.legs.some((l) => l.driver) && can("operasyon", "destek") && <ChatReview bookingId={id} />}
 
       <h2>Ödemeler</h2>
       <Table

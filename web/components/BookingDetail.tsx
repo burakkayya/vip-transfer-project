@@ -16,10 +16,14 @@ import { ErrorState } from "./ErrorState";
 import Icon from "./Icon";
 import { useSessionExpired } from "./RequireLogin";
 import { LoadingState } from "./States";
+import { CHAT_OPEN, ChatPanel, EtaLine, FinishPanel, useTripEta, useUnread } from "./TripTools";
 
 const TRACKABLE = new Set(["yolda", "vardi", "basladi"]);
 const LEG_FLOW = ["beklemede", "atandi", "yolda", "vardi", "basladi", "bitti"];
 const CANCELLABLE = new Set<BookingStatus>(["odeme_bekliyor", "onaylandi", "atandi"]);
+/** Sürücü ilerledikçe (atandı → yolda → başladı) durum sayfa yenilenmeden güncellensin. */
+const ACTIVE = new Set<BookingStatus>(["onaylandi", "atandi", "yolculukta"]);
+const REFRESH_MS = 20_000;
 /** Canlı konum yoklama aralığı. */
 const POLL_MS = 5000;
 /** Konum zamanı bu süreden uzun değişmediyse konum canlı gösterilmez (3 yoklama aralığı, K-44). */
@@ -159,6 +163,27 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
 
   const tracking = booking?.legs.some((l) => TRACKABLE.has(l.status)) ?? false;
   const live = useDriverLocation(props.code, tracking);
+  const eta = useTripEta(props.code, tracking);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const hasDriver = booking?.legs.some((l) => l.driver) ?? false;
+  const chatLive = booking?.legs.some((l) => l.driver && CHAT_OPEN.has(l.status)) ?? false;
+  const unread = useUnread(props.code, chatLive && !chatOpen);
+  const canFinish = booking?.legs.some((l) => l.status === "basladi") ?? false;
+
+  // Etkin rezervasyon 20 sn'de bir sessizce yenilenir (durum, sürücü ataması). Hata gösterilmez.
+  usePoll(
+    async ({ signal, current }) => {
+      try {
+        const b = await api<Booking>(`me/bookings/${props.code}`, { signal });
+        if (current()) setBooking(b);
+      } catch (e) {
+        if (current() && isUnauthorized(e)) sessionExpired();
+      }
+    },
+    { enabled: booking !== null && ACTIVE.has(booking.status), intervalMs: REFRESH_MS, timeoutMs: REFRESH_MS - 2000 },
+  );
 
   async function previewCancel() {
     if (previewing) return;
@@ -255,6 +280,11 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
           {t("cancelled")}
         </p>
       )}
+      {finished && (
+        <p className="alert ok" role="status" tabIndex={-1} ref={noticeRef}>
+          {t("finishDone")}
+        </p>
+      )}
 
       <section className="card elevated booking-head" aria-labelledby="booking-code">
         <div className="booking-head-main">
@@ -344,10 +374,54 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
                 </p>
               )
             )}
+            {leg.driver && <EtaLine eta={eta} legId={leg.id} status={leg.status} />}
             {TRACKABLE.has(leg.status) && <LiveBox {...live} />}
           </section>
         );
       })}
+
+      {(hasDriver || canFinish) && !chatOpen && !finishing && (
+        <div className="booking-actions trip-actions">
+          {hasDriver && (
+            <button className="btn primary" type="button" onClick={() => setChatOpen(true)}>
+              <Icon name="chat" size={18} /> {chatLive ? t("chatOpen") : t("chatHistory")}
+              {unread.unread > 0 && (
+                <span className="count-badge">
+                  {unread.unread}
+                  <span className="sr-only"> {t("chatUnread")}</span>
+                </span>
+              )}
+            </button>
+          )}
+          {canFinish && (
+            <button className="btn secondary" type="button" onClick={() => setFinishing(true)}>
+              <Icon name="check" size={18} /> {t("finishButton")}
+            </button>
+          )}
+        </div>
+      )}
+      {chatOpen && (
+        <ChatPanel
+          code={props.code}
+          onRead={() => unread.setUnread(0)}
+          onClose={() => {
+            setChatOpen(false);
+            void unread.refresh();
+          }}
+        />
+      )}
+      {finishing && (
+        <FinishPanel
+          code={props.code}
+          onCancel={() => setFinishing(false)}
+          onDone={(b) => {
+            setBooking(b);
+            setFinishing(false);
+            setFinished(true);
+            pendingFocus.current = "notice";
+          }}
+        />
+      )}
 
       <section className="card" aria-label={t("details")}>
         <dl className="summary booking-facts">
@@ -473,7 +547,7 @@ function LiveBox(props: { location: DriverLocation | null; mode: LiveMode; refre
         <p className="live-meta">
           <span>{t("liveUpdated", { time: clockTime(location.at, locale) })}</span>
           <a
-            href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=16/${location.lat}/${location.lng}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`}
             target="_blank"
             rel="noreferrer"
           >
