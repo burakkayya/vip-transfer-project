@@ -12,6 +12,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, Money, Rate, created_at, str_enum, uuid_pk
 from app.models.customer import Customer
 from app.models.enums import (
+    BookingChannel,
+    BookingSource,
     BookingStatus,
     BookingType,
     Currency,
@@ -74,6 +76,18 @@ class Booking(Base):
     cancelled_at: Mapped[datetime | None]
     cancel_reason: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = created_at()
+
+    # K-54 admin girişi: kaynak, kanal, oluşturan personel; ödeme son anı (boşsa pending_payment_minutes);
+    # fiyat elle değiştirildiyse sistemin hesapladığı tutar ve gerekçe.
+    source: Mapped[BookingSource] = mapped_column(
+        str_enum(BookingSource, 16), default=BookingSource.CUSTOMER, server_default=BookingSource.CUSTOMER.value,
+        index=True,
+    )
+    channel: Mapped[BookingChannel | None] = mapped_column(str_enum(BookingChannel, 16))
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    payment_due_at: Mapped[datetime | None]
+    system_total_amount: Mapped[Decimal | None] = mapped_column(Money)
+    price_override_reason: Mapped[str | None] = mapped_column(String(500))
 
     customer: Mapped[Customer] = relationship(lazy="joined")
     vehicle_type: Mapped[VehicleType] = relationship(lazy="joined")

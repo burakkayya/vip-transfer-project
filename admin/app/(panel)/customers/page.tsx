@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import CustomerForm from "@/components/CustomerForm";
 import { useCan } from "@/components/Shell";
 import { ErrorBox, Field, Msg, PageHead, Table, useAction, useData, usePager } from "@/components/ui";
 import { api, withQuery } from "@/lib/api";
@@ -21,7 +23,9 @@ interface Customer {
 
 /** Ekran 14: müşteriler. Hassas alanlar maskeli; telefonla yalnızca tam eşleşme araması yapılır. */
 export default function CustomersPage() {
-  const isAdmin = useCan()();
+  const can = useCan();
+  const isAdmin = can();
+  const [adding, setAdding] = useState(false);
   const [phone, setPhone] = useState("");
   const [query, setQuery] = useState("");
   const { limit, offset, setOffset, pager } = usePager();
@@ -36,7 +40,27 @@ export default function CustomersPage() {
 
   return (
     <div className="stack">
-      <PageHead title="Müşteriler" />
+      <PageHead title="Müşteriler">
+        {!adding && can("operasyon", "destek") && (
+          <button className="btn" type="button" onClick={() => setAdding(true)}>Müşteri ekle</button>
+        )}
+        {can("operasyon") && <Link href="/bookings/new" className="btn secondary">Yeni rezervasyon</Link>}
+      </PageHead>
+      {adding && (
+        <section className="card stack" aria-labelledby="new-customer">
+          <div className="row spread">
+            <h2 id="new-customer">Yeni müşteri</h2>
+            <button className="btn link" type="button" onClick={() => setAdding(false)}>Kapat</button>
+          </div>
+          <p className="hint">
+            WhatsApp, telefon vb. kanaldan ulaşan ve uygulamayı kullanmayan müşteri. İsterse sonra aynı numarayla SMS koduyla siteye girer.
+          </p>
+          <CustomerForm
+            onCreated={(c) => { setAdding(false); setPhone(""); setQuery(""); action.setMessage({ ok: true, text: `${c.full_name} eklendi.` }); void reload(); }}
+            onExisting={(p) => { setAdding(false); setPhone(p); setQuery(p); setOffset(0); }}
+          />
+        </section>
+      )}
       <Msg message={action.message} />
       <form className="card row end" onSubmit={(e) => { e.preventDefault(); setQuery(phone.trim()); setOffset(0); }}>
         <Field label="Telefon (tam numara)" hint="Uluslararası biçimde: +4915112345678">

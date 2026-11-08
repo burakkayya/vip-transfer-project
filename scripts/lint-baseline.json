@@ -1,0 +1,5 @@
+{
+  "web": { "errors": 0, "warnings": 0 },
+  "admin": { "errors": 1, "warnings": 2 },
+  "mobile": { "errors": 5, "warnings": 1 }
+}

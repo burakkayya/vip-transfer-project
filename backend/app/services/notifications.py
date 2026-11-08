@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import Booking, Driver, Notification, NotificationTemplate
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.providers.push import get_push_sender
@@ -59,7 +60,15 @@ def booking_params(booking: Booking) -> dict[str, str]:
         "dropoff": leg.dropoff_region.name,
         "total": f"{booking.total_amount:.2f}",
         "currency": booking.currency.value,
+        "booking_url": booking_url(booking),
+        "pay_url": booking_url(booking) + "/pay",
     }
+
+
+def booking_url(booking: Booking) -> str:
+    """Müşteri web sitesinde rezervasyon detayı. Açınca telefonla SMS kodu girişi istenir (K-16)."""
+    base = get_settings().public_web_url.rstrip("/")
+    return f"{base}/{booking.locale}/bookings/{booking.booking_code}"
 
 
 def _record(db: Session, recipient_type: str, recipient_id, channel, code, ok: bool, error: str | None):

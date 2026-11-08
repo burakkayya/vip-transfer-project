@@ -14,6 +14,7 @@ from app.models.enums import (
     Currency,
     InvoiceStatus,
     LedgerStatus,
+    ManualPaymentMethod,
     PaymentProviderCode,
     PaymentStatus,
     PayoutStatus,
@@ -40,6 +41,10 @@ class Payment(Base):
     checkout_url: Mapped[str | None] = mapped_column(String(1000))
     paid_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = created_at()
+    # Elle tahsilat (K-54): yöntem, kaydeden personel ve not. Dekont veya POS referansı provider_ref'te.
+    manual_method: Mapped[ManualPaymentMethod | None] = mapped_column(str_enum(ManualPaymentMethod, 16))
+    recorded_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    note: Mapped[str | None] = mapped_column(String(500))
 
     refunds: Mapped[list[Refund]] = relationship(back_populates="payment", lazy="selectin")
 

@@ -533,6 +533,84 @@ pre.json {
   border-radius: 10px;
 }
 
+/* K-54 manuel rezervasyon formu */
+.card .row.end:has(.field .hint),
+.stack > .row.end:has(.field .hint) {
+  padding-bottom: 22px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.check.option {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+
+.check.option:has(input:checked) {
+  border-color: var(--ink);
+  background: var(--soft);
+}
+
+.check.option.disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+
+fieldset.place {
+  margin: 0;
+  min-width: 0;
+}
+
+fieldset.place legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.suggest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.suggest li + li {
+  border-top: 1px solid var(--line);
+}
+
+.suggest button {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.suggest button:hover,
+.suggest button:focus-visible {
+  background: var(--soft);
+}
+
+.suggest button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.share-text {
+  white-space: pre-wrap;
+}
+
 @media (max-width: 900px) {
   .login-page {
     grid-template-columns: 1fr;

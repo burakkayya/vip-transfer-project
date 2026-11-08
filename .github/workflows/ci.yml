@@ -1,0 +1,119 @@
+# Her PR'da ve main'e her gönderimde testler, tip denetimi ve lint taban çizgisi (K-53).
+# Gizli anahtar gerekmez: backend testleri sahte sağlayıcılarla (SMS, ödeme, rota, adres) çalışır.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: getaway
+          POSTGRES_PASSWORD: getaway
+          POSTGRES_DB: getaway_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U getaway"
+          --health-interval 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      GETAWAY_DATABASE_URL: postgresql+psycopg://getaway:getaway@localhost:5432/getaway_test
+      GETAWAY_REDIS_URL: redis://localhost:6379/15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      # redis==8.1.0 ile arq 0.28.0 (redis<6) bildirimi çakışıyor (docs/acik_konular.md);
+      # yerelde olduğu gibi redis bağımlılık çözümü dışında kurulur.
+      - name: Bağımlılıklar
+        run: |
+          grep -v '^redis==' requirements.txt > /tmp/req.txt
+          pip install -r /tmp/req.txt
+          pip install --no-deps "$(grep '^redis==' requirements.txt)"
+      - name: Testler
+        run: python -m pytest -q
+
+  mobile:
+    name: Mobil (tsc, jest, lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - name: Tip denetimi
+        run: npm run typecheck
+      - name: Birim testleri
+        run: npm test -- --ci
+      - name: Lint taban çizgisi
+        run: node ../scripts/lint-baseline.mjs mobile
+
+  web:
+    name: ${{ matrix.app }} (tsc, lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web, admin]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - name: Tip denetimi
+        run: npm run typecheck
+      - name: Lint taban çizgisi
+        run: node ../scripts/lint-baseline.mjs ${{ matrix.app }}
+
+  scripts:
+    name: Kök betikler ve renk tokenları
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Betik testleri
+        run: node --test scripts/*.test.mjs
+      - name: Token uyumu
+        run: node scripts/sync-tokens.mjs --check

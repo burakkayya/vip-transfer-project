@@ -156,6 +156,27 @@ class PaymentProviderCode(str, Enum):
     PAYTR = "paytr"
     IYZICO = "iyzico"
     FAKE = "fake"
+    # Admin'in elle kaydettiği tahsilat (havale/EFT, ofiste nakit, fiziki POS); sağlayıcı çağrılmaz (K-54).
+    MANUAL = "elle"
+
+
+class BookingSource(str, Enum):
+    CUSTOMER = "musteri"  # web veya mobil uygulamadan müşterinin kendisi
+    ADMIN = "admin"  # WhatsApp, telefon vb. kanaldan admin girişi (K-54)
+
+
+class BookingChannel(str, Enum):
+    WHATSAPP = "whatsapp"
+    PHONE = "telefon"
+    EMAIL = "eposta"
+    WALK_IN = "yuz_yuze"
+    OTHER = "diger"
+
+
+class ManualPaymentMethod(str, Enum):
+    BANK_TRANSFER = "havale"
+    CASH = "nakit"
+    POS = "pos"
 
 
 class PaymentStatus(str, Enum):

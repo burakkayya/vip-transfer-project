@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Badge, ErrorBox, Field, PageHead, Select, Table, useData, usePager } from "@/components/ui";
 import { withQuery } from "@/lib/api";
 import { dt, money } from "@/lib/format";
-import { BOOKING_STATUS, BOOKING_TYPE } from "@/lib/labels";
+import { useCan } from "@/components/Shell";
+import { BOOKING_CHANNEL, BOOKING_SOURCE, BOOKING_STATUS, BOOKING_TYPE } from "@/lib/labels";
 
 interface Row {
   id: string;
@@ -18,11 +19,14 @@ interface Row {
   currency: string;
   customer_phone: string;
   created_at: string;
+  source: string;
+  channel: string | null;
 }
 
 /** Ekran 3: rezervasyon listesi. Müşteri telefonu maskeli gelir. */
 export default function BookingsPage() {
-  const [filters, setFilters] = useState({ status: "", code: "", date_from: "", date_to: "" });
+  const can = useCan();
+  const [filters, setFilters] = useState({ status: "", code: "", source: "", date_from: "", date_to: "" });
   const { limit, offset, setOffset, pager } = usePager();
   const { data, error } = useData<Row[]>(withQuery("admin/bookings", { ...filters, limit, offset }));
   const set = (k: keyof typeof filters, v: string) => {
@@ -32,10 +36,15 @@ export default function BookingsPage() {
 
   return (
     <div className="stack">
-      <PageHead title="Rezervasyonlar" />
+      <PageHead title="Rezervasyonlar">
+        {can("operasyon") && <Link href="/bookings/new" className="btn">Yeni rezervasyon</Link>}
+      </PageHead>
       <div className="card row end">
         <Field label="Durum">
           <Select value={filters.status} onChange={(v) => set("status", v)} options={BOOKING_STATUS} empty="Tümü" />
+        </Field>
+        <Field label="Kaynak">
+          <Select value={filters.source} onChange={(v) => set("source", v)} options={BOOKING_SOURCE} empty="Tümü" />
         </Field>
         <Field label="Kod">
           <input value={filters.code} placeholder="GA..." maxLength={8}
@@ -56,6 +65,11 @@ export default function BookingsPage() {
           { key: "code", title: "Kod", render: (r) => <Link href={`/bookings/${r.id}`} className="mono">{r.booking_code}</Link> },
           { key: "status", title: "Durum", render: (r) => <Badge value={r.status} labels={BOOKING_STATUS} /> },
           { key: "type", title: "Tür", render: (r) => BOOKING_TYPE[r.booking_type] ?? r.booking_type },
+          {
+            key: "source",
+            title: "Kaynak",
+            render: (r) => (r.source === "admin" ? `Admin · ${BOOKING_CHANNEL[r.channel ?? ""] ?? r.channel ?? ""}` : "Müşteri"),
+          },
           { key: "at", title: "Alış", render: (r) => dt(r.pickup_at) },
           { key: "route", title: "Rota", render: (r) => r.route },
           { key: "phone", title: "Müşteri", render: (r) => <span className="mono">{r.customer_phone}</span> },

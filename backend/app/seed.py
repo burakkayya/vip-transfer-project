@@ -90,6 +90,19 @@ TEMPLATES = [
      "Ihre Buchung ist bestaetigt. Code: {booking_code}, {pickup_at} {pickup} > {dropoff}. getawaytransfers.com"),
     ("booking_confirmed", "ru", NotificationChannel.SMS,
      "Vashe bronirovanie podtverzhdeno. Kod: {booking_code}, {pickup_at} {pickup} > {dropoff}. getawaytransfers.com"),
+    # K-54: admin'in oluşturduğu, ödemesi beklenen rezervasyon. Bağlantı web'de SMS koduyla girişe açılır.
+    ("booking_created_admin", "tr", NotificationChannel.SMS,
+     "Getaway Transfers rezervasyonunuz olusturuldu. Kod: {booking_code}, {pickup_at} {pickup} > {dropoff}, "
+     "{total} {currency}. Odeme: {pay_url}"),
+    ("booking_created_admin", "en", NotificationChannel.SMS,
+     "Your Getaway Transfers booking is created. Code: {booking_code}, {pickup_at} {pickup} > {dropoff}, "
+     "{total} {currency}. Pay here: {pay_url}"),
+    ("booking_created_admin", "de", NotificationChannel.SMS,
+     "Ihre Getaway Transfers Buchung wurde erstellt. Code: {booking_code}, {pickup_at} {pickup} > {dropoff}, "
+     "{total} {currency}. Zahlung: {pay_url}"),
+    ("booking_created_admin", "ru", NotificationChannel.SMS,
+     "Vashe bronirovanie Getaway Transfers sozdano. Kod: {booking_code}, {pickup_at} {pickup} > {dropoff}, "
+     "{total} {currency}. Oplata: {pay_url}"),
     ("dispatch_offer", "tr", NotificationChannel.PUSH, "Yeni iş: {pickup} > {dropoff}"),
 ]
 

@@ -1,5 +1,7 @@
 # Lint taban çizgisi
 
+> 2026-11-08: güncel sınırlar `scripts/lint-baseline.json` dosyasındadır (web 0/0, admin 1/2, mobil 5/1) ve CI'da `scripts/lint-baseline.mjs` ile denetlenir. Aşağıdaki tablolar 2026-11-02 ölçümüdür.
+
 ESLint 9 (flat config; `next/core-web-vitals` + `plugin:jsx-a11y/recommended`) ile ölçülen mevcut ihlaller. Bunlar düzeltilmedi ve susturulmadı; ekran görevleri ilgili dosyaya dokunduğunda giderilir, plan kapanışında lint sıfır ihlalle zorunlu olur.
 
 Ölçüm tarihi: 2026-11-02, dal `chore/ui-infra`. Komut: `cd web && npx eslint .`
