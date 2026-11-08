@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from decimal import Decimal
 from functools import lru_cache
 
 import redis
@@ -15,7 +16,8 @@ import redis
 from app.config import get_settings
 from app.errors import ServiceUnavailable
 from app.models import BookingLeg
-from app.providers.routing import Point, get_routing
+from app.providers.polyline import decode, encode
+from app.providers.routing import Point, get_routing, haversine_km
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +60,48 @@ def _store(leg: BookingLeg, value: str, ttl: int) -> None:
         _redis().set(_key(leg.id), value, ex=ttl)
     except redis.RedisError:
         log.warning("rota çizgisi önbelleğe yazılamadı", exc_info=True)
+
+
+def preview_polyline(leg: BookingLeg, trim_m: float | None = None) -> str:
+    """Kabul öncesi gösterilen rota: iki uç `trim_m` metre kırpılır, kesin adres haritadan okunamaz.
+
+    Rota alınamazsa bölge merkezleri (herkese açık) arasında düz çizgi döner.
+    """
+    trim = get_settings().job_preview_trim_m if trim_m is None else trim_m
+    line = route_polyline(leg)
+    if line:
+        points = decode(line)
+    else:
+        points = [
+            (float(leg.pickup_region.latitude), float(leg.pickup_region.longitude)),
+            (float(leg.dropoff_region.latitude), float(leg.dropoff_region.longitude)),
+        ]
+        return encode(points)
+    return encode(trim_ends(points, trim))
+
+
+def trim_ends(points: list[tuple[float, float]], meters: float) -> list[tuple[float, float]]:
+    """Çizginin baştan ve sondan `meters` kadarını atar; çizgi çok kısaysa orta bölümü bırakır."""
+    if len(points) < 3 or meters <= 0:
+        return points
+
+    def cut(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+        walked = 0.0
+        for i in range(1, len(pts)):
+            walked += _meters(pts[i - 1], pts[i])
+            if walked >= meters:
+                return pts[i:]
+        return pts[len(pts) // 2:]
+
+    head = cut(points)
+    tail = cut(list(reversed(head)))
+    out = list(reversed(tail))
+    return out if len(out) >= 2 else points[len(points) // 2 - 1: len(points) // 2 + 1]
+
+
+def _meters(a: tuple[float, float], b: tuple[float, float]) -> float:
+    return float(haversine_km(Point(Decimal(str(a[0])), Decimal(str(a[1]))),
+                              Point(Decimal(str(b[0])), Decimal(str(b[1]))))) * 1000
 
 
 def route_polyline(leg: BookingLeg) -> str | None:

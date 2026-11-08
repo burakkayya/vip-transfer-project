@@ -116,7 +116,12 @@ export default function AddressField(props: {
       try {
         const qs = new URLSearchParams({ session: session.current, lang: locale });
         const d = await api<PlaceDetails>(`places/${encodeURIComponent(o.place.place_id)}?${qs}`);
-        props.onChange({ label: o.title, region: d.region, place_token: d.place_token });
+        props.onChange({
+          label: o.title,
+          region: d.region,
+          place_token: d.place_token,
+          point: { lat: Number(d.lat), lng: Number(d.lng) },
+        });
       } catch (e) {
         setError(errorText(e));
         return;

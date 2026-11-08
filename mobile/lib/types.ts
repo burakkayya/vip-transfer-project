@@ -9,6 +9,8 @@ export interface Region {
   name: string;
   type: "ilce" | "havalimani";
   iata_code: string | null;
+  latitude?: string;
+  longitude?: string;
 }
 
 export interface VehicleType {
@@ -22,7 +24,7 @@ export interface VehicleType {
 export interface Quote {
   vehicle_type_code: string;
   is_round_trip: boolean;
-  legs: { pickup_region_id: number; dropoff_region_id: number; pickup_at: string; distance_km: string; duration_minutes: number; price: string }[];
+  legs: { pickup_region_id: number; dropoff_region_id: number; pickup_at: string; distance_km: string; duration_minutes: number; price: string; route_polyline?: string | null }[];
   price: string;
   guarantee_fee: string;
   total: string;
@@ -111,6 +113,11 @@ export interface Trip {
   currency: Currency;
   /** Rota çizgisi (Google encoded polyline). Tekil yolculuk, teklif kabulü ve olaylarda dolu; listelerde null. */
   route_polyline?: string | null;
+  booking_type?: "anlik" | "planli";
+  dropoff_lat?: string | null;
+  dropoff_lng?: string | null;
+  distance_km?: string | null;
+  duration_minutes?: number | null;
 }
 
 export interface Offer {
@@ -157,6 +164,8 @@ export interface PlaceSuggestion {
 export interface PlaceDetails {
   place_token: string;
   address: string;
+  lat?: string;
+  lng?: string;
   region: Region;
 }
 
@@ -165,4 +174,72 @@ export interface Endpoint {
   label: string;
   region: Region;
   place_token?: string;
+  /** Seçilen adresin tam konumu (adres aramasından); yoksa bölge merkezi kullanılır. */
+  point?: { latitude: number; longitude: number };
+}
+
+// --- Uber tarzı akış (K-47..K-51) ---------------------------------------------
+
+/** Kabul öncesi havuz işi: yolcu adı kısaltılmış, adres yok, harita uçları kırpılmış. */
+export interface Job {
+  leg_id: string;
+  booking_code: string;
+  booking_type: "anlik" | "planli";
+  pickup_at: string;
+  pickup_region: string;
+  dropoff_region: string;
+  passenger_initial: string;
+  passenger_count: number;
+  luggage_count: number;
+  has_flight: boolean;
+  vehicle_type: string;
+  distance_km: string;
+  duration_minutes: number | null;
+  driver_amount: string;
+  currency: Currency;
+  pickup_distance_km: string | null;
+  offer_expires_at: string | null;
+  preview_polyline: string | null;
+}
+
+export interface Approach {
+  target: "pickup" | "dropoff";
+  target_lat: number;
+  target_lng: number;
+  polyline: string | null;
+  distance_km: string | null;
+  duration_minutes: number | null;
+  finish_distance_m: number | null;
+  finish_radius_m: number | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: "customer" | "driver";
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface Chat {
+  open: boolean;
+  unread: number;
+  other_name: string;
+  messages: ChatMessage[];
+}
+
+export interface TripUpdate {
+  id: string;
+  code: string;
+  title: string;
+  body: string;
+  data: { type?: string; booking_code?: string; leg_id?: string };
+  created_at: string;
+}
+
+export interface Eta {
+  leg_id: string | null;
+  status: string | null;
+  eta_minutes: number | null;
+  location: DriverLocation | null;
 }

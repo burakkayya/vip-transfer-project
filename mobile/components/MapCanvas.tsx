@@ -6,6 +6,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import MapView, { Marker, Polyline, type MapStyleElement, type Region } from "react-native-maps";
 import { useReducedMotion } from "react-native-reanimated";
 
+import { GOOGLE_MAPS_IOS } from "@/lib/config";
 import { decodePolyline } from "@/lib/polyline";
 import { palette } from "@/lib/tokens";
 import type { LatLng, MapCanvasProps } from "./mapTypes";
@@ -18,6 +19,8 @@ export const ANTALYA_REGION: Region = { latitude: 36.8969, longitude: 30.7133, l
 /** Varsayılan alt panel örtüsü (MapSheet: harita mapH+40, panel mapH-26'da başlar). */
 const DEFAULT_HIDDEN_BOTTOM = 66;
 const EDGE = 40;
+/** Harita durum çubuğu ve geri düğmesinin altına uzanır; nokta bu bantta kalmasın. */
+const TOP_INSET = 56;
 
 /**
  * Android (Google Maps) koyu harita stili; renkler palet tokenlarından. iOS Apple Maps
@@ -61,7 +64,10 @@ export default function MapCanvas(props: MapCanvasProps) {
   const ref = useRef<MapView>(null);
   const [ready, setReady] = useState(false);
   const reduceMotion = useReducedMotion();
-  const route = useMemo(() => (props.route ? decodePolyline(props.route) : []), [props.route]);
+  const decoded = useMemo(() => (props.route ? decodePolyline(props.route) : []), [props.route]);
+  // Rota yoksa (teklif alınmadan önce) seçilen noktalar gösterilir; iki nokta kesikli çizgiyle bağlanır.
+  const preview = decoded.length < 2 && (props.endpoints?.length ?? 0) > 0;
+  const route = preview ? (props.endpoints as LatLng[]) : decoded;
   const driver = props.driver ?? null;
   const bottom = props.hiddenBottom ?? DEFAULT_HIDDEN_BOTTOM;
   const line = props.dark ? palette.paper : palette.lacquerBlack;
@@ -83,7 +89,7 @@ export default function MapCanvas(props: MapCanvasProps) {
     // Kenar payı iki platformda da dp: react-native-maps Android'de yoğunlukla kendisi çarpar
     // (MapView.java appendMapPadding); JS'te ölçeklemek payı iki kez büyütür.
     map.fitToCoordinates(fitPoints, {
-      edgePadding: { top: EDGE, right: EDGE, bottom: bottom + EDGE, left: EDGE },
+      edgePadding: { top: EDGE + TOP_INSET, right: EDGE, bottom: bottom + EDGE, left: EDGE },
       animated,
     });
   }, [ready, fitPoints, bottom, reduceMotion]);
@@ -93,8 +99,10 @@ export default function MapCanvas(props: MapCanvasProps) {
   const [driverDrawn, setDriverDrawn] = useState(false);
 
   const summary = props.accessibilitySummary;
-  const pickup = route[0];
-  const dropoff = route.length > 1 ? route[route.length - 1] : undefined;
+  // İşaretler: verilmişse `stops` (ör. sürücü → alış rotasında yalnızca alış), yoksa rotanın uçları.
+  const stops = props.stops;
+  const pickup = stops ? stops.pickup ?? undefined : route[0];
+  const dropoff = stops ? stops.dropoff ?? undefined : route.length > 1 ? route[route.length - 1] : undefined;
 
   return (
     <View
@@ -110,6 +118,7 @@ export default function MapCanvas(props: MapCanvasProps) {
     >
       <MapView
         ref={ref}
+        provider={Platform.OS === "ios" && GOOGLE_MAPS_IOS ? "google" : undefined}
         style={StyleSheet.absoluteFill}
         initialRegion={regionFor(route)}
         onMapReady={() => setReady(true)}
@@ -125,7 +134,11 @@ export default function MapCanvas(props: MapCanvasProps) {
         moveOnMarkerPress={false}
       >
         {route.length > 1 ? (
-          <Polyline coordinates={route} strokeColor={line} strokeWidth={4} lineCap="round" lineJoin="round" />
+          <Polyline
+            // Android, desen prop'u kaldırılınca eski deseni korur: önizleme ve gerçek rota ayrı çizgi olarak kurulur.
+            key={preview ? "preview" : "route"}
+            coordinates={route} strokeColor={line} strokeWidth={4} lineCap="round" lineJoin="round"
+            lineDashPattern={preview ? [2, 10] : undefined} />
         ) : null}
         {pickup ? (
           <Marker testID="map-pickup" coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>

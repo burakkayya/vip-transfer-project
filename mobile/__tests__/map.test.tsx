@@ -77,11 +77,12 @@ test("moves the camera without animation when reduce motion is on", async () => 
 
 test("passes the same dp edge padding on Android as on iOS", async () => {
   // react-native-maps Android tarafı dp → px dönüşümünü kendisi yapar; JS ölçeklememeli.
+  // Üst pay = kenar (40) + durum çubuğu/geri düğmesi bandı (56).
   const os = jest.replaceProperty(Platform, "OS", "android");
   await render(<MapCanvas mode="route" route={ROUTE} hiddenBottom={100} />);
   expect(commands().fitToCoordinates).toHaveBeenCalledWith(
     POINTS,
-    expect.objectContaining({ edgePadding: { top: 40, right: 40, bottom: 140, left: 40 } }),
+    expect.objectContaining({ edgePadding: { top: 96, right: 40, bottom: 140, left: 40 } }),
   );
   os.restore();
 });

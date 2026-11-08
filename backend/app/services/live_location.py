@@ -47,3 +47,9 @@ def for_booking(booking: Booking) -> dict | None:
     if raw is None:
         return None
     return {"leg_id": str(leg.id), **json.loads(raw)}
+
+
+def for_leg(leg: BookingLeg) -> dict | None:
+    """Bacağın son paylaşılan konumu (sürücü tarafı: bitirme kuralı için)."""
+    raw = _redis().get(_key(leg.id))
+    return json.loads(raw) if raw else None

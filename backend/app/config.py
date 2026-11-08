@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     # Anlık eşleştirmede teklifin geçerlilik süresi.
     dispatch_offer_seconds: int = 60
 
+    # K-49: sürücü yolculuğu yalnızca varışa bu mesafedeyken bitirebilir. Varış yalnızca ilçe olarak
+    # biliniyorsa (adres koordinatı yok) ilçe merkezine daha geniş yarıçap uygulanır.
+    trip_finish_radius_m: int = 500
+    trip_finish_region_radius_m: int = 3000
+    # Sürücü havuzunda ve teklifte alış/varış noktası bu kadar metre kırpılarak gösterilir (adres gizliliği).
+    job_preview_trim_m: int = 400
+
     @model_validator(mode="after")
     def _no_dev_secrets_in_prod(self) -> "Settings":
         if self.env == "prod":

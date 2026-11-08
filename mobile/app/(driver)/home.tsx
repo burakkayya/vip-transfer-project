@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
@@ -12,7 +13,7 @@ import { DOC_LABEL, DRIVER_STATUS, LEG_STATUS } from "@/lib/driverLabels";
 import { dateTime, money } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
-import type { DriverMe, Earnings, Offer, Trip } from "@/lib/types";
+import type { DriverMe, Earnings, Job, Trip } from "@/lib/types";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const OFFER_SECONDS = 60;
@@ -87,26 +88,61 @@ function GoButton(props: { onPress: () => void; busy: boolean }) {
   );
 }
 
+/** Havuz kartı: kazanç, zaman, rota, mesafe. Dokununca kabul öncesi ayrıntı ekranı açılır. */
+function JobCard(props: { job: Job; index: number }) {
+  const j = props.job;
+  return (
+    <Animated.View entering={FadeInDown.duration(350).delay(props.index * 50)}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${j.pickup_region} → ${j.dropoff_region}, ${money(j.driver_amount, j.currency)}`}
+        onPress={() => { tap(); router.push(`/job/${j.leg_id}`); }}
+        style={({ pressed }) => [{ borderWidth: 1, borderColor: colors.line, borderRadius: 20, padding: 16, gap: 12, backgroundColor: "#fff" }, pressed && { backgroundColor: colors.canvas }]}>
+        <Row spread style={{ flexWrap: "nowrap" }}>
+          <View style={{ gap: 2, flex: 1 }}>
+            <T style={{ fontSize: 22, fontWeight: "800", letterSpacing: -0.6 }}>{money(j.driver_amount, j.currency)}</T>
+            <T style={s.hint}>{dateTime(j.pickup_at)}</T>
+          </View>
+          <Badge text={j.booking_type === "anlik" ? "Anlık" : "Planlı"} tone={j.booking_type === "anlik" ? "accent" : "dark"} />
+        </Row>
+        <RouteStops from={j.pickup_region} to={j.dropoff_region} compact />
+        <Row spread>
+          <T style={s.hint}>
+            {Number(j.distance_km).toFixed(0)} km{j.duration_minutes ? ` · ~${j.duration_minutes} dk` : ""} · {j.passenger_count} yolcu
+            {j.pickup_distance_km !== null ? ` · size ${Number(j.pickup_distance_km).toLocaleString("tr-TR")} km` : ""}
+          </T>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Row>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 /**
- * Sürücü ekranları 2-4: onay bekleme, çevrimiçi/çevrimdışı geçişi, iş teklifleri, yaklaşan işler.
- * Push bildirimi (FCM) açılana kadar teklifler çevrimiçiyken kısa aralıklarla yoklanır.
+ * Sürücü ekranları 2-4: onay bekleme, çevrimiçi/çevrimdışı geçişi, iş havuzu (K-47), yaklaşan işler.
+ * Havuz: aracına ve belgelerine uyan, sürücüsü olmayan anlık (çevrimiçiyken) ve planlı işler.
+ * Push bildirimi (FCM) açılana kadar havuz ekran açıkken kısa aralıklarla yoklanır.
  */
 export default function DriverHome() {
   const { signOut } = useSession();
   const [me, setMe] = useState<DriverMe | null>(null);
-  const [offers, setOffers] = useState<Offer[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [earnings, setEarnings] = useState<Earnings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     try {
       const m = await api<DriverMe>("driver/me");
       setMe(m);
       setTrips(await api<Trip[]>("driver/trips"));
-      setOffers(m.is_online ? await api<Offer[]>("driver/offers") : []);
+      if (m.status === "onayli") {
+        // Alışa uzaklık için son bilinen konum (izin yoksa uzaklık gösterilmez).
+        const perm = await Location.getForegroundPermissionsAsync().catch(() => null);
+        const pos = perm?.granted ? await Location.getLastKnownPositionAsync().catch(() => null) : null;
+        const q = pos ? `?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}` : "";
+        setJobs(await api<Job[]>(`driver/jobs${q}`));
+      } else setJobs([]);
       api<Earnings>("driver/earnings").then(setEarnings).catch(() => undefined);
       setError(null);
     } catch (e) {
@@ -121,41 +157,29 @@ export default function DriverHome() {
     }, [load]),
   );
 
-  useEffect(() => {
-    if (!me?.is_online) return;
-    const poll = setInterval(load, 8000);
-    const tick = setInterval(() => setNow(Date.now()), 1000);
-    return () => {
-      clearInterval(poll);
-      clearInterval(tick);
-    };
-  }, [me?.is_online, load]);
+  // Ekran açıkken havuz yoklanır: çevrimiçiyken sık (anlık işler), değilse seyrek (planlı işler).
+  const meStatus = me?.status;
+  const meOnline = me?.is_online ?? false;
+  useFocusEffect(
+    useCallback(() => {
+      if (meStatus !== "onayli") return;
+      const poll = setInterval(load, meOnline ? 8000 : 30000);
+      const tick = setInterval(() => setNow(Date.now()), 1000);
+      return () => {
+        clearInterval(poll);
+        clearInterval(tick);
+      };
+    }, [meStatus, meOnline, load]),
+  );
 
   async function setOnline(v: boolean) {
     setBusy(true);
     try {
+      if (v) await Location.requestForegroundPermissionsAsync().catch(() => undefined);
       setMe(await api<DriverMe>("driver/me/online", { body: { is_online: v } }));
       await load();
     } catch (e) {
       setError(errorTextTr(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function respond(offer: Offer, accept: boolean) {
-    setBusy(true);
-    try {
-      if (accept) {
-        const trip = await api<Trip>(`driver/offers/${offer.offer_id}/accept`, { body: {} });
-        router.push(`/trip/${trip.leg_id}`);
-      } else {
-        await api(`driver/offers/${offer.offer_id}/reject`, { body: {} });
-      }
-      await load();
-    } catch (e) {
-      setError(errorTextTr(e));
-      await load();
     } finally {
       setBusy(false);
     }
@@ -171,12 +195,14 @@ export default function DriverHome() {
   }
 
   const approved = me.status === "onayli";
-  const offer = offers[0];
+  // Bu sürücüye gönderilmiş, süresi dolmamış anlık teklif öne çıkarılır.
+  const offer = jobs.find((j) => j.offer_expires_at && new Date(j.offer_expires_at).getTime() > now);
+  const pool = jobs.filter((j) => j !== offer);
   const active = trips.find((x) => ["yolda", "vardi", "basladi"].includes(x.status));
 
   return (
     <MapSheet
-      map={<MapCanvas seed={offer ? offer.offer_id : "driver"} mode={offer ? "route" : me.is_online ? "idle" : "idle"} focusTop={0.5} dark={!me.is_online} />}
+      map={<MapCanvas seed={offer ? offer.leg_id : "driver"} mode={offer ? "route" : me.is_online ? "idle" : "idle"} focusTop={0.5} dark={!me.is_online} />}
       mapRatio={offer ? 0.3 : 0.44}
       refreshing={false}
       onRefresh={load}
@@ -229,67 +255,84 @@ export default function DriverHome() {
       {/* Teklif kartı */}
       {offer ? (
         (() => {
-          const left = Math.max(0, Math.round((new Date(offer.expires_at).getTime() - now) / 1000));
+          const left = Math.max(0, Math.round((new Date(offer.offer_expires_at as string).getTime() - now) / 1000));
           return (
-            <Animated.View entering={ZoomIn.duration(350)} style={[{ backgroundColor: colors.ink, borderRadius: 26, padding: 20, gap: 16 }, shadow.float]}>
-              <Row spread style={{ flexWrap: "nowrap" }}>
-                <View style={{ gap: 4, flex: 1 }}>
-                  <T style={{ color: colors.accent, fontWeight: "700", letterSpacing: 1.5, fontSize: 11 }}>YENİ İŞ TEKLİFİ</T>
-                  <T style={{ color: "#fff", fontSize: 32, fontWeight: "800", letterSpacing: -1 }}>{money(offer.trip.driver_amount, offer.trip.currency)}</T>
-                  <T style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>{dateTime(offer.trip.pickup_at)}</T>
-                </View>
-                <CountdownRing left={left} total={Math.max(left, OFFER_SECONDS)} />
-              </Row>
-              <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14 }}>
-                <View style={{ flexDirection: "row", gap: 14 }}>
-                  <View style={{ alignItems: "center", paddingVertical: 6 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#fff" }} />
-                    <View style={{ flex: 1, width: 2, backgroundColor: "rgba(255,255,255,0.5)", marginVertical: 3, minHeight: 14 }} />
-                    <View style={{ width: 10, height: 10, backgroundColor: "#fff" }} />
+            <Animated.View entering={ZoomIn.duration(350)}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Yeni iş teklifi, ${money(offer.driver_amount, offer.currency)}. Ayrıntıyı aç`}
+                onPress={() => { tap(); router.push(`/job/${offer.leg_id}`); }}
+                style={[{ backgroundColor: colors.ink, borderRadius: 26, padding: 20, gap: 16 }, shadow.float]}>
+                <Row spread style={{ flexWrap: "nowrap" }}>
+                  <View style={{ gap: 4, flex: 1 }}>
+                    <T style={{ color: colors.accent, fontWeight: "700", letterSpacing: 1.5, fontSize: 11 }}>YENİ İŞ TEKLİFİ</T>
+                    <T style={{ color: "#fff", fontSize: 32, fontWeight: "800", letterSpacing: -1 }}>{money(offer.driver_amount, offer.currency)}</T>
+                    <T style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>{dateTime(offer.pickup_at)}</T>
                   </View>
-                  <View style={{ flex: 1, gap: 14 }}>
-                    <T style={{ color: "#fff", fontWeight: "600" }}>{offer.trip.pickup_region}</T>
-                    <T style={{ color: "#fff", fontWeight: "600" }}>{offer.trip.dropoff_region}</T>
+                  <CountdownRing left={left} total={Math.max(left, OFFER_SECONDS)} />
+                </Row>
+                <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14 }}>
+                  <View style={{ flexDirection: "row", gap: 14 }}>
+                    <View style={{ alignItems: "center", paddingVertical: 6 }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#fff" }} />
+                      <View style={{ flex: 1, width: 2, backgroundColor: "rgba(255,255,255,0.5)", marginVertical: 3, minHeight: 14 }} />
+                      <View style={{ width: 10, height: 10, backgroundColor: "#fff" }} />
+                    </View>
+                    <View style={{ flex: 1, gap: 14 }}>
+                      <T style={{ color: "#fff", fontWeight: "600" }}>{offer.pickup_region}</T>
+                      <T style={{ color: "#fff", fontWeight: "600" }}>{offer.dropoff_region}</T>
+                    </View>
                   </View>
                 </View>
-              </View>
-              <Row gap={8}>
-                <View style={{ flexDirection: "row", gap: 6, alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                  <Ionicons name="people" size={14} color="#fff" />
-                  <T style={{ color: "#fff", fontSize: 13 }}>{offer.trip.passenger_count} yolcu</T>
-                </View>
-                <View style={{ flexDirection: "row", gap: 6, alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                  <Ionicons name="briefcase" size={14} color="#fff" />
-                  <T style={{ color: "#fff", fontSize: 13 }}>{offer.trip.luggage_count} bagaj</T>
-                </View>
-                {offer.trip.flight_no ? (
-                  <View style={{ flexDirection: "row", gap: 6, alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                    <Ionicons name="airplane" size={14} color="#fff" />
-                    <T style={{ color: "#fff", fontSize: 13 }}>{offer.trip.flight_no}</T>
-                  </View>
-                ) : null}
-              </Row>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <Button title="Reddet" variant="onDark" onPress={() => respond(offer, false)} disabled={busy} style={{ flex: 1 }} />
-                <Button title="Kabul et" icon="checkmark" variant="light" busy={busy} disabled={left === 0} onPress={() => respond(offer, true)} style={{ flex: 2 }} />
-              </View>
-              {offers.length > 1 ? <T style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", fontSize: 12 }}>+{offers.length - 1} teklif daha</T> : null}
+                <Row spread>
+                  <T style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
+                    {Number(offer.distance_km).toFixed(0)} km · {offer.passenger_count} yolcu · {offer.luggage_count} bagaj
+                  </T>
+                  <Row gap={6}>
+                    <T style={{ color: "#fff", fontWeight: "700" }}>İncele</T>
+                    <Ionicons name="arrow-forward" size={16} color="#fff" />
+                  </Row>
+                </Row>
+              </Pressable>
             </Animated.View>
           );
         })()
-      ) : approved ? (
+      ) : null}
+      {approved ? (
         me.is_online ? (
-          <Animated.View entering={FadeInDown.duration(400)} style={{ alignItems: "center", gap: 10, paddingVertical: 12 }}>
-            <Radar />
-            <T style={{ fontWeight: "700", fontSize: 16 }}>Teklif bekleniyor…</T>
-            <T style={[s.hint, { textAlign: "center" }]}>Uygulama açıkken yeni işler otomatik görünür.</T>
-            <Button title="Çevrimdışı ol" variant="secondary" small icon="pause" onPress={() => setOnline(false)} busy={busy} />
-          </Animated.View>
+          !offer && (
+            <Animated.View entering={FadeInDown.duration(400)} style={{ alignItems: "center", gap: 10, paddingVertical: 12 }}>
+              <Radar />
+              <T style={{ fontWeight: "700", fontSize: 16 }}>{pool.length ? "İşler aşağıda" : "Teklif bekleniyor…"}</T>
+              <T style={[s.hint, { textAlign: "center" }]}>Yeni anlık işler ve teklifler burada görünür.</T>
+              <Button title="Çevrimdışı ol" variant="secondary" small icon="pause" onPress={() => setOnline(false)} busy={busy} />
+            </Animated.View>
+          )
         ) : (
           <GoButton onPress={() => setOnline(true)} busy={busy} />
         )
       ) : (
         <Button title="Belgelerime git" icon="document-text" onPress={() => router.push("/documents")} />
+      )}
+
+      {/* İş havuzu (K-47) */}
+      {approved && (
+        <>
+          <Row spread>
+            <H2>İş havuzu</H2>
+            {pool.length > 0 ? <Badge text={String(pool.length)} tone="accent" /> : null}
+          </Row>
+          {pool.length === 0 ? (
+            <Card flat>
+              <Row gap={12} style={{ flexWrap: "nowrap" }}>
+                <Ionicons name="file-tray-outline" size={22} color={colors.muted} />
+                <View style={{ flex: 1 }}>
+                  <P muted>{me.is_online ? "Şu an size uygun açık iş yok." : "Şu an size uygun planlı iş yok. Anlık işler için çevrimiçi olun."}</P>
+                </View>
+              </Row>
+            </Card>
+          ) : (
+            pool.map((j, i) => <JobCard key={j.leg_id} job={j} index={i} />)
+          )}
+        </>
       )}
 
       {/* Yaklaşan işler */}

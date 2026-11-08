@@ -171,7 +171,12 @@
     "cancelEdit": "Abbrechen, zurück zu den Fahrzeugen",
     "cancelTiers": "Stornierung und Erstattung: 100 % bei Stornierung 48 Stunden oder früher vor der Abholung, 50 % zwischen 24 und 48 Stunden, weniger als 24 Stunden vorher keine Erstattung.",
     "consentsLegend": "Einwilligungen",
-    "payHint": "Kreuzen Sie die ersten beiden Kästchen an, um zur Zahlung zu gelangen. Angebote per SMS und E-Mail sind optional."
+    "payHint": "Kreuzen Sie die ersten beiden Kästchen an, um zur Zahlung zu gelangen. Angebote per SMS und E-Mail sind optional.",
+    "mapTitle": "Routenkarte",
+    "mapLabel": "Routenkarte: {from} → {to}",
+    "mapPickup": "Abholung",
+    "mapDropoff": "Ziel",
+    "mapUnavailable": "Die Karte kann gerade nicht angezeigt werden; Route und Preis bleiben gleich."
   },
   "otp": {
     "phone": "Telefonnummer",

@@ -2,6 +2,22 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-08
+
+- **Uber tarzı yolculuk akışı (K-47..K-52).** Backend: sürücü iş havuzu (`/driver/jobs`, ayrıntı, kabul, red), alışa/varışa rota (`/driver/trips/{id}/approach`), varışa 500 m kuralıyla bitirme, müşterinin yolculuğu bitirmesi (`/me/bookings/{code}/finish`), tahmini süre (`/me/bookings/{code}/eta`) ve bildirim eşikleri, uygulama içi bildirim akışı (`/me/updates`, `/driver/updates`), müşteri–sürücü sohbeti (`.../messages`), push jetonu uçları; yeni tablolar `trip_messages`, `trip_updates`, `customers.push_token` (migration 0004); iptalde atanmış sürücüye bildirim; 30 günlük silme görevi. 7 yeni test (toplam 103).
+- Mobil sürücü: ana ekranda iş havuzu ve anlık teklif kartı, kabul öncesi iş ayrıntısı (kırpılmış rota haritası, kabul/red), yolculuk ekranında aşamaya göre hedef (alış → varış), sürücüden hedefe uygulama içi rota ve kalan süre, telefonun harita uygulamasında yol tarifi, varışa uzaklık gösteren bitirme düğmesi, arka plan konum paylaşımı (ön plan hizmeti), sohbet. Mobil müşteri: sürücünün kalan süresi, sürücüye yaz, yolculuğu bitir (onay penceresi), sohbet; iki uygulamada bildirim akışından yerel bildirim. `expo-notifications`, `expo-task-manager`, `expo-dev-client` eklendi; sürücü için Android geliştirme derlemesi.
+
+- Web rezervasyon sayfasına Google haritası: `components/RouteMap.tsx` (Maps JavaScript API, `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY`), `lib/googleMaps.ts` (yükleyici, polyline çözücü). Düzen üç sütun (harita | araçlar | özet), 1280 px altında harita üstte, 960 px altında tek sütun; araç kartı dar sütunda kapsayıcı sorgusuyla fiyatı alta indirir. `Endpoint.point` adres konumunu, `QuoteLeg.route_polyline` gerçek rotayı taşır. CSP Google Maps alan adlarına açıldı. Yeni çeviri anahtarları (`book.map*`, 4 dil).
+- Mobil harita: tek nokta seçiliyken de işaret gösterilir; Android'de kesikli önizlemeden gerçek rotaya geçişte çizgi yeniden kurulur (desen kalıntısı); üst boşluk durum çubuğu için artırıldı. Android emülatöründe (Expo Go) gerçek Google haritası, kesikli önizleme ve gerçek rota doğrulandı.
+- Android SDK ve emülatör kuruldu (`C:Android`, Türkçe karakterli kullanıcı yolu nedeniyle).
+
+- Harita: `POST /quotes` bacak çıktısına `route_polyline` (Google Routes, encoded polyline) eklendi. Mobil rezervasyon akışında harita seçilen iki noktayı kesikli çizgiyle (`MapCanvas endpoints`), teklif alınınca gerçek rotayı çizer. `Endpoint.point` adres konumunu taşır. Yerel `mobile/.env.local` iOS ve Android Maps anahtarlarıyla dolduruldu (git dışı). Sürücü teklifinde rota çizilmez (alış/bırakış adresini sızdırır). Native harita henüz emülatör/cihazda görülmedi.
+- Geçici ücretsiz OSRM/OSM sağlayıcıları denendi ve koddan kaldırıldı; yerelde Google (Places + Routes) kullanılıyor (`backend/.env`, git dışı).
+- Mobil: iOS için isteğe bağlı Google Haritalar (`GETAWAY_GOOGLE_MAPS_IOS_KEY` → `ios.config.googleMapsApiKey`, `extra.googleMapsIos`, `MapCanvas` iOS `provider="google"`); anahtar yoksa Apple Maps. Mobil uygulama adres/rotayı backend üzerinden alır (backend Google anahtarı yerelde bağlı). Backend sunucu anahtarı mobile konmaz.
+
+
+- Yerel yedek admin e-postası `admin@getawaytransfers.com` (`.local` reddedildi). Yerel kurulum: yeni worktree'de Python 3.12 venv ve npm bağımlılıkları kuruldu; `requirements.txt` içindeki `redis==8.1.0` ile `arq 0.28.0` (`redis<6`) çakışıyor (açık, dosya değiştirilmedi). Yerel yedek admin hesabı eklendi (parola repoda yok). `CLAUDE.md` ve `docs/test_senaryolari.md`: proje ayağa kalkınca giriş bilgilerinin sohbette verilmesi kuralı.
+
 ## 2026-11-03
 
 - `docs/DEVAM_PROMPTU.md`: kalan tarama işleri (B-W11–15 incelemesi, C-W1, mobil, sürücü, admin, Z1–Z4) için yeni oturuma yapıştırılacak devam promptu.

@@ -5,8 +5,11 @@ import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaInsetsContext, SafeAreaProvider } from "react-native-safe-area-context";
 import { T, colors, fonts } from "@/components/ui";
+import UpdatesWatcher from "@/components/UpdatesWatcher";
 import { VARIANT } from "@/lib/config";
 import { SessionProvider } from "@/lib/session";
+// Arka plan konum görevi modül yüklenirken tanımlanmalı (uygulama arka planda yeniden başlatılabilir).
+import "@/lib/tracking";
 
 /** Web önizlemesi: uygulama gerçek telefon oranında (390×844) bir çerçevede gösterilir. */
 function PhoneFrame({ children }: { children: React.ReactNode }) {
@@ -47,6 +50,7 @@ export default function RootLayout() {
         <SessionProvider>
           <PhoneFrame>
             <StatusBar style="dark" />
+            <UpdatesWatcher />
             <Stack
               screenOptions={{
                 headerStyle: { backgroundColor: colors.bg },
@@ -64,6 +68,8 @@ export default function RootLayout() {
               <Stack.Screen name="(driver)" options={{ headerShown: false }} />
               <Stack.Screen name="booking/[code]" options={{ headerShown: false }} />
               <Stack.Screen name="trip/[legId]" options={{ headerShown: false }} />
+              <Stack.Screen name="job/[legId]" options={{ headerShown: false, animation: "slide_from_bottom" }} />
+              <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="driver-register" options={{ title: "Sürücü kaydı" }} />
             </Stack>
           </PhoneFrame>

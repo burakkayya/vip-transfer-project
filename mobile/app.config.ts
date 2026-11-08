@@ -13,6 +13,12 @@ const webUrl = process.env.GETAWAY_WEB_URL ?? "http://localhost:3000";
 // iOS varsayılan sağlayıcı Apple Maps'tir, anahtar gerekmez. Expo prebuild react-native-maps için yerleşik
 // eklentiyi (android.config.googleMaps.apiKey) kendisi uygular; plugins listesine ayrıca eklenmez.
 const googleMapsAndroidKey = process.env.GETAWAY_GOOGLE_MAPS_ANDROID_KEY;
+const DRIVER_LOCATION_TEXT = "Aktif yolculukta konumunuz yalnızca yolcuyla paylaşılır.";
+const DRIVER_BACKGROUND_TEXT =
+  "Yolculuk sürerken uygulamadan çıksanız da konumunuz yolcuyla paylaşılır. Yolculuk bitince paylaşım durur.";
+// iOS Google Maps SDK anahtarı (isteğe bağlı). Tanımlıysa iOS de Google Haritalar kullanır (MapCanvas, `extra.googleMapsIos`);
+// tanımsızsa Apple Maps. Backend'in sunucu anahtarı buraya konmaz: bu anahtar uygulama paketinde taşınır, bundle ID ile kısıtlanır.
+const googleMapsIosKey = process.env.GETAWAY_GOOGLE_MAPS_IOS_KEY;
 
 // Müşteri uygulaması konum kullanmaz (mobile/PRODUCT.md). Expo prebuild kurulu `react-native-maps` ve
 // `expo-location` (sürücü için kurulu) paketlerinin yerleşik eklentileriyle iki çeşide de konum izni ve
@@ -43,13 +49,28 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       bundleIdentifier: isDriver ? "com.getawaytransfers.driver" : "com.getawaytransfers.app",
       supportsTablet: false,
+      // K-52: sürücü konumu yalnızca aktif yolculukta, uygulama arka plandayken de paylaşılır.
       infoPlist: isDriver
-        ? { NSLocationWhenInUseUsageDescription: "Aktif yolculukta konumunuz yalnızca yolcuyla paylaşılır." }
-        : {},
+        ? {
+            NSLocationWhenInUseUsageDescription: DRIVER_LOCATION_TEXT,
+            NSLocationAlwaysAndWhenInUseUsageDescription: DRIVER_BACKGROUND_TEXT,
+            NSLocationAlwaysUsageDescription: DRIVER_BACKGROUND_TEXT,
+            UIBackgroundModes: ["location", "remote-notification"],
+          }
+        : { UIBackgroundModes: ["remote-notification"] },
     },
     android: {
       package: isDriver ? "com.getawaytransfers.driver" : "com.getawaytransfers.app",
-      permissions: isDriver ? ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"] : [],
+      permissions: isDriver
+        ? [
+            "ACCESS_FINE_LOCATION",
+            "ACCESS_COARSE_LOCATION",
+            "ACCESS_BACKGROUND_LOCATION",
+            "FOREGROUND_SERVICE",
+            "FOREGROUND_SERVICE_LOCATION",
+            "POST_NOTIFICATIONS",
+          ]
+        : ["POST_NOTIFICATIONS"],
       ...(isDriver
         ? {}
         : { blockedPermissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"] }),
@@ -61,13 +82,27 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-web-browser",
       "expo-localization",
       "@react-native-community/datetimepicker",
+      "expo-task-manager",
+      ["expo-notifications", { color: "#0B0B0C" }] as [string, object],
       ...(isDriver
-        ? [["expo-location", { locationWhenInUsePermission: "Aktif yolculukta konumunuz yalnızca yolcuyla paylaşılır." }] as [string, object]]
+        ? [
+            [
+              "expo-location",
+              {
+                locationWhenInUsePermission: DRIVER_LOCATION_TEXT,
+                locationAlwaysAndWhenInUsePermission: DRIVER_BACKGROUND_TEXT,
+                locationAlwaysPermission: DRIVER_BACKGROUND_TEXT,
+                isAndroidBackgroundLocationEnabled: true,
+                isAndroidForegroundServiceEnabled: true,
+                isIosBackgroundLocationEnabled: true,
+              },
+            ] as [string, object],
+          ]
         : []),
     ],
     web: { bundler: "metro", output: "single" },
     experiments: { typedRoutes: false },
-    extra: { variant, apiUrl, webUrl },
+    extra: { variant, apiUrl, webUrl, googleMapsIos: Boolean(googleMapsIosKey) },
   };
   return isDriver ? app : withoutLocationUsage(app);
 };

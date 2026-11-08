@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, Money, Rate, created_at, str_enum, uuid_pk
@@ -178,3 +178,42 @@ class TripEvent(Base):
     event_type: Mapped[TripEventType] = mapped_column(str_enum(TripEventType))
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     occurred_at: Mapped[datetime] = created_at()
+
+
+class TripMessage(Base):
+    """Müşteri ile sürücü arasındaki yolculuk sohbeti (K-50).
+
+    Yalnızca bacağa atanmış sürücü ile rezervasyon sahibi yazışır; telefon numarası paylaşılmaz.
+    Metin kişisel veri içerebileceği için şifreli tutulur; yolculuktan 30 gün sonra silinir.
+    """
+
+    __tablename__ = "trip_messages"
+    __table_args__ = (Index("ix_trip_messages_leg_created", "booking_leg_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    booking_leg_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("booking_legs.id", ondelete="CASCADE"))
+    sender: Mapped[str] = mapped_column(String(10))  # customer | driver
+    body: Mapped[str] = mapped_column(EncryptedString)
+    created_at: Mapped[datetime] = created_at()
+    read_at: Mapped[datetime | None]
+
+
+class TripUpdate(Base):
+    """Uygulama içi bildirim akışı (sürücü kabul etti, yolda, yaklaşıyor, yeni mesaj...).
+
+    Uygulama bu akışı yoklayıp yerel bildirim gösterir; push sağlayıcısı (FCM) açıkken aynı
+    metin push olarak da gider. Metin şablondan, gönderim anında alıcının dilinde üretilir.
+    """
+
+    __tablename__ = "trip_updates"
+    __table_args__ = (Index("ix_trip_updates_recipient_created", "recipient_type", "recipient_id", "created_at"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    booking_leg_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("booking_legs.id", ondelete="CASCADE"), index=True)
+    recipient_type: Mapped[str] = mapped_column(String(10))  # customer | driver
+    recipient_id: Mapped[uuid.UUID]
+    code: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str] = mapped_column(String(120))
+    body: Mapped[str] = mapped_column(String(500))
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = created_at()

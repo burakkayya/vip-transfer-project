@@ -150,9 +150,15 @@ def test_instant_booking_offer_accept_trip_and_ledger(client, db, ops):
             ws.receive_json()
         assert closed.value.code == 4401
 
-    for event in ("basladi", "bitti"):
-        assert client.post(f"/api/v1/driver/trips/{leg_id}/events", headers=driver_headers,
-                           json={"event": event}).status_code == 200
+    assert client.post(f"/api/v1/driver/trips/{leg_id}/events", headers=driver_headers,
+                       json={"event": "basladi"}).status_code == 200
+    # K-49: varışa uzakken (havalimanında) bitirilemez; varış ilçesinde bitirilir.
+    r = client.post(f"/api/v1/driver/trips/{leg_id}/events", headers=driver_headers, json={"event": "bitti"})
+    assert r.json()["error"]["code"] == "too_far_from_dropoff"
+    kemer = next(x for x in client.get("/api/v1/regions").json() if x["code"] == "kemer")
+    r = client.post(f"/api/v1/driver/trips/{leg_id}/events", headers=driver_headers,
+                    json={"event": "bitti", "lat": float(kemer["latitude"]), "lng": float(kemer["longitude"])})
+    assert r.status_code == 200, r.text
     assert client.get(f"/api/v1/me/bookings/{code}", headers=customer).json()["status"] == "tamamlandi"
 
     b = db.scalar(select(Booking).where(Booking.booking_code == code))

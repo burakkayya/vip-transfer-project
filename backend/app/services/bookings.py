@@ -37,7 +37,8 @@ from app.models.enums import (
     RegionType,
 )
 from app.providers.payments import PaymentProvider
-from app.services import audit, system_settings
+from app.localtime import LOCAL_TZ
+from app.services import audit, system_settings, trip_updates
 from app.services.quotes import Quote
 
 # Kod alfabesinde karışabilecek karakterler yok (0/O, 1/I/L).
@@ -280,7 +281,11 @@ def cancel_booking(
     booking.cancelled_at = now
     booking.cancel_reason = reason[:500]
     for leg in booking.legs:
+        was_assigned = leg.driver_id is not None and leg.status not in (LegStatus.COMPLETED, LegStatus.CANCELLED)
         leg.status = LegStatus.CANCELLED
+        if was_assigned:
+            trip_updates.to_driver(db, leg, "trip_cancelled",
+                                   pickup_at=leg.pickup_at.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M"))
     for offer in db.scalars(
         select(DispatchOffer).where(
             DispatchOffer.booking_leg_id.in_([leg.id for leg in booking.legs]),

@@ -37,7 +37,8 @@ from app.models.enums import (
     VehicleStatus,
 )
 from app.providers.storage import get_storage
-from app.services import audit, dispatch, documents, live_location, route_line, system_settings
+from app.providers.routing import Point
+from app.services import audit, dispatch, documents, eta, live_location, route_line, system_settings
 
 router = APIRouter(prefix="/driver", tags=["driver"])
 
@@ -243,6 +244,11 @@ class TripOut(BaseModel):
     driver_amount: MoneyStr
     currency: str
     route_polyline: str | None = None
+    booking_type: str | None = None
+    dropoff_lat: Decimal | None = None
+    dropoff_lng: Decimal | None = None
+    distance_km: Decimal | None = None
+    duration_minutes: int | None = None
 
 
 def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
@@ -266,6 +272,11 @@ def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
         driver_amount=leg.leg_price - (leg.leg_price * b.commission_rate).quantize(Decimal("0.01")),
         currency=b.currency.value,
         route_polyline=route_line.route_polyline(leg) if with_route else None,
+        booking_type=b.booking_type.value,
+        dropoff_lat=leg.dropoff_lat if leg.dropoff_lat is not None else leg.dropoff_region.latitude,
+        dropoff_lng=leg.dropoff_lng if leg.dropoff_lng is not None else leg.dropoff_region.longitude,
+        distance_km=leg.distance_km,
+        duration_minutes=leg.duration_minutes,
     )
 
 
@@ -330,17 +341,27 @@ def get_trip(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession):
 
 class TripEventIn(BaseModel):
     event: TripEventType
+    # Sürücünün o anki konumu: yola çıkışta ilk tahmini süre, bitirişte varış yarıçapı (K-49) için.
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
 
 
 @router.post("/trips/{leg_id}/events", response_model=TripOut)
 def trip_event(leg_id: uuid.UUID, body: TripEventIn, driver: CurrentDriver, db: DbSession, now: Now):
     leg = db.get(BookingLeg, leg_id, with_for_update={"of": BookingLeg})
-    if leg is None:
+    if leg is None or leg.driver_id != driver.id:
         raise NotFound("yolculuk bulunamadı")
-    dispatch.advance_trip(db, driver, leg, body.event, now=now)
+    at = None
+    if body.lat is not None and body.lng is not None:
+        at = Point(Decimal(str(body.lat)), Decimal(str(body.lng)))
+    elif body.event is TripEventType.FINISHED and (last := live_location.for_leg(leg)):
+        at = Point(Decimal(str(last["lat"])), Decimal(str(last["lng"])))
+    dispatch.advance_trip(db, driver, leg, body.event, now=now, at=at)
     db.commit()
     if leg.status is LegStatus.COMPLETED:
         live_location.clear(leg)
+    elif at is not None and leg.status in live_location.TRACKABLE:
+        live_location.store(leg, float(at.lat), float(at.lng), None, now)
     return _trip_out(leg, with_route=True)
 
 
@@ -358,6 +379,9 @@ def post_location(leg_id: uuid.UUID, body: LocationIn, driver: CurrentDriver, db
     if leg.status not in live_location.TRACKABLE:
         raise DomainError("konum yalnızca aktif yolculukta paylaşılır", code="trip_not_active")
     live_location.store(leg, body.lat, body.lng, body.heading, now)
+    # Tahmini süre ve müşteri bildirim eşikleri (yaklaşıyor, 10 dk) (K-51).
+    eta.on_location(db, leg, Point(Decimal(str(body.lat)), Decimal(str(body.lng))))
+    db.commit()
 
 
 # --- Kazanç ------------------------------------------------------------------

@@ -126,6 +126,7 @@ class QuoteLegOut(BaseModel):
     distance_km: Decimal
     duration_minutes: int
     price: MoneyStr
+    route_polyline: str | None = None  # Google encoded polyline (hassasiyet 5), harita önizlemesi
 
 
 class QuoteOut(BaseModel):
