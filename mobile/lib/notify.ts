@@ -17,12 +17,18 @@ export async function setupNotifications(): Promise<boolean> {
   if (!configured) {
     configured = true;
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
+      // Uygulama açıkken aynı olay yoklamadan yerel bildirim olarak gösterilir; ön plana gelen FCM
+      // push'u (yolculuk akışı olayı) ikinci kez gösterilmez. Teklif gibi akışta olmayan push'lar gösterilir.
+      handleNotification: async (n) => {
+        const trigger = n.request.trigger as { type?: string } | null;
+        const remoteDuplicate = trigger?.type === "push" && Boolean(n.request.content.data?.update_id);
+        return {
+          shouldShowBanner: !remoteDuplicate,
+          shouldShowList: !remoteDuplicate,
+          shouldPlaySound: !remoteDuplicate,
+          shouldSetBadge: false,
+        };
+      },
     });
     // Expo Go Android'de özel kanal oluşturmayı reddediyor (yerel NPE); orada varsayılan kanal kullanılır.
     if (Platform.OS === "android" && Constants.executionEnvironment !== "storeClient") {
@@ -48,23 +54,62 @@ export async function setupNotifications(): Promise<boolean> {
   return (await Notifications.requestPermissionsAsync()).granted;
 }
 
-export async function showLocal(title: string, body: string, data: Record<string, unknown> = {}) {
+/**
+ * `id` olay kimliğidir (trip_updates.id). Android'de bildirim etiketi olur; aynı olay FCM push'u olarak da
+ * geldiyse (backend `tag` = aynı kimlik) biri diğerinin yerine geçer, kullanıcı tek bildirim görür.
+ */
+export async function showLocal(title: string, body: string, data: Record<string, unknown> = {}, id?: string) {
   if (Platform.OS === "web") return;
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, data, sound: true },
+    ...(id ? { identifier: id } : {}),
+    // Android'de ses kanaldan gelir; `sound` verilirse "default" adlı özel ses dosyası aranır.
+    content: { title, body, data, ...(Platform.OS === "ios" ? { sound: true } : {}) },
     trigger: Platform.OS === "android" && channelReady ? { channelId: TRIP_CHANNEL } : null,
   });
+}
+
+let deviceToken: string | null = null;
+/** Bu cihazın kayıtlı push jetonu; çıkışta backend'e verilir, hesaptan silinir. */
+export function registeredPushToken(): string | null {
+  return deviceToken;
+}
+export function clearRegisteredPushToken(): void {
+  deviceToken = null;
 }
 
 /** Cihaz push jetonunu backend'e kaydeder. FCM yapılandırılmamışsa (Expo Go, google-services yok) sessizce geçer. */
 export async function registerPushToken(): Promise<void> {
   if (Platform.OS === "web" || Constants.executionEnvironment === "storeClient") return;
+  // iOS'ta cihaz jetonu APNs jetonudur, FCM kabul etmez (Firebase iOS/APNs kurulumu açık konu, K-56).
+  // Kaydedilirse her olayda geçersiz sayılıp silinirdi; iOS şimdilik uygulama içi bildirimle çalışır.
+  if (Platform.OS !== "android") return;
   try {
     const token = (await Notifications.getDevicePushTokenAsync()).data;
     if (typeof token !== "string" || !token) return;
     await api(VARIANT === "driver" ? "driver/me/push-token" : "me/push-token", { body: { token } });
+    deviceToken = token;
   } catch {
     // FCM projesi henüz yok (docs/acik_konular.md): yerel bildirimler çalışmaya devam eder.
+  }
+}
+
+/**
+ * Bildirim çekmecesinde zaten duran olay kimlikleri (FCM push'u ya da daha önce gösterilen yerel bildirim).
+ * Uygulama ön plana dönünce yoklama aynı olayı yeniden çeker; bunlar ikinci kez çalmasın diye atlanır.
+ */
+export async function presentedUpdateIds(): Promise<Set<string>> {
+  if (Platform.OS === "web") return new Set();
+  try {
+    const shown = await Notifications.getPresentedNotificationsAsync();
+    const ids = new Set<string>();
+    for (const n of shown) {
+      ids.add(n.request.identifier);
+      const id = n.request.content.data?.update_id;
+      if (typeof id === "string") ids.add(id);
+    }
+    return ids;
+  } catch {
+    return new Set();
   }
 }
 

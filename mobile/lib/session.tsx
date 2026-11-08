@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api, clearTokens, loadSession, saveTokens, setSignedOutHandler } from "./api";
+import { clearRegisteredPushToken, registeredPushToken } from "./notify";
 
 interface Session {
   ready: boolean;
@@ -28,7 +29,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await api("auth/logout", { method: "POST" }).catch(() => undefined);
+    // Bu cihazın push jetonu hesaptan silinir: çıkıştan sonra bu hesabın bildirimleri gelmez.
+    const pushToken = registeredPushToken();
+    await api("auth/logout", { method: "POST", ...(pushToken ? { body: { push_token: pushToken } } : {}) }).catch(
+      () => undefined,
+    );
+    clearRegisteredPushToken();
     await clearTokens();
     setSignedIn(false);
   }, []);

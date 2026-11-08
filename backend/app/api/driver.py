@@ -38,7 +38,7 @@ from app.models.enums import (
 )
 from app.providers.storage import get_storage
 from app.providers.routing import Point
-from app.services import audit, dispatch, documents, eta, live_location, route_line, system_settings
+from app.services import audit, dispatch, documents, eta, live_location, notifications, route_line, system_settings
 
 router = APIRouter(prefix="/driver", tags=["driver"])
 
@@ -102,7 +102,7 @@ def set_online(body: OnlineIn, driver: CurrentDriver, db: DbSession, now: Now):
         raise Forbidden("onaylı olmayan sürücü çevrimiçi olamaz", code="driver_not_approved")
     driver.is_online = body.is_online
     if body.push_token:
-        driver.push_token = body.push_token
+        notifications.bind_push_token(db, driver, body.push_token)
     db.commit()
     return _driver_out(db, driver, local_date(now))
 

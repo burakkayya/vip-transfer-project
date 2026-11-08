@@ -9,14 +9,14 @@ import logging
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Booking, Driver, Notification, NotificationTemplate
+from app.models import Booking, Customer, Driver, Notification, NotificationTemplate
 from app.models.enums import NotificationChannel, NotificationStatus
-from app.providers.push import get_push_sender
 from app.providers.sms import get_sms_sender
+from app.services import push_outbox
 
 log = logging.getLogger(__name__)
 LOCAL_TZ = ZoneInfo("Europe/Istanbul")
@@ -106,9 +106,26 @@ def notify_driver(db: Session, driver: Driver, code: str, params: dict, data: di
         return
     rendered = render(db, code, "tr", NotificationChannel.PUSH, params)
     subject, body = rendered if rendered else ("getawaytransfers", code)
-    try:
-        get_push_sender().send(driver.push_token, subject or "getawaytransfers", body, data)
-        _record(db, "driver", driver.id, NotificationChannel.PUSH, code, True, None)
-    except Exception as exc:  # noqa: BLE001
-        log.exception("push bildirimi gönderilemedi")
-        _record(db, "driver", driver.id, NotificationChannel.PUSH, code, False, str(exc)[:255])
+    # Commit sonrası arka planda gönderilir; sonuç ayrı kayıtla yazılır (push_outbox).
+    push_outbox.enqueue(db, driver, code, subject or "getawaytransfers", body, data)
+
+
+def bind_push_token(db: Session, owner: Customer | Driver, token: str | None) -> None:
+    """Cihaz jetonunu hesaba bağlar. Bir jeton tek hesaba aittir: aynı cihazda önceki hesap çıkış yapmadan
+    başkası girdiyse önceki hesabın bildirimleri bu cihaza gitmez."""
+    if token:
+        model = type(owner)
+        db.execute(
+            update(model).where(model.push_token == token, model.id != owner.id)
+            .values(push_token=None).execution_options(synchronize_session=False)
+        )
+    owner.push_token = token
+
+
+def release_push_token(db: Session, user_id, token: str) -> None:
+    """Çıkışta bu cihazın jetonu hesaptan silinir (başka cihazın jetonuna dokunulmaz)."""
+    for model in (Customer, Driver):
+        db.execute(
+            update(model).where(model.user_id == user_id, model.push_token == token)
+            .values(push_token=None).execution_options(synchronize_session=False)
+        )

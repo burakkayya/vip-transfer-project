@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
+from typing import Literal
 from functools import lru_cache
 
 from pydantic import model_validator
@@ -48,6 +50,11 @@ class Settings(BaseSettings):
     netgsm_usercode: str = ""
     netgsm_password: str = ""
     netgsm_header: str = ""
+
+    # Mobil bildirim: "console" (geliştirme) veya "fcm" (Firebase Cloud Messaging HTTP v1).
+    # Servis hesabı JSON'u repo dışında durur; yalnızca dosya yolu verilir.
+    push_provider: Literal["console", "fcm"] = "console"
+    fcm_credentials_file: str = ""
 
     routing_provider: str = "haversine"
     google_routes_api_key: str = ""
@@ -102,6 +109,10 @@ class Settings(BaseSettings):
                 raise ValueError("üretimde sahte ödeme sağlayıcısı kullanılamaz")
             if self.places_provider == "fake":
                 raise ValueError("üretimde sahte adres sağlayıcısı kullanılamaz")
+            if self.push_provider == "console":
+                raise ValueError("üretimde push sağlayıcısı fcm olmalı")
+        if self.push_provider == "fcm" and not Path(self.fcm_credentials_file or "").is_file():
+            raise ValueError("push_provider=fcm için GETAWAY_FCM_CREDENTIALS_FILE geçerli bir dosya olmalı")
         return self
 
 

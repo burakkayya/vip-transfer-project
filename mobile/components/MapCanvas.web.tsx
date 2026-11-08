@@ -2,7 +2,7 @@
 // animasyonla çizilen rota, hareket eden araç ve konum nabzı. iOS/Android'de MapCanvas.tsx
 // (react-native-maps) kullanılır; Metro web'de bu dosyayı seçer. `route`, `driver` ve
 // `accessibilitySummary` prop'ları burada yok sayılır.
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
@@ -13,6 +13,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+import GoogleMapWeb, { MAPS_BROWSER_KEY } from "./GoogleMapWeb";
 import type { MapCanvasProps } from "./mapTypes";
 import { colors } from "./ui";
 
@@ -47,7 +48,18 @@ function bezier(t: number, a: Pt, c1: Pt, c2: Pt, b: Pt): Pt {
 
 export type { MapCanvasProps, MapMode } from "./mapTypes";
 
+/**
+ * Tarayıcı anahtarı (EXPO_PUBLIC_GOOGLE_MAPS_BROWSER_KEY) varsa native ile aynı gerçek Google haritası
+ * (nokta yoksa Antalya); anahtar yoksa ya da Google reddederse aşağıdaki stilize SVG harita.
+ */
 export default function MapCanvas(props: MapCanvasProps) {
+  const [failed, setFailed] = useState(false);
+  const onFail = useCallback(() => setFailed(true), []);
+  if (MAPS_BROWSER_KEY && !failed) return <GoogleMapWeb {...props} onFail={onFail} />;
+  return <StylizedMap {...props} />;
+}
+
+function StylizedMap(props: MapCanvasProps) {
   const mode = props.mode ?? "idle";
   const theme = props.dark ? DARK : LIGHT;
   const [box, setBox] = useState({ w: 390, h: 360 });
