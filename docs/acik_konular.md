@@ -29,6 +29,8 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 - [ ] Uçuş takip API'sinin seçimi ve maliyeti.
 - [ ] Sitedeki "uçuş takibi / sürücü iniş saatinizi takip eder" ifadesi ile kod arasındaki fark: şimdilik yalnızca uçuş numarası saklanıyor, uçuş takip API'si yok. API seçilene kadar ifade yumuşatılmalı veya API bağlanmalı. **Kullanıcı kararı bekliyor** (B-W1 metne dokunmadı): ana sayfada `home.why3Title/why3Text` (güven şeridi), `home.s1Text` (hizmet kartı), `home.faq2a` (SSS), `home.flightTag` (giriş görseli etiketi) ve `home.trust2` (havalimanları bölümü alt metni), dört dilde.
 - [ ] ARQ işçisi (`arq app.worker.WorkerSettings`) 2026-11-02 taban çizgisinde çalışmıyordu. Saatlik kur güncelleme ve uçuş verisi silme gibi zamanlanmış görevler işçi çalışmadan işlemez; geliştirmede ayrıca başlatılmalı, üretimde süreç yöneticisiyle ayakta tutulmalı.
+- [ ] CI kapsamı (`.github/workflows/ci.yml`, 2026-11-08): web ve admin Playwright + axe testleri ile `next build` henüz CI'da yok (çalışan backend, seed ve sunucu ister). İlk CI koşusu GitHub'da henüz görülmedi; Linux'ta `pip install` çözümü yerelde denenemedi.
+- [ ] Manuel rezervasyon (K-54): sürücüye nakit ödeme (yolcunun parayı sürücüye vermesi) desteklenmiyor; gerekirse sürücü hakedişinden mahsup modeli tasarlanmalı. WhatsApp Business API ile otomatik mesaj gönderimi yok (metin elle kopyalanır). Havale/EFT ile alınan tahsilatın fatura ve muhasebe akışı (e-Arşiv) ile mutabakatı doğrulanmalı. Ödeme bağlantılı SMS metni (`booking_created_admin`) hukuk ve ileti izni (İYS) açısından kontrol edilmeli.
 - [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı.
 
 ## Geliştirme sırasında ortaya çıkanlar

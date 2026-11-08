@@ -10,13 +10,14 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
+from app.api.admin import manual_bookings
 from app.api.admin.common import Page, page
 from app.api.deps import ClientIp, DbSession, Now, OpsOrSupport, OpsStaff
 from app.api.schemas import BookingOut, MoneyStr
 from app.errors import NotFound
 from app.localtime import LOCAL_TZ
 from app.models import Booking, BookingLeg, DispatchOffer, Driver, Payment, TripEvent
-from app.models.enums import BookingStatus
+from app.models.enums import BookingSource, BookingStatus
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
 from app.services import bookings, dispatch, live_location
@@ -77,6 +78,8 @@ class AdminBookingRow(BaseModel):
     currency: str
     customer_phone: str
     created_at: datetime
+    source: str = "musteri"
+    channel: str | None = None
 
 
 @router.get("/bookings", response_model=list[AdminBookingRow])
@@ -86,6 +89,7 @@ def list_bookings(
     p: Annotated[Page, Depends(page)],
     status: BookingStatus | None = None,
     code: str | None = None,
+    source: BookingSource | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
 ):
@@ -94,6 +98,8 @@ def list_bookings(
         q = q.where(Booking.status == status)
     if code:
         q = q.where(Booking.booking_code == code.upper())
+    if source:
+        q = q.where(Booking.source == source)
     if date_from or date_to:
         q = q.join(BookingLeg, (BookingLeg.booking_id == Booking.id) & (BookingLeg.leg_order == 1))
         if date_from:
@@ -109,6 +115,7 @@ def list_bookings(
             total_amount=b.total_amount, currency=b.currency.value,
             # Müşteri hassas alanları admin panelinde maskeli (ekran 14).
             customer_phone=mask_phone(b.customer.user.phone or ""), created_at=b.created_at,
+            source=b.source.value, channel=b.channel.value if b.channel else None,
         )
         for b in rows
     ]
@@ -134,13 +141,18 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
         "commission_rate": str(b.commission_rate),
         "price_eur": f"{b.price_eur:.2f}",
         "cancel_reason": b.cancel_reason,
+        "customer_id": str(b.customer_id),
+        "customer_name": (b.customer.full_name[:1] + "***") if b.customer.full_name else None,
+        # K-54: kaynak, kanal, ödeme son anı, fiyat değişikliği, ödeme bağlantısı ve paylaşım metni.
+        "manual": manual_bookings.manual_info(b),
         "events": [{"leg_id": str(e.booking_leg_id), "event": e.event_type.value, "at": e.occurred_at} for e in events],
         "offers": [{"leg_id": str(o.booking_leg_id), "driver_id": str(o.driver_id), "status": o.status.value,
                     "offered_at": o.offered_at} for o in offers],
         "payments": [
             {"id": str(x.id), "provider": x.provider.value, "merchant_oid": x.merchant_oid,
              "amount": f"{x.amount:.2f}", "currency": x.currency.value, "status": x.status.value,
-             "paid_at": x.paid_at,
+             "paid_at": x.paid_at, "manual_method": x.manual_method.value if x.manual_method else None,
+             "provider_ref": x.provider_ref, "note": x.note,
              "refunds": [{"id": str(r.id), "amount": f"{r.amount:.2f}", "percent": r.refund_percent,
                           "status": r.status.value, "reason": r.reason} for r in x.refunds]}
             for x in pays

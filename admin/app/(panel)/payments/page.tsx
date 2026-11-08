@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Badge, ErrorBox, Field, Msg, PageHead, Select, Table, useAction, useData, usePager } from "@/components/ui";
 import { api, withQuery } from "@/lib/api";
 import { dt, money } from "@/lib/format";
-import { PAYMENT_STATUS, REFUND_STATUS } from "@/lib/labels";
+import { PAYMENT_PROVIDER, PAYMENT_STATUS, REFUND_STATUS } from "@/lib/labels";
 
 interface Payment {
   id: string;
@@ -28,6 +28,7 @@ interface Refund {
   reason: string;
   provider_ref: string | null;
   created_at: string;
+  manual: boolean;
 }
 
 /** Ekran 11: ödemeler ve iadeler. Başarısız iade tekrar denenebilir. */
@@ -48,6 +49,20 @@ export default function PaymentsPage() {
     if (ok) void refunds.reload();
   }
 
+  /** K-54: elle tahsilatın iadesi havale/nakit ile yapıldıktan sonra kapatılır. */
+  async function completeManual(r: Refund) {
+    const reference = prompt(`${money(r.amount, currencyOf(r.payment_id))} iadesi yapıldı mı? Dekont veya makbuz bilgisini yazın:`);
+    if (!reference || reference.trim().length < 2) return;
+    const ok = await action.run(
+      () => api(`admin/refunds/${r.id}/complete-manual`, { body: { reference: reference.trim() } }),
+      "Elle iade kapatıldı.",
+    );
+    if (ok) {
+      void refunds.reload();
+      void payments.reload();
+    }
+  }
+
   return (
     <div className="stack">
       <PageHead title="Ödemeler ve iadeler" />
@@ -65,7 +80,7 @@ export default function PaymentsPage() {
         columns={[
           { key: "oid", title: "Sipariş no", render: (p) => <span className="mono">{p.merchant_oid}</span> },
           { key: "booking", title: "Rezervasyon", render: (p) => <Link href={`/bookings/${p.booking_id}`}>Detay</Link> },
-          { key: "provider", title: "Sağlayıcı", render: (p) => p.provider },
+          { key: "provider", title: "Sağlayıcı", render: (p) => PAYMENT_PROVIDER[p.provider] ?? p.provider },
           { key: "amount", title: "Tutar", align: "right", render: (p) => money(p.amount, p.currency) },
           { key: "refunded", title: "İade", align: "right", render: (p) => (Number(p.refunded) ? money(p.refunded, p.currency) : "—") },
           { key: "status", title: "Durum", render: (p) => <Badge value={p.status} labels={PAYMENT_STATUS} /> },
@@ -96,9 +111,12 @@ export default function PaymentsPage() {
           {
             key: "act",
             title: "",
-            render: (r) => r.status === "basarisiz" && (
-              <button className="btn small" disabled={action.busy} onClick={() => retry(r.id)}>Tekrar dene</button>
-            ),
+            render: (r) =>
+              r.manual && r.status === "beklemede" ? (
+                <button className="btn small" disabled={action.busy} onClick={() => completeManual(r)}>Elle iade yapıldı</button>
+              ) : r.status === "basarisiz" && !r.manual && (
+                <button className="btn small" disabled={action.busy} onClick={() => retry(r.id)}>Tekrar dene</button>
+              ),
           },
         ]}
       />

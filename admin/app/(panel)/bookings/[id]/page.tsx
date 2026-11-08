@@ -6,7 +6,17 @@ import { useCan } from "@/components/Shell";
 import { Badge, ErrorBox, Field, Msg, PageHead, Table, useAction, useData } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dt, money, pct } from "@/lib/format";
-import { BOOKING_STATUS, BOOKING_TYPE, LEG_STATUS, OFFER_STATUS, PAYMENT_STATUS, REFUND_STATUS } from "@/lib/labels";
+import ManualBookingPanel, { type ManualInfo } from "@/components/ManualBookingPanel";
+import {
+  BOOKING_STATUS,
+  BOOKING_TYPE,
+  LEG_STATUS,
+  MANUAL_PAYMENT_METHOD,
+  OFFER_STATUS,
+  PAYMENT_PROVIDER,
+  PAYMENT_STATUS,
+  REFUND_STATUS,
+} from "@/lib/labels";
 
 interface Leg {
   id: string;
@@ -41,6 +51,8 @@ interface Detail {
     legs: Leg[];
   };
   customer_phone: string;
+  customer_name: string | null;
+  manual: ManualInfo;
   commission_rate: string;
   price_eur: string;
   cancel_reason: string | null;
@@ -54,6 +66,9 @@ interface Detail {
     currency: string;
     status: string;
     paid_at: string | null;
+    manual_method: string | null;
+    provider_ref: string | null;
+    note: string | null;
     refunds: { id: string; amount: string; percent: number; status: string; reason: string }[];
   }[];
 }
@@ -100,7 +115,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             <dt>Tür</dt><dd>{BOOKING_TYPE[b.booking_type]}</dd>
             <dt>Araç tipi</dt><dd>{b.vehicle_type.name}</dd>
             <dt>Yolcu</dt><dd>{b.passenger_name} ({b.passenger_count} kişi, {b.luggage_count} bagaj)</dd>
-            <dt>Müşteri tel.</dt><dd className="mono">{data.customer_phone}</dd>
+            <dt>Müşteri</dt><dd>{data.customer_name ?? "—"} <span className="mono">{data.customer_phone}</span></dd>
             <dt>Not</dt><dd>{b.note ?? "—"}</dd>
             <dt>Oluşturma</dt><dd>{dt(b.created_at)}</dd>
             {b.cancelled_at && (<><dt>İptal</dt><dd>{dt(b.cancelled_at)}: {data.cancel_reason}</dd></>)}
@@ -117,6 +132,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           </dl>
         </div>
       </div>
+
+      <ManualBookingPanel bookingId={id} status={b.status} total={b.total_amount} currency={b.currency}
+        manual={data.manual} onChanged={() => void reload()} />
 
       <h2>Bacaklar</h2>
       <Table
@@ -179,7 +197,19 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         empty="Ödeme denemesi yok."
         columns={[
           { key: "oid", title: "Sipariş no", render: (p) => <span className="mono">{p.merchant_oid}</span> },
-          { key: "provider", title: "Sağlayıcı", render: (p) => p.provider },
+          {
+            key: "provider",
+            title: "Sağlayıcı",
+            render: (p) => (
+              <>
+                {PAYMENT_PROVIDER[p.provider] ?? p.provider}
+                {p.manual_method && ` · ${MANUAL_PAYMENT_METHOD[p.manual_method] ?? p.manual_method}`}
+                {(p.provider_ref || p.note) && (
+                  <div className="hint">{[p.provider_ref, p.note].filter(Boolean).join(" · ")}</div>
+                )}
+              </>
+            ),
+          },
           { key: "amount", title: "Tutar", align: "right", render: (p) => money(p.amount, p.currency) },
           { key: "status", title: "Durum", render: (p) => <Badge value={p.status} labels={PAYMENT_STATUS} /> },
           { key: "paid", title: "Ödeme zamanı", render: (p) => dt(p.paid_at) },

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.errors import Forbidden, Unauthorized
+from app.errors import Conflict, Forbidden, Unauthorized
 from app.models import AuthSession, Customer, Driver, Role, User
 from app.models.enums import RoleCode, UserKind, UserStatus
 from app.security import tokens
@@ -125,6 +125,47 @@ def get_or_create_customer(
         db.flush()
     if customer.deleted_at is not None:
         raise Forbidden("hesap silinmiş")
+    if customer.verified_at is None:
+        # Admin'in eklediği müşteri (K-54) telefonunu ilk SMS kodu girişinde doğrular.
+        customer.verified_at = _now()
+    return customer
+
+
+def create_customer_by_staff(
+    db: Session,
+    phone: str,
+    *,
+    full_name: str,
+    email: str | None,
+    country_code: str | None,
+    locale: str,
+) -> Customer:
+    """K-54: uygulamayı kullanmayan müşteri (WhatsApp, telefon) admin tarafından eklenir.
+    Telefon doğrulanmamış sayılır (`verified_at` boş); müşteri isterse aynı numarayla SMS koduyla girer."""
+    user = db.scalar(
+        select(User).where(User.kind == UserKind.CUSTOMER, User.phone_hash == blind_index(phone))
+    )
+    if user is not None:
+        existing = db.scalar(select(Customer).where(Customer.user_id == user.id))
+        if existing is not None:
+            raise Conflict("bu telefonla kayıtlı müşteri var", code="customer_exists",
+                           details={"customer_id": str(existing.id)})
+    else:
+        user = User(kind=UserKind.CUSTOMER, phone=phone, phone_hash=blind_index(phone))
+        db.add(user)
+        db.flush()
+    country = country_code.upper() if country_code else None
+    customer = Customer(
+        user_id=user.id,
+        full_name=full_name,
+        email=email,
+        country_code=country,
+        locale=locale,
+        currency=currency_for_country(country),
+        verified_at=None,
+    )
+    db.add(customer)
+    db.flush()
     return customer
 
 

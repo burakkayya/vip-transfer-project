@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.errors import ServiceUnavailable
@@ -114,9 +114,16 @@ def cancel_unpaid_bookings(db: Session, now: datetime) -> int:
         db.scalars(
             select(Booking).where(
                 Booking.status == BookingStatus.PENDING_PAYMENT,
-                Booking.created_at < now - timedelta(minutes=minutes),
+                # Admin girişinde ödeme süresi rezervasyonda yazılıdır (K-54); diğerlerinde genel süre.
+                or_(
+                    and_(Booking.payment_due_at.is_(None), Booking.created_at < now - timedelta(minutes=minutes)),
+                    Booking.payment_due_at < now,
+                ),
             )
-        )
+            # Aynı anda gelen elle tahsilat veya kart bildirimi rezervasyonu kilitliyorsa bu tur atlanır;
+            # kilit bırakıldığında rezervasyon artık ödeme beklemiyorsa iptal edilmez.
+            .with_for_update(of=Booking, skip_locked=True)
+        ).unique()
     )
     for b in bookings:
         b.status = BookingStatus.CANCELLED

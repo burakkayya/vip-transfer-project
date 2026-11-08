@@ -5,13 +5,21 @@ from __future__ import annotations
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict, DomainError, NotFound
 from app.models import Booking, Customer, Invoice, Payment, PaymentWebhook, Refund
-from app.models.enums import BookingStatus, BookingType, PaymentStatus
+from app.models.enums import (
+    BookingSource,
+    BookingStatus,
+    BookingType,
+    ManualPaymentMethod,
+    PaymentProviderCode,
+    PaymentStatus,
+)
 from app.providers.payments import Checkout, CheckoutRequest, PaymentProvider
 from app.services import audit, dispatch, notifications
 from app.services.bookings import execute_refund
@@ -138,8 +146,62 @@ def handle_callback(
         execute_refund(db, refund, payment, provider)
         return
 
+    confirm_paid_booking(db, booking, now)
+
+
+def confirm_paid_booking(db: Session, booking: Booking, now: datetime) -> None:
+    """Ödemesi alınan rezervasyonu onaylar: fatura kuyruğu, müşteri SMS'i, anlık işte sürücü teklifi."""
     booking.status = BookingStatus.CONFIRMED
     db.add(Invoice(booking_id=booking.id))
     notifications.notify_customer(db, booking, "booking_confirmed")
     if booking.booking_type is BookingType.INSTANT:
         dispatch.offer_leg(db, booking.legs[0], now=now)
+
+
+def record_manual_payment(
+    db: Session,
+    booking: Booking,
+    *,
+    staff_id,
+    method: ManualPaymentMethod,
+    amount: Decimal,
+    reference: str | None,
+    note: str | None,
+    now: datetime,
+    ip: str | None,
+) -> Payment:
+    """K-54: havale/EFT, ofiste nakit veya fiziki POS tahsilatını kaydeder ve rezervasyonu onaylar.
+    Tutar rezervasyon toplamına eşit olmalıdır (kısmi tahsilat yok). Sağlayıcı çağrılmaz."""
+    db.get(Booking, booking.id, with_for_update={"of": Booking}, populate_existing=True)
+    if booking.source is not BookingSource.ADMIN:
+        # K-12: sitede ve uygulamada açılan rezervasyonda havale/elle tahsilat yok.
+        raise Conflict("elle tahsilat yalnızca admin girişli rezervasyonda kaydedilir", code="manual_payment_not_allowed")
+    if booking.status is not BookingStatus.PENDING_PAYMENT:
+        raise Conflict("bu rezervasyon için ödeme beklenmiyor", code="payment_not_expected")
+    if amount != booking.total_amount:
+        raise DomainError(
+            "tahsil edilen tutar rezervasyon toplamına eşit olmalı",
+            code="amount_mismatch",
+            details={"total": str(booking.total_amount), "currency": booking.currency.value},
+        )
+    # Bu arada kartla ödeme sayfası açıldıysa o ödeme kullanılmaz; geç gelirse tam iade yolu işler (K-46).
+    payment = Payment(
+        booking_id=booking.id,
+        provider=PaymentProviderCode.MANUAL,
+        merchant_oid=f"{booking.booking_code}M{secrets.token_hex(4).upper()}",
+        provider_ref=(reference or None) and reference[:100],
+        amount=amount,
+        currency=booking.currency,
+        status=PaymentStatus.PAID,
+        paid_at=now,
+        manual_method=method,
+        recorded_by_id=staff_id,
+        note=(note or None) and note[:500],
+    )
+    db.add(payment)
+    db.flush()
+    audit.record(db, actor_id=staff_id, action="payment.manual", entity_type="payment", entity_id=payment.id,
+                 changes={"booking_code": booking.booking_code, "method": method, "amount": amount,
+                          "currency": booking.currency, "reference": reference}, ip=ip)
+    confirm_paid_booking(db, booking, now)
+    return payment

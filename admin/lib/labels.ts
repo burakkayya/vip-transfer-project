@@ -109,3 +109,16 @@ export function tone(status: string): "ok" | "warn" | "danger" | "" {
   if (DANGER.includes(status)) return "danger";
   return "";
 }
+
+// K-54: manuel rezervasyon (admin girişi).
+export const BOOKING_SOURCE: Record<string, string> = { musteri: "Müşteri (site/uygulama)", admin: "Admin girişi" };
+export const BOOKING_CHANNEL: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  telefon: "Telefon",
+  eposta: "E-posta",
+  yuz_yuze: "Yüz yüze",
+  diger: "Diğer",
+};
+export const MANUAL_PAYMENT_METHOD: Record<string, string> = { havale: "Havale / EFT", nakit: "Nakit", pos: "Fiziki POS" };
+export const PAYMENT_PROVIDER: Record<string, string> = { paytr: "PayTR", iyzico: "iyzico", fake: "Test", elle: "Elle tahsilat" };
+export const LOCALE: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", ru: "Rusça" };

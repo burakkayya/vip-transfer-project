@@ -12,6 +12,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from app.api.admin.common import Page, page
 from app.api.deps import ClientIp, DbSession, FinanceStaff, Now
@@ -51,14 +52,15 @@ def list_payments(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends
 @router.get("/refunds")
 def list_refunds(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends(page)],
                  status: RefundStatus | None = None):
-    q = select(Refund)
+    q = select(Refund).options(joinedload(Refund.payment))
     if status:
         q = q.where(Refund.status == status)
     rows = db.scalars(q.order_by(Refund.created_at.desc()).limit(p.limit).offset(p.offset))
     return [
         {"id": str(r.id), "payment_id": str(r.payment_id), "amount": f"{r.amount:.2f}",
          "refund_percent": r.refund_percent, "status": r.status.value, "reason": r.reason,
-         "provider_ref": r.provider_ref, "created_at": r.created_at}
+         "provider_ref": r.provider_ref, "created_at": r.created_at,
+         "manual": r.payment.provider.value == "elle"}
         for r in rows
     ]
 

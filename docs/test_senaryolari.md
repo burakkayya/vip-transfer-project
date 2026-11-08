@@ -208,12 +208,30 @@ Hazırlık: emülatörde müşteri Expo Go'da (8083), sürücü geliştirme derl
 11. Müşteri atanmış işi iptal ederse sürücüye "Yolculuk iptal edildi" bildirimi gider.
 
 Not: uygulama tamamen kapalıyken bildirim için FCM gerekir (açık konu); uygulama açık veya sürücüde yolculuk sürerken bildirimler yerel olarak gelir.
+### 15. Admin'in manuel rezervasyonu (WhatsApp, telefon; K-54)
+
+Hazırlık: admin paneli (3001), operasyon yetkili personel. Müşteri web sitesi (3000) ödeme bağlantısı için açık olmalı.
+
+1. **Müşteriler → Müşteri ekle**: telefon (+49...), ad soyad, ülke (Almanya → EUR, Türkiye → TRY), dil. Aynı numara yeniden eklenirse "Bu numarayla kayıtlı müşteri var" ve **Mevcut müşteriyi kullan**.
+2. **Rezervasyonlar → Yeni rezervasyon**: telefonu yazıp **Müşteriyi bul**. Kayıt yoksa aynı ekranda müşteri eklenir ve seçilir; kartta "Henüz SMS koduyla giriş yapmadı".
+3. Tür **Planlı**, alış zamanı (en az 2 saat sonra), isteğe bağlı dönüş. Alış ve varış için **Adres veya otel ara** (öneri listesinden seçilir, bölge altta yazar) ya da **İlçe / havalimanı seç**; adres notu sürücüye gider.
+4. **Fiyatları hesapla**: her araç tipi fiyatıyla listelenir, kapasiteyi aşanlar "Kapasite yetmiyor" ile seçilemez. Yolculuk bilgisi değişirse "fiyatları yeniden hesaplayın" uyarısı çıkar ve oluştur düğmesi kapanır.
+5. İsteğe bağlı **Fiyatı değiştir**: yeni toplam ve gerekçe (gerekçesiz oluşturulamaz).
+6. Kanal (WhatsApp vb.), yolcu adı, dil. **Ödeme**: (a) **Ödeme bağlantısı gönder**, süre 2-72 saat, SMS kutusu; (b) **Ödeme alındı**: yöntem (havale, nakit, POS) ve dekont no.
+7. KVKK/mesafeli satış onayı kutusu işaretlenmeden oluşturulamaz. **Rezervasyonu oluştur** → kod, son ödeme zamanı, kopyalanabilir ödeme bağlantısı ve WhatsApp metni. (a)'da müşteriye ödeme bağlantılı SMS gider (geliştirmede backend konsolunda), (b)'de rezervasyon hemen **Onaylandı** olur ve yalnızca onay SMS'i gider.
+8. Ödeme bağlantısı: müşteri `http://localhost:3000/{dil}/bookings/{kod}/pay` adresini açar, aynı telefonla SMS koduyla girer, kartla öder → rezervasyon onaylanır; müşteri artık doğrulanmış görünür.
+9. Rezervasyon detayı **Kaynak ve ödeme**: "Admin girişi · WhatsApp", son ödeme, fiyat değişikliği ve gerekçe, metni kopyala, **Ödeme SMS'ini yeniden gönder**, **Elle tahsilat** (tutar sabit, onay penceresi). Ödemeler tablosunda "Elle tahsilat · Havale / EFT" ve dekont no.
+10. Ödeme süresi dolan ve ödenmeyen rezervasyon saatlik görevde "ödeme süresi doldu" ile iptal olur (genel 30 dk değil, rezervasyondaki süre).
+11. Elle tahsil edilmiş rezervasyon iptal edilirse iade **Beklemede** kalır; muhasebe **Ödemeler ve iadeler**de **Elle iade yapıldı** ile dekont bilgisini girip kapatır, ödeme "İade edildi" olur.
+12. Liste: **Kaynak = Admin girişi** filtresi ve "Admin · WhatsApp" sütunu.
 
 ## Otomatik testler
 
+- **GitHub CI** (`.github/workflows/ci.yml`): her PR'da backend pytest, mobil tsc + jest + lint, web ve admin tsc + lint, kök betik testleri ve token uyumu otomatik koşar. Playwright testleri CI'da yoktur, yerelde çalıştırılır.
+- **Lint taban çizgisi**: `node scripts/lint-baseline.mjs <web|admin|mobile>`. İhlal sayısı `scripts/lint-baseline.json` değerini aşarsa başarısız olur; ihlal giderildiyse aynı dosyadaki sayı düşürülür.
 - **Getaway: Backend testleri**: iş kuralları, API, adres ve ilçe çözümleme, ödeme, eşleştirme ve WebSocket.
 - **Getaway: Tip denetimi (web, admin, mobil)**.
-- **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır.
+- **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır. Admin manuel rezervasyon akışı: `cd admin && npx playwright test manual-booking --workers=1` (müşteri ekleme, fiyat, oluşturma, elle tahsilat, axe).
 - **Lint**: `npm run lint` (`web`, `admin`, `mobile`). Taban çizgisindeki bilinen ihlaller nedeniyle sıfırdan farklı çıkış beklenir (web 3 hata/1 uyarı, admin 1/2, mobil 7/2; `docs/ui-review/lint-taban.md`); sayılar artmamalıdır.
 - **Web ortak dosyalar** (`cd web && npx playwright test shared`, iki proje): üst bilgide axe ihlali yok, eşleşmeyen adres (`/tr/yok`) yerel 404 çizer (`html[lang=tr]`, `h1` "404", durum 404, üst bilgi ve "Ana sayfaya dön"), Tab ile odaklanan düğmede 2 px lake siyah halka, yer tutucunun gerçek zemine karşı WCAG kontrastı dinlenme ve üzerine gelme halinde ≥ 4,5 (ana sayfa adres alanı, rezervasyon kodu alanı), 390 px'te açık mobil menü Esc ile kapanır ve odak menü düğmesine döner, hareket azaltmada adım çizgisi dolu. Geliştirme sunucusunda kararlı sonuç için `--workers=1`.
 - **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).

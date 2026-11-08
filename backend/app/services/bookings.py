@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -26,12 +27,15 @@ from app.models import (
     Refund,
 )
 from app.models.enums import (
+    BookingChannel,
+    BookingSource,
     BookingStatus,
     BookingType,
     ConsentType,
     FlightDirection,
     LegStatus,
     OfferStatus,
+    PaymentProviderCode,
     PaymentStatus,
     RefundStatus,
     RegionType,
@@ -53,6 +57,32 @@ class FlightInput:
     leg_order: int
     flight_no: str
     scheduled_at: datetime | None
+
+
+@dataclass(frozen=True)
+class AdminEntry:
+    """K-54: admin'in WhatsApp, telefon vb. kanaldan aldığı rezervasyon."""
+
+    staff_id: uuid.UUID
+    channel: BookingChannel
+    payment_due_at: datetime
+    # Boşsa sistem fiyatı. Doluysa toplam tutar (müşteri para biriminde) bu olur, gerekçe zorunludur.
+    override_total: Decimal | None = None
+    override_reason: str | None = None
+
+
+def override_quote(quote: Quote, total: Decimal) -> Quote:
+    """Toplamı elle verilen tutara çeker. Bacak payları ve EUR karşılığı aynı oranla ölçeklenir;
+    garanti ücreti değişmez. Kuruş farkı son bacakta."""
+    price = total - quote.guarantee_fee
+    if price <= 0:
+        raise DomainError("fiyat garanti ücretinden büyük olmalı", code="invalid_price_override")
+    ratio = price / quote.price
+    shares = [(leg.price * ratio).quantize(Decimal("0.01")) for leg in quote.legs[:-1]]
+    shares.append(price - sum(shares, Decimal("0")))
+    legs = tuple(dataclasses.replace(leg, price=share) for leg, share in zip(quote.legs, shares))
+    price_eur = price if quote.currency.value == "EUR" else (quote.price_eur * ratio).quantize(Decimal("0.01"))
+    return dataclasses.replace(quote, legs=legs, price=price, price_eur=price_eur, total=total)
 
 
 def new_booking_code() -> str:
@@ -114,6 +144,7 @@ def create_booking(
     locale: str,
     ip: str | None,
     now: datetime,
+    admin: AdminEntry | None = None,
 ) -> Booking:
     if quote.total != expected_total:
         raise Conflict(
@@ -121,6 +152,11 @@ def create_booking(
             code="price_changed",
             details={"total": str(quote.total), "currency": quote.currency.value},
         )
+    system_total = quote.total
+    if admin is not None and admin.override_total is not None and admin.override_total != quote.total:
+        if not (admin.override_reason and admin.override_reason.strip()):
+            raise DomainError("fiyat değişikliği için gerekçe yazılmalı", code="override_reason_required")
+        quote = override_quote(quote, admin.override_total)
     first_pickup = quote.legs[0].pickup_at
     if booking_type is BookingType.SCHEDULED:
         lead_hours = int(system_settings.get(db, "scheduled_min_lead_hours"))
@@ -167,6 +203,14 @@ def create_booking(
         currency=quote.currency,
         quoted_at=now,
     )
+    if admin is not None:
+        booking.source = BookingSource.ADMIN
+        booking.channel = admin.channel
+        booking.created_by_id = admin.staff_id
+        booking.payment_due_at = admin.payment_due_at
+        if quote.total != system_total:
+            booking.system_total_amount = system_total
+            booking.price_override_reason = admin.override_reason.strip()[:500]
     for order, plan in enumerate(quote.legs, start=1):
         booking.legs.append(
             BookingLeg(
@@ -209,21 +253,28 @@ def create_booking(
                 customer_id=customer.id,
                 consent_type=consent_type,
                 version=str(system_settings.get(db, key)),
-                ip=ip,
+                # Admin girişinde personelin IP'si müşterinin onayı gibi kaydedilmez.
+                ip=ip if admin is None else None,
             )
         )
     db.flush()
+    changes: dict = {
+        "booking_code": booking.booking_code,
+        "total": booking.total_amount,
+        "currency": booking.currency,
+    }
+    if admin is not None:
+        # Admin girişinde onaylar müşteriden kanal üzerinden alınmıştır; kanal ve fiyat farkı denetimde durur.
+        changes.update(source=BookingSource.ADMIN, channel=admin.channel, customer_id=customer.id)
+        if booking.system_total_amount is not None:
+            changes.update(system_total=booking.system_total_amount, override_reason=booking.price_override_reason)
     audit.record(
         db,
-        actor_id=customer.user_id,
-        action="booking.create",
+        actor_id=admin.staff_id if admin is not None else customer.user_id,
+        action="booking.admin_create" if admin is not None else "booking.create",
         entity_type="booking",
         entity_id=booking.id,
-        changes={
-            "booking_code": booking.booking_code,
-            "total": booking.total_amount,
-            "currency": booking.currency,
-        },
+        changes=changes,
         ip=ip,
     )
     return booking
@@ -335,18 +386,39 @@ def execute_refund(db: Session, refund: Refund, payment: Payment, provider: Paym
     )
     if others + refund.amount > payment.amount:
         raise Conflict("iade tutarı ödenen tutarı aşıyor", code="refund_exceeds_payment")
+    if payment.provider is PaymentProviderCode.MANUAL:
+        # Elle tahsilatın iadesi de elle yapılır (havale, nakit): kayıt beklemede kalır, muhasebe
+        # parayı iade edip `complete_manual_refund` ile kapatır (K-54).
+        refund.status = RefundStatus.PENDING
+        return
     result = provider.refund(payment.merchant_oid, refund.amount)
     if result.ok:
         refund.status = RefundStatus.COMPLETED
         refund.provider_ref = result.provider_ref
-        db.flush()
-        db.refresh(payment)
-        completed = sum(
-            (r.amount for r in payment.refunds if r.status is RefundStatus.COMPLETED), Decimal("0")
-        )
-        payment.status = (
-            PaymentStatus.REFUNDED if completed >= payment.amount else PaymentStatus.PARTIALLY_REFUNDED
-        )
+        _settle_payment_status(db, payment)
     else:
         refund.status = RefundStatus.FAILED
         refund.reason = f"{refund.reason[:150]} | hata: {result.error}"[:255]
+
+
+def _settle_payment_status(db: Session, payment: Payment) -> None:
+    db.flush()
+    db.refresh(payment)
+    completed = sum(
+        (r.amount for r in payment.refunds if r.status is RefundStatus.COMPLETED), Decimal("0")
+    )
+    payment.status = (
+        PaymentStatus.REFUNDED if completed >= payment.amount else PaymentStatus.PARTIALLY_REFUNDED
+    )
+
+
+def complete_manual_refund(db: Session, refund: Refund, *, reference: str) -> None:
+    """Elle tahsilatın iadesi yapıldı (K-54): muhasebe havale/nakit iadesini kaydeder."""
+    payment = refund.payment
+    if payment.provider is not PaymentProviderCode.MANUAL:
+        raise Conflict("yalnızca elle tahsilatın iadesi elle kapatılır", code="not_manual_payment")
+    if refund.status is not RefundStatus.PENDING:
+        raise Conflict("iade beklemede değil", code="refund_not_pending")
+    refund.status = RefundStatus.COMPLETED
+    refund.provider_ref = reference[:100]
+    _settle_payment_status(db, payment)

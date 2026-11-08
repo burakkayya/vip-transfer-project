@@ -10,7 +10,9 @@
 ## Kabul edilen yöntemler
 
 - Kredi ve banka kartı (yurt içi ve yurt dışı).
-- Havale ve EFT kabul edilmez (K-12).
+- Havale ve EFT sitede ve uygulamada kabul edilmez (K-12).
+- Admin'in manuel rezervasyonunda (K-54) personel havale/EFT, ofiste nakit veya fiziki POS tahsilatını elle kaydeder (`payments.provider = elle`, yöntem, dekont no, kaydeden personel). Sağlayıcı çağrılmaz. Bu ödemenin iadesi de elle yapılır: iptalde iade kaydı beklemede açılır, muhasebe parayı iade edip **Ödemeler ve iadeler** ekranında **Elle iade yapıldı** ile kapatır.
+- Ödeme bağlantısı: admin girişindeki rezervasyon için müşteri `/{dil}/bookings/{kod}/pay` adresinde SMS koduyla girip kartla öder; ödeme süresi rezervasyonda (`payment_due_at`) tutulur.
 
 ## Para birimi ve settlement
 
