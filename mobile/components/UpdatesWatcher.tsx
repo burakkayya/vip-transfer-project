@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { api } from "@/lib/api";
 import { VARIANT } from "@/lib/config";
-import { isActiveChat, registerPushToken, setupNotifications, showLocal } from "@/lib/notify";
+import { isActiveChat, presentedUpdateIds, registerPushToken, setupNotifications, showLocal } from "@/lib/notify";
 import { useSession } from "@/lib/session";
 import { storage } from "@/lib/storage";
 import type { TripUpdate } from "@/lib/types";
@@ -35,14 +35,28 @@ export default function UpdatesWatcher() {
   const cursor = useRef<string | null>(null);
   const seen = useRef(new Set<string>());
 
-  // Bildirime dokunma: ilgili ekrana git.
+  // Bildirime dokunma: ilgili ekrana git. Yalnız oturum açıkken; aynı dokunuş (soğuk açılışta hem dinleyici
+  // hem son yanıt olarak gelebilir) bir kez işlenir.
+  const handled = useRef(new Set<string>());
   useEffect(() => {
-    if (Platform.OS === "web") return;
-    const sub = Notifications.addNotificationResponseReceivedListener((r) => {
+    if (!signedIn || Platform.OS === "web") return;
+    const open = (r: Notifications.NotificationResponse | null) => {
+      if (!r) return;
+      const key = `${r.notification.request.identifier}:${r.notification.date}`;
+      if (handled.current.has(key)) return;
+      handled.current.add(key);
       openFor(r.notification.request.content.data as TripUpdate["data"]);
-    });
+    };
+    const sub = Notifications.addNotificationResponseReceivedListener(open);
+    // Uygulama kapalıyken gelen push'a dokunulup açıldıysa: o bildirimin ekranına git.
+    Notifications.getLastNotificationResponseAsync()
+      .then((r) => {
+        open(r);
+        if (r) void Notifications.clearLastNotificationResponseAsync?.();
+      })
+      .catch(() => undefined);
     return () => sub.remove();
-  }, []);
+  }, [signedIn]);
 
   useEffect(() => {
     if (!signedIn || Platform.OS === "web") return;
@@ -57,11 +71,14 @@ export default function UpdatesWatcher() {
         }
         const path = VARIANT === "driver" ? "driver/updates" : "me/updates";
         const items = await api<TripUpdate[]>(`${path}?after=${encodeURIComponent(cursor.current)}`);
+        // Push olarak çekmeceye düşmüş olaylar yeniden gösterilmez (ikinci kez ses/titreşim olmasın).
+        const presented = items.some((u) => !seen.current.has(u.id)) ? await presentedUpdateIds() : new Set<string>();
         for (const u of items) {
           if (seen.current.has(u.id)) continue;
           seen.current.add(u.id);
+          if (presented.has(u.id)) continue;
           if (u.code === "new_message" && isActiveChat(u.data)) continue;
-          await showLocal(u.title, u.body, u.data);
+          await showLocal(u.title, u.body, { ...u.data, update_id: u.id }, u.id);
         }
         if (items.length) {
           cursor.current = items[items.length - 1].created_at;

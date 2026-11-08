@@ -10,16 +10,12 @@ Bildirimde telefon, adres veya ödeme bilgisi yer almaz.
 
 from __future__ import annotations
 
-import logging
+import uuid
 
 from sqlalchemy.orm import Session
 
-from app.models import BookingLeg, Notification, TripUpdate
-from app.models.enums import NotificationChannel, NotificationStatus
-from app.providers.push import get_push_sender
-
-log = logging.getLogger(__name__)
-
+from app.models import BookingLeg, TripUpdate
+from app.services import push_outbox
 
 class _Safe(dict):
     def __missing__(self, key: str) -> str:
@@ -91,31 +87,6 @@ DRIVER_TEXTS: dict[str, tuple[str, str]] = {
 }
 
 
-def _record_push(db: Session, recipient_type: str, recipient_id, code: str, ok: bool, error: str | None) -> None:
-    db.add(
-        Notification(
-            recipient_type=recipient_type,
-            recipient_id=recipient_id,
-            channel=NotificationChannel.PUSH,
-            template_code=code,
-            status=NotificationStatus.SENT if ok else NotificationStatus.FAILED,
-            error=error,
-        )
-    )
-
-
-def _push(db: Session, recipient_type: str, recipient_id, token: str | None, code: str,
-          title: str, body: str, data: dict[str, str]) -> None:
-    if not token:
-        return
-    try:
-        get_push_sender().send(token, title, body, data)
-        _record_push(db, recipient_type, recipient_id, code, True, None)
-    except Exception as exc:  # noqa: BLE001 - bildirim hatası işlemi bozmamalı
-        log.exception("push bildirimi gönderilemedi")
-        _record_push(db, recipient_type, recipient_id, code, False, str(exc)[:255])
-
-
 def _data(leg: BookingLeg, code: str) -> dict[str, str]:
     return {"type": code, "booking_code": leg.booking.booking_code, "leg_id": str(leg.id)}
 
@@ -137,10 +108,10 @@ def to_customer(db: Session, leg: BookingLeg, code: str, **params: object) -> Tr
     values = _Safe({**leg_params(leg), **{k: str(v) for k, v in params.items()}})
     title, body = title_t.format_map(values)[:120], body_t.format_map(values)[:500]
     data = _data(leg, code)
-    update = TripUpdate(booking_leg_id=leg.id, recipient_type="customer", recipient_id=booking.customer_id,
-                        code=code, title=title, body=body, data=data)
+    update = TripUpdate(id=uuid.uuid4(), booking_leg_id=leg.id, recipient_type="customer",
+                        recipient_id=booking.customer_id, code=code, title=title, body=body, data=data)
     db.add(update)
-    _push(db, "customer", booking.customer_id, booking.customer.push_token, code, title, body, data)
+    push_outbox.enqueue(db, booking.customer, code, title, body, {**data, "update_id": str(update.id)})
     return update
 
 
@@ -151,8 +122,8 @@ def to_driver(db: Session, leg: BookingLeg, code: str, **params: object) -> Trip
     values = _Safe({**leg_params(leg), **{k: str(v) for k, v in params.items()}})
     title, body = title_t.format_map(values)[:120], body_t.format_map(values)[:500]
     data = _data(leg, code)
-    update = TripUpdate(booking_leg_id=leg.id, recipient_type="driver", recipient_id=leg.driver.id,
-                        code=code, title=title, body=body, data=data)
+    update = TripUpdate(id=uuid.uuid4(), booking_leg_id=leg.id, recipient_type="driver",
+                        recipient_id=leg.driver.id, code=code, title=title, body=body, data=data)
     db.add(update)
-    _push(db, "driver", leg.driver.id, leg.driver.push_token, code, title, body, data)
+    push_outbox.enqueue(db, leg.driver, code, title, body, {**data, "update_id": str(update.id)})
     return update

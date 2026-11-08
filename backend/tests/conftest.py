@@ -20,6 +20,7 @@ os.environ["GETAWAY_SMS_PROVIDER"] = "console"
 os.environ["GETAWAY_PAYMENT_PROVIDER"] = "fake"
 os.environ["GETAWAY_ROUTING_PROVIDER"] = "haversine"
 os.environ["GETAWAY_PLACES_PROVIDER"] = "fake"
+os.environ["GETAWAY_PUSH_PROVIDER"] = "console"
 os.environ["GETAWAY_STORAGE_DIR"] = tempfile.mkdtemp(prefix="getaway-test-")
 
 import pyotp  # noqa: E402
@@ -70,6 +71,15 @@ def client(db_app):
     from fastapi.testclient import TestClient
 
     return TestClient(db_app)
+
+
+@pytest.fixture(autouse=True)
+def _drain_push():
+    """Commit sonrası arka planda giden push'lar test bitmeden tamamlanır (push_outbox)."""
+    yield
+    from app.services import push_outbox
+
+    push_outbox.drain()
 
 
 @pytest.fixture

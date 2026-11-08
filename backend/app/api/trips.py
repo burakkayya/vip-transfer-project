@@ -22,7 +22,7 @@ from app.errors import NotFound, ServiceUnavailable
 from app.models import BookingLeg, DispatchOffer, TripMessage, TripUpdate
 from app.models.enums import BookingType, LegStatus, OfferStatus
 from app.providers.routing import Point, get_routing, haversine_km
-from app.services import dispatch, eta, live_location, messages, route_line
+from app.services import dispatch, eta, live_location, messages, notifications, route_line
 
 driver_router = APIRouter(prefix="/driver", tags=["driver"])
 customer_router = APIRouter(prefix="/me", tags=["customer"])
@@ -341,12 +341,12 @@ class PushTokenIn(BaseModel):
 
 @customer_router.post("/push-token", status_code=204)
 def customer_push_token(body: PushTokenIn, customer: CurrentCustomer, db: DbSession):
-    customer.push_token = body.token
+    notifications.bind_push_token(db, customer, body.token)
     db.commit()
 
 
 @driver_router.post("/me/push-token", status_code=204)
 def driver_push_token(body: PushTokenIn, driver: CurrentDriver, db: DbSession):
-    driver.push_token = body.token
+    notifications.bind_push_token(db, driver, body.token)
     db.commit()
 

@@ -19,6 +19,9 @@ const DRIVER_BACKGROUND_TEXT =
 // iOS Google Maps SDK anahtarı (isteğe bağlı). Tanımlıysa iOS de Google Haritalar kullanır (MapCanvas, `extra.googleMapsIos`);
 // tanımsızsa Apple Maps. Backend'in sunucu anahtarı buraya konmaz: bu anahtar uygulama paketinde taşınır, bundle ID ile kısıtlanır.
 const googleMapsIosKey = process.env.GETAWAY_GOOGLE_MAPS_IOS_KEY;
+// Firebase (FCM push): Firebase Console'dan indirilen google-services.json'un yolu (repo dışında durur).
+// Tanımsızsa push jetonu alınmaz, uygulama içi bildirimler (yoklama) çalışmaya devam eder.
+const googleServicesFile = process.env.GETAWAY_GOOGLE_SERVICES_FILE;
 
 // Müşteri uygulaması konum kullanmaz (mobile/PRODUCT.md). Expo prebuild kurulu `react-native-maps` ve
 // `expo-location` (sürücü için kurulu) paketlerinin yerleşik eklentileriyle iki çeşide de konum izni ve
@@ -75,6 +78,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ? {}
         : { blockedPermissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"] }),
       ...(googleMapsAndroidKey ? { config: { googleMaps: { apiKey: googleMapsAndroidKey } } } : {}),
+      ...(googleServicesFile ? { googleServicesFile } : {}),
     },
     plugins: [
       "expo-router",
@@ -83,7 +87,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-localization",
       "@react-native-community/datetimepicker",
       "expo-task-manager",
-      ["expo-notifications", { color: "#0B0B0C" }] as [string, object],
+      // defaultChannel: FCM bildirimi kanal belirtmeden ya da kanal henüz oluşturulmadan gelirse.
+      ["expo-notifications", { color: "#0B0B0C", defaultChannel: "trip" }] as [string, object],
       ...(isDriver
         ? [
             [

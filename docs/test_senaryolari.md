@@ -57,6 +57,9 @@ Expo Go arka plan konumunu desteklemez; sürücü uygulaması kendi geliştirme 
 
 - **Adres araması:** Google anahtarı yokken örnek yerler kullanılır: Antalya Havalimanı, Kaleiçi, Lara, Rixos Downtown, Belek, Side, Kleopatra Plajı (Alanya), Kemer Marina, Kaş, Kalkan, Bodrum Marina, Turgutreis, Ölüdeniz, Fethiye, Göcek, Marmaris, Dalyan, Taksim (hizmet dışı).
 - **Ödeme:** iFrame içinde sahte ödeme sayfası açılır, **Ödemeyi onayla** veya **Reddet** seçilir.
+- **Önizlemeleri `CI=1` ile başlatmayın:** Metro bu modda dosya değişikliklerini izlemez, önizleme eski kodla çalışır (ör. sürücü planlı işleri havuzda görmez). Kod değiştiyse `npm run web` / `npm run web:driver` süreçlerini `CI` olmadan yeniden başlatın.
+- **Planlı iş sürücüye teklif olarak düşmez:** ödeme sonrası teklif yalnızca anlık işte gönderilir; planlı iş uygun sürücülerin **İş havuzu**nda görünür (K-47). İş kuyruğu işçisi (`arq app.worker.WorkerSettings`) çökerse teklif süresi dolumu ve ödenmeyen iptali durur; `backend` altında yeniden başlatın.
+- **Harita:** Web önizlemesi (8081/8082) `mobile/.env.local` içinde `EXPO_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (web sitesinin tarayıcı anahtarı) varsa gerçek Google haritası gösterir (rota, alış dairesi, varış karesi, sürücü). Anahtar yoksa veya Google reddederse stilize SVG haritaya döner. Anahtar eklenince önizleme yeniden başlatılır.
 - **Konum:** Sürücü önizlemesinde GPS yoksa yolculuk ekranında **Geliştirme: konum gönder** düğmesi alış noktası çevresinde konum yollar.
 
 ## Senaryolar
@@ -235,6 +238,13 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 5. Telefonda (390 px) sohbet paneli taşma yapmaz, yazma alanı ve **Gönder** alt alta.
 6. Admin **Müşteri bitirişleri**: yolculuğu müşterinin bitirdiği bacaklar; "Süre (gerçek / plan)" ve planın yarısından kısa bitenlerde **Erken**. **Yalnızca erken bitenler** filtresi.
 7. Koda tıklayıp rezervasyon detayı → **Müşteri–sürücü mesajları**: gerekçe (en az 5 karakter) yazılmadan **Mesajları göster** kapalı; gerekçeyle açılınca yazışma sürücü/müşteri adıyla ve okundu zamanıyla görünür, "Bu görüntüleme denetim kaydına yazıldı". **Denetim kayıtları**nda `booking.chat_view` ve gerekçe. Muhasebe rolü bu sayfaları görmez.
+
+### 17. Uygulama kapalıyken bildirim (FCM, K-56; Android geliştirme derlemesi)
+1. `backend/.env`: `GETAWAY_PUSH_PROVIDER=fcm`, `GETAWAY_FCM_CREDENTIALS_FILE=<servis hesabı JSON yolu>`; `mobile/.env.local`: `GETAWAY_GOOGLE_SERVICES_FILE=<google-services.json yolu>`. Backend'i yeniden başlatın; mobil için `expo prebuild` + derleme gerekir (Expo Go uzak push almaz).
+2. Sürücü uygulamasında giriş yapın (bildirim izni verin). Beklenen: backend log'unda `POST /driver/me/push-token 204`.
+3. Uygulamayı arka plana alın veya kapatın; müşteri web'den sürücüye mesaj yazsın (senaryo 16).
+4. Beklenen: "Yolcu yazdı" bildirimi tek kez gelir; dokununca sohbet açılır. Uygulama açıkken aynı mesaj ikinci bildirim olarak çıkmaz.
+5. Çıkış yapın, tekrar mesaj gönderin. Beklenen: bildirim gelmez.
 
 ## Otomatik testler
 

@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.errors import Unauthorized
 from app.models.enums import OtpPurpose, UserKind
 from app.providers.sms import get_sms_sender
-from app.services import auth, otp
+from app.services import auth, notifications, otp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -122,9 +122,16 @@ def refresh(body: RefreshIn, db: DbSession):
     return _tokens(pair)
 
 
+class LogoutIn(BaseModel):
+    # Mobil: bu cihazın push jetonu; hesaptan silinir, çıkıştan sonra bildirim gelmez.
+    push_token: str | None = Field(default=None, max_length=255)
+
+
 @router.post("/logout", status_code=204)
-def logout(principal: CurrentPrincipal, db: DbSession):
+def logout(principal: CurrentPrincipal, db: DbSession, body: LogoutIn | None = None):
     auth.revoke_session(db, principal.session_id)
+    if body and body.push_token:
+        notifications.release_push_token(db, principal.id, body.push_token)
     db.commit()
 
 
