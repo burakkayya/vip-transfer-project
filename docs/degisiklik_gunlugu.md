@@ -2,6 +2,10 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-10
+
+- **iOS simülatör iş akışı düzeltmeleri.** Mac'te Homebrew `postgis` sunucuyu kurmadığı için `postgresql@18` açıkça kuruluyor; derleme şeması çalışma alanı adından alınıyor (listede Pod şemaları da vardı). Üçüncü çalıştırmada iki uygulama da derlendi ama beyaz ekranda kaldı: imzasız simülatör derlemesinde Keychain yetkisi olmadığından `expo-secure-store` okunamıyor, `loadSession` reddediliyor ve oturum hiç "hazır" olmuyordu. Düzeltme: derlemeden sonra ad-hoc imza + `keychain-access-groups` yetkisi; uygulamada `SessionProvider` depo hatasında oturumsuz açılır (sonsuz yükleme yok). Derleme yalnız arm64 (süre ~55 dk idi), önbellek derleme biter bitmez kaydedilir ve iş akışı dosyası anahtardan çıkarıldı; akışlardan önce iki uygulamanın açılış ekranı ve uygulama günlüğü (`app.log`) alınır; süre sınırı 100 dk.
+
 ## 2026-11-09
 
 - **Gerçek iOS uygulaması simülatörde (GitHub Actions).** Yeni `.github/workflows/ios-simulator.yml` (macos-26): backend Mac'te Homebrew PostGIS/Redis ile kurulur, müşteri ve sürücü uygulamaları `expo prebuild` + `xcodebuild` ile simülatör için Release derlenir (önbellekli), simülatör Türkçe ve Antalya konumunda açılır, `.maestro/ios` altındaki 5 Maestro akışı uçtan uca gezinir (giriş, anlık rezervasyon, sahte ödeme, teklif kabulü, karşılama tabelası, canlı takip, kazanç, belgeler). Çıktı: ekran görüntüleri, video, backend günlüğü. Elle veya `ci/ios-*` dalına gönderimde çalışır. Ayrıca backend testinde rastgele plaka 4 rakamdan 3 harf + 4 rakama genişletildi (CI'da "bu plaka kayıtlı" ile ara sıra düşüyordu). Yerel geliştirme veritabanında demo sürücülerin yarım kalan 3 yolculuğu sürücü adımlarıyla (`advance_trip`) tamamlandı.

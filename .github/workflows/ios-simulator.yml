@@ -36,7 +36,7 @@ jobs:
   ios:
     name: iOS simülatör (Maestro)
     runs-on: macos-26
-    timeout-minutes: 75
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
 
@@ -84,13 +84,13 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: mobile/package-lock.json
-      # Yalnızca Maestro akışı değiştiyse yeniden derleme yapılmaz.
+      # Yalnızca Maestro akışı veya iş akışı değiştiyse yeniden derleme yapılmaz (derleme ~30-55 dk).
       - name: Derleme önbelleği
         id: appcache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ios-apps
-          key: ios-apps-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/package-lock.json', '.github/workflows/ios-simulator.yml') }}
+          key: ios-apps-v2-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/package-lock.json') }}
       - name: Uygulamaları derle (müşteri, sürücü)
         if: steps.appcache.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -104,16 +104,43 @@ jobs:
             # Uygulama şeması çalışma alanıyla aynı adı taşır (listede Pod şemaları da var).
             SCHEME=$(basename "$WS" .xcworkspace)
             echo "Workspace: $WS  Scheme: $SCHEME"
+            # Yalnız arm64 (Apple Silicon simülatörü): x86_64 dilimi derleme süresini ikiye katlıyordu.
             APP_VARIANT=$V xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release \
               -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+              ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
               -derivedDataPath "build-$V" CODE_SIGNING_ALLOWED=NO -quiet
             APP=$(ls -d build-$V/Build/Products/Release-iphonesimulator/*.app | head -1)
             cp -R "$APP" "../ios-apps/$V.app"
             echo "::endgroup::"
           done
           ls ../ios-apps
+      # Sonraki adımlar başarısız olsa da (veya iş iptal edilse de) derleme saklansın.
+      - name: Derlemeyi önbelleğe kaydet
+        if: steps.appcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ios-apps
+          key: ${{ steps.appcache.outputs.cache-primary-key }}
 
       # ---------- Simülatör ----------
+      # İmzasız derlemede Keychain yetkisi olmadığından expo-secure-store çalışmaz; ad-hoc imza + yetki eklenir.
+      - name: Simülatör için ad-hoc imzala
+        run: |
+          for V in customer driver; do
+            APP="ios-apps/$V.app"
+            BID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+            cat > "ent-$V.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>application-identifier</key><string>SIMTEAM.$BID</string>
+            <key>keychain-access-groups</key><array><string>SIMTEAM.$BID</string></array>
+          </dict></plist>
+          EOF
+            codesign --force --deep --sign - --entitlements "ent-$V.plist" "$APP"
+            codesign -d --entitlements - "$APP" | head -20
+          done
+
       - name: Simülatörü hazırla (Türkçe, Antalya konumu)
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "
@@ -141,11 +168,22 @@ jobs:
       - name: Akışları çalıştır
         run: |
           maestro --version
+          mkdir -p "$OUT/screens"
+          # Uygulama günlüğü (JS hataları dahil) tüm akış boyunca.
+          xcrun simctl spawn "$UDID" log stream --style compact \
+            --predicate 'process CONTAINS "Getaway" OR subsystem == "com.facebook.react.log"' > "$OUT/app.log" 2>&1 &
+          LOGP=$!
+          # Hızlı kontrol: iki uygulama açılıyor mu (beyaz ekranda takılma görülürse akışlardan önce anlaşılır).
+          for B in com.getawaytransfers.app com.getawaytransfers.driver; do
+            xcrun simctl launch "$UDID" "$B" || true
+            sleep 20
+            xcrun simctl io "$UDID" screenshot "$OUT/screens/00-acilis-$B.png" || true
+            xcrun simctl terminate "$UDID" "$B" || true
+          done
           xcrun simctl io "$UDID" recordVideo --codec=h264 "$OUT/simulator.mp4" &
           REC=$!
           sleep 2
           FAIL=0
-          mkdir -p "$OUT/screens"
           cd "$OUT/screens"
           for F in "$GITHUB_WORKSPACE"/.maestro/ios/[0-9]*.yaml; do
             N=$(basename "$F" .yaml)
@@ -160,7 +198,8 @@ jobs:
             echo "::endgroup::"
           done
           kill -INT $REC || true
-          sleep 3
+          wait $REC || true
+          kill $LOGP || true
           cat "$OUT/ozet.txt"
           exit $FAIL
 
