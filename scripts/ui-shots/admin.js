@@ -30,6 +30,8 @@ const ROUTES = [
   ["payouts", "/payouts"],
   ["invoices", "/invoices"],
   ["customers", "/customers"],
+  ["bookings-new", "/bookings/new"],
+  ["trip-reviews", "/trip-reviews"],
   ["templates", "/templates"],
   ["data-requests", "/data-requests"],
   ["users", "/users"],
@@ -37,10 +39,15 @@ const ROUTES = [
   ["settings", "/settings"],
   ["account", "/account"],
 ];
-// Liste ekranından ilk satırın ayrıntı sayfası.
+// Liste ekranından ilk satırın ayrıntı sayfası. Dördüncü öğe listeyi hazırlar (ör. süzgeç).
 const DETAILS = [
-  ["bookings-detail", "/bookings", 'a[href^="/bookings/"]'],
-  ["drivers-detail", "/drivers", 'a[href^="/drivers/"]'],
+  ["bookings-detail", "/bookings", 'a[href^="/bookings/"]:not([href="/bookings/new"])'],
+  // Sürücü listesi varsayılan olarak yalnızca başvuruları gösterir; "Tümü" seçilir.
+  ["drivers-detail", "/drivers", 'a[href^="/drivers/"]', async (p) => {
+    await p.locator("select").first().selectOption("");
+    await p.waitForLoadState("networkidle").catch(() => {});
+    await p.waitForTimeout(800);
+  }],
 ];
 
 const done = [];
@@ -97,9 +104,10 @@ async function shot(page, vp, name) {
         if (expired || !filter.want(name)) continue;
         if (await open(URLS.admin + route)) await shot(p, vp, name);
       }
-      for (const [name, listRoute, selector] of DETAILS) {
+      for (const [name, listRoute, selector, prepare] of DETAILS) {
         if (expired || !filter.want(name)) continue;
         if (!(await open(URLS.admin + listRoute))) continue;
+        if (prepare) await prepare(p).catch(() => {});
         const href = await p.locator(selector).first().getAttribute("href", { timeout: 5000 }).catch(() => null);
         if (!href) {
           notes.push(`${vp.name}-${name}: ${listRoute} listesinde satır yok, atlandı`);

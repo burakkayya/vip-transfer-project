@@ -17,6 +17,7 @@ import {
   PAYMENT_PROVIDER,
   PAYMENT_STATUS,
   REFUND_STATUS,
+  TRIP_EVENT,
 } from "@/lib/labels";
 
 interface Leg {
@@ -175,7 +176,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <Table rows={data.events} rowKey={(e) => e.leg_id + e.event + e.at} empty="Olay yok."
             columns={[
               { key: "leg", title: "Bacak", render: (e) => legNo(e.leg_id) },
-              { key: "event", title: "Olay", render: (e) => e.event },
+              { key: "event", title: "Olay", render: (e) => TRIP_EVENT[e.event] ?? e.event },
               { key: "at", title: "Zaman", render: (e) => dt(e.at) },
             ]} />
         </div>

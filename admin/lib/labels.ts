@@ -27,6 +27,15 @@ export const LEG_STATUS: Record<string, string> = {
   iptal: "İptal",
 };
 
+// Yolculuk olayı (backend TripEventType).
+export const TRIP_EVENT: Record<string, string> = {
+  atandi: "Sürücü atandı",
+  yola_cikti: "Sürücü yola çıktı",
+  vardi: "Sürücü alış noktasına vardı",
+  basladi: "Yolcu alındı",
+  bitti: "Yolculuk tamamlandı",
+};
+
 export const DRIVER_STATUS: Record<string, string> = {
   basvuru: "Başvuru",
   onayli: "Onaylı",
