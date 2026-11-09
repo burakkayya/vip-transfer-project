@@ -91,7 +91,7 @@ async function main(surface, script) {
     });
     await run("driver-home-online", async () => {
       await d.getByText("GO", { exact: true }).click();
-      await d.getByText("Teklif bekleniyor…").waitFor({ timeout: 15000 });
+      await d.getByText(/^(Teklif bekleniyor…|İşler aşağıda)$/).waitFor({ timeout: 15000 });
       await dshot("driver-tr-home-online");
     });
   }

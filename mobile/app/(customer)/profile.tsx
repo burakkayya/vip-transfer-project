@@ -68,7 +68,7 @@ export default function ProfileScreen() {
       <Animated.View entering={FadeInDown.duration(400)} style={{ backgroundColor: colors.ink, borderRadius: 24, padding: 20, flexDirection: "row", alignItems: "center", gap: 16 }}>
         {profile ? <Avatar name={name} size={60} dark={false} /> : <Skeleton width={60} height={60} radius={30} />}
         <View style={{ flex: 1, gap: 3 }}>
-          <T style={{ color: "#fff", fontSize: 20, fontWeight: "800", letterSpacing: -0.4 }} numberOfLines={1}>{profile?.full_name || "Getaway"}</T>
+          <T style={{ color: "#fff", fontSize: 20, fontWeight: "800", letterSpacing: -0.4 }} numberOfLines={1}>{profile ? profile.full_name || t("profile.noName") : ""}</T>
           <T style={{ color: "rgba(255,255,255,0.7)" }}>{profile?.phone ?? ""}</T>
           {profile?.email ? <T style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }} numberOfLines={1}>{profile.email}</T> : null}
         </View>
