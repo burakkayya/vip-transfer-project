@@ -101,7 +101,8 @@ jobs:
             echo "::group::$V"
             APP_VARIANT=$V npx expo prebuild --platform ios --clean
             WS=$(ls -d ios/*.xcworkspace | head -1)
-            SCHEME=$(xcodebuild -workspace "$WS" -list -json | python3 -c "import json,sys; d=json.load(sys.stdin)['workspace']['schemes']; print([s for s in d if not s.startswith(('Pods','Expo','React','EX'))][0])")
+            # Uygulama şeması çalışma alanıyla aynı adı taşır (listede Pod şemaları da var).
+            SCHEME=$(basename "$WS" .xcworkspace)
             echo "Workspace: $WS  Scheme: $SCHEME"
             APP_VARIANT=$V xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release \
               -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
