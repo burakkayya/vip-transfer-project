@@ -90,7 +90,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ios-apps
-          key: ios-apps-v2-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/package-lock.json') }}
+          key: ios-apps-v3-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/package-lock.json') }}
       - name: Uygulamaları derle (müşteri, sürücü)
         if: steps.appcache.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -104,12 +104,16 @@ jobs:
             # Uygulama şeması çalışma alanıyla aynı adı taşır (listede Pod şemaları da var).
             SCHEME=$(basename "$WS" .xcworkspace)
             echo "Workspace: $WS  Scheme: $SCHEME"
+            # Simülatör için yerel imza ("Sign to Run Locally", takım gerekmez): Xcode yetkileri (Keychain dahil)
+            # binary'ye gömer. İmzasız derlemede expo-secure-store okunamıyor; sonradan ad-hoc imza ise açılışta reddediliyor.
             # Yalnız arm64 (Apple Silicon simülatörü): x86_64 dilimi derleme süresini ikiye katlıyordu.
             APP_VARIANT=$V xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release \
               -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
               ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
-              -derivedDataPath "build-$V" CODE_SIGNING_ALLOWED=NO -quiet
+              -derivedDataPath "build-$V" -quiet \
+              CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER=
             APP=$(ls -d build-$V/Build/Products/Release-iphonesimulator/*.app | head -1)
+            codesign -d --entitlements - "$APP" || true
             cp -R "$APP" "../ios-apps/$V.app"
             echo "::endgroup::"
           done
@@ -123,24 +127,6 @@ jobs:
           key: ${{ steps.appcache.outputs.cache-primary-key }}
 
       # ---------- Simülatör ----------
-      # İmzasız derlemede Keychain yetkisi olmadığından expo-secure-store çalışmaz; ad-hoc imza + yetki eklenir.
-      - name: Simülatör için ad-hoc imzala
-        run: |
-          for V in customer driver; do
-            APP="ios-apps/$V.app"
-            BID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
-            cat > "ent-$V.plist" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0"><dict>
-            <key>application-identifier</key><string>SIMTEAM.$BID</string>
-            <key>keychain-access-groups</key><array><string>SIMTEAM.$BID</string></array>
-          </dict></plist>
-          EOF
-            codesign --force --deep --sign - --entitlements "ent-$V.plist" "$APP"
-            codesign -d --entitlements - "$APP" | head -20
-          done
-
       - name: Simülatörü hazırla (Türkçe, Antalya konumu)
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "
