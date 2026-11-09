@@ -1,0 +1,174 @@
+# Gerçek iOS uygulamalarının (müşteri + sürücü) iPhone simülatöründe uçtan uca testi.
+# Mac makinede backend (PostgreSQL+PostGIS, Redis, sahte SMS/ödeme) kurulur, iki uygulama Release
+# olarak simülatör için derlenir, Maestro akışları (.maestro/ios) ekranlarda gezinir.
+# Çıktı: ekran görüntüleri, video ve backend günlüğü "ios-simulator-sonuc" yapıtında.
+# Mac dakikası pahalı olduğu için her PR'da değil, elle veya ci/ios-* dalına gönderimde çalışır.
+name: iOS simülatör
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["ci/ios-*"]
+
+concurrency:
+  group: ios-sim-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GETAWAY_ENV: dev
+  GETAWAY_DATABASE_URL: postgresql+psycopg://getaway:getaway@localhost:5432/getaway
+  GETAWAY_REDIS_URL: redis://localhost:6379/0
+  GETAWAY_SMS_PROVIDER: console
+  GETAWAY_PAYMENT_PROVIDER: fake
+  GETAWAY_PLACES_PROVIDER: fake
+  GETAWAY_ROUTING_PROVIDER: haversine
+  GETAWAY_PUSH_PROVIDER: console
+  # Simülatör Mac'in ağını kullanır: localhost backend'dir. Ödeme ve yasal sayfalar da backend'den.
+  GETAWAY_API_URL: http://localhost:8000
+  GETAWAY_WEB_URL: http://localhost:8000
+  GETAWAY_PUBLIC_WEB_URL: http://localhost:8000
+  OUT: ${{ github.workspace }}/ios-out
+
+jobs:
+  ios:
+    name: iOS simülatör (Maestro)
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ortam bilgisi
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun simctl list runtimes
+          mkdir -p "$OUT"
+
+      # ---------- Backend ----------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: PostgreSQL + PostGIS + Redis
+        run: |
+          brew install postgis redis
+          PG=$(brew deps postgis | grep -E '^postgresql@[0-9]+$' | head -1)
+          echo "PostGIS ile gelen: $PG"
+          brew services start "$PG"
+          brew services start redis
+          PGBIN="$(brew --prefix "$PG")/bin"
+          for i in $(seq 1 30); do "$PGBIN/pg_isready" -h localhost && break; sleep 1; done
+          "$PGBIN/psql" -h localhost -d postgres -c "CREATE ROLE getaway LOGIN SUPERUSER PASSWORD 'getaway';"
+          "$PGBIN/createdb" -h localhost -O getaway getaway
+      - name: Backend kurulum ve tohum veri
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          alembic upgrade head
+          python -m app.cli seed
+          python -m app.cli seed-demo
+      - name: Backend'i başlat
+        working-directory: backend
+        run: |
+          nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > "$OUT/backend.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/docs > /dev/null && break; sleep 1; done
+          curl -sf http://localhost:8000/docs > /dev/null && echo "API hazır"
+
+      # ---------- iOS derlemeleri ----------
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      # Yalnızca Maestro akışı değiştiyse yeniden derleme yapılmaz.
+      - name: Derleme önbelleği
+        id: appcache
+        uses: actions/cache@v4
+        with:
+          path: ios-apps
+          key: ios-apps-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/package-lock.json', '.github/workflows/ios-simulator.yml') }}
+      - name: Uygulamaları derle (müşteri, sürücü)
+        if: steps.appcache.outputs.cache-hit != 'true'
+        working-directory: mobile
+        run: |
+          npm ci
+          mkdir -p ../ios-apps
+          for V in customer driver; do
+            echo "::group::$V"
+            APP_VARIANT=$V npx expo prebuild --platform ios --clean
+            WS=$(ls -d ios/*.xcworkspace | head -1)
+            SCHEME=$(xcodebuild -workspace "$WS" -list -json | python3 -c "import json,sys; d=json.load(sys.stdin)['workspace']['schemes']; print([s for s in d if not s.startswith(('Pods','Expo','React','EX'))][0])")
+            echo "Workspace: $WS  Scheme: $SCHEME"
+            APP_VARIANT=$V xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release \
+              -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+              -derivedDataPath "build-$V" CODE_SIGNING_ALLOWED=NO -quiet
+            APP=$(ls -d build-$V/Build/Products/Release-iphonesimulator/*.app | head -1)
+            cp -R "$APP" "../ios-apps/$V.app"
+            echo "::endgroup::"
+          done
+          ls ../ios-apps
+
+      # ---------- Simülatör ----------
+      - name: Simülatörü hazırla (Türkçe, Antalya konumu)
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,re,sys
+          devs=[d for r,l in json.load(sys.stdin)['devices'].items() if 'iOS' in r for d in l]
+          ph=[d for d in devs if re.fullmatch(r'iPhone \d+( Pro)?', d['name'])] or [d for d in devs if d['name'].startswith('iPhone')]
+          print(ph[-1]['udid'])")
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR
+          xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string tr_TR
+          xcrun simctl shutdown "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl location "$UDID" set 36.9002,30.8015
+          xcrun simctl install "$UDID" ios-apps/customer.app
+          xcrun simctl install "$UDID" ios-apps/driver.app
+          xcrun simctl list devices | grep "$UDID"
+
+      - name: Maestro kur
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Akışları çalıştır
+        run: |
+          maestro --version
+          xcrun simctl io "$UDID" recordVideo --codec=h264 "$OUT/simulator.mp4" &
+          REC=$!
+          sleep 2
+          FAIL=0
+          mkdir -p "$OUT/screens"
+          cd "$OUT/screens"
+          for F in "$GITHUB_WORKSPACE"/.maestro/ios/[0-9]*.yaml; do
+            N=$(basename "$F" .yaml)
+            echo "::group::$N"
+            if maestro --device "$UDID" test "$F" --format junit --output "$OUT/$N.xml" \
+                 --debug-output "$OUT/debug/$N"; then
+              echo "OK $N" | tee -a "$OUT/ozet.txt"
+            else
+              echo "HATA $N" | tee -a "$OUT/ozet.txt"; FAIL=1
+              xcrun simctl io "$UDID" screenshot "$OUT/screens/HATA-$N.png" || true
+            fi
+            echo "::endgroup::"
+          done
+          kill -INT $REC || true
+          sleep 3
+          cat "$OUT/ozet.txt"
+          exit $FAIL
+
+      - name: Sonuçları yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-sonuc
+          path: |
+            ios-out
+            ~/.maestro/tests
+          retention-days: 14

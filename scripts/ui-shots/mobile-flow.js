@@ -2,9 +2,10 @@
 // mobile.js yalnızca `customer-*`, driver.js yalnızca `driver-*` dosyalarını yazar; akış aynıdır,
 // çünkü sürücü teklifi bir müşteri rezervasyonu ister ve müşterinin canlı takip ekranı sürücü ister.
 const path = require("path");
-const { URLS, parseArgs, requireOut, makeFilter, launch, outDir } = require("./lib");
+const { IPHONE, URLS, parseArgs, requireOut, makeFilter, launch, outDir } = require("./lib");
 
-const VIEW = { viewport: { width: 440, height: 920 }, deviceScaleFactor: 1 };
+const ANDROID_VIEW = { viewport: { width: 440, height: 920 }, deviceScaleFactor: 1 };
+let VIEW = ANDROID_VIEW;
 const DRIVER_PHONE = "5300000001"; // geliştirme tohum sürücüsü
 const BROWSER_LOCALE = { tr: "tr-TR", de: "de-DE" };
 // Müşteri rezervasyonu ile sürücüyü birlikte gerektiren ekranlar.
@@ -22,7 +23,11 @@ async function main(surface, script) {
   const args = parseArgs();
   const out = requireOut(args, script, surface === "customer" ? " [--locales tr,de]" : "");
   const filter = makeFilter(args, { suffix: true });
-  const OUT = outDir(out, "mobile");
+  const ios = args.ios === true;
+  // Önizleme 390×844 telefon çerçevesi çizer; 852 px yükseklikte çerçeve küçülür ve içerik
+  // gerçek telefondan kısa kalır. Yükseklik çerçevenin tamamen sığacağı kadar açılır.
+  if (ios) VIEW = { ...IPHONE, viewport: { width: IPHONE.viewport.width, height: 920 }, deviceScaleFactor: 2 };
+  const OUT = outDir(out, ios ? "mobile-ios" : "mobile");
   const allow = (name) => name.startsWith(`${surface}-`) && filter.want(name);
   const locales = (typeof args.locales === "string" ? args.locales : "tr,de").split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -62,7 +67,7 @@ async function main(surface, script) {
     return filter.all || filter.list.some((p) => p.startsWith(`customer-${l}-`) || (!p.startsWith("customer-") && !p.startsWith("driver-")));
   };
 
-  const browser = await launch();
+  const browser = await launch({ ios });
 
   // Sürücü önce çevrimiçi olur ki anlık rezervasyonda teklif gelsin.
   let dctx = null;

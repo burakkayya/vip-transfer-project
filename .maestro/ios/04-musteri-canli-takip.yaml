@@ -1,0 +1,14 @@
+# Müşteri uygulamasında rezervasyon atanmış ve sürücü yolda görünür.
+appId: com.getawaytransfers.app
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: ".*(yolda|Yolda|atandı|Atandı).*"
+    timeout: 40000
+- takeScreenshot: m15-canli-takip
+- scrollUntilVisible:
+    element: "Rezervasyonu iptal et"
+    direction: DOWN
+    optional: true
+- takeScreenshot: m16-rezervasyon-alt

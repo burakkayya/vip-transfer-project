@@ -1,0 +1,18 @@
+# Sürücünün kazanç ve belgeler sekmeleri.
+appId: com.getawaytransfers.driver
+---
+- launchApp:
+    stopApp: false
+- tapOn:
+    text: "Geri|Back"
+    optional: true
+- tapOn: "Kazanç"
+- extendedWaitUntil:
+    visible: "Hakedişler.*"
+    timeout: 15000
+- takeScreenshot: s09-kazanc
+- tapOn: "Belgeler"
+- extendedWaitUntil:
+    visible: "Onaylı belgelerle.*"
+    timeout: 15000
+- takeScreenshot: s10-belgeler

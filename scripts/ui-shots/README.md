@@ -28,10 +28,12 @@ Hepsi `--out <before|after>` ister; `--only` virgülle ayrılmış ekran adları
 | Betik | Yüzey | Çıktı | Ek seçenek |
 | --- | --- | --- | --- |
 | `web.js` | web, diller × 1440/390 | `web/<dil>-<genişlik>-<ekran>.png`, `web/_log.json` | `--locales tr,de` (varsayılan `tr,de`; sonra `ar,zh,ja,fr`) |
-| `mobile.js` | müşteri mobil (8081) | `mobile/customer-<dil>-<ekran>.png` | `--locales tr,de` |
-| `driver.js` | sürücü (8082) | `mobile/driver-tr-<ekran>.png` | yok |
+| `mobile.js` | müşteri mobil (8081) | `mobile/customer-<dil>-<ekran>.png` | `--locales tr,de`, `--ios` |
+| `driver.js` | sürücü (8082) | `mobile/driver-tr-<ekran>.png` | `--ios` |
 | `admin.js` | admin (3001) | `admin/<genişlik>-<ekran>.png` | yok |
 | `axe.js` | web + admin | `_axe.json` | `--locales`, `--pages web:/tr/book,admin:/bookings` |
+
+`--ios` (mobil ve sürücü): ekranlar Chromium yerine WebKit (Safari motoru) ile iPhone 15 profilinde (393 px genişlik, iOS Safari kullanıcı ajanı, dokunma; yükseklik önizlemenin 390×844 telefon çerçevesi sığsın diye 920) çekilir ve `mobile-ios/` altına yazılır. Bir kez `npx playwright-core install webkit` gerekir. Bu gerçek iOS uygulaması değildir: yerel bileşenler (Apple/Google harita, arka plan konumu, push, tarih seçici) web karşılıklarıyla görünür. Gerçek iOS için bkz. `docs/test_senaryolari.md` "iOS testi".
 
 Örnekler:
 
@@ -41,6 +43,7 @@ node web.js --out after --only book-1-vehicle,pay --locales tr
 node mobile.js --out after --only customer-tr-home        # tam ad
 node mobile.js --out after --only home,book-vehicle       # son ek, tüm dillerde
 node driver.js --out after --only home-offer,documents
+node mobile.js --out after --ios --locales tr               # iPhone / WebKit
 node admin.js --out after --only login,bookings,bookings-detail
 node axe.js --out after
 ```

@@ -36,6 +36,21 @@ Expo Go arka plan konumunu desteklemez; sürücü uygulaması kendi geliştirme 
 5. JavaScript çalışma klasöründen sunulur: `mobile` içinde `APP_VARIANT=driver GETAWAY_API_URL=http://10.0.2.2:8000 npx expo start --dev-client --port 8084`; uygulamayı `getawaydriver://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8084` adresiyle açın (127.0.0.1 ile geliştirme istemcisi WebSocket hatası veriyor).
 6. Emülatör konumu: `adb emu geo fix <boylam> <enlem>` (ör. havalimanı `30.8015 36.9002`, Kemer `30.5605 36.6003`). Yerel kod değişmedikçe yeniden derleme gerekmez.
 
+### iOS testi
+
+Windows'ta iOS simülatörü yoktur (Xcode yalnızca macOS). Gerçek iOS uygulaması GitHub Actions'ın Mac makinesinde test edilir:
+
+- **iOS simülatör iş akışı** (`.github/workflows/ios-simulator.yml`): Mac'te backend (PostGIS, Redis, sahte SMS/ödeme, demo sürücüler) kurulur, müşteri ve sürücü uygulamaları Release olarak simülatör için derlenir, simülatör Türkçe ve Antalya Havalimanı konumunda açılır, `.maestro/ios` akışları sırayla çalışır: sürücü girişi ve GO, müşteri girişi, Antalya Havalimanı → Kemer anlık rezervasyon ve sahte ödeme, sürücünün teklifi kabulü, karşılama tabelası, yola çıkış, müşterinin canlı takibi, sürücü kazanç ve belgeler. Ekran görüntüleri, simülatör videosu ve backend günlüğü `ios-simulator-sonuc` yapıtındadır.
+- Çalıştırma: GitHub'da Actions → "iOS simülatör" → Run workflow, ya da `gh workflow run ios-simulator.yml --ref <dal>`; `ci/ios-*` dallarına gönderimde kendiliğinden çalışır. Her PR'da çalışmaz (gizli depoda Mac dakikası 10 kat sayılır). Uygulama kodu değişmediyse derleme önbellekten gelir.
+- Apple Developer hesabı gerekmez (simülatör derlemesi imzasızdır). Push bildirimi (APNs) bu yolla doğrulanamaz.
+
+Bu makinede ayrıca iki ücretsiz yol var:
+
+1. **Safari motoruyla iPhone görünümü (otomatik, kurulumsuz):** `scripts/ui-shots` içinde `node mobile.js --out after --ios --locales tr` ve `node driver.js --out after --ios`. Ekranlar WebKit ile iPhone 15 ölçüsünde, dokunmatik ve iOS Safari kimliğiyle çekilir (`docs/ui-review/screenshots/after/mobile-ios/`). Yerleşim, yazı tipi, güvenli alan ve Safari'ye özgü web sorunlarını yakalar. Yerel iOS bileşenlerini (Apple/Google harita, arka plan konumu, push, iOS tarih seçici) göstermez.
+2. **Gerçek iPhone'da Expo Go (elle):** iPhone'a App Store'dan Expo Go kurulur, bilgisayarla aynı Wi-Fi'ye bağlanır. `mobile` içinde `GETAWAY_API_URL=http://<bilgisayarın-yerel-IP'si>:8000 npx expo start --port 8083` çalıştırılır, terminaldeki QR kodu iPhone kamerasıyla okutulur. Expo Go yalnızca projedeki SDK sürümünü destekliyorsa açılır. Sürücüde arka plan konumu ve push Expo Go'da çalışmaz; onlar için Mac veya EAS ile iOS geliştirme derlemesi ve Apple Developer hesabı gerekir.
+
+Not: İnternette önerilen `npx expo export:snack` diye bir Expo komutu yoktur. Expo Snack'e elle yüklemek de bu proje için uygun değildir: kod Expo sunucularına gider, buluttaki iOS önizlemesi bilgisayardaki API'ye (localhost:8000) ulaşamaz ve giriş adımından ileri gidilemez.
+
 ### Haritalar
 
 - **Web rezervasyon sayfası** (`/tr/book?from=ayt&to=kemer`): geniş ekranda solda harita, ortada araçlar, sağda özet. 1280 px altında harita üstte tam genişlik, 960 px altında tek sütun (harita 260 px). Rota seçilir seçilmez alış (daire) ve varış (kare) kesikli çizgiyle; fiyatlar gelince Google'ın gerçek karayolu rotası düz siyah çizgiyle çizilir, sol üstte "61 km, yaklaşık 63 dk". Tarayıcı anahtarı yoksa veya reddedilirse harita alanında rota özeti ve "Harita şu an gösterilemiyor" notu çıkar; rezervasyon etkilenmez.
