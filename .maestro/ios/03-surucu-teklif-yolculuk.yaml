@@ -1,0 +1,19 @@
+# Sürücü uygulamasına dönülür: anlık teklif kabul edilir, karşılama tabelası açılır, yola çıkılır.
+appId: com.getawaytransfers.driver
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Kabul et"
+    timeout: 60000
+- takeScreenshot: s05-teklif
+- tapOn: "Kabul et"
+- extendedWaitUntil:
+    visible: "Karşılama tabelasını aç"
+    timeout: 20000
+- takeScreenshot: s06-is-atandi
+- tapOn: "Karşılama tabelasını aç"
+- takeScreenshot: s07-karsilama-tabelasi
+- tapOn: "Kapatmak için dokunun"
+- tapOn: "Yola çıktım"
+- takeScreenshot: s08-yolda

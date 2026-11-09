@@ -1,5 +1,5 @@
 // Ortak yardımcılar: argüman ayrıştırma, Chromium yolu, çıktı klasörü, ekran süzgeci.
-const { chromium } = require("playwright-core");
+const { chromium, webkit, devices } = require("playwright-core");
 const path = require("path");
 const fs = require("fs");
 
@@ -68,7 +68,12 @@ function chromiumPath() {
   return undefined; // playwright-core varsayılanı
 }
 
-function launch() {
+// --ios: Safari motoru (WebKit) ve iPhone 15 cihaz profili. Yerel iOS simülatörü değildir;
+// iOS Safari'deki çizim, yazı tipi ve dokunma davranışını yaklaşık gösterir (docs/test_senaryolari.md).
+const IPHONE = devices["iPhone 15"];
+
+function launch({ ios = false } = {}) {
+  if (ios) return webkit.launch();
   const executablePath = chromiumPath();
   return chromium.launch(executablePath ? { executablePath } : {});
 }
@@ -83,4 +88,4 @@ function hasAdminState() {
   return fs.existsSync(ADMIN_STATE);
 }
 
-module.exports = { REPO, URLS, ADMIN_STATE, AXE_TAGS, parseArgs, usage, requireOut, makeFilter, launch, outDir, hasAdminState };
+module.exports = { IPHONE, REPO, URLS, ADMIN_STATE, AXE_TAGS, parseArgs, usage, requireOut, makeFilter, launch, outDir, hasAdminState };

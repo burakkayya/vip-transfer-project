@@ -1,0 +1,28 @@
+# Demo sürücü (tohum: +90 530 000 00 01) giriş yapar ve GO ile çevrimiçi olur.
+appId: com.getawaytransfers.driver
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- extendedWaitUntil:
+    visible: "Devam"
+    timeout: 90000
+- takeScreenshot: s01-giris
+- tapOn: "532 123 45 67"
+- inputText: "5300000001"
+- tapOn: "Devam"
+- extendedWaitUntil:
+    visible: "Geliştirme ortamı.*"
+    timeout: 20000
+- takeScreenshot: s02-sms-kodu
+- tapOn: "Geliştirme ortamı.*"
+- extendedWaitUntil:
+    visible: "GO"
+    timeout: 30000
+- takeScreenshot: s03-cevrimdisi
+- tapOn: "GO"
+- extendedWaitUntil:
+    visible: "Çevrimiçisiniz"
+    timeout: 20000
+- takeScreenshot: s04-cevrimici

@@ -1,0 +1,77 @@
+# Yeni müşteri giriş yapar, Antalya Havalimanı → Kemer anlık rezervasyon oluşturur ve sahte ödemeyi onaylar.
+appId: com.getawaytransfers.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- extendedWaitUntil:
+    visible: "Telefon numaranızı girin"
+    timeout: 90000
+- takeScreenshot: m01-giris
+- tapOn: "532 123 45 67"
+- inputText: "5559011234"
+- tapOn: "Devam"
+- extendedWaitUntil:
+    visible: "Geliştirme ortamı.*"
+    timeout: 20000
+- takeScreenshot: m02-sms-kodu
+- tapOn: "Geliştirme ortamı.*"
+- extendedWaitUntil:
+    visible: 'Nereye gidiyorsunuz\?'
+    timeout: 30000
+- takeScreenshot: m03-ana-sayfa
+- tapOn: "Rezervasyonlarım"
+- takeScreenshot: m04-rezervasyonlar-bos
+- tapOn: "Profil"
+- takeScreenshot: m05-profil
+- tapOn: "Ana sayfa"
+- tapOn: "Antalya Havalimanı"
+- extendedWaitUntil:
+    visible: "Rotanız"
+    timeout: 15000
+- takeScreenshot: m06-rota
+- tapOn: "Nereye"
+- inputText: "kemer"
+- extendedWaitUntil:
+    visible: "Kemer"
+    timeout: 15000
+- takeScreenshot: m07-adres-arama
+- tapOn: "Kemer"
+- tapOn: "Şimdi"
+- takeScreenshot: m08-rota-dolu
+- tapOn: "Fiyatları göster.*"
+- extendedWaitUntil:
+    visible: ".* seç · .*"
+    timeout: 30000
+- takeScreenshot: m09-arac-secimi
+- tapOn: ".* seç · .*"
+- extendedWaitUntil:
+    visible: "Yolcu adı soyadı"
+    timeout: 15000
+- takeScreenshot: m10-bilgiler
+- tapOn:
+    below: "Yolcu adı soyadı"
+- inputText: "Test Yolcu"
+- hideKeyboard
+- scrollUntilVisible:
+    element: 'KVKK aydınlatma metnini okudum\.'
+    direction: DOWN
+- tapOn: 'KVKK aydınlatma metnini okudum\.'
+- tapOn: "Mesafeli satış.*"
+- takeScreenshot: m11-bilgiler-dolu
+- tapOn: "Rezervasyonu oluştur ve öde"
+# Sahte ödeme sayfası uygulama içi Safari'de açılır.
+- extendedWaitUntil:
+    visible: "Ödemeyi onayla"
+    timeout: 30000
+- takeScreenshot: m12-odeme-sayfasi
+- tapOn: "Ödemeyi onayla"
+- takeScreenshot: m13-odeme-sonucu
+- tapOn:
+    text: "Bitti|Kapat|Done|Close"
+    optional: true
+- extendedWaitUntil:
+    visible: "Onaylandı|Atandı|Sürücü.*"
+    timeout: 40000
+- takeScreenshot: m14-rezervasyon-onaylandi
