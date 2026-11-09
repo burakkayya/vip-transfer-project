@@ -36,7 +36,9 @@ def onboard_driver(client, ops, *, vehicle_type="minivan", online=True):
     driver_id = r.json()["id"]
     assert set(r.json()["missing_documents"]) == set(DRIVER_DOCS)
 
-    plate = f"07 A {random_phone()[-4:]}"
+    # Test veritabanı oturum boyunca birikir; yalnız 4 rakam (10⁴) doğum günü çakışmasıyla "bu plaka kayıtlı" verir.
+    letters = "".join(chr(65 + b % 26) for b in uuid.uuid4().bytes[:3])
+    plate = f"07 {letters} {random_phone()[-4:]}"
     r = client.post("/api/v1/driver/vehicles", headers=headers, json={
         "plate": plate, "vehicle_type_code": vehicle_type, "brand": "Mercedes", "model": "Vito", "capacity": 6})
     assert r.status_code == 201, r.text
