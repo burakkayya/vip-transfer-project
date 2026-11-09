@@ -55,9 +55,9 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: PostgreSQL + PostGIS + Redis
         run: |
-          brew install postgis redis
-          PG=$(brew deps postgis | grep -E '^postgresql@[0-9]+$' | head -1)
-          echo "PostGIS ile gelen: $PG"
+          # Homebrew postgis eklentiyi postgresql@17 ve @18 için kurar ama sunucuyu kurmaz.
+          PG=postgresql@18
+          brew install "$PG" postgis redis
           brew services start "$PG"
           brew services start redis
           PGBIN="$(brew --prefix "$PG")/bin"
