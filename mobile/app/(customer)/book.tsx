@@ -111,13 +111,14 @@ export default function Book() {
     return a ? [a] : undefined;
   }, [from, to]);
   // Rota adımında fiyat istenmeden önce de karayolu çizgisi gösterilir (K-58: düz çizgi değil).
-  const [previewRoute, setPreviewRoute] = useState<string | null>(null);
+  // Çizgi hangi nokta çiftine aitse onunla saklanır; noktalar değişince eski çizgi kendiliğinden gizlenir.
+  const [preview, setPreview] = useState<{ from: Endpoint; to: Endpoint; line: string | null } | null>(null);
+  const previewRoute = preview && preview.from === from && preview.to === to ? preview.line : null;
   useEffect(() => {
-    setPreviewRoute(null);
     if (!from || !to) return;
     let live = true;
     api<{ route_polyline: string | null }>("routes/preview", { body: { pickup: place(from), dropoff: place(to) } })
-      .then((r) => { if (live) setPreviewRoute(r.route_polyline ?? null); })
+      .then((r) => { if (live) setPreview({ from, to, line: r.route_polyline ?? null }); })
       .catch(() => undefined);
     return () => { live = false; };
   }, [from, to]);
