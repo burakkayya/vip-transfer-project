@@ -65,7 +65,8 @@ appId: com.getawaytransfers.app
 - tapOn:
     below: "Yolcu adı soyadı"
 - inputText: "Test Yolcu"
-- hideKeyboard
+# iOS'ta Maestro hideKeyboard React Native girişinde çalışmıyor; Return klavyeyi kapatır.
+- pressKey: Enter
 - scrollUntilVisible:
     element: '.*KVKK aydınlatma metnini okudum\..*'
     direction: DOWN
