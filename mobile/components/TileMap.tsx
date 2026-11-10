@@ -1,13 +1,16 @@
 // Android'de Google Maps anahtarı yokken (geliştirme, CI) kullanılan anahtarsız harita (K-58).
 // MapCanvas etkileşimsizdir (kaydırma/yakınlaştırma kapalı), bu yüzden Google SDK'sı yerine sabit bir
-// "kayan harita" yeterli: görünür alanı kaplayan CARTO karoları (OpenStreetMap verisi) Image olarak
-// dizilir, rota ve işaretler SVG ile çizilir. Anahtar tanımlanınca MapCanvas Google haritasına döner.
+// "kayan harita" yeterli: görünür alanı kaplayan OpenStreetMap karoları Image olarak dizilir, rota ve
+// işaretler SVG ile çizilir. OSM karo kullanım kuralı gereği istekte uygulamayı tanıtan User-Agent
+// gönderilir ve atıf gösterilir; yalnızca geliştirme/CI içindir (yoğun kullanıma uygun değil).
+// Anahtar tanımlanınca MapCanvas Google haritasına döner.
 import { useMemo, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Polyline, Rect } from "react-native-svg";
 import type { LatLng } from "./mapTypes";
 
 const TILE = 256;
+const TILE_HEADERS = { "User-Agent": "GetawayTransfers/0.1 (+https://getawaytransfers.com)" };
 const ANTALYA: LatLng = { latitude: 36.8969, longitude: 30.7133 };
 
 type Pad = { top: number; right: number; bottom: number; left: number };
@@ -68,22 +71,20 @@ export default function TileMap(props: {
     if (!view) return [];
     const n = 2 ** view.z;
     const out: { key: string; uri: string; left: number; top: number }[] = [];
-    const style = props.dark ? "dark_all" : "rastertiles/voyager";
     for (let tx = Math.floor(view.origin.x / TILE); tx * TILE < view.origin.x + size.w; tx++) {
       for (let ty = Math.floor(view.origin.y / TILE); ty * TILE < view.origin.y + size.h; ty++) {
         if (ty < 0 || ty >= n) continue;
         const wx = ((tx % n) + n) % n;
-        const sub = "abcd"[(wx + ty) % 4];
         out.push({
           key: `${view.z}/${tx}/${ty}`,
-          uri: `https://${sub}.basemaps.cartocdn.com/${style}/${view.z}/${wx}/${ty}@2x.png`,
+          uri: `https://tile.openstreetmap.org/${view.z}/${wx}/${ty}.png`,
           left: tx * TILE - view.origin.x,
           top: ty * TILE - view.origin.y,
         });
       }
     }
     return out;
-  }, [view, size, props.dark]);
+  }, [view, size]);
 
   const toScreen = (p: LatLng) => {
     const q = project(p, view!.z);
@@ -97,7 +98,8 @@ export default function TileMap(props: {
       testID="tile-map"
     >
       {tiles.map((t) => (
-        <Image key={t.key} source={{ uri: t.uri }} style={{ position: "absolute", left: t.left, top: t.top, width: TILE, height: TILE }} />
+        <Image key={t.key} source={{ uri: t.uri, headers: TILE_HEADERS }}
+          style={{ position: "absolute", left: t.left, top: t.top, width: TILE, height: TILE, opacity: props.dark ? 0.55 : 1 }} />
       ))}
       {view ? (
         <Svg style={StyleSheet.absoluteFill}>
@@ -125,7 +127,7 @@ export default function TileMap(props: {
           ); })() : null}
         </Svg>
       ) : null}
-      <Text style={st.attribution}>© OpenStreetMap © CARTO</Text>
+      <Text style={st.attribution}>© OpenStreetMap</Text>
     </View>
   );
 }

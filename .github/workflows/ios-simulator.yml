@@ -178,8 +178,12 @@ jobs:
           for F in "$GITHUB_WORKSPACE"/.maestro/ios/[0-9]*.yaml; do
             N=$(basename "$F" .yaml)
             echo "::group::$N"
-            if maestro --device "$UDID" test "$F" --format junit --output "$OUT/$N.xml" \
-                 --debug-output "$OUT/debug/$N"; then
+            run_flow() {
+              maestro --device "$UDID" test "$F" --format junit --output "$OUT/$N.xml" --debug-output "$OUT/debug/$N"
+            }
+            # Maestro'nun XCUITest sürücüsü ara sıra bağlanamıyor (akış hiç başlamaz, sonuç dosyası yazılmaz):
+            # yalnızca bu durumda bir kez yeniden denenir. Akış içindeki gerçek hata yeniden denenmez.
+            if run_flow || { [ ! -s "$OUT/$N.xml" ] && echo "Sürücü bağlanamadı, $N yeniden deneniyor" && sleep 10 && run_flow; }; then
               echo "OK $N" | tee -a "$OUT/ozet.txt"
             else
               echo "HATA $N" | tee -a "$OUT/ozet.txt"; FAIL=1

@@ -85,7 +85,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: android-apps
-          key: android-apps-v1-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}
+          key: android-apps-v2-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}
       - name: Uygulamaları derle (müşteri, sürücü)
         if: steps.apkcache.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -99,7 +99,10 @@ jobs:
           mkdir -p ../android-apps
           for V in customer driver; do
             echo "::group::$V"
-            APP_VARIANT=$V npx expo prebuild --platform android --clean
+            # Gradle de uygulama yapılandırmasını (app.config.ts) okur: çeşit değişkeni derlemede de verilmeli,
+            # yoksa sürücü paketine müşteri ayarları gömülür.
+            export APP_VARIANT=$V
+            npx expo prebuild --platform android --clean
             (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon -q)
             cp android/app/build/outputs/apk/release/app-release.apk "../android-apps/$V.apk"
             echo "::endgroup::"

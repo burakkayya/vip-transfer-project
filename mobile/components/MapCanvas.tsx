@@ -17,7 +17,7 @@ export type { MapCanvasProps, MapMode } from "./mapTypes";
 /**
  * Android derlemesinde Google Maps anahtarı yoksa (geliştirme, CI) Google SDK'sı geçersiz anahtarla
  * zemini de karo katmanlarını da çizmez: harita boş kalmasın diye Google SDK'sı hiç kullanılmaz,
- * anahtarsız CARTO karolu sabit harita (TileMap, OpenStreetMap verisi) çizilir. Anahtar tanımlanınca
+ * anahtarsız OpenStreetMap karolu sabit harita (TileMap) çizilir. Anahtar tanımlanınca
  * (GETAWAY_GOOGLE_MAPS_ANDROID_KEY) Google haritası kendiliğinden döner.
  */
 const OSM_TILES = Platform.OS === "android" && !GOOGLE_MAPS_ANDROID;

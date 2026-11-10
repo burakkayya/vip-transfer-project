@@ -64,7 +64,9 @@ for F in "$GITHUB_WORKSPACE"/.maestro/android/[0-9]*.yaml; do
     fi
   fi
   echo "::group::$N"
-  if maestro test "$F" --format junit --output "$OUT/$N.xml" --debug-output "$OUT/debug/$N"; then
+  run_flow() { maestro test "$F" --format junit --output "$OUT/$N.xml" --debug-output "$OUT/debug/$N"; }
+  # Maestro sürücüsü bağlanamazsa (akış başlamaz, sonuç dosyası yok) bir kez yeniden denenir.
+  if run_flow || { [ ! -s "$OUT/$N.xml" ] && echo "Sürücü bağlanamadı, $N yeniden deneniyor" && sleep 10 && run_flow; }; then
     echo "OK $N" | tee -a "$OUT/ozet.txt"
   else
     echo "HATA $N" | tee -a "$OUT/ozet.txt"
@@ -75,8 +77,11 @@ for F in "$GITHUB_WORKSPACE"/.maestro/android/[0-9]*.yaml; do
   echo "::endgroup::"
 done
 cp "$GITHUB_WORKSPACE"/.maestro/android/*.png "$OUT/screens/" 2> /dev/null || true
-find "$GITHUB_WORKSPACE" "$HOME/.maestro" -name "[ms][0-9][0-9]-*.png" -not -path "$OUT/*" \
+# takeScreenshot dosyası Maestro sürümüne göre akış klasörüne, çalışma klasörüne veya hata ayıklama
+# çıktısına yazılabiliyor: hepsi tek yerde toplanır.
+find "$GITHUB_WORKSPACE" "$HOME" /tmp -name "[ms][0-9][0-9]*-*.png" -not -path "$OUT/screens/*" \
   -exec cp {} "$OUT/screens/" \; 2> /dev/null || true
+echo "Toplanan ekran görüntüleri:"; ls "$OUT/screens" | head -60
 
 # Kaydı durdur, parçaları çek ve birleştir.
 touch /tmp/stop-rec

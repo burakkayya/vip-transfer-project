@@ -33,5 +33,5 @@ test("rota dolgulu alana sığar ve en büyük uygun yakınlaştırma seçilir",
 test("atıf metni görünür", async () => {
   await render(<TileMap route={[AYT, KEMER]} preview={false} pickup={AYT} dropoff={KEMER} driver={null}
     pad={{ top: 0, right: 0, bottom: 0, left: 0 }} line="#000" ring="#fff" />);
-  expect(screen.getByText("© OpenStreetMap © CARTO")).toBeTruthy();
+  expect(screen.getByText("© OpenStreetMap")).toBeTruthy();
 });
