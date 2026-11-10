@@ -68,9 +68,19 @@ appId: com.getawaytransfers.app
     element: '.*KVKK aydınlatma metnini okudum\..*'
     direction: DOWN
 - tapOn: '.*KVKK aydınlatma metnini okudum\..*'
+# İkinci onay kutusu alttaki toplam/düğme şeridinin arkasında kalabiliyor: önce tam görünür olana kadar kaydırılır.
+- scrollUntilVisible:
+    element: ".*Mesafeli satış.*"
+    direction: DOWN
+    visibilityPercentage: 100
+    centerElement: true
 - tapOn: ".*Mesafeli satış.*"
 - takeScreenshot: m11-bilgiler-dolu
 - tapOn: "Rezervasyonu oluştur ve öde"
+# Rezervasyon oluşturulduysa form kapanır (ödeme sayfası açılır); oluşturulmadıysa akış burada düşer.
+- extendedWaitUntil:
+    notVisible: "Yolcu adı soyadı"
+    timeout: 20000
 # Sahte ödeme sayfası tarayıcıda (Custom Tab) açılır; Android'de Maestro başka uygulamanın ekranını görür.
 - extendedWaitUntil:
     visible: "Ödemeyi onayla"

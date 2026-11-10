@@ -66,7 +66,7 @@ for F in "$GITHUB_WORKSPACE"/.maestro/android/[0-9]*.yaml; do
   echo "::group::$N"
   run_flow() { maestro test "$F" --format junit --output "$OUT/$N.xml" --debug-output "$OUT/debug/$N"; }
   # Maestro sürücüsü bağlanamazsa (akış başlamaz, sonuç dosyası yok) bir kez yeniden denenir.
-  if run_flow || { [ ! -s "$OUT/$N.xml" ] && echo "Sürücü bağlanamadı, $N yeniden deneniyor" && sleep 10 && run_flow; }; then
+  if run_flow || { { [ ! -s "$OUT/$N.xml" ] || grep -q DeviceUnreachable "$OUT/$N.xml"; } && echo "Sürücü bağlanamadı ya da bağlantı koptu, $N yeniden deneniyor" && sleep 10 && run_flow; }; then
     echo "OK $N" | tee -a "$OUT/ozet.txt"
   else
     echo "HATA $N" | tee -a "$OUT/ozet.txt"
