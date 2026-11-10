@@ -13,10 +13,10 @@ appId: com.getawaytransfers.driver
 - inputText: "5300000001"
 - tapOn: "Devam"
 - extendedWaitUntil:
-    visible: "Geliştirme ortamı.*"
+    visible: ".*Geliştirme ortamı.*"
     timeout: 20000
 - takeScreenshot: s02-sms-kodu
-- tapOn: "Geliştirme ortamı.*"
+- tapOn: ".*Geliştirme ortamı.*"
 - extendedWaitUntil:
     visible: "GO"
     timeout: 30000

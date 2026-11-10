@@ -13,32 +13,32 @@ appId: com.getawaytransfers.app
 - inputText: "5559011234"
 - tapOn: "Devam"
 - extendedWaitUntil:
-    visible: "Geliştirme ortamı.*"
+    visible: ".*Geliştirme ortamı.*"
     timeout: 20000
 - takeScreenshot: m02-sms-kodu
-- tapOn: "Geliştirme ortamı.*"
+- tapOn: ".*Geliştirme ortamı.*"
 - extendedWaitUntil:
     visible: 'Nereye gidiyorsunuz\?'
     timeout: 30000
 - takeScreenshot: m03-ana-sayfa
-- tapOn: "Rezervasyonlarım"
+- tapOn: ".*Rezervasyonlarım.*"
 - takeScreenshot: m04-rezervasyonlar-bos
-- tapOn: "Profil"
+- tapOn: ".*Profil.*"
 - takeScreenshot: m05-profil
-- tapOn: "Ana sayfa"
-- tapOn: "Antalya Havalimanı"
+- tapOn: ".*Ana sayfa.*"
+- tapOn: ".*Antalya Havalimanı.*"
 - extendedWaitUntil:
-    visible: "Rotanız"
+    visible: ".*Rotanız.*"
     timeout: 15000
 - takeScreenshot: m06-rota
 - tapOn: "Nereye"
 - inputText: "kemer"
 - extendedWaitUntil:
-    visible: "Kemer"
+    visible: ".*Kemer.*"
     timeout: 15000
 - takeScreenshot: m07-adres-arama
-- tapOn: "Kemer"
-- tapOn: "Şimdi"
+- tapOn: ".*Kemer.*"
+- tapOn: ".*Şimdi.*"
 - takeScreenshot: m08-rota-dolu
 - tapOn: "Fiyatları göster.*"
 - extendedWaitUntil:
@@ -55,10 +55,10 @@ appId: com.getawaytransfers.app
 - inputText: "Test Yolcu"
 - hideKeyboard
 - scrollUntilVisible:
-    element: 'KVKK aydınlatma metnini okudum\.'
+    element: '.*KVKK aydınlatma metnini okudum\..*'
     direction: DOWN
-- tapOn: 'KVKK aydınlatma metnini okudum\.'
-- tapOn: "Mesafeli satış.*"
+- tapOn: '.*KVKK aydınlatma metnini okudum\..*'
+- tapOn: ".*Mesafeli satış.*"
 - takeScreenshot: m11-bilgiler-dolu
 - tapOn: "Rezervasyonu oluştur ve öde"
 # Sahte ödeme sayfası uygulama içi Safari'de açılır.

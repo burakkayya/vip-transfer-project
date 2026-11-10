@@ -6,13 +6,13 @@ appId: com.getawaytransfers.driver
 - tapOn:
     text: "Geri|Back"
     optional: true
-- tapOn: "Kazanç"
+- tapOn: ".*Kazanç.*"
 - extendedWaitUntil:
-    visible: "Hakedişler.*"
+    visible: ".*Hakedişler.*"
     timeout: 15000
 - takeScreenshot: s09-kazanc
-- tapOn: "Belgeler"
+- tapOn: ".*Belgeler.*"
 - extendedWaitUntil:
-    visible: "Onaylı belgelerle.*"
+    visible: ".*Onaylı belgelerle.*"
     timeout: 15000
 - takeScreenshot: s10-belgeler

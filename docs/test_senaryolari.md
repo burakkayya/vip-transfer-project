@@ -128,7 +128,7 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 ### 4. Anlık rezervasyon ve teklif kabulü
 1. Sürücü önizleme: ana ekranda siyah **GO** düğmesine dokunun (çevrimiçi olunca radar animasyonu döner).
 2. Mobil müşteri (8081) → **Ana sayfa** → bir havalimanına dokunun → **Ne zaman?** alanında **Şimdi** → **Nereye** → **Fiyatları göster** → ilk araç seçili gelir, alttaki **Minivan seç** → bilgiler → onaylar → öde.
-3. Sürücü ekranında geri sayım halkalı siyah **Yeni iş teklifi** kartı görünür (8 sn içinde) → **Kabul et** → yolculuk ekranı açılır. **Karşılama tabelasını aç** yolcu adını tam ekran gösterir.
+3. Sürücü ekranında geri sayım halkalı siyah **Yeni iş teklifi** kartı görünür (8 sn içinde) → **Kabul et** → yolculuk ekranı açılır. **Karşılama tabelası** yolcu adını tam ekran gösterir.
 4. Teklif kartında yolcu adı ve adres gösterilmez; kabulden sonra yolculuk ekranında görünür.
 
 ### 5. İptal ve iade

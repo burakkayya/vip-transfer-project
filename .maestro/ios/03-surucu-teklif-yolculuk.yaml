@@ -9,11 +9,11 @@ appId: com.getawaytransfers.driver
 - takeScreenshot: s05-teklif
 - tapOn: "Kabul et"
 - extendedWaitUntil:
-    visible: "Karşılama tabelasını aç"
+    visible: ".*Karşılama tabelası.*"
     timeout: 20000
 - takeScreenshot: s06-is-atandi
-- tapOn: "Karşılama tabelasını aç"
+- tapOn: ".*Karşılama tabelası.*"
 - takeScreenshot: s07-karsilama-tabelasi
-- tapOn: "Kapatmak için dokunun"
+- tapOn: ".*Kapatmak için dokunun.*"
 - tapOn: "Yola çıktım"
 - takeScreenshot: s08-yolda

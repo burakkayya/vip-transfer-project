@@ -180,6 +180,8 @@ jobs:
             else
               echo "HATA $N" | tee -a "$OUT/ozet.txt"; FAIL=1
               xcrun simctl io "$UDID" screenshot "$OUT/screens/HATA-$N.png" || true
+              # Maestro'nun gördüğü erişilebilirlik ağacı (seçici neden bulunamadı?).
+              maestro --device "$UDID" hierarchy > "$OUT/screens/HATA-$N-agac.json" 2>/dev/null || true
             fi
             echo "::endgroup::"
           done

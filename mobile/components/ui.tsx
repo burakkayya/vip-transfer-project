@@ -227,6 +227,9 @@ export function Button(props: {
     <Animated.View style={[anim, props.style]}>
       <Pressable
         accessibilityRole="button"
+        // Etiket yalnızca başlık: iOS aksi halde simge glifini de etikete katar (VoiceOver anlamsız karakter okur).
+        accessibilityLabel={props.title}
+        accessibilityState={{ disabled: !!(props.disabled || props.busy), busy: !!props.busy }}
         disabled={props.disabled || props.busy}
         onPressIn={() => (scale.value = withSpring(0.97, { damping: 20, stiffness: 400 }))}
         onPressOut={() => (scale.value = withSpring(1, { damping: 20, stiffness: 400 }))}
