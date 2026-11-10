@@ -1,6 +1,6 @@
 # Yeni müşteri giriş yapar, Antalya Havalimanı → Kemer Marina (ilçe değil, serbest adres; K-58) anlık
-# rezervasyon oluşturur ve sahte ödemeyi onaylar. Adres OpenStreetMap (Photon) ile aranır, fiyat gerçek
-# noktalar arası karayolu mesafesinden (OSRM) hesaplanır.
+# rezervasyon oluşturur ve sahte ödemeyi onaylar. Adres Google Places ile aranır, fiyat gerçek
+# noktalar arası karayolu mesafesinden (Google Routes) hesaplanır.
 appId: com.getawaytransfers.app
 ---
 - launchApp:
@@ -11,21 +11,27 @@ appId: com.getawaytransfers.app
 - tapOn:
     text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
     optional: true
+# iOS'ta clearState anahtar zincirini silmez: bağlantı kopması sonrası yeniden denemede oturum açık
+# kalabilir. Giriş adımları yalnızca giriş ekranı çıkarsa çalışır.
 - extendedWaitUntil:
-    visible: "Telefon numaranızı girin"
+    visible: 'Telefon numaranızı girin|Nereye gidiyorsunuz\?'
     timeout: 90000
-- takeScreenshot: m01-giris
-- tapOn: "532 123 45 67"
-- inputText: "5559011234"
-- tapOn: "Devam"
-- extendedWaitUntil:
-    visible: ".*Geliştirme ortamı.*"
-    timeout: 20000
-- takeScreenshot: m02-sms-kodu
-- tapOn: ".*Geliştirme ortamı.*"
-- extendedWaitUntil:
-    visible: 'Nereye gidiyorsunuz\?|İzin Ver'
-    timeout: 30000
+- runFlow:
+    when:
+      visible: "Telefon numaranızı girin"
+    commands:
+      - takeScreenshot: m01-giris
+      - tapOn: "532 123 45 67"
+      - inputText: "5559011234"
+      - tapOn: "Devam"
+      - extendedWaitUntil:
+          visible: ".*Geliştirme ortamı.*"
+          timeout: 20000
+      - takeScreenshot: m02-sms-kodu
+      - tapOn: ".*Geliştirme ortamı.*"
+      - extendedWaitUntil:
+          visible: 'Nereye gidiyorsunuz\?|İzin Ver'
+          timeout: 30000
 # iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
 - tapOn:
     text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
