@@ -23,7 +23,7 @@ fiyat = 5'in katına yukarı yuvarlama(indirimli)
 
 ## Adres ve ilçe (K-28, K-58)
 
-- Müşteri alış ve bırakış adresini serbestçe arar: otel, cadde ve kapı numarası, mahalle, marina, havalimanı (yalnızca ilçe değil). Sağlayıcı: Google Places anahtarı tanımlıysa Google, değilse OpenStreetMap Photon (`GETAWAY_PLACES_PROVIDER=photon`, anahtar gerekmez). Photon sonucu sunucuda 6 saat saklanır; ayrıntı ve koordinat oradan okunur, istemcinin gönderdiği koordinata güvenilmez.
+- Müşteri alış ve bırakış adresini serbestçe arar: otel, cadde ve kapı numarası, mahalle, marina, havalimanı (yalnızca ilçe değil). Sağlayıcı yalnızca Google Places API (New); koordinat imzalı adres jetonundan gelir, istemcinin gönderdiği ham koordinat yok sayılır.
 - Backend, seçilen adresin ilçesini (`administrative_area_level_2`) bulur ve hizmet bölgesine eşler. Havalimanı olarak işaretli yerler 8 km içindeki havalimanı bölgesine eşlenir. İlçe adı gelmezse en yakın ilçe merkezi seçilir.
 - Antalya ve Muğla dışındaki adresler reddedilir (`region_not_served`).
 - Backend çözdüğü bölge ve koordinatı imzalı bir **adres jetonu** ile döner. Fiyat teklifi bu jetonla istenir, böylece istemci ilçeyi değiştirip fiyatı düşüremez.
@@ -33,8 +33,7 @@ fiyat = 5'in katına yukarı yuvarlama(indirimli)
 
 - Fiyat mesafesi, müşterinin seçtiği **gerçek alış ve bırakış noktaları** arasındaki karayolu mesafesidir (2026-11-10'dan önce farklı ilçeler arasında ilçe merkezleri kullanılıyordu). Aynı ilçedeki iki farklı otel farklı fiyat alabilir. Yalnızca ilçe veya havalimanı seçilirse o bölgenin merkezi kullanılır. 300 m'den yakın noktalar aynı yer sayılır.
 - Fiyat yine 5'in katına yukarı yuvarlanır (K-32); km değeri ekranda bir ondalıkla gösterilir.
-- Karayolu mesafesi ve rota çizgisi: Google Routes anahtarı tanımlıysa Google (`GETAWAY_ROUTING_PROVIDER=google`), değilse OpenStreetMap OSRM (`osrm`, varsayılan, anahtar gerekmez). OSRM'e ulaşılamazsa kuş uçuşu x 1,30 yedeğine düşülür (rezervasyon durmaz; bu durumda harita düz çizgi gösterir). Aynı rota 10 dakika bellekte tutulur.
-- OSRM ve Photon'un herkese açık sunucuları adil kullanım sınırıyla çalışır; canlı ortamda Google anahtarları veya kendi barındırdığımız OSRM/Photon kullanılmalı (`acik_konular.md`).
+- Karayolu mesafesi ve rota çizgisi yalnızca Google Routes API'den gelir; yedek yoktur (Google'a ulaşılamazsa teklif "mesafe hesaplanamadı" hatası verir).
 - Google'a yalnızca koordinat gönderilir. Adres aramasında kullanıcının yazdığı metin gider, kimlik bilgisi gitmez.
 - Gerçek adres ve koordinat sürücünün navigasyonu için rezervasyonda saklanır.
 - Hesaplanan mesafe ve fiyat rezervasyonla birlikte kaydedilir (`quoted_price`, `distance_km`).

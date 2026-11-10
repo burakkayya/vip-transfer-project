@@ -23,9 +23,11 @@ env:
   GETAWAY_REDIS_URL: redis://localhost:6379/0
   GETAWAY_SMS_PROVIDER: console
   GETAWAY_PAYMENT_PROVIDER: fake
-  # K-58: gerçek adres araması (OpenStreetMap Photon) ve karayolu rotası (OSRM); anahtar gerekmez.
-  GETAWAY_PLACES_PROVIDER: photon
-  GETAWAY_ROUTING_PROVIDER: osrm
+  # K-58: haritayla ilgili her şey Google (yedek yok). Anahtarlar depo gizli değişkenlerinden gelir
+  # (Settings → Secrets and variables → Actions); günlükte GitHub tarafından maskelenir.
+  GETAWAY_PLACES_PROVIDER: google
+  GETAWAY_ROUTING_PROVIDER: google
+  GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
   GETAWAY_PUSH_PROVIDER: console
   # Simülatör Mac'in ağını kullanır: localhost backend'dir. Ödeme ve yasal sayfalar da backend'den.
   GETAWAY_API_URL: http://localhost:8000
@@ -40,6 +42,14 @@ jobs:
     timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
+      - name: Google anahtarları tanımlı mı
+        env:
+          IOS_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_IOS_KEY }}
+          ANDROID_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_ANDROID_KEY }}
+        run: |
+          for N in GETAWAY_GOOGLE_MAPS_API_KEY IOS_KEY ANDROID_KEY; do
+            [ -n "${!N}" ] || { echo "::error::Depo gizli değişkeni eksik: $N (Settings → Secrets → Actions)"; exit 1; }
+          done
 
       - name: Ortam bilgisi
         run: |
@@ -92,10 +102,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ios-apps
-          key: ios-apps-v3-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}-${{ env.GETAWAY_API_URL }}-${{ env.GETAWAY_WEB_URL }}-${{ env.GETAWAY_PUBLIC_WEB_URL }}
+          key: ios-apps-v4-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}-${{ env.GETAWAY_API_URL }}-${{ env.GETAWAY_WEB_URL }}-${{ env.GETAWAY_PUBLIC_WEB_URL }}
       - name: Uygulamaları derle (müşteri, sürücü)
         if: steps.appcache.outputs.cache-hit != 'true'
         working-directory: mobile
+        env:
+          # iOS Google Maps SDK anahtarı derlemeye gömülür (bundle ID kısıtlı). Anahtar değişirse önbellek
+          # anahtarındaki "v4" elle artırılır.
+          GETAWAY_GOOGLE_MAPS_IOS_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_IOS_KEY }}
         run: |
           npm ci
           mkdir -p ../ios-apps

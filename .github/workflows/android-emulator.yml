@@ -23,9 +23,11 @@ env:
   GETAWAY_REDIS_URL: redis://localhost:6379/0
   GETAWAY_SMS_PROVIDER: console
   GETAWAY_PAYMENT_PROVIDER: fake
-  # K-58: gerçek adres araması (OpenStreetMap Photon) ve karayolu rotası (OSRM); anahtar gerekmez.
-  GETAWAY_PLACES_PROVIDER: photon
-  GETAWAY_ROUTING_PROVIDER: osrm
+  # K-58: haritayla ilgili her şey Google (yedek yok). Anahtarlar depo gizli değişkenlerinden gelir
+  # (Settings → Secrets and variables → Actions); günlükte GitHub tarafından maskelenir.
+  GETAWAY_PLACES_PROVIDER: google
+  GETAWAY_ROUTING_PROVIDER: google
+  GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
   GETAWAY_PUSH_PROVIDER: console
   GETAWAY_PUBLIC_WEB_URL: http://localhost:8000
   OUT: ${{ github.workspace }}/android-out
@@ -50,6 +52,14 @@ jobs:
         ports: ["6379:6379"]
     steps:
       - uses: actions/checkout@v4
+      - name: Google anahtarları tanımlı mı
+        env:
+          IOS_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_IOS_KEY }}
+          ANDROID_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_ANDROID_KEY }}
+        run: |
+          for N in GETAWAY_GOOGLE_MAPS_API_KEY IOS_KEY ANDROID_KEY; do
+            [ -n "${!N}" ] || { echo "::error::Depo gizli değişkeni eksik: $N (Settings → Secrets → Actions)"; exit 1; }
+          done
       - run: mkdir -p "$OUT"
 
       # ---------- Backend ----------
@@ -85,7 +95,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: android-apps
-          key: android-apps-v2-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}
+          key: android-apps-v3-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}
       - name: Uygulamaları derle (müşteri, sürücü)
         if: steps.apkcache.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -94,6 +104,9 @@ jobs:
           GETAWAY_API_URL: http://10.0.2.2:8000
           GETAWAY_WEB_URL: http://10.0.2.2:8000
           GETAWAY_ANDROID_CLEARTEXT: "1"
+          # Android Google Maps SDK anahtarı (paket adı + Expo hata ayıklama imzası SHA-1 kısıtlı). Anahtar
+          # değişirse önbellek anahtarındaki "v3" elle artırılır.
+          GETAWAY_GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_ANDROID_KEY }}
         run: |
           npm ci
           mkdir -p ../android-apps

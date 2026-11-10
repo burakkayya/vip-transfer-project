@@ -9,14 +9,15 @@ const isDriver = variant === "driver";
 const apiUrl = process.env.GETAWAY_API_URL ?? "http://localhost:8000";
 // Yasal metinler ve ödeme dönüşü için müşteri web sitesi. Mağaza derlemesinde https://getawaytransfers.com verilir.
 const webUrl = process.env.GETAWAY_WEB_URL ?? "http://localhost:3000";
-// Android Google Maps SDK anahtarı (react-native-maps). Yalnızca ortam değişkeninden okunur; tanımsızsa alan eklenmez.
-// iOS varsayılan sağlayıcı Apple Maps'tir, anahtar gerekmez. Expo prebuild react-native-maps için yerleşik
-// eklentiyi (android.config.googleMaps.apiKey) kendisi uygular; plugins listesine ayrıca eklenmez.
+// Haritayla ilgili her şey Google (K-58, 2026-11-10 kullanıcı kararı; yedek harita yok): iOS ve Android
+// Google Maps SDK kullanır (react-native-maps PROVIDER_GOOGLE). Anahtarlar yalnızca ortam değişkeninden okunur,
+// repoya yazılmaz; yerli derleme (prebuild/run/EAS) anahtar olmadan başlamaz.
+// Android Google Maps SDK anahtarı (paket adı + SHA-1 kısıtlı).
 const googleMapsAndroidKey = process.env.GETAWAY_GOOGLE_MAPS_ANDROID_KEY;
 const DRIVER_LOCATION_TEXT = "Aktif yolculukta konumunuz yalnızca yolcuyla paylaşılır.";
 const DRIVER_BACKGROUND_TEXT =
   "Yolculuk sürerken uygulamadan çıksanız da konumunuz yolcuyla paylaşılır. Yolculuk bitince paylaşım durur.";
-// iOS Google Maps SDK anahtarı (isteğe bağlı). Tanımlıysa iOS de Google Haritalar kullanır (MapCanvas, `extra.googleMapsIos`);
+// iOS Google Maps SDK anahtarı (bundle ID kısıtlı). MapCanvas iOS'ta da Google Haritalar kullanır (`extra.googleMapsIos`);
 // tanımsızsa Apple Maps. Backend'in sunucu anahtarı buraya konmaz: bu anahtar uygulama paketinde taşınır, bundle ID ile kısıtlanır.
 const googleMapsIosKey = process.env.GETAWAY_GOOGLE_MAPS_IOS_KEY;
 // Firebase (FCM push): Firebase Console'dan indirilen google-services.json'un yolu (repo dışında durur).
@@ -50,10 +51,17 @@ const withCleartext: ConfigPlugin = (cfg) =>
     return mod;
   });
 
-// Mağaza (EAS production) derlemesi Android Maps anahtarı olmadan çıkmaz: yer tutucu yalnızca geliştirme
-// ve CI içindir (CARTO zemini ticari kullanımda lisans ister, kullanıcının konumunu üçüncü tarafa gönderir).
-if (process.env.EAS_BUILD_PROFILE === "production" && process.env.EAS_BUILD_PLATFORM === "android" && !googleMapsAndroidKey) {
-  throw new Error("Mağaza derlemesi için GETAWAY_GOOGLE_MAPS_ANDROID_KEY tanımlı olmalı.");
+// Yerli derleme Google Maps anahtarı olmadan başlamaz (sahte/boş harita yerine açık hata).
+const cli = process.argv.slice(1).join(" ");
+const nativeBuild = Boolean(process.env.EAS_BUILD_PLATFORM) || /\b(prebuild|run:android|run:ios)\b/.test(cli);
+if (nativeBuild) {
+  const target = process.env.EAS_BUILD_PLATFORM ?? (/\bios\b/.test(cli) ? "ios" : /\bandroid\b/.test(cli) ? "android" : "all");
+  if ((target === "android" || target === "all") && !googleMapsAndroidKey) {
+    throw new Error("GETAWAY_GOOGLE_MAPS_ANDROID_KEY tanımlı değil: Android derlemesi Google Haritalar anahtarı ister.");
+  }
+  if ((target === "ios" || target === "all") && !googleMapsIosKey) {
+    throw new Error("GETAWAY_GOOGLE_MAPS_IOS_KEY tanımlı değil: iOS derlemesi Google Haritalar anahtarı ister.");
+  }
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => {
@@ -93,9 +101,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(isDriver
         ? {}
         : { blockedPermissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"] }),
-      // Manifestte anahtar alanı hiç yoksa Google Maps SDK harita ekranında uygulamayı çökertir. Anahtar yoksa
-      // yer tutucu konur (gizli değil); harita zemini o zaman CARTO/OpenStreetMap'ten gelir (MapCanvas).
-      config: { googleMaps: { apiKey: googleMapsAndroidKey || "ANAHTAR_TANIMSIZ" } },
       ...(googleServicesFile ? { googleServicesFile } : {}),
     },
     plugins: [
@@ -107,6 +112,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-task-manager",
       // defaultChannel: FCM bildirimi kanal belirtmeden ya da kanal henüz oluşturulmadan gelirse.
       ["expo-notifications", { color: "#0B0B0C", defaultChannel: "trip" }] as [string, object],
+      // Google Maps SDK (iOS GoogleMaps pod'u ve AppDelegate başlatması, Android manifest anahtarı).
+      [
+        "react-native-maps",
+        { iosGoogleMapsApiKey: googleMapsIosKey ?? "", androidGoogleMapsApiKey: googleMapsAndroidKey ?? "" },
+      ] as [string, object],
       // K-59: yolculuk durumu canlı etkinliği. iOS'ta Canlı Etkinlik uzantı hedefi (kilit ekranı,
       // Dynamic Island), Android'de özel bildirim modülü. Uzaktan (APNs) güncelleme şimdilik kapalı.
       ["expo-widgets", { frequentUpdates: true }] as [string, object],
@@ -131,7 +141,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       variant, apiUrl, webUrl,
       googleMapsIos: Boolean(googleMapsIosKey),
-      googleMapsAndroid: Boolean(googleMapsAndroidKey), // yalnızca gerçek anahtar varsa Google zemini
+      googleMapsAndroid: Boolean(googleMapsAndroidKey),
     },
   };
   const withVariant = isDriver ? app : withoutLocationUsage(app);

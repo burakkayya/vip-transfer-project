@@ -56,54 +56,17 @@ def test_google_route_without_polyline_is_none(monkeypatch):
     assert r.distance_km == Decimal("12.00")
 
 
-# --- K-58: OSRM (anahtarsız karayolu rotası) ------------------------------------
-
-def test_osrm_route_parses_distance_duration_polyline(monkeypatch):
-    from app.providers.routing import HaversineRouting, OsrmRouting
-
-    calls = []
-
-    def fake_get(url, **kw):
-        calls.append(url)
-        return _Resp({"code": "Ok", "routes": [{"distance": 63512.4, "duration": 3660.0, "geometry": "abc"}]})
-
-    monkeypatch.setattr(httpx, "get", fake_get)
-    router = OsrmRouting("https://osrm.test", HaversineRouting(Decimal("1.3")))
-    r = router.route(A, B)
-    assert r.distance_km == Decimal("63.51") and r.duration_minutes == 61 and r.polyline == "abc"
-    assert "/route/v1/driving/30.800500,36.898700;" in calls[0]  # boylam,enlem sırası
-    router.route(A, B)
-    assert len(calls) == 1  # aynı rota bellek önbelleğinden
-
-
-def test_osrm_falls_back_to_haversine_and_does_not_cache(monkeypatch):
-    from app.providers.routing import HaversineRouting, OsrmRouting
-
-    calls = []
-
-    def failing_get(url, **kw):
-        calls.append(url)
-        raise httpx.ConnectError("yok")
-
-    monkeypatch.setattr(httpx, "get", failing_get)
-    router = OsrmRouting("https://osrm.test", HaversineRouting(Decimal("1.3")))
-    r = router.route(A, B)
-    assert r.distance_km > 0 and r.polyline
-    router.route(A, B)
-    assert len(calls) == 2
-
-
-def test_prod_rejects_public_osm_servers():
-    """K-58: herkese açık Photon/OSRM sunucuları üretimde kullanılamaz."""
+def test_dev_and_prod_require_google_providers(monkeypatch):
+    """Haritayla ilgili her şey Google: sahte adres ve kuş uçuşu rota yalnızca otomatik testlerde."""
     import pytest
-    from cryptography.fernet import Fernet
     from pydantic import ValidationError
 
     from app.config import Settings
 
-    prod = dict(env="prod", jwt_secret="x" * 40, field_encryption_keys=Fernet.generate_key().decode(),
-                blind_index_key="y" * 40, payment_provider="paytr", push_provider="console")
-    with pytest.raises(ValidationError, match="Photon"):
-        Settings(**prod, places_provider="photon", routing_provider="google")
-    with pytest.raises(ValidationError, match="OSRM"):
-        Settings(**prod, places_provider="google", routing_provider="osrm")
+    monkeypatch.setenv("GETAWAY_ENV", "dev")
+    with pytest.raises(ValidationError, match="Google olmalı"):
+        Settings(places_provider="fake", routing_provider="haversine", google_maps_api_key="k")
+    with pytest.raises(ValidationError, match="GOOGLE_MAPS_API_KEY"):
+        Settings(places_provider="google", routing_provider="google", google_maps_api_key="")
+    ok = Settings(places_provider="google", routing_provider="google", google_maps_api_key="k")
+    assert ok.routing_provider == "google"

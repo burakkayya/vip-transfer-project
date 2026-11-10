@@ -56,15 +56,12 @@ class Settings(BaseSettings):
     push_provider: Literal["console", "fcm"] = "console"
     fcm_credentials_file: str = ""
 
-    # Karayolu rotası ve mesafe: "osrm" (OpenStreetMap, anahtar gerekmez; varsayılan), "google" (Routes API)
-    # veya "haversine" (kuş uçuşu x yol katsayısı, düz çizgi; yalnızca test). OSRM'e ulaşılamazsa haversine.
-    routing_provider: str = "osrm"
-    osrm_url: str = "https://router.project-osrm.org"
+    # K-58 (2026-11-10 kullanıcı kararı): haritayla ilgili her şey Google; yedek yol yok.
+    # Karayolu rotası ve mesafe: "google" (Routes API). "haversine" yalnızca otomatik testlerde (GETAWAY_ENV=test).
+    routing_provider: str = "google"
     google_routes_api_key: str = ""
-    # Adres arama: "photon" (OpenStreetMap, anahtar gerekmez; varsayılan), "google" (Places API New)
-    # veya "fake" (sabit örnek adresler; test). Anahtar yalnızca backend'de durur.
-    places_provider: str = "photon"
-    photon_url: str = "https://photon.komoot.io"
+    # Adres arama: "google" (Places API New). "fake" yalnızca otomatik testlerde. Anahtar yalnızca backend'de durur.
+    places_provider: str = "google"
     google_maps_api_key: str = ""
     # Adres araması ücretli bir servise gider; IP başına dakikalık sınır.
     places_rate_limit_per_minute: int = 60
@@ -113,14 +110,14 @@ class Settings(BaseSettings):
                 raise ValueError("üretimde sahte ödeme sağlayıcısı kullanılamaz")
             if self.places_provider == "fake":
                 raise ValueError("üretimde sahte adres sağlayıcısı kullanılamaz")
-            # K-58: herkese açık OpenStreetMap sunucularının koşulları canlı kullanıma izin vermez;
-            # üretimde Google veya kendi barındırdığımız Photon/OSRM adresi verilmeli.
-            if self.places_provider == "photon" and "photon.komoot.io" in self.photon_url:
-                raise ValueError("üretimde herkese açık Photon sunucusu kullanılamaz (GETAWAY_PHOTON_URL)")
-            if self.routing_provider == "osrm" and "router.project-osrm.org" in self.osrm_url:
-                raise ValueError("üretimde herkese açık OSRM sunucusu kullanılamaz (GETAWAY_OSRM_URL)")
             if self.push_provider == "console":
                 raise ValueError("üretimde push sağlayıcısı fcm olmalı")
+        # Sahte adres ve kuş uçuşu rota yalnızca otomatik testlerde; geliştirme ve canlıda Google zorunlu.
+        if self.env != "test":
+            if self.places_provider != "google" or self.routing_provider != "google":
+                raise ValueError("adres ve rota sağlayıcısı Google olmalı (GETAWAY_PLACES_PROVIDER, GETAWAY_ROUTING_PROVIDER)")
+            if not self.google_maps_api_key:
+                raise ValueError("GETAWAY_GOOGLE_MAPS_API_KEY tanımlı değil (Places ve Routes API)")
         if self.push_provider == "fcm" and not Path(self.fcm_credentials_file or "").is_file():
             raise ValueError("push_provider=fcm için GETAWAY_FCM_CREDENTIALS_FILE geçerli bir dosya olmalı")
         return self

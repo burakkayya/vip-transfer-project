@@ -43,13 +43,14 @@ Windows'ta iOS simülatörü yoktur (Xcode yalnızca macOS). Gerçek iOS uygulam
 - **iOS simülatör iş akışı** (`.github/workflows/ios-simulator.yml`): Mac'te backend (PostGIS, Redis, sahte SMS/ödeme, demo sürücüler) kurulur, müşteri ve sürücü uygulamaları Release olarak simülatör için derlenir, simülatör Türkçe ve Antalya Havalimanı konumunda açılır, `.maestro/ios` akışları sırayla çalışır: sürücü girişi ve GO, müşteri girişi, Antalya Havalimanı → Kemer anlık rezervasyon ve sahte ödeme, sürücünün anlık işi "İş havuzu" kartından açıp kabulü, karşılama tabelası, yola çıkış, müşterinin canlı takibi, sürücü kazanç ve belgeler. Ekran görüntüleri (`screens/`, m01-m16 müşteri, s01-s10 sürücü), simülatör videosu (asıl ve telefonda izlenebilir küçük kopya `simulator-kucuk.mp4`), uygulama ve backend günlüğü `ios-simulator-sonuc` yapıtındadır; başarısız akışta `HATA-<akış>.png` ve Maestro'nun gördüğü ağaç (`-agac.json`) eklenir. Cihaz iPhone 17 Pro'ya sabittir (sahte ödeme sayfası Safari'de açıldığı için dokunuşlar koordinatla). 2026-11-10: beş akış geçiyor.
 - Çalıştırma: GitHub'da Actions → "iOS simülatör" → Run workflow, ya da `gh workflow run ios-simulator.yml --ref <dal>`; `ci/ios-*` dallarına gönderimde kendiliğinden çalışır. Her PR'da çalışmaz (derleme ~35-50 dk; depo herkese açık olduğundan dakika sınırı yok). Uygulama kodu değişmediyse derleme önbellekten gelir.
 - Apple Developer hesabı gerekmez (simülatör derlemesi imzasızdır). Push bildirimi (APNs) bu yolla doğrulanamaz.
-- 2026-11-10'dan itibaren akışlar serbest adres (Antalya Havalimanı → **Kemer Marina**, OpenStreetMap araması), yol rotası (OSRM) ve canlı etkinlik (Dynamic Island `s11`/`m17`, bildirim merkezi `s12`/`m18`) ekran görüntülerini de alır.
+- 2026-11-10'dan itibaren akışlar serbest adres (Antalya Havalimanı → **Kemer Marina**, Google Places), yol rotası (Google Routes), iOS'ta da Google Haritalar ve canlı etkinlik (Dynamic Island `s11`/`m17`, bildirim merkezi `s12`/`m18`) ekran görüntülerini de alır.
 
 ### Android testi (GitHub Actions)
 
 - **Android emülatör iş akışı** (`.github/workflows/android-emulator.yml`): Linux makinede backend (PostGIS ve Redis servisleri, sahte SMS/ödeme, demo sürücüler) kurulur, iki uygulama sürüm APK'sı olarak derlenir (`GETAWAY_API_URL=http://10.0.2.2:8000`, yalnız bu test için düz HTTP izni `GETAWAY_ANDROID_CLEARTEXT=1`), API 34 Pixel 7 emülatörü Türkçe ve Antalya Havalimanı konumunda açılır, `.maestro/android` akışları sırayla çalışır (iOS ile aynı senaryo; ödeme sayfası tarayıcıda onaylanamazsa betik sahte ödemeyi backend üzerinden tamamlar). Ekran kaydı 170 sn'lik parçalarla alınıp birleştirilir.
 - Çıktı `android-emulator-sonuc` yapıtında: `screens/`, `emulator.mp4` ve telefonda izlenebilir `emulator-kucuk.mp4`, `app.log` (logcat), `backend.log`, `ozet.txt`.
 - Çalıştırma: Actions → "Android emülatör" → Run workflow, ya da `ci/android-*` / `ci/ios-*` dallarına gönderim. Betik: `.github/scripts/android-flows.sh`.
+- İki mobil iş akışı da depo gizli değişkenlerini ister: `GETAWAY_GOOGLE_MAPS_API_KEY` (backend Places ve Routes), `GETAWAY_GOOGLE_MAPS_IOS_KEY`, `GETAWAY_GOOGLE_MAPS_ANDROID_KEY`. Eksikse ilk adım açık hata verir.
 
 Bu makinede ayrıca iki ücretsiz yol var:
 
@@ -118,9 +119,9 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 - Türkiye seçiliyken `+49 151 …` yazılırsa kod Almanya numarasına gider ve **Numarayı değiştir** sonrası ülke **Deutschland (+49)** görünür (müşteri ülkesi ve para birimi numarayla tutarlı). `(+90) 532 …`, `0090 532 …` ve `90 532 123 45 67` aynı numaraya (+90 532…) gider. Listede olmayan bir kod (`+81 …`) alan hatası verir.
 
 ### 2. Serbest adres ve gerçek noktaya göre fiyat (K-58)
-1. Mobil veya web rezervasyonda **Nereye** alanına ilçe değil, gerçek bir adres yazın: "Kemer Marina", "Rixos Sungate", "Atatürk Caddesi Konyaaltı". OpenStreetMap sonuçları "başlık, cadde, mahalle, ilçe, il" biçiminde gelir (anahtar gerekmez; backend `GETAWAY_PLACES_PROVIDER=photon`).
+1. Mobil veya web rezervasyonda **Nereye** alanına ilçe değil, gerçek bir adres yazın: "Kemer Marina", "Rixos Sungate", "Atatürk Caddesi Konyaaltı". Google Places sonuçları "başlık, adres" biçiminde gelir (backend `GETAWAY_PLACES_PROVIDER=google`, anahtar `backend/.env`).
 2. Antalya Havalimanı → **Kalkan** ve ardından → **Kaş Merkez**: ikisi aynı ilçede olsa da mesafe ve fiyat farklıdır (gerçek noktalar arası karayolu); fiyat 5'in katıdır.
-3. Araç seçiminde ve rezervasyon detayında harita rotası düz çizgi değil, yolları izleyen çizgidir (OSRM; `GETAWAY_ROUTING_PROVIDER=osrm`). Android'de Google anahtarı yoksa zemin OpenStreetMap'tir, sol üstte "© OpenStreetMap" yazar.
+3. Araç seçiminde ve rezervasyon detayında harita rotası düz çizgi değil, yolları izleyen çizgidir (Google Routes). iOS ve Android'de harita Google Haritalar'dır; anahtarsız derlemede harita yerine "Google Haritalar anahtarı bu derlemede tanımlı değil." uyarısı çıkar.
 4. **Taksim**: "Bu adres hizmet alanımızın dışında" hatası.
 
 ### 3. Planlı işte manuel atama ve yolculuk (admin + sürücü + müşteri)

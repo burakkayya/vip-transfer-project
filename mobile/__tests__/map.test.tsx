@@ -96,10 +96,12 @@ test("uses a dark map style on Android in dark mode", async () => {
   os.restore();
 });
 
-test("keeps the provider style on iOS and in light mode", async () => {
+test("uses Google Maps with the dark style on iOS too (K-58)", async () => {
   await render(<MapCanvas mode="route" route={ROUTE} dark />);
-  expect(screen.getByTestId("map-view", all).props.customMapStyle).toBeUndefined();
-  expect(screen.getByTestId("map-view", all).props.userInterfaceStyle).toBe("dark");
+  const view = screen.getByTestId("map-view", all);
+  expect(view.props.provider).toBe("google");
+  expect(view.props.customMapStyle?.length).toBeGreaterThan(0);
+  expect(view.props.userInterfaceStyle).toBe("dark");
 });
 
 test("centres on a single-point route without fitting", async () => {
