@@ -120,7 +120,7 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 ### 2. Serbest adres ve gerçek noktaya göre fiyat (K-58)
 1. Mobil veya web rezervasyonda **Nereye** alanına ilçe değil, gerçek bir adres yazın: "Kemer Marina", "Rixos Sungate", "Atatürk Caddesi Konyaaltı". OpenStreetMap sonuçları "başlık, cadde, mahalle, ilçe, il" biçiminde gelir (anahtar gerekmez; backend `GETAWAY_PLACES_PROVIDER=photon`).
 2. Antalya Havalimanı → **Kalkan** ve ardından → **Kaş Merkez**: ikisi aynı ilçede olsa da mesafe ve fiyat farklıdır (gerçek noktalar arası karayolu); fiyat 5'in katıdır.
-3. Araç seçiminde ve rezervasyon detayında harita rotası düz çizgi değil, yolları izleyen çizgidir (OSRM; `GETAWAY_ROUTING_PROVIDER=osrm`). Android'de Google anahtarı yoksa zemin CARTO/OpenStreetMap'tir, sol üstte "© OpenStreetMap © CARTO" yazar.
+3. Araç seçiminde ve rezervasyon detayında harita rotası düz çizgi değil, yolları izleyen çizgidir (OSRM; `GETAWAY_ROUTING_PROVIDER=osrm`). Android'de Google anahtarı yoksa zemin OpenStreetMap'tir, sol üstte "© OpenStreetMap" yazar.
 4. **Taksim**: "Bu adres hizmet alanımızın dışında" hatası.
 
 ### 3. Planlı işte manuel atama ve yolculuk (admin + sürücü + müşteri)
