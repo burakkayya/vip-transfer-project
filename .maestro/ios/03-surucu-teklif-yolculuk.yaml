@@ -7,22 +7,28 @@ appId: com.getawaytransfers.driver
 - tapOn:
     text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
     optional: true
-# Anlık iş "İş havuzu"nda kart olarak düşer (yoklama 8 sn). "anlık" kelimesi üstteki açıklamada da geçtiği için
-# yalnız havuz başlığının altındaki öğe aranır; kart sekme çubuğunun altında kalmasın diye ortalanır.
+# Anlık iş "İş havuzu"nda kart olarak düşer (yoklama 8 sn). Kartın erişilebilirlik etiketi "rota, tutar"dır;
+# alt yarısı sekme çubuğunun altında kaldığı için dokunmadan önce ortalanır.
 - extendedWaitUntil:
     visible:
-      text: ".*Anlık.*"
+      text: ".*Havalimanı → Kemer.*"
       below: "İş havuzu"
     timeout: 60000
+# Kart kısmen göründüğü için scrollUntilVisible kaydırmayabilir; sayfa önce elle yukarı itilir
+# (aksi halde kartın ortası "Kazanç" sekmesine düşer).
+- swipe:
+    start: "50%,72%"
+    end: "50%,35%"
+    duration: 600
 - scrollUntilVisible:
     element:
-      text: ".*Anlık.*"
+      text: ".*Havalimanı → Kemer.*"
       below: "İş havuzu"
     direction: DOWN
     centerElement: true
 - takeScreenshot: s05-is-havuzu
 - tapOn:
-    text: ".*Anlık.*"
+    text: ".*Havalimanı → Kemer.*"
     below: "İş havuzu"
 - extendedWaitUntil:
     visible: "Kabul et"
