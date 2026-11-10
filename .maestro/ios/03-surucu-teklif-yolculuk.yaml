@@ -39,7 +39,15 @@ appId: com.getawaytransfers.driver
     visible: ".*Karşılama tabelası.*"
     timeout: 20000
 - takeScreenshot: s06-is-atandi
+# Düğmenin alt yarısı sabit "Yola çıktım" çubuğunun altında: önce panel kaydırılır.
+- swipe:
+    start: "50%,70%"
+    end: "50%,40%"
+    duration: 600
 - tapOn: ".*Karşılama tabelası.*"
+- extendedWaitUntil:
+    visible: ".*Kapatmak için dokunun.*"
+    timeout: 10000
 - takeScreenshot: s07-karsilama-tabelasi
 - tapOn: ".*Kapatmak için dokunun.*"
 - tapOn: "Yola çıktım"
