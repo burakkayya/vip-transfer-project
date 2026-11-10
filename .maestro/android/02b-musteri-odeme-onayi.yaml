@@ -1,0 +1,9 @@
+# Android: ödeme onaylandıktan sonra uygulama rezervasyonu "Onaylandı" (veya sürücü atanmışsa "Atandı") gösterir.
+appId: com.getawaytransfers.app
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Onaylandı|Atandı|Sürücü.*"
+    timeout: 60000
+- takeScreenshot: m14-rezervasyon-onaylandi

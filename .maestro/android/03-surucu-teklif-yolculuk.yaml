@@ -1,0 +1,60 @@
+# Android: sürücü iş havuzundaki anlık işi kabul eder, karşılama tabelasını açar, yola çıkar; bildirim
+# çekmecesinde kalıcı yolculuk bildirimi (K-59) görünür.
+appId: com.getawaytransfers.driver
+---
+- launchApp:
+    stopApp: false
+- tapOn:
+    text: "İzin ver|Uygulamayı kullanırken|Allow|While using the app"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*Havalimanı → Kemer.*"
+      below: "İş havuzu"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: ".*Havalimanı → Kemer.*"
+      below: "İş havuzu"
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: s05-is-havuzu
+- tapOn:
+    text: ".*Havalimanı → Kemer.*"
+    below: "İş havuzu"
+- extendedWaitUntil:
+    visible: "Kabul et"
+    timeout: 20000
+- takeScreenshot: s05-teklif
+- tapOn: "Kabul et"
+- tapOn:
+    text: "İzin ver|Uygulamayı kullanırken|Her zaman izin ver|Allow|While using the app"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*Karşılama tabelası.*"
+    timeout: 20000
+- takeScreenshot: s06-is-atandi
+- scrollUntilVisible:
+    element: ".*Karşılama tabelası.*"
+    direction: DOWN
+    centerElement: true
+- tapOn: ".*Karşılama tabelası.*"
+- extendedWaitUntil:
+    visible: ".*Kapatmak için dokunun.*"
+    timeout: 10000
+- takeScreenshot: s07-karsilama-tabelasi
+- tapOn: ".*Kapatmak için dokunun.*"
+- tapOn: "Yola çıktım"
+- tapOn:
+    text: "İzin ver|Her zaman izin ver|Allow|Allow all the time"
+    optional: true
+- takeScreenshot: s08-yolda
+# K-59: bildirim çekmecesi (üstten aşağı kaydırma) kalıcı yolculuk bildirimini gösterir.
+- swipe:
+    start: "50%,0%"
+    end: "50%,75%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s12-canli-bildirim
+- back

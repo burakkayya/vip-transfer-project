@@ -1,0 +1,88 @@
+# Android: yeni müşteri giriş yapar, Antalya Havalimanı → Kemer Marina (serbest adres, K-58) anlık rezervasyon
+# oluşturur ve ödeme sayfasını açar. Ödeme onayı tarayıcıda yapılır; tarayıcı yoksa iş akışı betiği
+# sahte ödemeyi backend üzerinden tamamlar (02b bekler).
+appId: com.getawaytransfers.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn:
+    text: "İzin ver|Allow"
+    optional: true
+- extendedWaitUntil:
+    visible: "Telefon numaranızı girin"
+    timeout: 90000
+- takeScreenshot: m01-giris
+- tapOn: "532 123 45 67"
+- inputText: "5559011234"
+- hideKeyboard
+- tapOn: "Devam"
+- extendedWaitUntil:
+    visible: ".*Geliştirme ortamı.*"
+    timeout: 20000
+- takeScreenshot: m02-sms-kodu
+- tapOn: ".*Geliştirme ortamı.*"
+- tapOn:
+    text: "İzin ver|Allow"
+    optional: true
+- extendedWaitUntil:
+    visible: 'Nereye gidiyorsunuz\?'
+    timeout: 30000
+- takeScreenshot: m03-ana-sayfa
+- tapOn: ".*Rezervasyonlarım.*"
+- takeScreenshot: m04-rezervasyonlar-bos
+- tapOn: ".*Profil.*"
+- takeScreenshot: m05-profil
+- tapOn: ".*Ana sayfa.*"
+- tapOn: ".*Antalya Havalimanı.*"
+- extendedWaitUntil:
+    visible: ".*Rotanız.*"
+    timeout: 15000
+- takeScreenshot: m06-rota
+- tapOn: "Nereye"
+- inputText: "Kemer Marina"
+# Sonuç satırının erişilebilirlik etiketi "başlık, alt başlık" (OpenStreetMap araması).
+- extendedWaitUntil:
+    visible: "Kemer Marina, .*"
+    timeout: 20000
+- takeScreenshot: m07-adres-arama
+- tapOn: "Kemer Marina, .*"
+- tapOn: ".*Şimdi.*"
+- takeScreenshot: m08-rota-dolu
+- tapOn: "Fiyatları göster.*"
+- extendedWaitUntil:
+    visible: ".* seç · .*"
+    timeout: 30000
+- takeScreenshot: m09-arac-secimi
+- tapOn: ".* seç · .*"
+- extendedWaitUntil:
+    visible: "Yolcu adı soyadı"
+    timeout: 15000
+- takeScreenshot: m10-bilgiler
+- tapOn:
+    below: "Yolcu adı soyadı"
+- inputText: "Test Yolcu"
+- hideKeyboard
+- scrollUntilVisible:
+    element: '.*KVKK aydınlatma metnini okudum\..*'
+    direction: DOWN
+- tapOn: '.*KVKK aydınlatma metnini okudum\..*'
+- tapOn: ".*Mesafeli satış.*"
+- takeScreenshot: m11-bilgiler-dolu
+- tapOn: "Rezervasyonu oluştur ve öde"
+# Sahte ödeme sayfası tarayıcıda (Custom Tab) açılır; Android'de Maestro başka uygulamanın ekranını görür.
+- extendedWaitUntil:
+    visible: "Ödemeyi onayla"
+    timeout: 25000
+    optional: true
+- takeScreenshot: m12-odeme-sayfasi
+- tapOn:
+    text: "Ödemeyi onayla"
+    optional: true
+- extendedWaitUntil:
+    visible: "Ödeme tamamlandı"
+    timeout: 15000
+    optional: true
+- takeScreenshot: m13-odeme-sonucu
+- back

@@ -1,5 +1,5 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
-import { type ConfigPlugin, withInfoPlist } from "expo/config-plugins";
+import { type ConfigPlugin, withAndroidManifest, withInfoPlist } from "expo/config-plugins";
 
 // Tek kod tabanından iki uygulama: müşteri (varsayılan) ve sürücü (APP_VARIANT=driver).
 const variant = process.env.APP_VARIANT === "driver" ? "driver" : "customer";
@@ -40,6 +40,16 @@ const withoutLocationUsage: ConfigPlugin = (cfg) =>
     return mod;
   });
 
+// Yalnızca CI/emülatör testi: Android sürüm (release) derlemesi düz HTTP'yi engeller; emülatördeki uygulama
+// bilgisayardaki backend'e http://10.0.2.2:8000 ile ulaşır. Mağaza derlemesinde bu değişken verilmez.
+const allowCleartext = process.env.GETAWAY_ANDROID_CLEARTEXT === "1";
+const withCleartext: ConfigPlugin = (cfg) =>
+  withAndroidManifest(cfg, (mod) => {
+    const appNode = mod.modResults.manifest.application?.[0];
+    if (appNode) appNode.$["android:usesCleartextTraffic"] = "true";
+    return mod;
+  });
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const app: ExpoConfig = {
     ...config,
@@ -77,7 +87,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(isDriver
         ? {}
         : { blockedPermissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"] }),
-      ...(googleMapsAndroidKey ? { config: { googleMaps: { apiKey: googleMapsAndroidKey } } } : {}),
+      // Manifestte anahtar alanı hiç yoksa Google Maps SDK harita ekranında uygulamayı çökertir. Anahtar yoksa
+      // yer tutucu konur (gizli değil); harita zemini o zaman CARTO/OpenStreetMap'ten gelir (MapCanvas).
+      config: { googleMaps: { apiKey: googleMapsAndroidKey || "ANAHTAR_TANIMSIZ" } },
       ...(googleServicesFile ? { googleServicesFile } : {}),
     },
     plugins: [
@@ -110,7 +122,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     web: { bundler: "metro", output: "single" },
     experiments: { typedRoutes: false },
-    extra: { variant, apiUrl, webUrl, googleMapsIos: Boolean(googleMapsIosKey) },
+    extra: {
+      variant, apiUrl, webUrl,
+      googleMapsIos: Boolean(googleMapsIosKey),
+      googleMapsAndroid: Boolean(googleMapsAndroidKey), // yalnızca gerçek anahtar varsa Google zemini
+    },
   };
-  return isDriver ? app : withoutLocationUsage(app);
+  const withVariant = isDriver ? app : withoutLocationUsage(app);
+  return allowCleartext ? withCleartext(withVariant) : withVariant;
 };

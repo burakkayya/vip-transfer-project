@@ -1,0 +1,19 @@
+# Android: sürücünün kazanç ve belgeler sekmeleri. 03 yolculuk ekranında bittiği için uygulama yeniden
+# başlatılır (oturum korunur).
+appId: com.getawaytransfers.driver
+---
+- launchApp:
+    stopApp: true
+- tapOn:
+    text: "İzin ver|Uygulamayı kullanırken|Allow|While using the app"
+    optional: true
+- tapOn: ".*Kazanç.*"
+- extendedWaitUntil:
+    visible: ".*Hakedişler.*"
+    timeout: 15000
+- takeScreenshot: s09-kazanc
+- tapOn: ".*Belgeler.*"
+- extendedWaitUntil:
+    visible: ".*Onaylı belgelerle.*"
+    timeout: 15000
+- takeScreenshot: s10-belgeler

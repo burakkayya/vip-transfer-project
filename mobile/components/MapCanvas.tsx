@@ -2,16 +2,25 @@
 // Web'de Metro MapCanvas.web.tsx'i (stilize SVG) seçer; iki dosya aynı MapCanvasProps'u kabul eder.
 // Rota rayı dili: alış = dolu daire, varış = dolu kare, çizgi lake siyah 4 px.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
-import MapView, { Marker, Polyline, type MapStyleElement, type Region } from "react-native-maps";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, Polyline, UrlTile, type MapStyleElement, type Region } from "react-native-maps";
 import { useReducedMotion } from "react-native-reanimated";
 
-import { GOOGLE_MAPS_IOS } from "@/lib/config";
+import { GOOGLE_MAPS_ANDROID, GOOGLE_MAPS_IOS } from "@/lib/config";
 import { decodePolyline } from "@/lib/polyline";
 import { palette } from "@/lib/tokens";
 import type { LatLng, MapCanvasProps } from "./mapTypes";
 
 export type { MapCanvasProps, MapMode } from "./mapTypes";
+
+/**
+ * Android derlemesinde Google Maps anahtarı yoksa (geliştirme, CI) Google zemini yüklenmez: harita
+ * boş kalmasın diye anahtarsız CARTO zemini (OpenStreetMap verisi) kullanılır, köşede atıf gösterilir.
+ * Anahtar tanımlanınca (GETAWAY_GOOGLE_MAPS_ANDROID_KEY) Google zemini kendiliğinden döner.
+ */
+const OSM_TILES = Platform.OS === "android" && !GOOGLE_MAPS_ANDROID;
+const CARTO_LIGHT = "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png";
+const CARTO_DARK = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
 
 /** Rota yokken gösterilen bölge: Antalya merkezi. */
 export const ANTALYA_REGION: Region = { latitude: 36.8969, longitude: 30.7133, latitudeDelta: 0.35, longitudeDelta: 0.35 };
@@ -132,7 +141,12 @@ export default function MapCanvas(props: MapCanvasProps) {
         showsCompass={false}
         showsPointsOfInterests={false}
         moveOnMarkerPress={false}
+        mapType={OSM_TILES ? "none" : "standard"}
       >
+        {OSM_TILES ? (
+          <UrlTile urlTemplate={props.dark ? CARTO_DARK : CARTO_LIGHT} maximumZ={19} tileSize={256}
+            shouldReplaceMapContent zIndex={-1} />
+        ) : null}
         {route.length > 1 ? (
           <Polyline
             // Android, desen prop'u kaldırılınca eski deseni korur: önizleme ve gerçek rota ayrı çizgi olarak kurulur.
@@ -165,6 +179,7 @@ export default function MapCanvas(props: MapCanvasProps) {
           </Marker>
         ) : null}
       </MapView>
+      {OSM_TILES ? <Text style={st.attribution}>© OpenStreetMap © CARTO</Text> : null}
     </View>
   );
 }
@@ -176,4 +191,8 @@ const st = StyleSheet.create({
   driver: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   driverInner: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   driverDot: { width: 8, height: 8, borderRadius: 4 },
+  attribution: {
+    position: "absolute", left: 6, top: TOP_INSET + 4, fontSize: 9, color: "#555",
+    backgroundColor: "rgba(255,255,255,0.7)", paddingHorizontal: 3, borderRadius: 2,
+  },
 });

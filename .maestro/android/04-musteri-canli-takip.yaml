@@ -1,0 +1,22 @@
+# Android: müşteri uygulamasında sürücü yolda görünür; bildirim çekmecesinde kalıcı yolculuk bildirimi (K-59).
+appId: com.getawaytransfers.app
+---
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: ".*(yolda|Yolda|atandı|Atandı).*"
+    timeout: 40000
+- takeScreenshot: m15-canli-takip
+- scrollUntilVisible:
+    element: "Rezervasyonu iptal et"
+    direction: DOWN
+    optional: true
+- takeScreenshot: m16-rezervasyon-alt
+- swipe:
+    start: "50%,0%"
+    end: "50%,75%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: m18-canli-bildirim
+- back
