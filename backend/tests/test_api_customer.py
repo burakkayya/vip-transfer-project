@@ -317,3 +317,15 @@ def test_expired_open_payment_is_not_reused(client, db):
     assert second["payment_id"] != first["payment_id"]
     booking = db.scalar(select(Booking).where(Booking.booking_code == code))
     assert len(db.scalars(select(Payment).where(Payment.booking_id == booking.id)).all()) == 2
+
+
+def test_route_preview_returns_road_polyline(client):
+    """Rota adımı fiyat istemeden karayolu çizgisini alır (düz çizgi yerine)."""
+    body = {"pickup": {"region_id": region_id(client, "ayt")}, "dropoff": {"region_id": region_id(client, "alanya")}}
+    r = client.post("/api/v1/routes/preview", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["route_polyline"]
+    assert float(data["distance_km"]) > 0 and data["duration_minutes"] > 0
+    same = {"pickup": body["pickup"], "dropoff": body["pickup"]}
+    assert client.post("/api/v1/routes/preview", json=same).json()["error"]["code"] == "same_place"

@@ -144,6 +144,15 @@ def _price_route(router: RoutingProvider, origin: Point, destination: Point) -> 
     return router.route(origin, destination)
 
 
+def preview_route(db: Session, pickup: Place, dropoff: Place, *, router: RoutingProvider) -> Route:
+    """Fiyatsız rota önizlemesi: noktalar teklifle aynı kurallarla çözülür ve doğrulanır."""
+    origin = _point(pickup, _region(db, pickup.region_id))
+    destination = _point(dropoff, _region(db, dropoff.region_id))
+    if haversine_km(origin, destination) < SAME_PLACE_KM:
+        raise DomainError("alış ve bırakış noktası aynı olamaz", code="same_place")
+    return _price_route(router, origin, destination)
+
+
 def _convert(amount_eur: Decimal, currency: Currency, rate: ExchangeRate | None, step: Decimal) -> Decimal:
     return convert_eur_price(amount_eur, currency, rate.rate if rate else None, step)
 

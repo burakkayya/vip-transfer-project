@@ -121,6 +121,17 @@ class QuoteIn(BaseModel):
         return v
 
 
+class RoutePreviewIn(BaseModel):
+    pickup: PlaceIn
+    dropoff: PlaceIn
+
+
+class RoutePreviewOut(BaseModel):
+    distance_km: Decimal
+    duration_minutes: int
+    route_polyline: str | None = None  # Google encoded polyline (hassasiyet 5)
+
+
 class QuoteLegOut(BaseModel):
     pickup_region_id: int
     dropoff_region_id: int

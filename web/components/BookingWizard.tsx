@@ -113,6 +113,18 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   // kalır (harita her çizimde yeniden sığdırılmaz).
   const mapFrom = useMemo(() => mapPoint(trip.from), [trip.from]);
   const mapTo = useMemo(() => mapPoint(trip.to), [trip.to]);
+  // Teklifler gelmeden de karayolu çizgisi gösterilir (K-58: düz çizgi değil).
+  const [previewRoute, setPreviewRoute] = useState<string | null>(null);
+  useEffect(() => {
+    setPreviewRoute(null);
+    if (!trip.from || !trip.to) return;
+    const ctrl = new AbortController();
+    api<{ route_polyline: string | null }>("routes/preview", {
+      body: { pickup: toPlace(trip.from), dropoff: toPlace(trip.to) },
+      signal: ctrl.signal,
+    }).then((r) => setPreviewRoute(r.route_polyline ?? null), () => undefined);
+    return () => ctrl.abort();
+  }, [trip.from, trip.to]);
 
   const clearFieldError = (k: keyof FieldErrors) =>
     setFieldErrors((s) => {
@@ -343,7 +355,7 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   return (
     <div className="wizard" ref={top}>
       <div className="wizard-map">
-        <RouteMap from={mapFrom} to={mapTo} route={routeLeg?.route_polyline} meta={routeMeta} />
+        <RouteMap from={mapFrom} to={mapTo} route={routeLeg?.route_polyline ?? previewRoute} meta={routeMeta} />
       </div>
       <div className="wizard-main">
         {sessionError ? (

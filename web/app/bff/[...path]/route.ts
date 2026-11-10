@@ -15,6 +15,7 @@ const ALLOWED: RegExp[] = [
   /^regions$/,
   /^vehicle-types$/,
   /^quotes$/,
+  /^routes\/preview$/,
   /^places\/.+$/,
   /^auth\/otp\/(request|verify)$/,
   /^auth\/(logout|me)$/,

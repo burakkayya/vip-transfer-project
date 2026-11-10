@@ -70,3 +70,19 @@ def test_dev_and_prod_require_google_providers(monkeypatch):
         Settings(places_provider="google", routing_provider="google", google_maps_api_key="")
     ok = Settings(places_provider="google", routing_provider="google", google_maps_api_key="k")
     assert ok.routing_provider == "google"
+
+
+def test_google_route_is_cached_for_same_points(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        calls["n"] += 1
+        return _Resp({"routes": [{"distanceMeters": 12000, "duration": "900s", "polyline": {"encodedPolyline": "abc"}}]})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    g = GoogleRouting("key")
+    assert g.route(A, B).polyline == "abc"
+    assert g.route(A, B).polyline == "abc"
+    assert calls["n"] == 1
+    g.route(B, A)
+    assert calls["n"] == 2

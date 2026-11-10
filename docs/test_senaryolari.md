@@ -121,7 +121,7 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 ### 2. Serbest adres ve gerçek noktaya göre fiyat (K-58)
 1. Mobil veya web rezervasyonda **Nereye** alanına ilçe değil, gerçek bir adres yazın: "Kemer Marina", "Rixos Sungate", "Atatürk Caddesi Konyaaltı". Google Places sonuçları "başlık, adres" biçiminde gelir (backend `GETAWAY_PLACES_PROVIDER=google`, anahtar `backend/.env`).
 2. Antalya Havalimanı → **Kalkan** ve ardından → **Kaş Merkez**: ikisi aynı ilçede olsa da mesafe ve fiyat farklıdır (gerçek noktalar arası karayolu); fiyat 5'in katıdır.
-3. Araç seçiminde ve rezervasyon detayında harita rotası düz çizgi değil, yolları izleyen çizgidir (Google Routes). iOS ve Android'de harita Google Haritalar'dır; anahtarsız derlemede harita yerine "Google Haritalar anahtarı bu derlemede tanımlı değil." uyarısı çıkar.
+3. Rota adımında (fiyat istenmeden önce, `POST /routes/preview`), araç seçiminde ve rezervasyon detayında harita rotası web, iOS ve Android'de düz/kesikli çizgi değil, yolları izleyen çizgidir (Google Routes). iOS ve Android'de harita Google Haritalar'dır; anahtarsız derlemede harita yerine "Google Haritalar anahtarı bu derlemede tanımlı değil." uyarısı çıkar.
 4. **Taksim**: "Bu adres hizmet alanımızın dışında" hatası.
 
 ### 3. Planlı işte manuel atama ve yolculuk (admin + sürücü + müşteri)

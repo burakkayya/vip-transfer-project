@@ -33,7 +33,7 @@ fiyat = 5'in katına yukarı yuvarlama(indirimli)
 
 - Fiyat mesafesi, müşterinin seçtiği **gerçek alış ve bırakış noktaları** arasındaki karayolu mesafesidir (2026-11-10'dan önce farklı ilçeler arasında ilçe merkezleri kullanılıyordu). Aynı ilçedeki iki farklı otel farklı fiyat alabilir. Yalnızca ilçe veya havalimanı seçilirse o bölgenin merkezi kullanılır. 300 m'den yakın noktalar aynı yer sayılır.
 - Fiyat yine 5'in katına yukarı yuvarlanır (K-32); km değeri ekranda bir ondalıkla gösterilir.
-- Karayolu mesafesi ve rota çizgisi yalnızca Google Routes API'den gelir; yedek yoktur (Google'a ulaşılamazsa teklif "mesafe hesaplanamadı" hatası verir).
+- Karayolu mesafesi ve rota çizgisi yalnızca Google Routes API'den gelir; yedek yoktur (Google'a ulaşılamazsa teklif "mesafe hesaplanamadı" hatası verir). Aynı iki nokta için sonuç 10 dakika süreç belleğinde tutulur: rota adımındaki önizleme (`POST /routes/preview`, girişsiz, IP başına dakikalık sınır) ve araç tiplerinin teklifleri Routes API'ye tek çağrıyla gider.
 - Google'a yalnızca koordinat gönderilir. Adres aramasında kullanıcının yazdığı metin gider, kimlik bilgisi gitmez.
 - Gerçek adres ve koordinat sürücünün navigasyonu için rezervasyonda saklanır.
 - Hesaplanan mesafe ve fiyat rezervasyonla birlikte kaydedilir (`quoted_price`, `distance_km`).

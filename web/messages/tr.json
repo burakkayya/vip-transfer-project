@@ -94,7 +94,7 @@
     "searchPlaceholder": "Otel, adres veya havalimanı",
     "searching": "Aranıyor…",
     "noResults": "Sonuç yok. Otel adını veya ilçeyi yazmayı deneyin.",
-    "regionHint": "Fiyat {region} bölgesine göre hesaplanır",
+    "regionHint": "Bölge: {region}",
     "clear": "Temizle",
     "oneWay": "Tek yön",
     "quickAirports": "Havalimanları",

@@ -94,7 +94,7 @@
     "searchPlaceholder": "Hotel, address or airport",
     "searching": "Searching…",
     "noResults": "No results. Try the hotel name or the district.",
-    "regionHint": "Priced for the {region} area",
+    "regionHint": "Area: {region}",
     "clear": "Clear",
     "oneWay": "One way",
     "quickAirports": "Airports",

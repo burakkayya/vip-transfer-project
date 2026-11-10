@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+import threading
+import time
+from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import lru_cache
 from typing import Protocol
@@ -60,8 +62,28 @@ class HaversineRouting:
 class GoogleRouting:
     api_key: str
     url: str = "https://routes.googleapis.com/directions/v2:computeRoutes"
+    # Rota önizlemesi ve her araç tipinin teklifi aynı iki noktayı ister: sonuç süreç içinde kısa süre
+    # saklanır, ücretli API'ye tek çağrı gider. Anahtar ~1 m hassasiyetle yuvarlanmış koordinatlardır.
+    cache_seconds: int = 600
+    cache_size: int = 512
+    _cache: dict = field(default_factory=dict, repr=False)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def route(self, origin: Point, destination: Point) -> Route:
+        key = tuple(round(float(v), 5) for v in (origin.lat, origin.lng, destination.lat, destination.lng))
+        now = time.monotonic()
+        with self._lock:
+            hit = self._cache.get(key)
+            if hit and now - hit[0] < self.cache_seconds:
+                return hit[1]
+        result = self._fetch(origin, destination)
+        with self._lock:
+            if len(self._cache) >= self.cache_size:
+                self._cache.clear()
+            self._cache[key] = (now, result)
+        return result
+
+    def _fetch(self, origin: Point, destination: Point) -> Route:
         def waypoint(p: Point) -> dict:
             return {"location": {"latLng": {"latitude": float(p.lat), "longitude": float(p.lng)}}}
 

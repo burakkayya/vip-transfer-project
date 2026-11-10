@@ -2,6 +2,10 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-11
+
+- **Rota adımında da yol çizgisi (web, iOS, Android).** Fiyat teklifi alınmadan önce harita iki nokta arasına kesikli düz çizgi çiziyordu. Yeni girişsiz uç `POST /api/v1/routes/preview` (noktalar teklifle aynı kuralla çözülür, IP başına sınır) Google Routes çizgisini döndürür; web sihirbazı ve mobil rezervasyon ekranı bunu ilk adımdan çizer. Google rota sonucu 10 dk bellekte tutulur (önizleme + 4 araç tipi teklifi tek çağrı). Adres altındaki "Fiyat X bölgesine göre" yazısı yanıltıcıydı (fiyat gerçek noktadan, K-58): "Bölge: X" oldu (4 dil). Web ve admin için videolu Playwright yapılandırması (`npm run test:e2e:video`). Testler: backend 136, mobil 33.
+
 ## 2026-11-10
 
 - **Mobil CI düzeltmeleri (Google Haritalar ile ilk tam koşu).** iOS ve Android derlemeleri yerel Google Maps eklentisiyle geçti; iOS'ta harita Google Haritalar, rota yolları izliyor. Android rezervasyon akışında ikinci onay kutusu (mesafeli satış) alttaki düğme şeridinin arkasında kaldığı için işaretlenmiyordu: kutuya kaydırılıyor ve rezervasyon oluşmazsa akış açıkça düşüyor. Maestro'nun cihaz bağlantısı akış ortasında koparsa (DeviceUnreachable) akış bir kez yeniden deneniyor; iOS'ta anahtar zinciri oturumu sakladığı için yeniden denemede giriş adımları yalnızca giriş ekranı çıkarsa çalışır.
