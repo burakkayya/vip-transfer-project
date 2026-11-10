@@ -1,5 +1,5 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
-import { type ConfigPlugin, withAndroidManifest, withInfoPlist } from "expo/config-plugins";
+import { type ConfigPlugin, withAndroidManifest, withAppDelegate, withInfoPlist, withPodfile } from "expo/config-plugins";
 
 // Tek kod tabanından iki uygulama: müşteri (varsayılan) ve sürücü (APP_VARIANT=driver).
 const variant = process.env.APP_VARIANT === "driver" ? "driver" : "customer";
@@ -50,6 +50,42 @@ const withCleartext: ConfigPlugin = (cfg) =>
     if (appNode) appNode.$["android:usesCleartextTraffic"] = "true";
     return mod;
   });
+
+// iOS'ta Google Maps SDK (K-58). react-native-maps'in kendi Expo eklentisi bu Expo sürümünde kaldırılmış bir
+// iç modülü (`@expo/config-plugins/build/plugins/ios-plugins`) istediği için çalışmıyor; aynı üç adım burada:
+// Podfile'a GoogleMaps alt podu, Info.plist'e anahtar, AppDelegate'te GMSServices başlatması.
+const withGoogleMapsIos = (cfg: ExpoConfig, apiKey: string): ExpoConfig => {
+  let out = withInfoPlist(cfg, (mod) => {
+    mod.modResults.GMSApiKey = apiKey;
+    return mod;
+  });
+  out = withPodfile(out, (mod) => {
+    const marker = "# getaway: react-native-maps/Google";
+    if (!mod.modResults.contents.includes(marker)) {
+      mod.modResults.contents = mod.modResults.contents.replace(
+        /^(\s*)(config = use_native_modules)/m,
+        `$1${marker}\n$1rn_maps_path = File.dirname(\`node --print "require.resolve('react-native-maps/package.json')"\`)\n` +
+          `$1pod 'react-native-maps/Google', :path => rn_maps_path\n$1$2`,
+      );
+    }
+    return mod;
+  });
+  out = withAppDelegate(out, (mod) => {
+    let src = mod.modResults.contents;
+    if (!src.includes("import GoogleMaps")) {
+      src = src.replace(/^(@main|@UIApplicationMain)/m, "#if canImport(GoogleMaps)\nimport GoogleMaps\n#endif\n$1");
+    }
+    if (!src.includes("GMSServices.provideAPIKey")) {
+      src = src.replace(
+        /^(\s*)(return super\.application\(\w+, didFinishLaunchingWithOptions: \w+\))/m,
+        `$1#if canImport(GoogleMaps)\n$1GMSServices.provideAPIKey("${apiKey}")\n$1#endif\n$1$2`,
+      );
+    }
+    mod.modResults.contents = src;
+    return mod;
+  });
+  return out;
+};
 
 // Yerli derleme Google Maps anahtarı olmadan başlamaz (sahte/boş harita yerine açık hata).
 const cli = process.argv.slice(1).join(" ");
@@ -102,6 +138,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ? {}
         : { blockedPermissions: ["android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"] }),
       ...(googleServicesFile ? { googleServicesFile } : {}),
+      // Google Maps SDK anahtarı: Expo'nun yerleşik eklentisi manifeste yazar (react-native-maps).
+      ...(googleMapsAndroidKey ? { config: { googleMaps: { apiKey: googleMapsAndroidKey } } } : {}),
     },
     plugins: [
       "expo-router",
@@ -112,11 +150,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-task-manager",
       // defaultChannel: FCM bildirimi kanal belirtmeden ya da kanal henüz oluşturulmadan gelirse.
       ["expo-notifications", { color: "#0B0B0C", defaultChannel: "trip" }] as [string, object],
-      // Google Maps SDK (iOS GoogleMaps pod'u ve AppDelegate başlatması, Android manifest anahtarı).
-      [
-        "react-native-maps",
-        { iosGoogleMapsApiKey: googleMapsIosKey ?? "", androidGoogleMapsApiKey: googleMapsAndroidKey ?? "" },
-      ] as [string, object],
       // K-59: yolculuk durumu canlı etkinliği. iOS'ta Canlı Etkinlik uzantı hedefi (kilit ekranı,
       // Dynamic Island), Android'de özel bildirim modülü. Uzaktan (APNs) güncelleme şimdilik kapalı.
       ["expo-widgets", { frequentUpdates: true }] as [string, object],
@@ -145,5 +178,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
   };
   const withVariant = isDriver ? app : withoutLocationUsage(app);
-  return allowCleartext ? withCleartext(withVariant) : withVariant;
+  const withMaps = googleMapsIosKey ? withGoogleMapsIos(withVariant, googleMapsIosKey) : withVariant;
+  return allowCleartext ? withCleartext(withMaps) : withMaps;
 };
