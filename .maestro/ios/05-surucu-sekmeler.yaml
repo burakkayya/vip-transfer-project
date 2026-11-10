@@ -1,14 +1,13 @@
 # Sürücünün kazanç ve belgeler sekmeleri.
 appId: com.getawaytransfers.driver
 ---
+# 03 yolculuk ekranında (başlıksız yığın ekranı, geri düğmesi yok) bitiyor: uygulama yeniden başlatılır,
+# oturum korunur ve ana sayfa sekmeleriyle açılır.
 - launchApp:
-    stopApp: false
+    stopApp: true
 # iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
 - tapOn:
     text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
-    optional: true
-- tapOn:
-    text: "Geri|Back"
     optional: true
 - tapOn: ".*Kazanç.*"
 - extendedWaitUntil:
