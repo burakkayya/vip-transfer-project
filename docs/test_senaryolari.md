@@ -43,6 +43,13 @@ Windows'ta iOS simülatörü yoktur (Xcode yalnızca macOS). Gerçek iOS uygulam
 - **iOS simülatör iş akışı** (`.github/workflows/ios-simulator.yml`): Mac'te backend (PostGIS, Redis, sahte SMS/ödeme, demo sürücüler) kurulur, müşteri ve sürücü uygulamaları Release olarak simülatör için derlenir, simülatör Türkçe ve Antalya Havalimanı konumunda açılır, `.maestro/ios` akışları sırayla çalışır: sürücü girişi ve GO, müşteri girişi, Antalya Havalimanı → Kemer anlık rezervasyon ve sahte ödeme, sürücünün anlık işi "İş havuzu" kartından açıp kabulü, karşılama tabelası, yola çıkış, müşterinin canlı takibi, sürücü kazanç ve belgeler. Ekran görüntüleri (`screens/`, m01-m16 müşteri, s01-s10 sürücü), simülatör videosu (asıl ve telefonda izlenebilir küçük kopya `simulator-kucuk.mp4`), uygulama ve backend günlüğü `ios-simulator-sonuc` yapıtındadır; başarısız akışta `HATA-<akış>.png` ve Maestro'nun gördüğü ağaç (`-agac.json`) eklenir. Cihaz iPhone 17 Pro'ya sabittir (sahte ödeme sayfası Safari'de açıldığı için dokunuşlar koordinatla). 2026-11-10: beş akış geçiyor.
 - Çalıştırma: GitHub'da Actions → "iOS simülatör" → Run workflow, ya da `gh workflow run ios-simulator.yml --ref <dal>`; `ci/ios-*` dallarına gönderimde kendiliğinden çalışır. Her PR'da çalışmaz (derleme ~35-50 dk; depo herkese açık olduğundan dakika sınırı yok). Uygulama kodu değişmediyse derleme önbellekten gelir.
 - Apple Developer hesabı gerekmez (simülatör derlemesi imzasızdır). Push bildirimi (APNs) bu yolla doğrulanamaz.
+- 2026-11-10'dan itibaren akışlar serbest adres (Antalya Havalimanı → **Kemer Marina**, OpenStreetMap araması), yol rotası (OSRM) ve canlı etkinlik (Dynamic Island `s11`/`m17`, bildirim merkezi `s12`/`m18`) ekran görüntülerini de alır.
+
+### Android testi (GitHub Actions)
+
+- **Android emülatör iş akışı** (`.github/workflows/android-emulator.yml`): Linux makinede backend (PostGIS ve Redis servisleri, sahte SMS/ödeme, demo sürücüler) kurulur, iki uygulama sürüm APK'sı olarak derlenir (`GETAWAY_API_URL=http://10.0.2.2:8000`, yalnız bu test için düz HTTP izni `GETAWAY_ANDROID_CLEARTEXT=1`), API 34 Pixel 7 emülatörü Türkçe ve Antalya Havalimanı konumunda açılır, `.maestro/android` akışları sırayla çalışır (iOS ile aynı senaryo; ödeme sayfası tarayıcıda onaylanamazsa betik sahte ödemeyi backend üzerinden tamamlar). Ekran kaydı 170 sn'lik parçalarla alınıp birleştirilir.
+- Çıktı `android-emulator-sonuc` yapıtında: `screens/`, `emulator.mp4` ve telefonda izlenebilir `emulator-kucuk.mp4`, `app.log` (logcat), `backend.log`, `ozet.txt`.
+- Çalıştırma: Actions → "Android emülatör" → Run workflow, ya da `ci/android-*` / `ci/ios-*` dallarına gönderim. Betik: `.github/scripts/android-flows.sh`.
 
 Bu makinede ayrıca iki ücretsiz yol var:
 
@@ -110,10 +117,11 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 - **Numarayı değiştir** telefon adımına döner; yazılan numara alanda kalır.
 - Türkiye seçiliyken `+49 151 …` yazılırsa kod Almanya numarasına gider ve **Numarayı değiştir** sonrası ülke **Deutschland (+49)** görünür (müşteri ülkesi ve para birimi numarayla tutarlı). `(+90) 532 …`, `0090 532 …` ve `90 532 123 45 67` aynı numaraya (+90 532…) gider. Listede olmayan bir kod (`+81 …`) alan hatası verir.
 
-### 2. İlçe bazlı fiyat kontrolü
-1. Senaryo 1'in ilk adımını **Kalkan** ve ardından **Kaş Merkez** ile tekrarlayın. İkisi de Kaş ilçesinde olduğu için fiyat aynıdır.
-2. **Kaleiçi → Lara** (ikisi de Muratpaşa): aynı ilçe içinde gerçek mesafe kullanılır, minimum fiyat çıkar.
-3. **Taksim**: "Bu adres hizmet alanımızın dışında" hatası.
+### 2. Serbest adres ve gerçek noktaya göre fiyat (K-58)
+1. Mobil veya web rezervasyonda **Nereye** alanına ilçe değil, gerçek bir adres yazın: "Kemer Marina", "Rixos Sungate", "Atatürk Caddesi Konyaaltı". OpenStreetMap sonuçları "başlık, cadde, mahalle, ilçe, il" biçiminde gelir (anahtar gerekmez; backend `GETAWAY_PLACES_PROVIDER=photon`).
+2. Antalya Havalimanı → **Kalkan** ve ardından → **Kaş Merkez**: ikisi aynı ilçede olsa da mesafe ve fiyat farklıdır (gerçek noktalar arası karayolu); fiyat 5'in katıdır.
+3. Araç seçiminde ve rezervasyon detayında harita rotası düz çizgi değil, yolları izleyen çizgidir (OSRM; `GETAWAY_ROUTING_PROVIDER=osrm`). Android'de Google anahtarı yoksa zemin CARTO/OpenStreetMap'tir, sol üstte "© OpenStreetMap © CARTO" yazar.
+4. **Taksim**: "Bu adres hizmet alanımızın dışında" hatası.
 
 ### 3. Planlı işte manuel atama ve yolculuk (admin + sürücü + müşteri)
 1. Admin → **Eşleştirme**: Senaryo 1'deki iş listede → **Sürücü seç** → Mehmet Demir → **Ata**.
@@ -149,6 +157,9 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
    - İptal onayında ağ hatası olursa kırmızı uyarı panelin içinde, **İptali onayla** düğmesinin hemen üstünde görünür.
 2. 24 saatten yakın bir rezervasyon için admin → **Rezervasyonlar** → detay → İptal bölümünde gerekçe yazın, iade oranını boş bırakın: %0 uygulanır. Oranı 100 yazarak operasyonel iptal (tam iade) deneyin.
 3. Admin → **Ödemeler ve iadeler**: iade kayıtları.
+4. **Başlamış yolculuğun iptali (K-57):** sürücü **Yolcu alındı** dedikten sonra admin rezervasyon detayında düğme **Yolculuğu iptal et** olur; onay penceresi sürücüye bildirim gideceğini söyler. İptal edilince sürücünün yolculuğu kapanır, müşteri tarafında durum "İptal" olur.
+5. **Elle para iadesi (K-57):** tamamlanmış (veya kısmen iade edilmiş) bir rezervasyonda admin detayında **Para iadesi** kartı kalan iade edilebilir tutarı gösterir. Tutar + gerekçe → **İade et** (veya **Tamamı**). Ödeme "Kısmi iade" / "İade edildi" olur; kalandan fazlası yazılırsa düğme kapalıdır, API "iade tutarı kalan iade edilebilir tutarı aşıyor" der. Destek rolü bu kartı görmez.
+6. **Hakediş iptali (K-57):** tamamlanmış rezervasyonun detayında **Sürücü hakedişleri** tablosunda **Hakedişi iptal et** → gerekçe. Durum "İptal" olur, sürücünün **Kazanç** ekranında bekleyen tutar düşer. Aynı işlem **Sürücü hakedişleri** sayfasında her satırda da var (rezervasyon kodu bağlantılı). Ödenmiş hakediş iptal edilemez; ödenmemiş ödeme kaydındaysa kayıttan çıkar. İptal ederken "Bekleyen sürücü hakedişlerini de iptal et" kutusu da aynı işi yapar.
 
 ### 6. Başarısız ödeme
 1. Ödeme ekranında sahte sayfada **Reddet** → "Ödeme tamamlanamadı. Kart bilgilerinizi kontrol edip…" (kırmızı uyarı; tutar ve özet yerinde kalır) → siyah **Tekrar dene** → **Ödemeyi onayla**.
@@ -253,6 +264,13 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 5. Telefonda (390 px) sohbet paneli taşma yapmaz, yazma alanı ve **Gönder** alt alta.
 6. Admin **Müşteri bitirişleri**: yolculuğu müşterinin bitirdiği bacaklar; "Süre (gerçek / plan)" ve planın yarısından kısa bitenlerde **Erken**. **Yalnızca erken bitenler** filtresi.
 7. Koda tıklayıp rezervasyon detayı → **Müşteri–sürücü mesajları**: gerekçe (en az 5 karakter) yazılmadan **Mesajları göster** kapalı; gerekçeyle açılınca yazışma sürücü/müşteri adıyla ve okundu zamanıyla görünür, "Bu görüntüleme denetim kaydına yazıldı". **Denetim kayıtları**nda `booking.chat_view` ve gerekçe. Muhasebe rolü bu sayfaları görmez.
+
+### 18. Yolculuk durumu canlı etkinliği (K-59; iOS ve Android derlemesi, Expo Go'da yok)
+1. Müşteri anlık rezervasyonu ödedikten sonra rezervasyon ekranı açılır: iOS'ta Dynamic Island'da ve kilit ekranında "Sürücü aranıyor", Android'de bildirim çekmecesinde kaydırılamayan "Sürücü aranıyor" bildirimi görünür.
+2. Sürücü kabul edince "Sürücü atandı · Mehmet · 07GA001 · Mercedes-Benz Vito", yola çıkınca "Sürücü yolda · 8 dk", varınca "Sürücü vardı · Geldi", yolcu alınınca "Yolculuktasınız · 40 dk"; ilerleme çubuğu her aşamada dolar.
+3. Sürücü uygulamasında aynı anda "Yeni iş atandı", "Alışa gidiyorsunuz · 12 dk", "Alış noktasındasınız", "Yolcu araçta" görünür.
+4. Yolculuk bitince "Tamamlandı" 15 dk kalır (Android'de artık kaydırılabilir); iptalde hemen kalkar. Bildirime dokununca ilgili ekran açılır.
+5. Otomatik: iOS iş akışı `s11/s12` (sürücü) ve `m17/m18` (müşteri) ekran görüntülerini, Android iş akışı `s12`, `m18` görüntülerini alır.
 
 ### 17. Uygulama kapalıyken bildirim (FCM, K-56; Android geliştirme derlemesi)
 1. `backend/.env`: `GETAWAY_PUSH_PROVIDER=fcm`, `GETAWAY_FCM_CREDENTIALS_FILE=<servis hesabı JSON yolu>`; `mobile/.env.local`: `GETAWAY_GOOGLE_SERVICES_FILE=<google-services.json yolu>`. Backend'i yeniden başlatın; mobil için `expo prebuild` + derleme gerekir (Expo Go uzak push almaz).
