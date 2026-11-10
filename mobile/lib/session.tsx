@@ -19,7 +19,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSignedOutHandler(() => setSignedIn(false));
     // Güvenli depo okunamazsa (ör. Keychain erişimi yok) uygulama yükleme ekranında kalmasın: oturumsuz açılır.
     loadSession()
-      .catch(() => false)
+      .catch((e: unknown) => {
+        // Jeton içermez: yalnızca hatanın adı/iletisi (teşhis için).
+        console.warn("Oturum deposu okunamadı:", e instanceof Error ? e.message : String(e));
+        return false;
+      })
       .then((has) => {
         setSignedIn(has);
         setReady(true);

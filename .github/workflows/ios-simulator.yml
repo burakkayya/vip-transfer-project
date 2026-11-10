@@ -85,12 +85,13 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       # Yalnızca Maestro akışı veya iş akışı değiştiyse yeniden derleme yapılmaz (derleme ~30-55 dk).
+      # Derlemeye gömülen adresler anahtarda; derleme adımı (xcodebuild bayrakları) değişirse "v3" elle artırılır.
       - name: Derleme önbelleği
         id: appcache
         uses: actions/cache/restore@v4
         with:
           path: ios-apps
-          key: ios-apps-v3-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/package-lock.json') }}
+          key: ios-apps-v3-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}-${{ env.GETAWAY_API_URL }}-${{ env.GETAWAY_WEB_URL }}-${{ env.GETAWAY_PUBLIC_WEB_URL }}
       - name: Uygulamaları derle (müşteri, sürücü)
         if: steps.appcache.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -132,7 +133,9 @@ jobs:
           UDID=$(xcrun simctl list devices available -j | python3 -c "
           import json,re,sys
           devs=[d for r,l in json.load(sys.stdin)['devices'].items() if 'iOS' in r for d in l]
-          ph=[d for d in devs if re.fullmatch(r'iPhone \d+( Pro)?', d['name'])] or [d for d in devs if d['name'].startswith('iPhone')]
+          # Sahte ödeme sayfasındaki dokunuşlar (02) bu cihazın ölçüsüne göre: başka cihaz seçilmez.
+          ph=[d for d in devs if d['name']=='iPhone 17 Pro']
+          if not ph: sys.exit('iPhone 17 Pro simülatörü yok; 02 akışındaki koordinatları güncelleyin')
           print(ph[-1]['udid'])")
           echo "UDID=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID"
@@ -193,6 +196,10 @@ jobs:
           kill -INT $REC || true
           wait $REC || true
           kill $LOGP || true
+          # Asıl video yüzlerce MB: telefondan izlenebilsin diye küçük kopya (360 px, 10 kare/sn).
+          brew install ffmpeg > /dev/null 2>&1 && ffmpeg -loglevel error -y -i "$OUT/simulator.mp4" \
+            -vf "fps=10,scale=360:-2" -c:v libx264 -crf 32 -preset veryfast -an "$OUT/simulator-kucuk.mp4" || true
+          ls -la "$OUT"/*.mp4 || true
           cat "$OUT/ozet.txt"
           exit $FAIL
 
