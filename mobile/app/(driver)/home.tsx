@@ -365,7 +365,8 @@ export default function DriverHome() {
         </Animated.View>
       ))}
 
-      <Pressable style={{ alignSelf: "center", padding: 12, flexDirection: "row", gap: 6, alignItems: "center" }} onPress={async () => {
+      <Pressable style={{ alignSelf: "center", padding: 12, flexDirection: "row", gap: 6, alignItems: "center" }}
+        accessibilityRole="button" accessibilityLabel="Çıkış yap" onPress={async () => {
         if (me.is_online) await api("driver/me/online", { body: { is_online: false } }).catch(() => undefined);
         await signOut();
         router.replace("/login");

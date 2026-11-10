@@ -115,7 +115,7 @@ export function AddressSearch(props: {
           <View style={[s.inputWrap, { borderColor: colors.ink, backgroundColor: "#fff" }]}>
             <Ionicons name="search" size={18} color={colors.ink} style={{ marginRight: 10 }} />
             <TextInput autoFocus value={query} onChangeText={setQuery} placeholder={t("addr.placeholder")}
-              placeholderTextColor={colors.faint} style={s.inputText} autoCorrect={false} />
+              placeholderTextColor={colors.faint} style={s.inputText} autoCorrect={false} spellCheck={false} />
             {query ? (
               <Pressable onPress={() => setQuery("")} hitSlop={10}>
                 <Ionicons name="close-circle" size={20} color={colors.faint} />
@@ -138,7 +138,8 @@ export function AddressSearch(props: {
           }
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInDown.duration(250).delay(index * 25)}>
-              <Pressable style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 12 }, pressed && { backgroundColor: colors.brandSoft }]} onPress={() => choose(item)}>
+              <Pressable style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 16, paddingVertical: 12 }, pressed && { backgroundColor: colors.brandSoft }]} onPress={() => choose(item)}
+                accessibilityRole="button" accessibilityLabel={`${item.title}, ${item.subtitle}`}>
                 <IconBubble name={item.kind === "region" && item.region.type === "havalimani" ? "airplane" : item.kind === "place" ? "business" : "location"} size={40} />
                 <View style={{ flex: 1, borderBottomWidth: 1, borderBottomColor: colors.line, paddingBottom: 12, marginBottom: -12 }}>
                   <T style={[s.p, { fontWeight: "600" }]} numberOfLines={1}>{item.title}</T>

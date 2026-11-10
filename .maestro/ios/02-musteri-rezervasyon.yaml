@@ -44,11 +44,12 @@ appId: com.getawaytransfers.app
 - takeScreenshot: m06-rota
 - tapOn: "Nereye"
 - inputText: "kemer"
+# Maestro metin eşleşmesi büyük/küçük harf duyarsız: ".*Kemer.*" arama kutusundaki "kemer"e de uyar.
 - extendedWaitUntil:
-    visible: ".*Kemer.*"
+    visible: ".*Kemer, İlçeler.*"
     timeout: 15000
 - takeScreenshot: m07-adres-arama
-- tapOn: ".*Kemer.*"
+- tapOn: ".*Kemer, İlçeler.*"
 - tapOn: ".*Şimdi.*"
 - takeScreenshot: m08-rota-dolu
 - tapOn: "Fiyatları göster.*"
