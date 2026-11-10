@@ -5,6 +5,10 @@ appId: com.getawaytransfers.app
     clearState: true
     permissions:
       all: allow
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    optional: true
 - extendedWaitUntil:
     visible: "Telefon numaranızı girin"
     timeout: 90000
@@ -17,6 +21,13 @@ appId: com.getawaytransfers.app
     timeout: 20000
 - takeScreenshot: m02-sms-kodu
 - tapOn: ".*Geliştirme ortamı.*"
+- extendedWaitUntil:
+    visible: 'Nereye gidiyorsunuz\?|İzin Ver'
+    timeout: 30000
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    optional: true
 - extendedWaitUntil:
     visible: 'Nereye gidiyorsunuz\?'
     timeout: 30000

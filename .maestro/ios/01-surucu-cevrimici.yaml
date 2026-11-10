@@ -18,6 +18,13 @@ appId: com.getawaytransfers.driver
 - takeScreenshot: s02-sms-kodu
 - tapOn: ".*Geliştirme ortamı.*"
 - extendedWaitUntil:
+    visible: "GO|İzin Ver"
+    timeout: 30000
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    optional: true
+- extendedWaitUntil:
     visible: "GO"
     timeout: 30000
 - takeScreenshot: s03-cevrimdisi
