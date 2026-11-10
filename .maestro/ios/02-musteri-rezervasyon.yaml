@@ -74,16 +74,25 @@ appId: com.getawaytransfers.app
 - tapOn: ".*Mesafeli satış.*"
 - takeScreenshot: m11-bilgiler-dolu
 - tapOn: "Rezervasyonu oluştur ve öde"
-# Sahte ödeme sayfası uygulama içi Safari'de açılır.
-- extendedWaitUntil:
-    visible: "Ödemeyi onayla"
-    timeout: 30000
+# Sahte ödeme sayfası uygulama içi Safari'de (SFSafariViewController) açılır. Ayrı süreç olduğu için içeriği
+# uygulamaya bağlı akıştan görünmez; dokunuşlar ekran ağacındaki konumlarla yapılır (iPhone 17 Pro, 402x874 pt).
+- waitForAnimationToEnd:
+    timeout: 10000
+# Sayfanın yüklenmesi için bekleme (boş alana uzun basış; Maestro'da düz bekleme komutu yok).
+- swipe:
+    start: "50%,50%"
+    end: "50%,50%"
+    duration: 8000
 - takeScreenshot: m12-odeme-sayfasi
-- tapOn: "Ödemeyi onayla"
-- takeScreenshot: m13-odeme-sonucu
+# "Ödemeyi onayla" [20,329][382,379]
 - tapOn:
-    text: "Bitti|Kapat|Done|Close"
-    optional: true
+    point: "50%,40%"
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: m13-odeme-sonucu
+# Safari "Bitti" [16,62][60,106]: tarayıcı kapanır, uygulama rezervasyonu yeniden yükler.
+- tapOn:
+    point: "9%,10%"
 - extendedWaitUntil:
     visible: "Onaylandı|Atandı|Sürücü.*"
     timeout: 40000
