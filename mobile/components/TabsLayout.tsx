@@ -28,6 +28,9 @@ export default function TabsLayout(props: {
         tabBarInactiveTintColor: colors.faint,
         tabBarStyle: { borderTopColor: colors.line, backgroundColor: "#fff", paddingTop: 6, paddingBottom: bottom, height: 72 + bottom },
         tabBarLabelStyle: { fontFamily: fonts.semibold, fontSize: 11, marginTop: 2 },
+        // İkon kutusu varsayılanda iOS'ta 31x28, Android'de 24x24: seçili hap (yatay dolgulu) sığmayınca ikon
+        // ince bir çizgiye eziliyordu (iOS simülatöründe görüldü). Kutu hap boyutuna büyütülür.
+        tabBarIconStyle: { width: 56, height: 30 },
       }}
     >
       {props.tabs.map((tab) => (
@@ -39,7 +42,7 @@ export default function TabsLayout(props: {
             // Başlık bandı (Hero) veya harita olan ekranlarda üst çubuk tekrar etmesin.
             headerShown: !tab.hero,
             tabBarIcon: ({ color, focused }) => (
-              <View style={{ paddingHorizontal: 14, paddingVertical: 2, borderRadius: 999, backgroundColor: focused ? colors.brandSoft : "transparent" }}>
+              <View style={{ width: 56, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: focused ? colors.brandSoft : "transparent" }}>
                 <Ionicons name={focused ? tab.iconActive : tab.icon} size={22} color={String(color)} />
               </View>
             ),

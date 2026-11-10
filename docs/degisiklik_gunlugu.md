@@ -12,6 +12,7 @@ En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 - **iOS akışı: klavye kapatma.** 10. çalıştırmada sürücü girişi/GO ve sürücü sekmeleri geçti; müşteri akışı adres, fiyat ve araç seçimini geçip yolcu adından sonra Maestro `hideKeyboard` iOS'ta klavyeyi kapatamadığı için düştü. Akış Return tuşuyla (`pressKey: Enter`) kapatır.
 - **iOS akışı: sahte ödeme sayfası.** 11. çalıştırmada müşteri akışı rezervasyonu oluşturup sahte ödeme sayfasını açtı (2740 TRY). Uygulama içi Safari ayrı süreç olduğundan Maestro akışı içeriğini göremedi; "Ödemeyi onayla" ve "Bitti" ekran ağacındaki konumlarıyla dokunulur.
 - **iOS akışı: iş havuzundan teklif.** 12. çalıştırmada sürücü girişi, müşteri rezervasyonu ve sahte ödeme uçtan uca geçti (rezervasyon "Onaylandı"). Anlık iş sürücüde ayrı pencere değil "İş havuzu" kartı olarak düşüyor; akış kartı açıp iş ayrıntısında "Kabul et"e dokunur. Kart rota etiketiyle ("Antalya Havalimanı → Kemer, ₺…") seçilir ve sekme çubuğunun altında kalmaması için önce sayfa kaydırılır. Maestro ekran görüntüleri yapıta toplanır.
+- **iOS sekme ikonları eziliyordu.** Simülatör ekranlarında alt sekme çubuğu ikonları ince çizgi veya "(" parçası gibi görünüyordu: React Navigation ikon kutusu iOS'ta 31x28 pt, seçili hap ise 14 pt yatay dolgu taşıdığı için ikona ~3 pt kalıyordu. `TabsLayout`: `tabBarIconStyle` 56x30, hap sabit boyutta ve ortalı (müşteri ve sürücü).
 
 ## 2026-11-09
 
