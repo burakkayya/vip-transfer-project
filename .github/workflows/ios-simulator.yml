@@ -185,6 +185,11 @@ jobs:
             fi
             echo "::endgroup::"
           done
+          # Maestro takeScreenshot dosyaları akış dosyasının klasörüne de yazılabiliyor: tek yerde toplanır.
+          cp "$GITHUB_WORKSPACE"/.maestro/ios/*.png "$OUT/screens/" 2>/dev/null || true
+          find "$GITHUB_WORKSPACE" "$HOME/.maestro" -name "[ms][0-9][0-9]-*.png" -not -path "$OUT/screens/*" \
+            -exec cp {} "$OUT/screens/" \; 2>/dev/null || true
+          ls "$OUT/screens"
           kill -INT $REC || true
           wait $REC || true
           kill $LOGP || true
