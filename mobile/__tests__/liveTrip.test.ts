@@ -1,6 +1,6 @@
 // K-59: yolculuk durumu canlı etkinliği (iOS Canlı Etkinlik, Android kalıcı bildirim).
 import { Platform } from "react-native";
-import { customerLiveProps, driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
+import { customerLiveProps, driverLiveProps, endLiveTrip, shortName, showLiveTrip } from "@/lib/liveTrip";
 
 // jest.mock çağrıları içe aktarmalardan önce çalışır (babel-jest öne taşır).
 
@@ -47,12 +47,33 @@ describe("customerLiveProps", () => {
   });
 });
 
+describe("zamanlama ve KVKK", () => {
+  const now = Date.parse("2026-11-10T10:00:00Z");
+  test("planlı işte etkinlik alışa 90 dk kala başlar; anlık işte hemen", () => {
+    const far = { ...base, legStatus: "atandi", bookingType: "planli", pickupAt: "2026-11-12T10:00:00Z", now };
+    expect(customerLiveProps(far)).toBeNull();
+    expect(customerLiveProps({ ...far, pickupAt: "2026-11-10T11:00:00Z" })).not.toBeNull();
+    expect(customerLiveProps({ ...far, bookingType: "anlik" })).not.toBeNull();
+    // Sürücü yola çıktıysa zaman fark etmez.
+    expect(customerLiveProps({ ...far, legStatus: "yolda" })).not.toBeNull();
+    const d = { pickup: "AYT", dropoff: "Kemer", passenger: "Ayşe Yılmaz", pickupTime: "", etaMinutes: null, now };
+    expect(driverLiveProps({ ...d, status: "atandi", pickupAt: "2026-11-12T10:00:00Z" })).toBeNull();
+  });
+
+  test("sürücü kilit ekranında yolcunun yalnızca adı ve baş harfi", () => {
+    expect(shortName("Ayşe Nur Yılmaz")).toBe("Ayşe Y.");
+    expect(shortName("Anna")).toBe("Anna");
+    const d = { pickup: "AYT", dropoff: "Kemer", passenger: "Ayşe Yılmaz", pickupTime: "", etaMinutes: null };
+    expect(driverLiveProps({ ...d, status: "vardi" })!.props.detail).toBe("Yolcu: Ayşe Y.");
+  });
+});
+
 describe("driverLiveProps", () => {
   const d = { pickup: "Antalya Havalimanı", dropoff: "Kemer Marina", passenger: "Test Yolcu", pickupTime: "10 Kas 17:32", etaMinutes: 12 };
   test("sürücü aşamaları", () => {
     expect(driverLiveProps({ ...d, status: "atandi" })!.props.title).toBe("Yeni iş atandı");
     expect(driverLiveProps({ ...d, status: "yolda" })!.props).toMatchObject({ title: "Alışa gidiyorsunuz", eta: "12 dk", role: "driver" });
-    expect(driverLiveProps({ ...d, status: "vardi" })!.props.detail).toBe("Yolcu: Test Yolcu");
+    expect(driverLiveProps({ ...d, status: "vardi" })!.props.detail).toBe("Yolcu: Test Y.");
     expect(driverLiveProps({ ...d, status: "basladi" })!.props.detail).toBe("→ Kemer Marina");
     expect(driverLiveProps({ ...d, status: "bitti" })!.done).toBe(true);
     expect(driverLiveProps({ ...d, status: "iptal" })).toBeNull();
@@ -82,6 +103,28 @@ describe("Android kalıcı bildirim", () => {
     await showLiveTrip("GA2", done);
     await endLiveTrip("GA2");
     expect(mockCancelAll).toHaveBeenCalled();
+  });
+
+  test("uygulama yeniden başlasa da başka yolculuğun ekranı açık etkinliği kapatmaz", async () => {
+    const p = customerLiveProps({ ...base, legStatus: "yolda", etaMinutes: 3 })!.props;
+    await showLiveTrip("AKTIF", p);
+    jest.resetModules();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fresh = require("@/lib/liveTrip") as typeof import("@/lib/liveTrip");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    Object.defineProperty(require("react-native").Platform, "OS", { value: "android", configurable: true });
+    // Gerçek cihazda güvenli depo yeniden başlatmada korunur; sıfırlanan sahte depoya aynı kayıt yazılır.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    await require("expo-secure-store").setItemAsync("ga_live_trip", "AKTIF");
+    mockPost.mockClear();
+    mockCancelAll.mockClear();
+    await fresh.endLiveTrip("ESKI_TAMAMLANAN", customerLiveProps({ ...base, bookingStatus: "tamamlandi", legStatus: "bitti" })!.props);
+    await fresh.endLiveTrip("ESKI_IPTAL");
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(mockCancelAll).not.toHaveBeenCalled();
+    await fresh.endLiveTrip("AKTIF");
+    expect(mockCancelAll).toHaveBeenCalled();
+    await endLiveTrip("AKTIF"); // ilk modül örneğinin bellek durumu da temizlensin
   });
 
   test("etkin bildirim yoksa geçmiş rezervasyon yeni bildirim açmaz", async () => {

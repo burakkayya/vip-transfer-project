@@ -49,7 +49,9 @@ def to_place(db: Session, p: PlaceIn) -> quotes.Place:
         # Koordinat ve bölge jetondan gelir; kullanıcının notu (otel, oda no) adrese eklenir.
         address = resolved.address if not p.address else f"{resolved.address} ({p.address})"[:300]
         return quotes.Place(region_id=resolved.region.id, lat=resolved.lat, lng=resolved.lng, address=address)
-    return quotes.Place(region_id=p.region_id, lat=p.lat, lng=p.lng, address=p.address)
+    # K-58: fiyat gerçek noktalardan hesaplandığı için istemcinin gönderdiği ham koordinata güvenilmez;
+    # jeton yoksa yalnızca bölge (ilçe/havalimanı merkezi) kullanılır.
+    return quotes.Place(region_id=p.region_id, lat=None, lng=None, address=p.address)
 
 
 def to_quote_input(db: Session, body: QuoteIn) -> quotes.QuoteInput:

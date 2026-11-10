@@ -91,3 +91,19 @@ def test_osrm_falls_back_to_haversine_and_does_not_cache(monkeypatch):
     assert r.distance_km > 0 and r.polyline
     router.route(A, B)
     assert len(calls) == 2
+
+
+def test_prod_rejects_public_osm_servers():
+    """K-58: herkese açık Photon/OSRM sunucuları üretimde kullanılamaz."""
+    import pytest
+    from cryptography.fernet import Fernet
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    prod = dict(env="prod", jwt_secret="x" * 40, field_encryption_keys=Fernet.generate_key().decode(),
+                blind_index_key="y" * 40, payment_provider="paytr", push_provider="console")
+    with pytest.raises(ValidationError, match="Photon"):
+        Settings(**prod, places_provider="photon", routing_provider="google")
+    with pytest.raises(ValidationError, match="OSRM"):
+        Settings(**prod, places_provider="google", routing_provider="osrm")

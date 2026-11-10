@@ -9,6 +9,7 @@
  */
 import { Platform } from "react-native";
 import { t } from "@/lib/i18n";
+import { storage } from "@/lib/storage";
 import type { LiveTripProps } from "@/widgets/types";
 
 export type { LiveTripProps };
@@ -24,6 +25,11 @@ export const STAGE_PROGRESS: Record<string, number> = {
 };
 
 const ANDROID_ID = "trip-live";
+// Hangi yolculuğun etkinliği açık: uygulama yeniden başlasa da (bellek sıfırlanır) başka bir yolculuğun
+// ekranı açık etkinliği kapatmasın diye cihazda saklanır.
+const KEY_STORE = "ga_live_trip";
+/** Planlı işte etkinlik alışa bu kadar kala başlar (günlerce bildirimde durmasın). */
+export const SHOW_BEFORE_PICKUP_MS = 90 * 60 * 1000;
 // Bitti afişi kilit ekranında bir süre kalır, sonra kendiliğinden kalkar.
 const DONE_LINGER_MS = 15 * 60 * 1000;
 
@@ -67,8 +73,8 @@ export async function showLiveTrip(key: string, props: LiveTripProps, url?: stri
   try {
     if (iosSupported()) {
       const factory = iosFactory();
-      if (current && current.key !== key && current.activity) {
-        await current.activity.end("immediate");
+      if (current && current.key !== key) {
+        await current.activity?.end("immediate");
         current = null;
       }
       if (!current) {
@@ -95,6 +101,7 @@ export async function showLiveTrip(key: string, props: LiveTripProps, url?: stri
       return;
     }
     lastSent = signature;
+    await storage.set(KEY_STORE, key).catch(() => undefined);
   } catch {
     // Canlı etkinlik yardımcı bir gösterim; başarısızlığı yolculuk akışını etkilemez.
   }
@@ -105,8 +112,9 @@ export async function showLiveTrip(key: string, props: LiveTripProps, url?: stri
  * verilmezse (iptal) hemen kaldırılır.
  */
 export async function endLiveTrip(key: string, final?: LiveTripProps): Promise<void> {
-  // Başka bir yolculuğun etkinliği sürüyorsa ona dokunulmaz.
-  if (current && current.key !== key) return;
+  // Başka bir yolculuğun etkinliği sürüyorsa ona dokunulmaz (uygulama yeniden başladıysa saklanan kimlik).
+  const active = current?.key ?? (await storage.get(KEY_STORE).catch(() => null));
+  if (active && active !== key) return;
   lastSent = "";
   try {
     if (iosSupported()) {
@@ -137,6 +145,20 @@ export async function endLiveTrip(key: string, final?: LiveTripProps): Promise<v
     // yok sayılır
   }
   current = null;
+  await storage.remove(KEY_STORE).catch(() => undefined);
+}
+
+/** Yolculuk yakın mı: planlı işte etkinlik alışa 90 dk kala başlar. */
+function soon(pickupAt: string | undefined, now: number): boolean {
+  if (!pickupAt) return true;
+  return new Date(pickupAt).getTime() - now <= SHOW_BEFORE_PICKUP_MS;
+}
+
+/** Kilit ekranında yolcunun yalnızca adı ve soyadının baş harfi (KVKK). */
+export function shortName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length < 2) return parts[0] ?? "";
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
 }
 
 // --- Ekran durumundan gösterime ------------------------------------------------
@@ -148,6 +170,10 @@ export interface CustomerLiveInput {
   to: string;
   driver: { first_name: string; vehicle: string; plate: string } | null;
   etaMinutes: number | null;
+  /** "anlik" işte "sürücü aranıyor" hemen gösterilir; planlı işte alışa 90 dk kala. */
+  bookingType?: string;
+  pickupAt?: string;
+  now?: number;
 }
 
 /**
@@ -156,6 +182,8 @@ export interface CustomerLiveInput {
  */
 export function customerLiveProps(x: CustomerLiveInput): { props: LiveTripProps; done: boolean } | null {
   if (["odeme_bekliyor", "odeme_basarisiz", "iptal"].includes(x.bookingStatus) || x.legStatus === "iptal") return null;
+  const moving = ["yolda", "vardi", "basladi", "bitti"].includes(x.legStatus) || x.bookingStatus === "tamamlandi";
+  if (!moving && x.bookingType !== "anlik" && !soon(x.pickupAt, x.now ?? Date.now())) return null;
   const route = `${x.from} → ${x.to}`;
   const car = x.driver ? [x.driver.first_name, x.driver.plate, x.driver.vehicle].filter(Boolean).join(" · ") : route;
   const min = x.etaMinutes ? t("live.min", { min: x.etaMinutes }) : "";
@@ -184,18 +212,24 @@ export interface DriverLiveInput {
   passenger: string;
   pickupTime: string;
   etaMinutes: number | null;
+  pickupAt?: string;
+  now?: number;
 }
 
-/** Sürücü (yalnızca Türkçe): aktif iş boyunca aşama, hedef ve kalan süre. */
+/**
+ * Sürücü (yalnızca Türkçe): aktif iş boyunca aşama, hedef ve kalan süre. Kilit ekranında yolcunun
+ * tam adı ve tam adresi gösterilmez (KVKK): ad + soyadın baş harfi, adres yerine ilçe.
+ */
 export function driverLiveProps(x: DriverLiveInput): { props: LiveTripProps; done: boolean } | null {
   if (x.status === "iptal") return null;
+  if (x.status === "atandi" && !soon(x.pickupAt, x.now ?? Date.now())) return null;
   const min = x.etaMinutes ? `${x.etaMinutes} dk` : "";
   const base = { role: "driver" as const, progress: STAGE_PROGRESS[x.status] ?? 0.25 };
   switch (x.status) {
     case "yolda":
       return { props: { ...base, title: "Alışa gidiyorsunuz", detail: x.pickup, eta: min }, done: false };
     case "vardi":
-      return { props: { ...base, title: "Alış noktasındasınız", detail: `Yolcu: ${x.passenger}`, eta: "Geldi" }, done: false };
+      return { props: { ...base, title: "Alış noktasındasınız", detail: `Yolcu: ${shortName(x.passenger)}`, eta: "Geldi" }, done: false };
     case "basladi":
       return { props: { ...base, title: "Yolcu araçta", detail: `→ ${x.dropoff}`, eta: min }, done: false };
     case "bitti":

@@ -93,7 +93,8 @@ def list_ledger(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends(p
         q = q.where(DriverLedger.driver_id == driver_id)
     rows = list(db.scalars(q.order_by(DriverLedger.created_at.desc()).limit(p.limit).offset(p.offset)))
     legs = {leg.id: leg for leg in db.scalars(
-        select(BookingLeg).where(BookingLeg.id.in_([r.booking_leg_id for r in rows])))}
+        select(BookingLeg).options(joinedload(BookingLeg.booking))
+        .where(BookingLeg.id.in_([r.booking_leg_id for r in rows])))}
     return [
         {"id": str(r.id), "driver_id": str(r.driver_id), "leg_id": str(r.booking_leg_id),
          "booking_id": str(legs[r.booking_leg_id].booking_id) if r.booking_leg_id in legs else None,

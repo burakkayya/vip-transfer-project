@@ -50,6 +50,12 @@ const withCleartext: ConfigPlugin = (cfg) =>
     return mod;
   });
 
+// Mağaza (EAS production) derlemesi Android Maps anahtarı olmadan çıkmaz: yer tutucu yalnızca geliştirme
+// ve CI içindir (CARTO zemini ticari kullanımda lisans ister, kullanıcının konumunu üçüncü tarafa gönderir).
+if (process.env.EAS_BUILD_PROFILE === "production" && process.env.EAS_BUILD_PLATFORM === "android" && !googleMapsAndroidKey) {
+  throw new Error("Mağaza derlemesi için GETAWAY_GOOGLE_MAPS_ANDROID_KEY tanımlı olmalı.");
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const app: ExpoConfig = {
     ...config,

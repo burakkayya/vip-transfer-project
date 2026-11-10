@@ -158,10 +158,12 @@ export default function TripScreen() {
     const toDropoff = trip.status === "basladi";
     const live = driverLiveProps({
       status: trip.status,
-      pickup: trip.pickup_address ?? trip.pickup_region,
-      dropoff: trip.dropoff_address ?? trip.dropoff_region,
+      // Kilit ekranında tam adres değil ilçe/havalimanı (K-59, KVKK).
+      pickup: trip.pickup_region,
+      dropoff: trip.dropoff_region,
       passenger: trip.passenger_name,
       pickupTime: dateTime(trip.pickup_at, "tr-TR"),
+      pickupAt: trip.pickup_at,
       etaMinutes: approach && (toDropoff || trip.status === "yolda") ? approach.duration_minutes ?? null : null,
     });
     if (!live) return;

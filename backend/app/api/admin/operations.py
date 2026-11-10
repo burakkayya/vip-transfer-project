@@ -162,6 +162,12 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
                           "status": r.status.value, "reason": r.reason} for r in x.refunds]}
             for x in pays
         ],
+        # K-57: elle iade bu ödemeden yapılır (en yeni ödenmiş ödeme); arayüz yalnız bunu gösterir.
+        "refund_target": (
+            {"payment_id": str(rp.id), "refundable": f"{bookings.refundable_amount(db, rp):.2f}",
+             "currency": rp.currency.value}
+            if (rp := bookings.paid_payment(db, b)) is not None else None
+        ),
         # K-57: bacakların sürücü hakedişleri (admin iptal edebilir).
         "earnings": [
             {"id": str(e.id), "leg_id": str(e.booking_leg_id), "driver_id": str(e.driver_id),

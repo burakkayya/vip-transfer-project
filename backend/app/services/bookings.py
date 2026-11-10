@@ -23,7 +23,6 @@ from app.models import (
     Customer,
     DispatchOffer,
     DriverLedger,
-    DriverPayout,
     FlightInfo,
     Payment,
     Refund,
@@ -40,7 +39,6 @@ from app.models.enums import (
     OfferStatus,
     PaymentProviderCode,
     PaymentStatus,
-    PayoutStatus,
     RefundStatus,
     RegionType,
 )
@@ -292,13 +290,31 @@ CANCELLABLE = {BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED, BookingSt
 STAFF_CANCELLABLE = CANCELLABLE | {BookingStatus.IN_PROGRESS}
 
 
-def paid_payment(db: Session, booking: Booking) -> Payment | None:
-    return db.scalar(
-        select(Payment).where(
+def paid_payment(db: Session, booking: Booking, *, lock: bool = False) -> Payment | None:
+    """Rezervasyonun iade edilebilir (ödenmiş) ödemesi; birden fazlaysa en yenisi.
+    `lock`: iade tutarı denetimi eşzamanlı iadelerle yarışmasın diye satır kilitlenir."""
+    q = (
+        select(Payment)
+        .where(
             Payment.booking_id == booking.id,
             Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED]),
         )
+        .order_by(Payment.created_at.desc())
+        .limit(1)
     )
+    return db.scalar(q.with_for_update(of=Payment) if lock else q)
+
+
+def lock_booking(db: Session, booking: Booking) -> None:
+    """Rezervasyonu ve bacaklarını satır kilidiyle tazeler (sürücü olayıyla aynı sıra: önce bacaklar,
+    sonra rezervasyon; kilitlenme döngüsü oluşmasın)."""
+    legs = list(db.scalars(
+        select(BookingLeg).where(BookingLeg.booking_id == booking.id).order_by(BookingLeg.id).with_for_update(of=BookingLeg)
+    ))
+    db.scalar(select(Booking).where(Booking.id == booking.id).with_for_update(of=Booking))
+    for leg in legs:
+        db.refresh(leg)
+    db.refresh(booking)
 
 
 def refund_quote(db: Session, booking: Booking, now: datetime) -> cancellation.RefundQuote:
@@ -327,6 +343,8 @@ def cancel_booking(
 ) -> Refund | None:
     """İptal eder ve politikaya göre iade başlatır. Yalnızca personel iade oranını ezebilir,
     başlamış yolculuğu iptal edebilir ve bacakların bekleyen sürücü hakedişlerini iptal edebilir."""
+    # Sürücünün aynı anda yolculuğu bitirmesiyle veya eşzamanlı iadeyle yarışmasın (K-57).
+    lock_booking(db, booking)
     if booking.status not in (STAFF_CANCELLABLE if by_staff else CANCELLABLE):
         raise Conflict("bu rezervasyon iptal edilemez", code="not_cancellable")
     quote = refund_quote(db, booking, now)
@@ -358,7 +376,10 @@ def cancel_booking(
         offer.status = OfferStatus.WITHDRAWN
 
     refund = None
-    payment = paid_payment(db, booking)
+    payment = paid_payment(db, booking, lock=True)
+    if payment is not None:
+        # Daha önce elle iade yapıldıysa iptal iadesi kalan tutarı aşmaz (iptal engellenmez).
+        amount = min(amount, refundable_amount(db, payment))
     if payment is not None and amount > 0:
         refund = Refund(
             payment_id=payment.id,
@@ -376,7 +397,8 @@ def cancel_booking(
         for entry in db.scalars(
             select(DriverLedger).where(DriverLedger.booking_leg_id.in_([leg.id for leg in booking.legs]))
         ):
-            if entry.status is LedgerStatus.PENDING:
+            # Ödeme kaydına girmiş hakediş iptali engellemez, olduğu gibi kalır (muhasebe çözer).
+            if entry.status is LedgerStatus.PENDING and entry.payout_id is None:
                 cancel_ledger_entry(db, entry, actor_id=actor_id, reason=reason, ip=ip)
                 cancelled_earnings += 1
     audit.record(
@@ -418,7 +440,7 @@ def staff_refund(
 ) -> Refund:
     """Personelin elle başlattığı para iadesi (K-57): iptalden bağımsız, tamamlanmış yolculukta da.
     Tutar, ödemenin kalan iade edilebilir kısmını aşamaz."""
-    payment = paid_payment(db, booking)
+    payment = paid_payment(db, booking, lock=True)
     if payment is None:
         raise Conflict("bu rezervasyonda iade edilebilecek ödeme yok", code="no_refundable_payment")
     amount = amount.quantize(Decimal("0.01"))
@@ -442,28 +464,22 @@ def staff_refund(
 def cancel_ledger_entry(
     db: Session, entry: DriverLedger, *, actor_id: uuid.UUID, reason: str, ip: str | None
 ) -> None:
-    """Sürücü hakedişini iptal eder (K-57). Ödenmiş hakediş iptal edilemez; ödenmemiş bir ödeme
-    listesindeyse listeden çıkarılır, liste boş kalırsa silinir."""
+    """Sürücü hakedişini iptal eder (K-57). Yalnızca henüz ödeme kaydına girmemiş bekleyen hakediş
+    iptal edilir: ödeme kaydı oluşturulduysa banka dosyası dışa aktarılmış olabilir, tutar sessizce
+    değişmesin diye iptal reddedilir (muhasebe önce kaydı çözer)."""
+    locked = db.scalar(select(DriverLedger).where(DriverLedger.id == entry.id).with_for_update(of=DriverLedger))
+    if locked is not None:
+        db.refresh(entry)
     if entry.status is LedgerStatus.CANCELLED:
         raise Conflict("hakediş zaten iptal edilmiş", code="ledger_already_cancelled")
     if entry.status is LedgerStatus.PAID:
         raise Conflict("ödenmiş hakediş iptal edilemez", code="ledger_paid")
-    payout_id = entry.payout_id
-    if payout_id is not None:
-        payout = db.get(DriverPayout, payout_id)
-        if payout is not None and payout.status is PayoutStatus.PAID:
-            raise Conflict("hakediş ödenmiş bir listede, iptal edilemez", code="ledger_paid")
-        entry.payout_id = None
-        if payout is not None:
-            payout.total_try = max(payout.total_try - (entry.net_amount_try or Decimal("0")), Decimal("0"))
-            db.flush()
-            left = db.scalar(select(func.count()).select_from(DriverLedger).where(DriverLedger.payout_id == payout.id))
-            if not left:
-                db.delete(payout)
+    if entry.payout_id is not None:
+        raise Conflict("hakediş bir ödeme kaydında; ödeme kaydı oluşturulduktan sonra iptal edilemez",
+                       code="ledger_in_payout")
     entry.status = LedgerStatus.CANCELLED
     audit.record(db, actor_id=actor_id, action="ledger.cancel", entity_type="driver_ledger", entity_id=entry.id,
-                 changes={"net_amount": entry.net_amount, "currency": entry.currency.value,
-                          "payout_id": str(payout_id) if payout_id else None, "reason": reason[:255]},
+                 changes={"net_amount": entry.net_amount, "currency": entry.currency.value, "reason": reason[:255]},
                  ip=ip)
 
 

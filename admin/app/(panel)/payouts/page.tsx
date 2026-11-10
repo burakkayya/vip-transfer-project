@@ -59,7 +59,7 @@ export default function PayoutsPage() {
     }
   }
 
-  // K-57: ödenmemiş hakediş iptal edilir; ödenmemiş bir ödeme kaydındaysa kayıttan da düşer.
+  // K-57: yalnızca henüz ödeme kaydına girmemiş bekleyen hakediş iptal edilir.
   async function cancelEntry(e: Entry) {
     const reason = prompt(`Hakediş iptal edilecek (${money(e.net, e.currency)}). Gerekçe:`);
     if (!reason || reason.trim().length < 3) return;
@@ -139,12 +139,13 @@ export default function PayoutsPage() {
           {
             key: "act",
             title: "",
-            render: (e) => e.status === "beklemede" && (
-              <button className="btn small danger" disabled={action.busy} onClick={() => cancelEntry(e)}
-                title={e.in_payout ? "Ödenmemiş ödeme kaydından da çıkarılır" : undefined}>
-                Hakedişi iptal et
-              </button>
-            ),
+            render: (e) => e.status === "beklemede" && (e.in_payout
+              ? <span className="hint">Ödeme kaydında</span>
+              : (
+                <button className="btn small danger" disabled={action.busy} onClick={() => cancelEntry(e)}>
+                  Hakedişi iptal et
+                </button>
+              )),
           },
         ]}
       />

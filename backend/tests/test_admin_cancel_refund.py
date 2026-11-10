@@ -96,7 +96,8 @@ def test_completed_trip_refund_and_earning_cancel(client, db, ops):
                                             AuditLog.entity_id == earning["id"])) is not None
 
 
-def test_earning_in_unpaid_payout_is_removed_paid_cannot_be_cancelled(client, db, ops):
+def test_earning_in_payout_cannot_be_cancelled(client, db, ops):
+    """Ödeme kaydı oluşturulduysa (banka dosyası dışa aktarılmış olabilir) hakediş iptal edilemez."""
     from datetime import datetime, timezone
 
     from app.models import ExchangeRate
@@ -108,24 +109,31 @@ def test_earning_in_unpaid_payout_is_removed_paid_cannot_be_cancelled(client, db
     _complete(client, driver, leg_id)
     b = db.scalar(select(Booking).where(Booking.booking_code == code))
     entry = db.scalar(select(DriverLedger).where(DriverLedger.booking_leg_id == b.legs[0].id))
-    assert entry.net_amount_try is not None
     assert client.post("/api/v1/admin/payouts", headers=finance).status_code == 201
     db.refresh(entry)
-    payout_id = entry.payout_id
-    assert payout_id is not None
-    payout = db.get(DriverPayout, payout_id)
-    before = payout.total_try
-    others = len(list(db.scalars(select(DriverLedger).where(DriverLedger.payout_id == payout_id)))) - 1
-
+    payout = db.get(DriverPayout, entry.payout_id)
+    total = payout.total_try
     r = client.post(f"/api/v1/admin/ledger/{entry.id}/cancel", headers=finance, json={"reason": "sahte yolculuk"})
-    assert r.status_code == 200, r.text
+    assert r.json()["error"]["code"] == "ledger_in_payout"
     db.expire_all()
-    assert db.get(DriverLedger, entry.id).payout_id is None
-    payout = db.get(DriverPayout, payout_id)
-    if others == 0:
-        assert payout is None
-    else:
-        assert payout.total_try == before - entry.net_amount_try
+    assert db.get(DriverLedger, entry.id).status.value == "beklemede"
+    assert db.get(DriverPayout, payout.id).total_try == total
+
+
+def test_cancel_after_partial_refund_caps_refund(client, db, ops):
+    """Elle kısmi iade yapılmış rezervasyon iptal edilebilir; iptal iadesi kalan tutarla sınırlanır."""
+    customer = otp_login(client, random_phone())
+    r = client.post("/api/v1/me/bookings", json=booking_body(client, hours_ahead=72), headers=customer)
+    code, booking_id = r.json()["booking_code"], r.json()["id"]
+    pay(client, customer, code)
+    assert client.post(f"/api/v1/admin/bookings/{booking_id}/refund", headers=ops,
+                       json={"amount": "30.00", "reason": "jest iadesi"}).status_code == 200
+    r = client.post(f"/api/v1/me/bookings/{code}/cancel", json={"reason": "plan değişti"}, headers=customer)
+    assert r.status_code == 200, r.text
+    detail = client.get(f"/api/v1/admin/bookings/{booking_id}", headers=ops).json()
+    pay0 = detail["payments"][0]
+    assert pay0["status"] == "iade_edildi"
+    assert sum(D(x["amount"]) for x in pay0["refunds"] if x["status"] == "tamamlandi") == D(pay0["amount"])
 
 
 def test_paid_earning_cannot_be_cancelled(client, db, ops):

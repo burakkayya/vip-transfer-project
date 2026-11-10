@@ -128,6 +128,8 @@ export default function BookingScreen() {
       to: l.dropoff_region.name,
       driver: l.driver,
       etaMinutes: eta?.eta_minutes ?? null,
+      bookingType: booking.booking_type,
+      pickupAt: l.pickup_at,
     });
     if (!live) return;
     if (live.done) void endLiveTrip(booking.booking_code, live.props);

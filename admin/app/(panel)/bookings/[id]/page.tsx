@@ -85,6 +85,7 @@ interface Detail {
     status: string;
     in_payout: boolean;
   }[];
+  refund_target: { payment_id: string; refundable: string; currency: string } | null;
 }
 
 // K-57: personel başlamış yolculuğu da iptal edebilir; tamamlanmış yolculukta iade ve hakediş iptali ayrıdır.
@@ -107,8 +108,9 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const b = data.booking;
   const legNo = (legId: string) => b.legs.find((l) => l.id === legId)?.leg_order ?? "?";
 
-  const refundable = data.payments.reduce((sum, p) => sum + Number(p.refundable ?? 0), 0);
-  const refundCurrency = data.payments.find((p) => Number(p.refundable) > 0)?.currency ?? b.currency;
+  // Elle iade backend'in seçtiği ödemeden yapılır (en yeni ödenmiş ödeme).
+  const refundable = Number(data.refund_target?.refundable ?? 0);
+  const refundCurrency = data.refund_target?.currency ?? b.currency;
   const amount = num(refundAmount);
 
   async function cancel() {
@@ -296,14 +298,14 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 render: (e) => (
                   <>
                     <Badge value={e.status} labels={LEDGER_STATUS} />
-                    {e.in_payout && e.status === "beklemede" && <div className="hint">Ödeme kaydında</div>}
+                    {e.in_payout && e.status === "beklemede" && <div className="hint">Ödeme kaydında, iptal edilemez</div>}
                   </>
                 ),
               },
               {
                 key: "act",
                 title: "",
-                render: (e) => can("operasyon", "muhasebe") && e.status === "beklemede" && (
+                render: (e) => can("operasyon", "muhasebe") && e.status === "beklemede" && !e.in_payout && (
                   <button className="btn small danger" disabled={action.busy}
                     onClick={() => cancelEarning(e.id, money(e.net, e.currency))}>
                     Hakedişi iptal et
@@ -359,7 +361,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               {b.status === "yolculukta" ? "Yolculuğu iptal et" : "İptal et"}
             </button>
           </div>
-          {data.earnings.some((e) => e.status === "beklemede") && (
+          {data.earnings.some((e) => e.status === "beklemede" && !e.in_payout) && (
             <label className="row">
               <input type="checkbox" checked={cancelEarnings} onChange={(e) => setCancelEarnings(e.target.checked)} />
               Bekleyen sürücü hakedişlerini de iptal et

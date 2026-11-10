@@ -71,7 +71,9 @@ class PlaceIn(BaseModel):
     """Nokta iki yoldan biriyle verilir:
     - `place_token`: adres aramasından gelen imzalı jeton (bölge ve koordinat backend'de çözülür),
     - `region_id`: doğrudan ilçe veya havalimanı seçimi (ilçe merkezi kullanılır).
-    `address` her iki durumda sürücüye gösterilecek açıklamadır (otel adı, oda no vb.)."""
+    `address` her iki durumda sürücüye gösterilecek açıklamadır (otel adı, oda no vb.).
+    `lat`/`lng` geriye uyumluluk için kabul edilir ama yok sayılır (K-58: fiyat gerçek noktadan
+    hesaplandığından koordinat yalnızca imzalı adres jetonundan gelir)."""
 
     region_id: int | None = None
     place_token: str | None = Field(default=None, max_length=2000)

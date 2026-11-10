@@ -113,6 +113,12 @@ class Settings(BaseSettings):
                 raise ValueError("üretimde sahte ödeme sağlayıcısı kullanılamaz")
             if self.places_provider == "fake":
                 raise ValueError("üretimde sahte adres sağlayıcısı kullanılamaz")
+            # K-58: herkese açık OpenStreetMap sunucularının koşulları canlı kullanıma izin vermez;
+            # üretimde Google veya kendi barındırdığımız Photon/OSRM adresi verilmeli.
+            if self.places_provider == "photon" and "photon.komoot.io" in self.photon_url:
+                raise ValueError("üretimde herkese açık Photon sunucusu kullanılamaz (GETAWAY_PHOTON_URL)")
+            if self.routing_provider == "osrm" and "router.project-osrm.org" in self.osrm_url:
+                raise ValueError("üretimde herkese açık OSRM sunucusu kullanılamaz (GETAWAY_OSRM_URL)")
             if self.push_provider == "console":
                 raise ValueError("üretimde push sağlayıcısı fcm olmalı")
         if self.push_provider == "fcm" and not Path(self.fcm_credentials_file or "").is_file():
