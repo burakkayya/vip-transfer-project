@@ -12,9 +12,8 @@ adb shell "setprop persist.sys.locale tr-TR; setprop ctl.restart zygote" || true
 sleep 15
 adb wait-for-device
 for i in $(seq 1 60); do [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1" ] && break; sleep 3; done
-adb shell settings put global window_animation_scale 0 || true
-adb shell settings put global transition_animation_scale 0 || true
-adb shell settings put global animator_duration_scale 0 || true
+# Sistem animasyonları açık kalır: kapatılınca (animator_duration_scale=0) Reanimated giriş animasyonları
+# tamamlanmıyor ve paneller boş görünüyordu.
 # Antalya Havalimanı konumu (sürücünün konumu, iş havuzu mesafesi).
 adb emu geo fix 30.8015 36.9002 || true
 

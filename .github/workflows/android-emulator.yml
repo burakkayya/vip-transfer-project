@@ -133,7 +133,8 @@ jobs:
           ram-size: 4096M
           disk-size: 6000M
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          disable-animations: true
+          # Kapalı animasyonlarda Reanimated giriş animasyonları bitmiyor, paneller boş kalıyor.
+          disable-animations: false
           script: bash .github/scripts/android-flows.sh
 
       - name: Sonuçları yükle
