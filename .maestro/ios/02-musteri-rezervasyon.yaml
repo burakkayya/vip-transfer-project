@@ -5,6 +5,10 @@ appId: com.getawaytransfers.app
     clearState: true
     permissions:
       all: allow
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    optional: true
 - extendedWaitUntil:
     visible: "Telefon numaranızı girin"
     timeout: 90000
@@ -13,32 +17,40 @@ appId: com.getawaytransfers.app
 - inputText: "5559011234"
 - tapOn: "Devam"
 - extendedWaitUntil:
-    visible: "Geliştirme ortamı.*"
+    visible: ".*Geliştirme ortamı.*"
     timeout: 20000
 - takeScreenshot: m02-sms-kodu
-- tapOn: "Geliştirme ortamı.*"
+- tapOn: ".*Geliştirme ortamı.*"
+- extendedWaitUntil:
+    visible: 'Nereye gidiyorsunuz\?|İzin Ver'
+    timeout: 30000
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    optional: true
 - extendedWaitUntil:
     visible: 'Nereye gidiyorsunuz\?'
     timeout: 30000
 - takeScreenshot: m03-ana-sayfa
-- tapOn: "Rezervasyonlarım"
+- tapOn: ".*Rezervasyonlarım.*"
 - takeScreenshot: m04-rezervasyonlar-bos
-- tapOn: "Profil"
+- tapOn: ".*Profil.*"
 - takeScreenshot: m05-profil
-- tapOn: "Ana sayfa"
-- tapOn: "Antalya Havalimanı"
+- tapOn: ".*Ana sayfa.*"
+- tapOn: ".*Antalya Havalimanı.*"
 - extendedWaitUntil:
-    visible: "Rotanız"
+    visible: ".*Rotanız.*"
     timeout: 15000
 - takeScreenshot: m06-rota
 - tapOn: "Nereye"
 - inputText: "kemer"
+# Maestro metin eşleşmesi büyük/küçük harf duyarsız: ".*Kemer.*" arama kutusundaki "kemer"e de uyar.
 - extendedWaitUntil:
-    visible: "Kemer"
+    visible: ".*Kemer, İlçeler.*"
     timeout: 15000
 - takeScreenshot: m07-adres-arama
-- tapOn: "Kemer"
-- tapOn: "Şimdi"
+- tapOn: ".*Kemer, İlçeler.*"
+- tapOn: ".*Şimdi.*"
 - takeScreenshot: m08-rota-dolu
 - tapOn: "Fiyatları göster.*"
 - extendedWaitUntil:
@@ -53,24 +65,34 @@ appId: com.getawaytransfers.app
 - tapOn:
     below: "Yolcu adı soyadı"
 - inputText: "Test Yolcu"
-- hideKeyboard
+# iOS'ta Maestro hideKeyboard React Native girişinde çalışmıyor; Return klavyeyi kapatır.
+- pressKey: Enter
 - scrollUntilVisible:
-    element: 'KVKK aydınlatma metnini okudum\.'
+    element: '.*KVKK aydınlatma metnini okudum\..*'
     direction: DOWN
-- tapOn: 'KVKK aydınlatma metnini okudum\.'
-- tapOn: "Mesafeli satış.*"
+- tapOn: '.*KVKK aydınlatma metnini okudum\..*'
+- tapOn: ".*Mesafeli satış.*"
 - takeScreenshot: m11-bilgiler-dolu
 - tapOn: "Rezervasyonu oluştur ve öde"
-# Sahte ödeme sayfası uygulama içi Safari'de açılır.
-- extendedWaitUntil:
-    visible: "Ödemeyi onayla"
-    timeout: 30000
+# Sahte ödeme sayfası uygulama içi Safari'de (SFSafariViewController) açılır. Ayrı süreç olduğu için içeriği
+# uygulamaya bağlı akıştan görünmez; dokunuşlar ekran ağacındaki konumlarla yapılır (iPhone 17 Pro, 402x874 pt).
+- waitForAnimationToEnd:
+    timeout: 10000
+# Sayfanın yüklenmesi için bekleme (boş alana uzun basış; Maestro'da düz bekleme komutu yok).
+- swipe:
+    start: "50%,50%"
+    end: "50%,50%"
+    duration: 12000
 - takeScreenshot: m12-odeme-sayfasi
-- tapOn: "Ödemeyi onayla"
-- takeScreenshot: m13-odeme-sonucu
+# "Ödemeyi onayla" [20,329][382,379]
 - tapOn:
-    text: "Bitti|Kapat|Done|Close"
-    optional: true
+    point: "50%,40%"
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: m13-odeme-sonucu
+# Safari "Bitti" [16,62][60,106]: tarayıcı kapanır, uygulama rezervasyonu yeniden yükler.
+- tapOn:
+    point: "9%,10%"
 - extendedWaitUntil:
     visible: "Onaylandı|Atandı|Sürücü.*"
     timeout: 40000

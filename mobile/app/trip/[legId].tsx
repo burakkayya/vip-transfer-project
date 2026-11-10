@@ -327,7 +327,7 @@ export default function TripScreen() {
                 </View>
               ) : null}
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => setSign(true)}
+            <Pressable accessibilityRole="button" accessibilityLabel="Karşılama tabelası" onPress={() => setSign(true)}
               style={({ pressed }) => [{ flex: 1, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderRadius: 14, paddingVertical: 13, backgroundColor: colors.canvas }, pressed && { opacity: 0.8 }]}>
               <Ionicons name="easel-outline" size={18} color={colors.ink} />
               <T style={{ fontWeight: "700" }}>Karşılama tabelası</T>

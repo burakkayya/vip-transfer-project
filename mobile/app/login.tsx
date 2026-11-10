@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Alert, Button, Logo, Picker, T, colors, fonts, s, shadow, useScreenHeight } from "@/components/ui";
@@ -71,6 +71,17 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
   const dial = countries.find((c) => c.code === country)?.dial ?? "+";
+  // Klavye açıkken (iOS sayı klavyesinde "Bitti" tuşu yok) fotoğraf alanı küçülür; "Devam" düğmesi görünür kalır.
+  const [keyboard, setKeyboard] = useState(false);
+  useEffect(() => {
+    const ios = Platform.OS === "ios";
+    const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", () => setKeyboard(true));
+    const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", () => setKeyboard(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -109,7 +120,7 @@ export default function Login() {
       router.replace("/");
     });
 
-  const heroH = Math.round(height * 0.44);
+  const heroH = keyboard ? insets.top + 80 : Math.round(height * 0.44);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.ink, overflow: "hidden" }}>
@@ -119,11 +130,11 @@ export default function Login() {
           <Image source={HERO} resizeMode="cover" style={{ width: "100%", height: "100%" }} />
         </Animated.View>
         <LinearGradient colors={["rgba(0,0,0,0.55)", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.75)"]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
-        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: insets.top + 22, paddingBottom: 64, justifyContent: "space-between" }}>
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: insets.top + 22, paddingBottom: keyboard ? 48 : 64, justifyContent: "space-between" }}>
           <Animated.View entering={FadeInDown.duration(600)}>
             <Logo inverted sub={DRIVER ? "SÜRÜCÜ" : "TRANSFERS"} />
           </Animated.View>
-          <Animated.View entering={FadeInDown.duration(700).delay(150)} style={{ gap: 8 }}>
+          <Animated.View entering={FadeInDown.duration(700).delay(150)} style={{ gap: 8, display: keyboard ? "none" : "flex" }}>
             <T style={{ color: "#fff", fontSize: 34, fontWeight: "800", letterSpacing: -1.2, lineHeight: 38 }}>
               {DRIVER ? "Yola çıkmaya\nhazır mısınız?" : t("home.where")}
             </T>

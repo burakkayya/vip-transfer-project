@@ -17,10 +17,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setSignedOutHandler(() => setSignedIn(false));
-    loadSession().then((has) => {
-      setSignedIn(has);
-      setReady(true);
-    });
+    // Güvenli depo okunamazsa (ör. Keychain erişimi yok) uygulama yükleme ekranında kalmasın: oturumsuz açılır.
+    loadSession()
+      .catch((e: unknown) => {
+        // Jeton içermez: yalnızca hatanın adı/iletisi (teşhis için).
+        console.warn("Oturum deposu okunamadı:", e instanceof Error ? e.message : String(e));
+        return false;
+      })
+      .then((has) => {
+        setSignedIn(has);
+        setReady(true);
+      });
   }, []);
 
   const signIn = useCallback(async (tokens: { access_token: string; refresh_token: string }) => {

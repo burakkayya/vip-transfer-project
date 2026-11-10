@@ -3,17 +3,52 @@ appId: com.getawaytransfers.driver
 ---
 - launchApp:
     stopApp: false
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    optional: true
+# Anlık iş "İş havuzu"nda kart olarak düşer (yoklama 8 sn). Kartın erişilebilirlik etiketi "rota, tutar"dır;
+# alt yarısı sekme çubuğunun altında kaldığı için dokunmadan önce ortalanır.
+- extendedWaitUntil:
+    visible:
+      text: ".*Havalimanı → Kemer.*"
+      below: "İş havuzu"
+    timeout: 60000
+# Kart kısmen göründüğü için scrollUntilVisible kaydırmayabilir; sayfa önce elle yukarı itilir
+# (aksi halde kartın ortası "Kazanç" sekmesine düşer).
+- swipe:
+    start: "50%,72%"
+    end: "50%,35%"
+    duration: 600
+- scrollUntilVisible:
+    element:
+      text: ".*Havalimanı → Kemer.*"
+      below: "İş havuzu"
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: s05-is-havuzu
+- tapOn:
+    text: ".*Havalimanı → Kemer.*"
+    below: "İş havuzu"
 - extendedWaitUntil:
     visible: "Kabul et"
-    timeout: 60000
+    timeout: 20000
 - takeScreenshot: s05-teklif
 - tapOn: "Kabul et"
 - extendedWaitUntil:
-    visible: "Karşılama tabelasını aç"
+    visible: ".*Karşılama tabelası.*"
     timeout: 20000
 - takeScreenshot: s06-is-atandi
-- tapOn: "Karşılama tabelasını aç"
+# Düğmenin alt yarısı sabit "Yola çıktım" çubuğunun altında: önce panel kaydırılır.
+- swipe:
+    start: "50%,70%"
+    end: "50%,40%"
+    duration: 600
+- tapOn: ".*Karşılama tabelası.*"
+- extendedWaitUntil:
+    visible: ".*Kapatmak için dokunun.*"
+    timeout: 10000
 - takeScreenshot: s07-karsilama-tabelasi
-- tapOn: "Kapatmak için dokunun"
+- tapOn: ".*Kapatmak için dokunun.*"
 - tapOn: "Yola çıktım"
 - takeScreenshot: s08-yolda

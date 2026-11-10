@@ -192,7 +192,7 @@ async function main(surface, script) {
           await dshot("driver-tr-trip-assigned");
         } },
         { id: "driver-sign", shots: ["driver-tr-trip-sign"], drv: true, fn: async () => {
-          await d.getByText("Karşılama tabelasını aç").click();
+          await d.getByText("Karşılama tabelası", { exact: true }).click();
           await d.waitForTimeout(1200);
           await dshot("driver-tr-trip-sign");
           await d.getByText("Kapatmak için dokunun").click();
