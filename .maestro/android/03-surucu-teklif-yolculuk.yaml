@@ -12,12 +12,7 @@ appId: com.getawaytransfers.driver
       text: ".*Havalimanı → Kemer.*"
       below: "İş havuzu"
     timeout: 60000
-- scrollUntilVisible:
-    element:
-      text: ".*Havalimanı → Kemer.*"
-      below: "İş havuzu"
-    direction: DOWN
-    centerElement: true
+# Kaydırma yok: kaydırınca "İş havuzu" başlığı ekrandan çıkıyor ve "başlığın altında" koşulu sağlanamıyor.
 - takeScreenshot: s05-is-havuzu
 - tapOn:
     text: ".*Havalimanı → Kemer.*"
