@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import { LEG_STATUS, NEXT_STEP } from "@/lib/driverLabels";
 import { dateTime, money } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
+import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
 import { backgroundSupported, distanceM, navigationUrls, startBackgroundTracking, stopBackgroundTracking } from "@/lib/tracking";
 import type { Approach, Trip } from "@/lib/types";
 
@@ -147,6 +148,27 @@ export default function TripScreen() {
   }, [position, open, refreshApproach]);
 
   // Okunmamış mesaj sayısı.
+  // K-59: aktif iş bildirim ekranında sabit (iOS Canlı Etkinlik, Android kalıcı bildirim).
+  useEffect(() => {
+    if (!trip) return;
+    if (trip.status === "iptal") {
+      void endLiveTrip(trip.leg_id);
+      return;
+    }
+    const toDropoff = trip.status === "basladi";
+    const live = driverLiveProps({
+      status: trip.status,
+      pickup: trip.pickup_address ?? trip.pickup_region,
+      dropoff: trip.dropoff_address ?? trip.dropoff_region,
+      passenger: trip.passenger_name,
+      pickupTime: dateTime(trip.pickup_at, "tr-TR"),
+      etaMinutes: approach && (toDropoff || trip.status === "yolda") ? approach.duration_minutes ?? null : null,
+    });
+    if (!live) return;
+    if (live.done) void endLiveTrip(trip.leg_id, live.props);
+    else void showLiveTrip(trip.leg_id, live.props, `getawaydriver://trip/${trip.leg_id}`);
+  }, [trip, approach]);
+
   useEffect(() => {
     if (!trip) return;
     const tick = () => api<{ unread: number }>(`driver/trips/${legId}/messages/unread`).then((r) => setUnread(r.unread)).catch(() => undefined);

@@ -1,4 +1,6 @@
-# Yeni müşteri giriş yapar, Antalya Havalimanı → Kemer anlık rezervasyon oluşturur ve sahte ödemeyi onaylar.
+# Yeni müşteri giriş yapar, Antalya Havalimanı → Kemer Marina (ilçe değil, serbest adres; K-58) anlık
+# rezervasyon oluşturur ve sahte ödemeyi onaylar. Adres OpenStreetMap (Photon) ile aranır, fiyat gerçek
+# noktalar arası karayolu mesafesinden (OSRM) hesaplanır.
 appId: com.getawaytransfers.app
 ---
 - launchApp:
@@ -43,13 +45,14 @@ appId: com.getawaytransfers.app
     timeout: 15000
 - takeScreenshot: m06-rota
 - tapOn: "Nereye"
-- inputText: "kemer"
-# Maestro metin eşleşmesi büyük/küçük harf duyarsız: ".*Kemer.*" arama kutusundaki "kemer"e de uyar.
+- inputText: "Kemer Marina"
+# Sonuç satırının etiketi "başlık, alt başlık": "Kemer Marina, 152 Sokak, Merkez, Kemer, Antalya".
+# (Maestro eşleşmesi büyük/küçük harf duyarsız; arama kutusundaki metin virgül içermez.)
 - extendedWaitUntil:
-    visible: ".*Kemer, İlçeler.*"
-    timeout: 15000
+    visible: "Kemer Marina, .*"
+    timeout: 20000
 - takeScreenshot: m07-adres-arama
-- tapOn: ".*Kemer, İlçeler.*"
+- tapOn: "Kemer Marina, .*"
 - tapOn: ".*Şimdi.*"
 - takeScreenshot: m08-rota-dolu
 - tapOn: "Fiyatları göster.*"

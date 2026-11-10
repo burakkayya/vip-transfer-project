@@ -16,3 +16,20 @@ appId: com.getawaytransfers.app
     direction: DOWN
     optional: true
 - takeScreenshot: m16-rezervasyon-alt
+# K-59: müşteri uygulaması arka plandayken yolculuk durumu Dynamic Island'da ve bildirim merkezinde.
+- pressKey: Home
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: m17-canli-etkinlik-ada
+- swipe:
+    start: "25%,1%"
+    end: "25%,75%"
+    duration: 500
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: m18-canli-etkinlik-bildirim
+- swipe:
+    start: "50%,98%"
+    end: "50%,20%"
+    duration: 400
+- pressKey: Home

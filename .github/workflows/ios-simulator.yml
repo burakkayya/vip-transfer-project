@@ -23,8 +23,9 @@ env:
   GETAWAY_REDIS_URL: redis://localhost:6379/0
   GETAWAY_SMS_PROVIDER: console
   GETAWAY_PAYMENT_PROVIDER: fake
-  GETAWAY_PLACES_PROVIDER: fake
-  GETAWAY_ROUTING_PROVIDER: haversine
+  # K-58: gerçek adres araması (OpenStreetMap Photon) ve karayolu rotası (OSRM); anahtar gerekmez.
+  GETAWAY_PLACES_PROVIDER: photon
+  GETAWAY_ROUTING_PROVIDER: osrm
   GETAWAY_PUSH_PROVIDER: console
   # Simülatör Mac'in ağını kullanır: localhost backend'dir. Ödeme ve yasal sayfalar da backend'den.
   GETAWAY_API_URL: http://localhost:8000

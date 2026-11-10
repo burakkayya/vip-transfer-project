@@ -89,6 +89,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-task-manager",
       // defaultChannel: FCM bildirimi kanal belirtmeden ya da kanal henüz oluşturulmadan gelirse.
       ["expo-notifications", { color: "#0B0B0C", defaultChannel: "trip" }] as [string, object],
+      // K-59: yolculuk durumu canlı etkinliği. iOS'ta Canlı Etkinlik uzantı hedefi (kilit ekranı,
+      // Dynamic Island), Android'de özel bildirim modülü. Uzaktan (APNs) güncelleme şimdilik kapalı.
+      ["expo-widgets", { frequentUpdates: true }] as [string, object],
       ...(isDriver
         ? [
             [
