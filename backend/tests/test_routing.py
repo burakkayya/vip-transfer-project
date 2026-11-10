@@ -54,3 +54,40 @@ def test_google_route_without_polyline_is_none(monkeypatch):
     r = GoogleRouting("key").route(A, B)
     assert r.polyline is None
     assert r.distance_km == Decimal("12.00")
+
+
+# --- K-58: OSRM (anahtarsız karayolu rotası) ------------------------------------
+
+def test_osrm_route_parses_distance_duration_polyline(monkeypatch):
+    from app.providers.routing import HaversineRouting, OsrmRouting
+
+    calls = []
+
+    def fake_get(url, **kw):
+        calls.append(url)
+        return _Resp({"code": "Ok", "routes": [{"distance": 63512.4, "duration": 3660.0, "geometry": "abc"}]})
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    router = OsrmRouting("https://osrm.test", HaversineRouting(Decimal("1.3")))
+    r = router.route(A, B)
+    assert r.distance_km == Decimal("63.51") and r.duration_minutes == 61 and r.polyline == "abc"
+    assert "/route/v1/driving/30.800500,36.898700;" in calls[0]  # boylam,enlem sırası
+    router.route(A, B)
+    assert len(calls) == 1  # aynı rota bellek önbelleğinden
+
+
+def test_osrm_falls_back_to_haversine_and_does_not_cache(monkeypatch):
+    from app.providers.routing import HaversineRouting, OsrmRouting
+
+    calls = []
+
+    def failing_get(url, **kw):
+        calls.append(url)
+        raise httpx.ConnectError("yok")
+
+    monkeypatch.setattr(httpx, "get", failing_get)
+    router = OsrmRouting("https://osrm.test", HaversineRouting(Decimal("1.3")))
+    r = router.route(A, B)
+    assert r.distance_km > 0 and r.polyline
+    router.route(A, B)
+    assert len(calls) == 2

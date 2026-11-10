@@ -1,8 +1,9 @@
-"""Adres arama, ilçe çözümleme ve ilçe bazlı fiyat (geliştirmede sahte adres sağlayıcısı)."""
+"""Adres arama, ilçe çözümleme ve gerçek noktaya göre fiyat (K-58; testte sahte adres sağlayıcısı)."""
 
 from decimal import Decimal as D
 
 import jwt
+import pytest
 
 from app import demo
 from app.config import get_settings
@@ -40,14 +41,16 @@ def test_address_resolves_to_district_and_airport(client):
     assert place(client, "Ölüdeniz")["region"]["code"] == "fethiye"
 
 
-def test_price_uses_district_not_exact_address(client):
-    """Aynı ilçedeki iki farklı adres, ilçe merkezi seçimiyle aynı fiyatı alır."""
+def test_price_uses_exact_address_not_district(client):
+    """K-58: fiyat seçilen gerçek noktalar arasındaki mesafeyle hesaplanır; aynı ilçedeki farklı
+    adresler farklı fiyat alabilir, yalnızca ilçe seçilirse ilçe merkezi kullanılır."""
     airport = {"place_token": place(client, "Antalya Havalimanı")["place_token"]}
     kalkan = quote(client, airport, {"place_token": place(client, "Kalkan")["place_token"]})
     kas = quote(client, airport, {"place_token": place(client, "Kaş Merkez")["place_token"]})
-    by_region = quote(client, {"region_id": region_id(client, "ayt")}, {"region_id": region_id(client, "kas")})
-    assert kalkan["total"] == kas["total"] == by_region["total"]
-    assert D(kalkan["legs"][0]["distance_km"]) > 100
+    assert D(kalkan["legs"][0]["distance_km"]) > D(kas["legs"][0]["distance_km"]) > 100
+    assert D(kalkan["total"]) > D(kas["total"])
+    # Fiyat 5'in katına yuvarlanır (K-32).
+    assert D(kalkan["total"]) % 5 == 0 and D(kas["total"]) % 5 == 0
 
 
 def test_same_district_uses_real_points(client):
@@ -135,3 +138,49 @@ def test_demo_seed_creates_bookable_drivers(client, db):
     me = client.get("/api/v1/driver/me", headers=driver).json()
     assert me["status"] == "onayli" and me["missing_documents"] == []
     assert client.post("/api/v1/driver/me/online", headers=driver, json={"is_online": True}).status_code == 200
+
+
+def test_photon_parse_and_details_from_cache(monkeypatch):
+    """K-58: OpenStreetMap (Photon) araması; ayrıntı yalnızca sunucunun sakladığı sonuçtan okunur."""
+    import httpx
+
+    from app.errors import NotFound
+    from app.providers.places import PhotonPlaces
+
+    store: dict = {}
+
+    class FakeRedis:
+        def setex(self, k, ttl, v):
+            store[k] = v
+
+        def get(self, k):
+            return store.get(k)
+
+    feature = {"geometry": {"coordinates": [30.5717, 36.6009]},
+               "properties": {"osm_id": 42, "osm_type": "W", "osm_key": "leisure", "osm_value": "marina",
+                              "name": "Kemer Marina", "street": "152 Sokak", "district": "Merkez",
+                              "county": "Kemer", "state": "Antalya", "countrycode": "TR"}}
+    airport = {"geometry": {"coordinates": [30.8005, 36.8987]},
+               "properties": {"osm_id": 7, "osm_type": "W", "osm_key": "aeroway", "osm_value": "aerodrome",
+                              "name": "Antalya Havalimanı (AYT)", "county": "Aksu", "state": "Antalya",
+                              "countrycode": "TR"}}
+    foreign = {"geometry": {"coordinates": [1, 2]}, "properties": {"osm_id": 9, "name": "X", "countrycode": "GR"}}
+
+    class R:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"features": [feature, airport, foreign]}
+
+    monkeypatch.setattr(httpx, "get", lambda url, **kw: R())
+    p = PhotonPlaces("https://photon.test", "redis://unused")
+    monkeypatch.setattr(p, "_redis", lambda: FakeRedis())
+    hits = p.autocomplete("kemer marina", "s", "tr")
+    assert [(h.place_id, h.title) for h in hits] == [("osm:W42", "Kemer Marina"), ("osm:W7", "Antalya Havalimanı (AYT)")]
+    assert hits[0].subtitle == "152 Sokak, Merkez, Kemer, Antalya"
+    d = p.details("osm:W42", "s", "tr")
+    assert (d.district, d.province, d.is_airport) == ("Kemer", "Antalya", False)
+    assert p.details("osm:W7", "s", "tr").is_airport
+    with pytest.raises(NotFound):
+        p.details("osm:W999", "s", "tr")

@@ -11,6 +11,7 @@ import ManualBookingPanel, { type ManualInfo } from "@/components/ManualBookingP
 import {
   BOOKING_STATUS,
   BOOKING_TYPE,
+  LEDGER_STATUS,
   LEG_STATUS,
   MANUAL_PAYMENT_METHOD,
   OFFER_STATUS,
@@ -72,12 +73,25 @@ interface Detail {
     provider_ref: string | null;
     note: string | null;
     refunds: { id: string; amount: string; percent: number; status: string; reason: string }[];
+    refundable: string;
+  }[];
+  earnings: {
+    id: string;
+    leg_id: string;
+    driver_id: string;
+    net: string;
+    currency: string;
+    net_try: string | null;
+    status: string;
+    in_payout: boolean;
   }[];
 }
 
-const CANCELLABLE = ["odeme_bekliyor", "onaylandi", "atandi"];
+// K-57: personel başlamış yolculuğu da iptal edebilir; tamamlanmış yolculukta iade ve hakediş iptali ayrıdır.
+const CANCELLABLE = ["odeme_bekliyor", "onaylandi", "atandi", "yolculukta"];
+const num = (v: string) => Number(v.replace(",", "."));
 
-/** Ekran 3: rezervasyon detayı, iptal (iade oranı ezilebilir), atamaya geçiş. */
+/** Ekran 3: rezervasyon detayı, iptal (iade oranı ezilebilir), para iadesi, hakediş iptali, atamaya geçiş. */
 export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const can = useCan();
@@ -85,19 +99,54 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const action = useAction();
   const [reason, setReason] = useState("");
   const [override, setOverride] = useState("");
+  const [cancelEarnings, setCancelEarnings] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
 
   if (!data) return <ErrorBox error={error} />;
   const b = data.booking;
   const legNo = (legId: string) => b.legs.find((l) => l.id === legId)?.leg_order ?? "?";
 
+  const refundable = data.payments.reduce((sum, p) => sum + Number(p.refundable ?? 0), 0);
+  const refundCurrency = data.payments.find((p) => Number(p.refundable) > 0)?.currency ?? b.currency;
+  const amount = num(refundAmount);
+
   async function cancel() {
-    if (!confirm(`${b.booking_code} iptal edilsin mi?`)) return;
+    const started = b.status === "yolculukta" ? " Yolculuk başlamış; sürücüye iptal bildirimi gider." : "";
+    if (!confirm(`${b.booking_code} iptal edilsin mi?${started}`)) return;
     const ok = await action.run(
       () =>
         api(`admin/bookings/${id}/cancel`, {
-          body: { reason, refund_percent: override === "" ? null : Number(override) },
+          body: {
+            reason,
+            refund_percent: override === "" ? null : Number(override),
+            cancel_driver_earnings: cancelEarnings,
+          },
         }),
       "Rezervasyon iptal edildi.",
+    );
+    if (ok) void reload();
+  }
+
+  async function refund() {
+    if (!confirm(`Müşteriye ${money(String(amount), refundCurrency)} iade edilsin mi?`)) return;
+    const ok = await action.run(
+      () => api(`admin/bookings/${id}/refund`, { body: { amount: amount.toFixed(2), reason: refundReason.trim() } }),
+      "İade başlatıldı.",
+    );
+    if (ok) {
+      setRefundAmount("");
+      setRefundReason("");
+      void reload();
+    }
+  }
+
+  async function cancelEarning(entryId: string, label: string) {
+    const why = prompt(`Sürücü hakedişi (${label}) iptal edilecek. Gerekçe:`);
+    if (!why || why.trim().length < 3) return;
+    const ok = await action.run(
+      () => api(`admin/ledger/${entryId}/cancel`, { body: { reason: why.trim() } }),
+      "Hakediş iptal edildi.",
     );
     if (ok) void reload();
   }
@@ -230,6 +279,70 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
         ]}
       />
 
+      {data.earnings.length > 0 && (
+        <>
+          <h2>Sürücü hakedişleri</h2>
+          <Table
+            rows={data.earnings}
+            rowKey={(e) => e.id}
+            columns={[
+              { key: "leg", title: "Bacak", render: (e) => legNo(e.leg_id) },
+              { key: "driver", title: "Sürücü", render: (e) => <Link href={`/drivers/${e.driver_id}`}>sürücü</Link> },
+              { key: "net", title: "Net", align: "right", render: (e) => money(e.net, e.currency) },
+              { key: "try", title: "Net (TL)", align: "right", render: (e) => (e.net_try ? money(e.net_try, "TRY") : "kur bekliyor") },
+              {
+                key: "status",
+                title: "Durum",
+                render: (e) => (
+                  <>
+                    <Badge value={e.status} labels={LEDGER_STATUS} />
+                    {e.in_payout && e.status === "beklemede" && <div className="hint">Ödeme kaydında</div>}
+                  </>
+                ),
+              },
+              {
+                key: "act",
+                title: "",
+                render: (e) => can("operasyon", "muhasebe") && e.status === "beklemede" && (
+                  <button className="btn small danger" disabled={action.busy}
+                    onClick={() => cancelEarning(e.id, money(e.net, e.currency))}>
+                    Hakedişi iptal et
+                  </button>
+                ),
+              },
+            ]}
+          />
+        </>
+      )}
+
+      {can("operasyon", "muhasebe") && refundable > 0 && (
+        <div className="card stack">
+          <h2>Para iadesi</h2>
+          <p className="hint">
+            Kalan iade edilebilir tutar: <strong>{money(String(refundable), refundCurrency)}</strong>. İade ödeme
+            sağlayıcısına gönderilir (elle tahsilatta muhasebe kapatır) ve denetim kaydına yazılır.
+          </p>
+          <div className="row end">
+            <Field label={`Tutar (${refundCurrency})`}>
+              <input inputMode="decimal" value={refundAmount} placeholder="0,00" style={{ width: 140 }}
+                onChange={(e) => setRefundAmount(e.target.value)} />
+            </Field>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <Field label="Gerekçe (zorunlu, denetim kaydına yazılır)">
+                <input value={refundReason} maxLength={255} onChange={(e) => setRefundReason(e.target.value)} />
+              </Field>
+            </div>
+            <button className="btn secondary" type="button" onClick={() => setRefundAmount(refundable.toFixed(2))}>
+              Tamamı
+            </button>
+            <button className="btn danger" onClick={refund}
+              disabled={action.busy || refundReason.trim().length < 3 || !(amount > 0) || amount > refundable + 0.001}>
+              İade et
+            </button>
+          </div>
+        </div>
+      )}
+
       {can("operasyon") && CANCELLABLE.includes(b.status) && (
         <div className="card stack">
           <h2>İptal</h2>
@@ -243,9 +356,15 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               <input type="number" min={0} max={100} value={override} onChange={(e) => setOverride(e.target.value)} />
             </Field>
             <button className="btn danger" disabled={action.busy || reason.trim().length < 3} onClick={cancel}>
-              İptal et
+              {b.status === "yolculukta" ? "Yolculuğu iptal et" : "İptal et"}
             </button>
           </div>
+          {data.earnings.some((e) => e.status === "beklemede") && (
+            <label className="row">
+              <input type="checkbox" checked={cancelEarnings} onChange={(e) => setCancelEarnings(e.target.checked)} />
+              Bekleyen sürücü hakedişlerini de iptal et
+            </label>
+          )}
         </div>
       )}
     </div>

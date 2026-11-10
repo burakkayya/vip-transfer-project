@@ -114,4 +114,5 @@ AnyStaff = Annotated[
 OpsStaff = Annotated[Principal, Depends(require_staff(RoleCode.OPERATIONS))]
 OpsOrSupport = Annotated[Principal, Depends(require_staff(RoleCode.OPERATIONS, RoleCode.SUPPORT))]
 FinanceStaff = Annotated[Principal, Depends(require_staff(RoleCode.ACCOUNTING))]
+OpsOrFinance = Annotated[Principal, Depends(require_staff(RoleCode.OPERATIONS, RoleCode.ACCOUNTING))]
 AdminOnly = Annotated[Principal, Depends(require_staff())]

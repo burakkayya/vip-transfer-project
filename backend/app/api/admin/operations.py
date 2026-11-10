@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -12,12 +13,12 @@ from sqlalchemy import func, select
 
 from app.api.admin import manual_bookings
 from app.api.admin.common import Page, page
-from app.api.deps import ClientIp, DbSession, Now, OpsOrSupport, OpsStaff
+from app.api.deps import ClientIp, DbSession, Now, OpsOrFinance, OpsOrSupport, OpsStaff
 from app.api.schemas import BookingOut, MoneyStr
 from app.errors import NotFound
 from app.localtime import LOCAL_TZ
-from app.models import Booking, BookingLeg, DispatchOffer, Driver, Payment, TripEvent
-from app.models.enums import BookingSource, BookingStatus
+from app.models import Booking, BookingLeg, DispatchOffer, Driver, DriverLedger, Payment, TripEvent
+from app.models.enums import BookingSource, BookingStatus, PaymentStatus
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
 from app.services import bookings, dispatch, live_location
@@ -134,7 +135,9 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
     leg_ids = [leg.id for leg in b.legs]
     events = db.scalars(select(TripEvent).where(TripEvent.booking_leg_id.in_(leg_ids)).order_by(TripEvent.occurred_at))
     offers = db.scalars(select(DispatchOffer).where(DispatchOffer.booking_leg_id.in_(leg_ids)))
-    pays = db.scalars(select(Payment).where(Payment.booking_id == b.id).order_by(Payment.created_at))
+    pays = list(db.scalars(select(Payment).where(Payment.booking_id == b.id).order_by(Payment.created_at)))
+    earnings = db.scalars(select(DriverLedger).where(DriverLedger.booking_leg_id.in_(leg_ids))
+                          .order_by(DriverLedger.created_at))
     return {
         "booking": BookingOut.build(b),
         "customer_phone": mask_phone(b.customer.user.phone or ""),
@@ -153,9 +156,19 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
              "amount": f"{x.amount:.2f}", "currency": x.currency.value, "status": x.status.value,
              "paid_at": x.paid_at, "manual_method": x.manual_method.value if x.manual_method else None,
              "provider_ref": x.provider_ref, "note": x.note,
+             "refundable": f"{bookings.refundable_amount(db, x):.2f}"
+             if x.status in (PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED) else "0.00",
              "refunds": [{"id": str(r.id), "amount": f"{r.amount:.2f}", "percent": r.refund_percent,
                           "status": r.status.value, "reason": r.reason} for r in x.refunds]}
             for x in pays
+        ],
+        # K-57: bacakların sürücü hakedişleri (admin iptal edebilir).
+        "earnings": [
+            {"id": str(e.id), "leg_id": str(e.booking_leg_id), "driver_id": str(e.driver_id),
+             "net": f"{e.net_amount:.2f}", "currency": e.currency.value,
+             "net_try": f"{e.net_amount_try:.2f}" if e.net_amount_try is not None else None,
+             "status": e.status.value, "in_payout": e.payout_id is not None}
+            for e in earnings
         ],
     }
 
@@ -164,15 +177,49 @@ class AdminCancelIn(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
     # Boşsa politika uygulanır; dolu ise iade oranını ezer (ör. operasyonel iptalde %100).
     refund_percent: int | None = Field(default=None, ge=0, le=100)
+    # K-57: bacakların bekleyen sürücü hakedişleri de iptal edilsin mi.
+    cancel_driver_earnings: bool = False
 
 
 @router.post("/bookings/{booking_id}/cancel", response_model=BookingOut)
 def cancel_booking(booking_id: uuid.UUID, body: AdminCancelIn, staff: OpsStaff, db: DbSession, ip: ClientIp, now: Now):
+    """Personel iptali (K-57): yolculuk başlamış olsa da iptal edilir, sürücüye bildirim gider."""
     b = _booking(db, booking_id)
     bookings.cancel_booking(db, b, provider=get_payment_provider(), actor_id=staff.id, reason=body.reason,
-                            now=now, ip=ip, override_refund_percent=body.refund_percent)
+                            now=now, ip=ip, override_refund_percent=body.refund_percent, by_staff=True,
+                            cancel_driver_earnings=body.cancel_driver_earnings)
     db.commit()
     return BookingOut.build(b)
+
+
+class AdminRefundIn(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    reason: str = Field(min_length=3, max_length=255)
+
+
+@router.post("/bookings/{booking_id}/refund")
+def refund_booking(booking_id: uuid.UUID, body: AdminRefundIn, staff: OpsOrFinance, db: DbSession, ip: ClientIp):
+    """Müşteriye elle para iadesi (K-57), rezervasyonun durumundan bağımsız."""
+    b = _booking(db, booking_id)
+    refund = bookings.staff_refund(db, b, provider=get_payment_provider(), actor_id=staff.id,
+                                   amount=body.amount, reason=body.reason, ip=ip)
+    db.commit()
+    return {"id": str(refund.id), "amount": f"{refund.amount:.2f}", "status": refund.status.value}
+
+
+class LedgerCancelIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=255)
+
+
+@router.post("/ledger/{entry_id}/cancel")
+def cancel_earning(entry_id: uuid.UUID, body: LedgerCancelIn, staff: OpsOrFinance, db: DbSession, ip: ClientIp):
+    """Sürücü hakedişini iptal eder (K-57). Ödenmiş hakediş iptal edilemez."""
+    entry = db.get(DriverLedger, entry_id)
+    if entry is None:
+        raise NotFound("hakediş bulunamadı")
+    bookings.cancel_ledger_entry(db, entry, actor_id=staff.id, reason=body.reason, ip=ip)
+    db.commit()
+    return {"id": str(entry.id), "status": entry.status.value}
 
 
 # --- Eşleştirme --------------------------------------------------------------

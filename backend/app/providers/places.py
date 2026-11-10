@@ -7,6 +7,7 @@ Google'a yalnızca kullanıcının yazdığı adres metni gider; kimlik bilgisi 
 
 from __future__ import annotations
 
+import json
 import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal
@@ -161,9 +162,101 @@ class FakePlaces:
                             district=p[5], province=p[6], is_airport=p[7])
 
 
+# Photon'un "osm_key/osm_value" çiftlerinden havalimanı sayılanlar.
+_AIRPORT_TAGS = {("aeroway", "aerodrome"), ("aeroway", "terminal")}
+_PHOTON_TTL_S = 6 * 3600
+
+
+@dataclass
+class PhotonPlaces:
+    """OpenStreetMap adres araması (Photon, K-58). Anahtar gerekmez; yalnızca yazılan metin gider.
+
+    Otel, cadde, mahalle, kapı numarası ve yer adları aranabilir; sonuçlar hizmet alanıyla (Antalya,
+    Muğla) sınırlanır. Photon'da kimlikle ayrıntı sorgusu olmadığından arama sonucu Redis'te
+    6 saat saklanır; ayrıntı oradan okunur (istemcinin gönderdiği koordinata güvenilmez).
+    """
+
+    base_url: str
+    redis_url: str
+
+    def _redis(self):
+        import redis
+
+        return redis.Redis.from_url(self.redis_url)
+
+    @staticmethod
+    def _parse(feature: dict) -> tuple[Suggestion, PlaceDetails] | None:
+        p = feature.get("properties") or {}
+        coords = (feature.get("geometry") or {}).get("coordinates") or []
+        if len(coords) != 2 or p.get("countrycode", "").upper() != "TR" or not p.get("osm_id"):
+            return None
+        street = " ".join(x for x in (p.get("street"), p.get("housenumber")) if x)
+        title = p.get("name") or street
+        if not title:
+            return None
+        district = p.get("county") or p.get("city")
+        province = p.get("state")
+        locality = p.get("district") or p.get("locality") or p.get("city")
+        parts = [x for x in (street if p.get("name") else None, locality, district, province) if x]
+        subtitle = ", ".join(dict.fromkeys(parts))  # tekrarları at, sırayı koru
+        place_id = f"osm:{p.get('osm_type', 'N')}{p['osm_id']}"
+        details = PlaceDetails(
+            place_id=place_id,
+            address=", ".join(x for x in (title, subtitle) if x),
+            lat=Decimal(str(coords[1])),
+            lng=Decimal(str(coords[0])),
+            district=district,
+            province=province,
+            is_airport=(p.get("osm_key"), p.get("osm_value")) in _AIRPORT_TAGS,
+        )
+        return Suggestion(place_id=place_id, title=title, subtitle=subtitle), details
+
+    def autocomplete(self, query: str, session: str, language: str) -> list[Suggestion]:
+        b = SERVICE_BOUNDS
+        params = {
+            "q": query, "limit": 10, "lang": "default",
+            "bbox": f"{b['low']['longitude']},{b['low']['latitude']},{b['high']['longitude']},{b['high']['latitude']}",
+            # Antalya merkezine yakın sonuçlar öne çıkar.
+            "lat": 36.9, "lon": 30.7,
+        }
+        try:
+            resp = httpx.get(f"{self.base_url.rstrip('/')}/api/", params=params, timeout=8,
+                             headers={"User-Agent": "GetawayTransfers/1.0"})
+            resp.raise_for_status()
+            features = resp.json().get("features") or []
+        except (httpx.HTTPError, ValueError) as exc:
+            raise ServiceUnavailable("adres araması şu an yapılamıyor") from exc
+        out: list[Suggestion] = []
+        seen: set[tuple[str, str]] = set()
+        cache = self._redis()
+        for f in features:
+            parsed = self._parse(f)
+            if parsed is None:
+                continue
+            sug, det = parsed
+            if (sug.title, sug.subtitle) in seen:
+                continue
+            seen.add((sug.title, sug.subtitle))
+            cache.setex(f"places:osm:{sug.place_id}", _PHOTON_TTL_S, json.dumps({
+                "address": det.address, "lat": str(det.lat), "lng": str(det.lng), "district": det.district,
+                "province": det.province, "is_airport": det.is_airport}))
+            out.append(sug)
+        return out[:8]
+
+    def details(self, place_id: str, session: str, language: str) -> PlaceDetails:
+        raw = self._redis().get(f"places:osm:{place_id}")
+        if raw is None:
+            raise NotFound("adres seçimi zaman aşımına uğradı, adresi yeniden arayın", code="place_not_found")
+        d = json.loads(raw)
+        return PlaceDetails(place_id=place_id, address=d["address"], lat=Decimal(d["lat"]), lng=Decimal(d["lng"]),
+                            district=d["district"], province=d["province"], is_airport=bool(d["is_airport"]))
+
+
 @lru_cache
 def get_places() -> PlacesProvider:
     s = get_settings()
+    if s.places_provider == "photon":
+        return PhotonPlaces(s.photon_url, s.redis_url)
     if s.places_provider == "google":
         if not s.google_maps_api_key:
             raise RuntimeError("GETAWAY_GOOGLE_MAPS_API_KEY tanımlı değil")

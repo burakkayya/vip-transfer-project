@@ -56,11 +56,15 @@ class Settings(BaseSettings):
     push_provider: Literal["console", "fcm"] = "console"
     fcm_credentials_file: str = ""
 
-    routing_provider: str = "haversine"
+    # Karayolu rotası ve mesafe: "osrm" (OpenStreetMap, anahtar gerekmez; varsayılan), "google" (Routes API)
+    # veya "haversine" (kuş uçuşu x yol katsayısı, düz çizgi; yalnızca test). OSRM'e ulaşılamazsa haversine.
+    routing_provider: str = "osrm"
+    osrm_url: str = "https://router.project-osrm.org"
     google_routes_api_key: str = ""
-    # Adres arama: "fake" (geliştirme örnek adresleri) veya "google" (Places API New).
-    # Anahtar yalnızca backend'de durur; tarayıcıya ve uygulamaya verilmez.
-    places_provider: str = "fake"
+    # Adres arama: "photon" (OpenStreetMap, anahtar gerekmez; varsayılan), "google" (Places API New)
+    # veya "fake" (sabit örnek adresler; test). Anahtar yalnızca backend'de durur.
+    places_provider: str = "photon"
+    photon_url: str = "https://photon.komoot.io"
     google_maps_api_key: str = ""
     # Adres araması ücretli bir servise gider; IP başına dakikalık sınır.
     places_rate_limit_per_minute: int = 60
