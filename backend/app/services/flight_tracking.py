@@ -13,7 +13,8 @@ kaydını (checked_at) geri almaz.
 
 Sürücüye bildirim: tahmini iniş `flight_notify_shift_minutes` kadar kayınca, uçuş inince, iptal veya
 yönlendirmede. Alış saati otomatik değişmez; sürücü ve operasyon tahmini inişi görür.
-Log'a uçuş numarası yazılmaz (K-31: uçuş verisi yolculuk bitince silinir), bacak kimliği yazılır.
+Log'da uçuş numarası ve bacak kimliği birlikte yazılır (2026-11-11 kullanıcı kararı; KVKK kapsamında
+görülürse yeniden değerlendirilecek, docs/acik_konular.md).
 """
 
 from __future__ import annotations
@@ -163,6 +164,7 @@ def refresh_flights(db: Session, now: datetime, provider: fl.FlightProvider | No
         fi, leg = db.get(FlightInfo, fi_id), db.get(BookingLeg, leg_id)
         if fi is None or leg is None or not _due(fi, leg, now):
             continue
+        flight_no = fi.flight_no
         if not _take_call_budget(now):
             break
         fi.checked_at = now
@@ -172,10 +174,10 @@ def refresh_flights(db: Session, now: datetime, provider: fl.FlightProvider | No
                 updated += 1
             db.commit()
         except ServiceUnavailable as exc:
-            log.warning("uçuş sorgulanamadı (bacak %s): %s", leg_id, exc)
+            log.warning("uçuş %s sorgulanamadı (bacak %s): %s", flight_no, leg_id, exc)
             db.commit()  # harcanan sorgu (checked_at) kalır
         except Exception:
-            log.exception("uçuş takibinde beklenmeyen hata (bacak %s)", leg_id)
+            log.exception("uçuş %s takibinde beklenmeyen hata (bacak %s)", flight_no, leg_id)
             db.rollback()
             fi, leg = db.get(FlightInfo, fi_id), db.get(BookingLeg, leg_id)
             if fi is not None:
