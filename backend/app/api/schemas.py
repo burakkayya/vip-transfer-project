@@ -184,6 +184,7 @@ class FlightOut(ORM):
     direction: str
     scheduled_at: datetime | None
     estimated_at: datetime | None
+    status: str | None = None  # K-60: planlandi, rotarli, havada, indi, iptal, yonlendirildi, bilinmiyor
 
 
 class DriverBrief(BaseModel):

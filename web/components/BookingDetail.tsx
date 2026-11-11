@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { PAID, isFinal, isUnauthorized, statusClass } from "@/lib/booking";
-import { clockTime, dateTime, money } from "@/lib/format";
+import { clockTime, dateTime, money, shortTime } from "@/lib/format";
 import { useApiError } from "@/lib/hooks";
 import { usePoll } from "@/lib/poll";
 import { regionLabel } from "@/lib/regions";
@@ -348,7 +348,16 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
                     <dt>
                       <Icon name="plane" size={16} /> {t("flight")}
                     </dt>
-                    <dd className="tabular">{leg.flight.flight_no}</dd>
+                    <dd className="tabular">
+                      {leg.flight.flight_no}
+                      {leg.flight.status === "iptal"
+                        ? ` · ${t("flightCancelled")}`
+                        : leg.flight.estimated_at && ["planlandi", "rotarli", "havada", "indi"].includes(leg.flight.status ?? "")
+                          ? ` · ${t(leg.flight.status === "indi" ? "flightLanded" : "flightEta", {
+                              time: shortTime(leg.flight.estimated_at, locale),
+                            })}`
+                          : null}
+                    </dd>
                   </>
                 )}
               </dl>

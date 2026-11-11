@@ -292,3 +292,15 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 - **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).
 - **Kök betik testleri**: `node --test "scripts/*.test.mjs"` (renk tokenı üreticisi, 5 test). Token kaynağı ile üretilmiş dosyaların uyumu: `node scripts/sync-tokens.mjs --check`.
 - **Ekran görüntüsü ve axe betikleri**: `scripts/ui-shots` (`npm ci`, sonra `node web.js --out after` vb.; ayrıntı `scripts/ui-shots/README.md`). Geliştirme veritabanında rezervasyon ve sahte ödeme oluşturur.
+
+## Uçuş takibi (K-60)
+
+Ön koşul: backend `.env`'de `GETAWAY_FLIGHT_PROVIDER=aerodatabox` ve anahtar, ARQ işçisi çalışıyor.
+
+1. Havalimanından alışlı, alışı 4 saatten yakın bir rezervasyonda gerçek bir uçuş numarası girin (ör. o gün AYT'ye inen bir sefer), ödeyin, sürücüyle kabul edin.
+2. En geç bir dakika içinde sürücü yolculuk ekranındaki Rota kartında "TK1234 · Zamanında/Rötarlı/Havada · tahmini iniş HH:MM" görünür.
+3. Müşteri rezervasyon detayında (web ve mobil) uçuşun yanında "Tahmini iniş HH:MM", inince "İndi · HH:MM".
+4. Admin rezervasyon detayında Uçuş sütununda durum ve saat.
+5. Yanlış uçuş numarasında üç sorgudan sonra sürücüde ve admin'de "Uçuş bulunamadı" görünür, sorgu durur.
+6. Tahmini iniş 15 dk ve üzeri kayarsa sürücüye "Uçuş saati değişti" bildirimi, inişte "Uçuş indi" bildirimi gelir.
+

@@ -21,6 +21,17 @@ import {
   TRIP_EVENT,
 } from "@/lib/labels";
 
+// K-60: uçuş takibinden gelen sade durum (tahmini iniş saati ile birlikte gösterilir).
+const FLIGHT_STATUS: Record<string, string> = {
+  planlandi: "Zamanında",
+  rotarli: "Rötarlı",
+  havada: "Havada",
+  indi: "İndi",
+  iptal: "Uçuş iptal",
+  yonlendirildi: "Yönlendirildi",
+  bulunamadi: "Uçuş bulunamadı",
+};
+
 interface Leg {
   id: string;
   leg_order: number;
@@ -31,7 +42,7 @@ interface Leg {
   dropoff_address: string | null;
   pickup_at: string;
   distance_km: string;
-  flight: { flight_no: string } | null;
+  flight: { flight_no: string; status: string | null; estimated_at: string | null } | null;
   driver: { first_name: string; vehicle: string; plate: string } | null;
 }
 
@@ -207,7 +218,24 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             ),
           },
           { key: "km", title: "Km", align: "right", render: (l) => Number(l.distance_km).toFixed(1) },
-          { key: "flight", title: "Uçuş", render: (l) => l.flight?.flight_no ?? "—" },
+          {
+            key: "flight",
+            title: "Uçuş",
+            render: (l) =>
+              l.flight ? (
+                <>
+                  {l.flight.flight_no}
+                  {l.flight.status && FLIGHT_STATUS[l.flight.status] ? (
+                    <div className="hint">
+                      {FLIGHT_STATUS[l.flight.status]}
+                      {l.flight.estimated_at && !["iptal", "bulunamadi"].includes(l.flight.status) ? ` · ${dt(l.flight.estimated_at)}` : ""}
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                "—"
+              ),
+          },
           {
             key: "driver",
             title: "Sürücü",

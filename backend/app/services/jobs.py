@@ -35,7 +35,7 @@ from app.models.enums import (
     LegStatus,
     VehicleStatus,
 )
-from app.services import audit, dispatch, system_settings
+from app.services import audit, dispatch, flight_tracking, system_settings
 
 log = logging.getLogger(__name__)
 
@@ -143,6 +143,11 @@ def expire_dispatch_offers(db: Session, now: datetime) -> int:
     return dispatch.expire_offers(db, now)
 
 
+def refresh_flights(db: Session, now: datetime) -> int:
+    """K-60: vadesi gelen geliş uçuşlarının tahmini iniş saati (takip kapalıysa hiçbir şey yapmaz)."""
+    return flight_tracking.refresh_flights(db, now)
+
+
 ALL_JOBS = (
     purge_flight_data,
     refresh_exchange_rate,
@@ -150,4 +155,5 @@ ALL_JOBS = (
     cancel_unpaid_bookings,
     purge_otp_challenges,
     expire_dispatch_offers,
+    refresh_flights,
 )

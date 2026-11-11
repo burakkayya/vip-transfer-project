@@ -115,7 +115,13 @@ export interface BookingLeg {
   pickup_at: string;
   distance_km: string;
   duration_minutes: number | null;
-  flight: { flight_no: string; direction: string; scheduled_at: string | null; estimated_at: string | null } | null;
+  flight: {
+    flight_no: string;
+    direction: string;
+    scheduled_at: string | null;
+    estimated_at: string | null;
+    status?: string | null;
+  } | null;
   driver: { first_name: string; vehicle: string; plate: string } | null;
 }
 

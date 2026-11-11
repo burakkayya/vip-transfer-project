@@ -41,7 +41,7 @@ export interface BookingLeg {
   pickup_address: string | null;
   dropoff_address: string | null;
   pickup_at: string;
-  flight: { flight_no: string } | null;
+  flight: { flight_no: string; status: string | null; estimated_at: string | null } | null;
   driver: { first_name: string; vehicle: string; plate: string } | null;
   /** Ayağın rota çizgisi (Google encoded polyline). Yalnız detay ucunda dolu; listelerde null. */
   route_polyline?: string | null;
@@ -109,6 +109,8 @@ export interface Trip {
   passenger_count: number;
   luggage_count: number;
   flight_no: string | null;
+  flight_status?: string | null;
+  flight_estimated_at?: string | null;
   driver_amount: string;
   currency: Currency;
   /** Rota çizgisi (Google encoded polyline). Tekil yolculuk, teklif kabulü ve olaylarda dolu; listelerde null. */

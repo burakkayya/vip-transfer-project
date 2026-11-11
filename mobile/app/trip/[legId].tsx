@@ -13,7 +13,7 @@ import {
 } from "@/components/ui";
 import { api } from "@/lib/api";
 import { LEG_STATUS, NEXT_STEP } from "@/lib/driverLabels";
-import { dateTime, money } from "@/lib/format";
+import { clock, dateTime, money } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
 import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
 import { backgroundSupported, distanceM, navigationUrls, startBackgroundTracking, stopBackgroundTracking } from "@/lib/tracking";
@@ -34,6 +34,20 @@ const STAGE_HINT: Record<string, string> = {
   basladi: "Yolcu araçta. Varış noktasına yaklaşınca yolculuğu bitirin.",
   bitti: "Yolculuk tamamlandı. Hakedişiniz Kazanç sekmesine eklendi.",
 };
+
+// K-60: uçuş takibi. Durum backend'den sade kod olarak gelir.
+const FLIGHT_STATUS_TR: Record<string, string> = {
+  planlandi: "Zamanında", rotarli: "Rötarlı", havada: "Havada", indi: "İndi",
+  iptal: "İptal edildi", yonlendirildi: "Başka havalimanına yönlendirildi",
+  bulunamadi: "Uçuş bulunamadı, numarayı yolcuyla teyit edin",
+};
+
+function driverFlightLine(no: string, status?: string | null, eta?: string | null) {
+  const label = status ? FLIGHT_STATUS_TR[status] : undefined;
+  if (!label) return no;
+  if (status === "iptal" || status === "yonlendirildi" || status === "bulunamadi") return `${no} · ${label}`;
+  return `${no} · ${label} · ${status === "indi" ? "iniş" : "tahmini iniş"} ${clock(eta)}`;
+}
 
 function fmtKm(m: number) {
   return m >= 1000 ? `${(m / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} km` : `${m} m`;
@@ -364,6 +378,7 @@ export default function TripScreen() {
           <H2>Rota</H2>
           <RouteStops from={trip.pickup_region} to={trip.dropoff_region} fromHint={trip.pickup_address ?? undefined} toHint={trip.dropoff_address ?? undefined} />
           <Info icon="calendar-outline">{dateTime(trip.pickup_at)}</Info>
+          {trip.flight_no ? <Info icon="airplane-outline">{driverFlightLine(trip.flight_no, trip.flight_status, trip.flight_estimated_at)}</Info> : null}
           {trip.distance_km ? <Info icon="speedometer-outline">{Number(trip.distance_km).toFixed(0)} km{trip.duration_minutes ? ` · ~${trip.duration_minutes} dk` : ""}</Info> : null}
           <View style={{ backgroundColor: colors.canvas, borderRadius: 14, padding: 14 }}>
             <Row spread>

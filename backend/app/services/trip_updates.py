@@ -84,6 +84,11 @@ DRIVER_TEXTS: dict[str, tuple[str, str]] = {
     "customer_finished": ("Yolcu yolculuğu bitirdi", "{pickup} → {dropoff} tamamlandı. Hakedişiniz Kazanç'a eklendi."),
     "trip_cancelled": ("Yolculuk iptal edildi", "{pickup} → {dropoff}, {pickup_at}."),
     "new_message": ("{sender} yazdı", "{text}"),
+    # K-60 uçuş takibi
+    "flight_delayed": ("Uçuş saati değişti: {flight}", "Tahmini iniş {time} (planlanan {scheduled}). {pickup} alışı."),
+    "flight_landed": ("Uçuş indi: {flight}", "{time} itibarıyla indi. {pickup} alışı."),
+    "flight_cancelled": ("Uçuş iptal: {flight}", "{pickup} alışı. Operasyonla iletişime geçin."),
+    "flight_diverted": ("Uçuş başka havalimanına yönlendirildi: {flight}", "{pickup} alışı. Operasyonla iletişime geçin."),
 }
 
 
