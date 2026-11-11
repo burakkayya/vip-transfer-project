@@ -10,6 +10,20 @@ appId: com.getawaytransfers.app
 - extendedWaitUntil:
     visible: ".*(yolda|Yolda|atandı|Atandı).*"
     timeout: 40000
+    optional: true
+# 02 bağlantı kopması yüzünden yeniden denendiyse iki rezervasyon olur ve açık ekran sürücünün kabul ettiği
+# rezervasyon olmayabilir: uygulama yeniden açılır, "Rezervasyonlarım"dan atanmış rezervasyon seçilir.
+- runFlow:
+    when:
+      notVisible: ".*(yolda|Yolda|atandı|Atandı).*"
+    commands:
+      - launchApp:
+          stopApp: true
+      - tapOn: ".*Rezervasyonlarım.*"
+      - tapOn: ".*(yolda|Yolda|atandı|Atandı|Yolculukta|Sürücü atandı).*"
+- extendedWaitUntil:
+    visible: ".*(yolda|Yolda|atandı|Atandı).*"
+    timeout: 40000
 - takeScreenshot: m15-canli-takip
 - scrollUntilVisible:
     element: "Rezervasyonu iptal et"
