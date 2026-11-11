@@ -36,7 +36,7 @@ export default function PopularPlacesPage() {
   const usage = useData<UsageDay[]>("admin/api-usage?days=7");
   const action = useAction();
   const [form, setForm] = useState<Form | null>(null);
-  const [promote, setPromote] = useState<(Candidate & { name: string; subtitle: string }) | null>(null);
+  const [promote, setPromote] = useState<(Candidate & { name: string; subtitle: string; latitude: string; longitude: string }) | null>(null);
 
   const regionOptions = Object.fromEntries(
     (regions.data ?? []).filter((r) => r.is_active).map((r) => [String(r.id), r.name]),
@@ -74,7 +74,13 @@ export default function PopularPlacesPage() {
     if (!promote) return;
     const ok = await action.run(
       () => api("admin/popular-places/promote",
-        { method: "POST", body: { place_id: promote.place_id, name: promote.name, subtitle: promote.subtitle } }),
+        {
+          method: "POST",
+          body: {
+            place_id: promote.place_id, name: promote.name, subtitle: promote.subtitle,
+            latitude: promote.latitude || null, longitude: promote.longitude || null,
+          },
+        }),
       "Yer listeye alındı.",
     );
     if (ok) {
@@ -92,7 +98,7 @@ export default function PopularPlacesPage() {
 
   function startPromote(c: Candidate) {
     const [first, ...rest] = c.label.split(",");
-    setPromote({ ...c, name: (first ?? "").trim().slice(0, 150), subtitle: rest.join(",").trim().slice(0, 200) });
+    setPromote({ ...c, name: (first ?? "").trim().slice(0, 150), subtitle: rest.join(",").trim().slice(0, 200), latitude: "", longitude: "" });
   }
 
   return (
@@ -146,7 +152,9 @@ export default function PopularPlacesPage() {
         <form className="card row end" onSubmit={doPromote}>
           <Field label="Ad"><input required minLength={2} maxLength={150} value={promote.name} onChange={(e) => setPromote({ ...promote, name: e.target.value })} /></Field>
           <Field label="Açıklama"><input maxLength={200} value={promote.subtitle} onChange={(e) => setPromote({ ...promote, subtitle: e.target.value })} /></Field>
-          <button className="btn" type="submit" disabled={action.busy}>Listeye al</button>
+          <Field label="Enlem" hint="İsteğe bağlı. Boşsa adres servisinden alınır."><input type="number" step="0.000001" min={35} max={39} value={promote.latitude} onChange={(e) => setPromote({ ...promote, latitude: e.target.value })} /></Field>
+          <Field label="Boylam" hint="İkisi birlikte girilir."><input type="number" step="0.000001" min={26} max={34} value={promote.longitude} onChange={(e) => setPromote({ ...promote, longitude: e.target.value })} /></Field>
+          <button className="btn" type="submit" disabled={action.busy || !promote.latitude !== !promote.longitude}>Listeye al</button>
           <button className="btn link" type="button" onClick={() => setPromote(null)}>Vazgeç</button>
         </form>
       )}
@@ -154,7 +162,7 @@ export default function PopularPlacesPage() {
       <Table
         rows={candidates.data}
         rowKey={(c) => c.place_id}
-        empty="Henüz aday yok. Müşteriler adres seçtikçe burada birikir."
+        empty="Henüz aday yok. Bir oteli ya da mekânı en az iki farklı müşteri seçince burada görünür."
         columns={[
           { key: "label", title: "Adres", render: (c) => c.label || c.place_id },
           { key: "picks", title: "Seçilme", render: (c) => c.picks },

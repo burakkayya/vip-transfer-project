@@ -296,10 +296,10 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 ## Popüler yerler ve API kullanımı (K-61)
 
 1. Admin'de (operasyon rolü) **Katalog → Popüler yerler** açılır. "Yeni yer" ile ad, açıklama, bölge ve konum girilip kaydedilir (ör. üç otel: "Rixos ...").
-2. Web ya da mobil rezervasyonda adres alanına adın ilk 3-4 harfi yazılır: kayıtlı yerler ilk sırada görünür. Yazmaya devam edilince (5+ karakter) tam arama sonuçları da eklenir.
+2. Web ya da mobil rezervasyonda adres alanına adın ilk 3 harfi yazılır: kayıtlı yerler ilk sırada görünür. Yazmaya devam edilince (4+ karakter) tam arama sonuçları da eklenir.
 3. Listeden kayıtlı yer seçilir; fiyat teklifi normal akışla gelir.
-4. Müşteriler ücretli aramadan adres seçtikçe aynı sayfadaki "Adaylar" tablosunda birikir. "Listeye al" ad ve açıklamayı sorar ve yeri listeye ekler; "Gizle" adayı kaldırır.
-5. Yer "Kapat" ile pasifleştirilince aramada görünmez.
+4. Bir oteli ya da mekânı en az iki farklı müşteri ücretli aramadan seçince aynı sayfadaki "Adaylar" tablosunda görünür (ev ve sokak adresleri sayılmaz). "Listeye al" ad, açıklama ve isteğe bağlı konumu sorar ve yeri listeye ekler; "Gizle" adayı kaldırır.
+5. Yer "Kapat" ile pasifleştirilince aramada görünmez. Konumu başka ilçede olan ya da havalimanı bölgesine bağlanan yer kaydedilmez, hata mesajı en yakın ilçeyi söyler.
 6. Sayfanın altındaki "Ücretli servis kullanımı" tablosunda gün gün rota, adres arama, adres seçimi ve uçuş için ücretli ve ücretsiz (önbellek + liste) istek sayıları görünür. Aynı rota için ikinci fiyat teklifinde "ücretsiz" sayısı artar.
 
 ## Uçuş takibi (K-60)

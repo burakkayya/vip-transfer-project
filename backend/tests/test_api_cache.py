@@ -13,7 +13,8 @@ from app.localtime import local_date
 from app.models import FlightInfo, PopularPlace
 from app.providers import flights as fl
 from app.providers import places as pl
-from app.providers.routing import CachedRouting, Point, Route
+from app.providers import routing
+from app.providers.routing import CachedRouting, GoogleRouting, Point, Route
 from app.services import api_cache, flight_tracking
 from tests.conftest import future, region_id
 from tests.test_api_driver_admin import ops  # noqa: F401 - fikstür
@@ -22,6 +23,7 @@ from tests.test_flights import _booking, _calls
 API = "/api/v1"
 _PATTERNS = ("route:v1:*", "places_ac:*", "places_det:*", "place_pick*", "api_stats:*", "flight_arr:*",
              "flight_calls:*")
+KONYAALTI = {"latitude": "36.884000", "longitude": "30.668000"}
 
 
 @pytest.fixture(autouse=True)
@@ -29,6 +31,7 @@ def _clean(db):
     r = redis.Redis.from_url(get_settings().redis_url)
 
     def wipe():
+        api_cache.reset()
         for pattern in _PATTERNS:
             for key in r.scan_iter(pattern):
                 r.delete(key)
@@ -46,6 +49,7 @@ class _CountingRouter:
 
     def route(self, origin, destination):
         self.calls += 1
+        api_cache.count("routes_call")  # gerçek sağlayıcı (GoogleRouting._fetch) gibi
         return Route(distance_km=D("12.34"), duration_minutes=21, polyline="abc")
 
 
@@ -97,8 +101,7 @@ def test_places_cache_by_query_language_and_place():
 
 
 def _add(client, ops, name, subtitle="Konyaaltı, Antalya", **extra):
-    body = {"name": name, "subtitle": subtitle, "region_id": region_id(client, "konyaalti"),
-            "latitude": "36.884000", "longitude": "30.668000", **extra}
+    body = {"name": name, "subtitle": subtitle, "region_id": region_id(client, "konyaalti"), **KONYAALTI, **extra}
     r = client.post(f"{API}/admin/popular-places", headers=ops, json=body)
     assert r.status_code == 201, r.text
     return r.json()
@@ -115,7 +118,7 @@ def test_popular_places_answer_short_queries_without_paid_search(client, ops, mo
         details = autocomplete
 
     monkeypatch.setattr("app.api.public.get_places", lambda: Boom())
-    short = tag[:4]
+    short = tag[:3]
     hits = client.get(f"{API}/places/autocomplete", params={"q": short}).json()
     assert [h["place_id"] for h in hits] == [f"pp-{r['id']}" for r in rows]
     # Seçim de ücretli servise gitmez; jeton fiyat teklifinde kullanılır.
@@ -144,7 +147,8 @@ def test_popular_places_answer_short_queries_without_paid_search(client, ops, mo
 
 def test_long_query_merges_paid_results_and_survives_outage(client, ops, monkeypatch):
     for i in range(3):
-        _add(client, ops, f"Kemer Otel {i}", subtitle="Kemer, Antalya")
+        _add(client, ops, f"Kemer Otel {i}", subtitle="Kemer, Antalya", region_id=region_id(client, "kemer"),
+             latitude="36.602000", longitude="30.566000")
     local_first = client.get(f"{API}/places/autocomplete", params={"q": "kemer"}).json()
     assert [h["place_id"].startswith("pp-") for h in local_first[:3]] == [True] * 3
     assert "fake-kemer" in [h["place_id"] for h in local_first]  # uzun sorguda tam arama da yapılır
@@ -160,11 +164,22 @@ def test_long_query_merges_paid_results_and_survives_outage(client, ops, monkeyp
 
 
 def test_frequent_picks_become_candidates_and_can_be_promoted(client, ops):
-    for _ in range(2):
+    # Aynı kişi (IP) aynı yeri kaç kez seçerse seçsin bir kez sayılır; aday olmak için en az iki kişi gerekir.
+    for _ in range(3):
         assert client.get(f"{API}/places/fake-kemer").status_code == 200
     assert client.get(f"{API}/places/fake-side").status_code == 200
+    assert client.get(f"{API}/admin/popular-places/candidates", headers=ops).json() == []
+    api_cache.bump_pick("fake-kemer", "Kemer Marina, Kemer, Antalya", "10.0.0.2")
+    api_cache.bump_pick("fake-kemer", "Kemer Marina, Kemer, Antalya", "10.0.0.3")
+    api_cache.bump_pick("fake-side", "Side Antik Kenti, Side, Manavgat, Antalya", "10.0.0.2")
+    # Konut ya da sokak adresi (mekân olmayan) ve havalimanı hiç sayılmaz.
+    assert client.get(f"{API}/places/fake-kalkan").status_code == 200
+    assert client.get(f"{API}/places/fake-ayt").status_code == 200
+    r = redis.Redis.from_url(get_settings().redis_url, decode_responses=True)
+    assert set(r.zrange("place_picks", 0, -1)) == {"fake-kemer", "fake-side"}
+    assert 0 < r.ttl("place_picks") <= api_cache.PICKS_TTL_SECONDS
     cands = client.get(f"{API}/admin/popular-places/candidates", headers=ops).json()
-    assert [(c["place_id"], c["picks"]) for c in cands] == [("fake-kemer", 2), ("fake-side", 1)]
+    assert [(c["place_id"], c["picks"]) for c in cands] == [("fake-kemer", 3), ("fake-side", 2)]
     assert "Kemer Marina" in cands[0]["label"]
 
     r = client.post(f"{API}/admin/popular-places/promote", headers=ops,
@@ -212,3 +227,69 @@ def test_same_flight_on_two_bookings_is_queried_once(client, db, ops):
     assert _calls(fake, "SU2130") == once + 1
     db.expire_all()
     assert {x.status for x in db.query(FlightInfo).filter_by(flight_no="SU2130").all()} == {fl.LANDED}
+
+
+def test_place_must_match_its_region(client, ops):
+    """Fiyat ilçeye göre hesaplanır: konumu başka ilçede olan yer ve havalimanı bölgesi reddedilir."""
+    body = {"name": "Yanlış İlçe Otel", "subtitle": "", **KONYAALTI}
+    r = client.post(f"{API}/admin/popular-places", headers=ops, json={**body, "region_id": region_id(client, "alanya")})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "popular_place_region_mismatch", r.text
+    r = client.post(f"{API}/admin/popular-places", headers=ops, json={**body, "region_id": region_id(client, "ayt")})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "popular_place_region_invalid", r.text
+    ok = _add(client, ops, "Doğru İlçe Otel")
+    r = client.put(f"{API}/admin/popular-places/{ok['id']}", headers=ops,
+                   json={**body, "region_id": region_id(client, "alanya")})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "popular_place_region_mismatch"
+    # Adayı listeye alırken admin konumu kendisi girebilir.
+    r = client.post(f"{API}/admin/popular-places/promote", headers=ops, json={
+        "place_id": "fake-kemer", "name": "Kemer Marina", "latitude": "36.603000", "longitude": "30.567000"})
+    assert r.status_code == 201 and r.json()["latitude"] == "36.603000", r.text
+
+
+def test_cache_outage_does_not_break_requests(monkeypatch):
+    dead = redis.Redis.from_url("redis://127.0.0.1:1/0", decode_responses=True, socket_connect_timeout=0.2)
+    monkeypatch.setattr(api_cache, "_redis", lambda: dead)
+    inner = _CountingRouter()
+    cached = CachedRouting(inner, 3600)
+    a, b = Point(D("36.898700"), D("30.800500")), Point(D("36.601800"), D("30.559400"))
+    assert cached.route(a, b) == cached.route(a, b) and inner.calls == 2
+    # İlk hatadan sonra Redis bir süre denenmez: istek başına zaman aşımı beklenmez.
+    monkeypatch.setattr(api_cache, "_redis", lambda: pytest.fail("Redis yeniden denenmemeliydi"))
+    assert api_cache.get("route:v1:x") is None and api_cache.top_picks() == []
+    api_cache.bump_pick("fake-kemer", "x", "10.0.0.9")
+
+
+def test_driver_position_routes_bypass_the_shared_cache(monkeypatch):
+    """Sürücünün canlı konumundan başlayan rota (yaklaşma, ETA) Redis'e yazılmaz."""
+    from app.api import trips
+    from app.services import eta
+
+    s = get_settings()
+    monkeypatch.setattr(s, "routing_provider", "google")
+    monkeypatch.setattr(s, "google_maps_api_key", "test")
+    routing.get_routing.cache_clear()
+    routing.get_live_routing.cache_clear()
+    try:
+        assert isinstance(routing.get_routing(), CachedRouting)
+        assert isinstance(routing.get_live_routing(), GoogleRouting)
+        assert trips.get_live_routing is routing.get_live_routing is eta.get_live_routing
+        assert not hasattr(trips, "get_routing") and not hasattr(eta, "get_routing")
+    finally:
+        routing.get_routing.cache_clear()
+        routing.get_live_routing.cache_clear()
+
+
+def test_exhausted_budget_still_serves_shared_answers(client, db, ops, monkeypatch):
+    """Günlük sınır dolunca gerçek sorgu yapılmaz ama aynı uçuşun paylaşılan yanıtı kullanılmaya devam eder."""
+    now = datetime.now(timezone.utc)
+    first = _booking(client, ops, "TK2412")
+    sched = first.pickup - timedelta(minutes=30)
+    fake = fl.FakeFlights({"TK2412": [fl.FlightStatus(fl.DELAYED, sched, sched + timedelta(minutes=25))]})
+    assert flight_tracking.refresh_flights(db, now, fake) == 1
+    spent = len(fake.calls)
+    other, second = _booking(client, ops, "XQ141"), _booking(client, ops, "TK2412")
+    monkeypatch.setattr(get_settings(), "flight_daily_call_limit", 0)
+    assert flight_tracking.refresh_flights(db, now + timedelta(minutes=1), fake) == 1
+    assert len(fake.calls) == spent  # XQ141 sorulamadı, TK2412 paylaşılan yanıttan güncellendi
+    assert client.get(f"{API}/driver/trips/{second.leg_id}", headers=second.driver).json()["flight_status"] == fl.DELAYED
+    assert client.get(f"{API}/driver/trips/{other.leg_id}", headers=other.driver).json()["flight_status"] is None

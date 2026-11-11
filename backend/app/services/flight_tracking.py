@@ -93,9 +93,12 @@ def _unpack(rows: list[dict]) -> list[fl.FlightStatus]:
 
 
 def _arrivals(provider: fl.FlightProvider, flight_no: str, day: date, iata: str | None,
-              now: datetime) -> tuple[list[fl.FlightStatus], datetime]:
-    """Sağlayıcı yanıtı ve alındığı an. Yakın zamanda aynı uçuş sorulduysa o yanıt kullanılır."""
-    minutes = get_settings().flight_cache_minutes
+              now: datetime, allow_call: bool = True) -> tuple[list[fl.FlightStatus], datetime]:
+    """Sağlayıcı yanıtı ve alındığı an. Yakın zamanda aynı uçuş sorulduysa o yanıt kullanılır.
+    `allow_call` kapalıysa (günlük sınır doldu) yalnızca paylaşılan yanıt okunur."""
+    s = get_settings()
+    # Paylaşım süresi en sık yoklama aralığından kısa tutulur: uçuş aynı yanıtla yeniden vadesine girmez.
+    minutes = max(0, min(s.flight_cache_minutes, s.flight_poll_near_minutes - 1))
     key = f"flight_arr:v1:{flight_no}:{day.isoformat()}:{iata or '-'}"
     if minutes > 0:
         hit = api_cache.get(key)
@@ -108,7 +111,7 @@ def _arrivals(provider: fl.FlightProvider, flight_no: str, day: date, iata: str 
                     return rows, fetched_at
         except (KeyError, TypeError, ValueError):
             pass
-    if not _take_call_budget(now):
+    if not allow_call or not _take_call_budget(now):
         raise _BudgetExhausted
     rows = provider.arrivals(flight_no, day, iata)
     api_cache.count("flights_call", now)
@@ -169,10 +172,11 @@ def _notify(db: Session, leg: BookingLeg, fi: FlightInfo, previous: str | None) 
             fi.notified_at = fi.estimated_at
 
 
-def _check(db: Session, fi: FlightInfo, leg: BookingLeg, provider: fl.FlightProvider, now: datetime) -> bool:
+def _check(db: Session, fi: FlightInfo, leg: BookingLeg, provider: fl.FlightProvider, now: datetime,
+           allow_call: bool = True) -> bool:
     candidates: list[fl.FlightStatus] = []
     for day in _days(fi, leg):
-        rows, fetched_at = _arrivals(provider, fi.flight_no, day, leg.pickup_region.iata_code, now)
+        rows, fetched_at = _arrivals(provider, fi.flight_no, day, leg.pickup_region.iata_code, now, allow_call)
         candidates += rows
         # Paylaşılan yanıt kullanıldıysa sonraki sorgu yanıtın alındığı ana göre zamanlanır.
         fi.checked_at = min(fi.checked_at or now, fetched_at)
@@ -211,6 +215,7 @@ def refresh_flights(db: Session, now: datetime, provider: fl.FlightProvider | No
         .order_by(BookingLeg.pickup_at)
     ).all()
     updated = 0
+    allow_call = True  # günlük sınır dolunca kalan uçuşlar yalnızca paylaşılan yanıttan güncellenir
     for fi_id, leg_id in rows:
         fi, leg = db.get(FlightInfo, fi_id), db.get(BookingLeg, leg_id)
         if fi is None or leg is None or not _due(fi, leg, now):
@@ -219,12 +224,12 @@ def refresh_flights(db: Session, now: datetime, provider: fl.FlightProvider | No
         fi.checked_at = now
         fi.check_count += 1
         try:
-            if _check(db, fi, leg, provider, now):
+            if _check(db, fi, leg, provider, now, allow_call):
                 updated += 1
             db.commit()
         except _BudgetExhausted:
             db.rollback()
-            break
+            allow_call = False
         except ServiceUnavailable as exc:
             log.warning("uçuş %s sorgulanamadı (bacak %s): %s", flight_no, leg_id, exc)
             db.commit()  # harcanan sorgu (checked_at) kalır

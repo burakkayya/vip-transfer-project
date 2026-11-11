@@ -97,6 +97,9 @@ class GoogleRouting:
             "X-Goog-Api-Key": self.api_key,
             "X-Goog-FieldMask": "routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline",
         }
+        from app.services import api_cache
+
+        api_cache.count("routes_call")  # ücretli sayaç yalnızca sağlayıcıya gerçekten giden istekte artar
         try:
             resp = httpx.post(self.url, json=body, headers=headers, timeout=10)
             resp.raise_for_status()
@@ -118,7 +121,11 @@ class GoogleRouting:
 class CachedRouting:
     """Rota yanıtını Redis'te paylaşır (K-61): API süreçleri ve işçi aynı çifti bir kez sorar, yeniden
     başlatmada önbellek kaybolmaz. Rota trafikten bağımsız istenir (TRAFFIC_UNAWARE), bu yüzden aynı iki
-    nokta için sonuç değişmez. Anahtar ~1 m hassasiyetle yuvarlanmış koordinatlardır."""
+    nokta için sonuç değişmez. Anahtar ~1 m hassasiyetle yuvarlanmış koordinatlardır.
+
+    Yalnızca sabit iki nokta arasındaki rotalarda (fiyat teklifi, önizleme, yolculuk çizgisi) kullanılır.
+    Sürücünün canlı konumundan başlayan rotalar `get_live_routing` ile sorulur ve Redis'e yazılmaz:
+    konum 24 saat saklanmamalı (K-44) ve o anahtar zaten yeniden okunmaz."""
 
     inner: RoutingProvider
     ttl_seconds: int
@@ -132,21 +139,30 @@ class CachedRouting:
             api_cache.count("routes_hit")
             return Route(distance_km=Decimal(str(hit["km"])), duration_minutes=int(hit["min"]), polyline=hit.get("line"))
         result = self.inner.route(origin, destination)
-        api_cache.count("routes_call")
         api_cache.put(key, {"km": str(result.distance_km), "min": result.duration_minutes, "line": result.polyline},
                       self.ttl_seconds)
         return result
 
 
 @lru_cache
-def get_routing() -> RoutingProvider:
+def get_live_routing() -> RoutingProvider:
+    """Paylaşılan (Redis) önbelleği olmayan sağlayıcı: sürücünün canlı konumundan başlayan rotalar."""
     s = get_settings()
     if s.routing_provider == "google":
         key = s.google_routes_api_key or s.google_maps_api_key
         if not key:
             raise RuntimeError("GETAWAY_GOOGLE_MAPS_API_KEY (veya GETAWAY_GOOGLE_ROUTES_API_KEY) tanımlı değil")
-        google = GoogleRouting(key)
-        return CachedRouting(google, s.routes_cache_seconds) if s.routes_cache_seconds > 0 else google
+        return GoogleRouting(key)
     if s.routing_provider == "haversine":
         return HaversineRouting(s.haversine_road_factor)
     raise RuntimeError(f"desteklenmeyen rota sağlayıcısı: {s.routing_provider}")
+
+
+@lru_cache
+def get_routing() -> RoutingProvider:
+    """Sabit iki nokta arasındaki rotalar (teklif, önizleme, yolculuk çizgisi): Redis'te paylaşılır."""
+    s = get_settings()
+    base = get_live_routing()
+    if isinstance(base, GoogleRouting) and s.routes_cache_seconds > 0:
+        return CachedRouting(base, s.routes_cache_seconds)
+    return base

@@ -154,7 +154,9 @@ def place_details(place_id: str, db: DbSession, ip: ClientIp, session: str | Non
     else:
         detail = get_places().details(place_id[:300], places.valid_session(session), _locale(lang))
         region = places.resolve_region(db, detail)
-        # Sık seçilen yerler admin panelinde popüler listeye aday olarak görünür.
-        api_cache.bump_pick(detail.place_id, detail.address)
+        # Sık seçilen oteller ve mekânlar admin panelinde popüler listeye aday olarak görünür.
+        # Konut ya da sokak adresi sayılmaz (kişisel veri: kimin nerede kaldığı tutulmaz).
+        if detail.is_venue and not detail.is_airport:
+            api_cache.bump_pick(detail.place_id, detail.address, ip)
     return PlaceOut(place_token=places.issue_token(region, detail), address=detail.address,
                     lat=detail.lat, lng=detail.lng, region=RegionOut.model_validate(region))

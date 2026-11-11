@@ -68,10 +68,15 @@ class Settings(BaseSettings):
     # K-61: ücretli yanıtların Redis önbelleği (saniye). 0 önbelleği kapatır.
     routes_cache_seconds: int = 24 * 3600
     places_autocomplete_cache_seconds: int = 3600
-    places_details_cache_seconds: int = 24 * 3600
+    # Adres ayrıntısı varsayılan olarak önbelleğe alınmaz: Google'da arama oturumu ayrıntı çağrısıyla kapanır
+    # ve o oturumdaki arama istekleri ücretsiz sayılır; ayrıntıyı önbellekten vermek oturumu açık bırakıp
+    # aramaları tek tek ücretlendirebilir. Admin'deki kullanım sayılarıyla ölçülmeden açılmaz.
+    places_details_cache_seconds: int = 0
     # Kendi popüler yer listemizden bu kadar sonuç çıktıysa ve sorgu kısaysa Google'a gidilmez.
     popular_places_enough: int = 3
-    popular_places_short_query: int = 5
+    popular_places_short_query: int = 4
+    # Bir adres ancak bu kadar farklı kişi (IP) seçtiyse admin'de aday olarak görünür.
+    popular_candidate_min_picks: int = 2
     # Adres jetonunun geçerliliği (adres seçiminden rezervasyona kadar).
     place_token_hours: int = 6
     # Haversine yedeğinde kuş uçuşu mesafeyi karayoluna yaklaştırmak için.

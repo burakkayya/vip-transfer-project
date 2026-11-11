@@ -38,6 +38,8 @@ class PlaceDetails:
     district: str | None  # ilçe (administrative_area_level_2)
     province: str | None  # il (administrative_area_level_1)
     is_airport: bool
+    # Otel, işletme ya da ilgi noktası mı (konut/sokak adresi değil). Yalnızca mekânlar popüler yer adayı olur.
+    is_venue: bool = False
 
 
 class PlacesProvider(Protocol):
@@ -113,6 +115,7 @@ class GooglePlaces:
             district=component("administrative_area_level_2"),
             province=component("administrative_area_level_1"),
             is_airport="airport" in data.get("types", []),
+            is_venue=bool({"establishment", "point_of_interest"} & set(data.get("types", []))),
         )
 
 
@@ -158,7 +161,7 @@ class FakePlaces:
         if p is None:
             raise NotFound("adres bulunamadı", code="place_not_found")
         return PlaceDetails(place_id=p[0], address=f"{p[1]}, {p[2]}", lat=Decimal(p[3]), lng=Decimal(p[4]),
-                            district=p[5], province=p[6], is_airport=p[7])
+                            district=p[5], province=p[6], is_airport=p[7], is_venue=p[0] != "fake-kalkan")
 
 
 @dataclass
@@ -175,7 +178,7 @@ class CachedPlaces:
         from app.services import api_cache
 
         key = f"places_ac:v1:{language}:{normalize(query)[:120]}"
-        hit = api_cache.get(key)
+        hit = api_cache.get(key) if self.autocomplete_ttl > 0 else None
         if isinstance(hit, list):
             api_cache.count("places_ac_hit")
             return [Suggestion(**row) for row in hit]
@@ -188,7 +191,7 @@ class CachedPlaces:
         from app.services import api_cache
 
         key = f"places_det:v1:{language}:{place_id}"
-        hit = api_cache.get(key)
+        hit = api_cache.get(key) if self.details_ttl > 0 else None
         if isinstance(hit, dict):
             try:
                 detail = PlaceDetails(**{**hit, "lat": Decimal(hit["lat"]), "lng": Decimal(hit["lng"])})
@@ -208,8 +211,10 @@ def get_places() -> PlacesProvider:
     if s.places_provider == "google":
         if not s.google_maps_api_key:
             raise RuntimeError("GETAWAY_GOOGLE_MAPS_API_KEY tanımlı değil")
-        return CachedPlaces(GooglePlaces(s.google_maps_api_key), s.places_autocomplete_cache_seconds,
-                            s.places_details_cache_seconds)
+        google = GooglePlaces(s.google_maps_api_key)
+        if s.places_autocomplete_cache_seconds <= 0 and s.places_details_cache_seconds <= 0:
+            return google
+        return CachedPlaces(google, s.places_autocomplete_cache_seconds, s.places_details_cache_seconds)
     if s.places_provider == "fake":
         return FakePlaces()
     raise RuntimeError(f"desteklenmeyen adres sağlayıcısı: {s.places_provider}")
