@@ -18,6 +18,7 @@ export const NAV: NavItem[] = [
   { href: "/vehicles", label: "Araçlar ve tipler", roles: ["operasyon"], group: "Filo" },
   { href: "/documents", label: "Belge takibi", roles: ["operasyon"], group: "Filo" },
   { href: "/regions", label: "Bölgeler", roles: ["operasyon"], group: "Katalog" },
+  { href: "/popular-places", label: "Popüler yerler", roles: ["operasyon"], group: "Katalog" },
   { href: "/pricing", label: "Fiyatlandırma", roles: ["operasyon"], group: "Katalog" },
   { href: "/commission", label: "Komisyon kuralları", roles: ["muhasebe"], group: "Katalog" },
   { href: "/exchange-rates", label: "Döviz kuru", roles: ["muhasebe"], group: "Finans" },

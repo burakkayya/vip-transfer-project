@@ -21,7 +21,7 @@ from app.api.schemas import BookingOut, MoneyStr
 from app.errors import NotFound, ServiceUnavailable
 from app.models import BookingLeg, DispatchOffer, TripMessage, TripUpdate
 from app.models.enums import BookingType, LegStatus, OfferStatus
-from app.providers.routing import Point, get_routing, haversine_km
+from app.providers.routing import Point, get_live_routing, haversine_km
 from app.services import dispatch, eta, live_location, messages, notifications, route_line
 
 driver_router = APIRouter(prefix="/driver", tags=["driver"])
@@ -167,7 +167,7 @@ def approach(
     target = eta.target_point(leg)
     at = Point(Decimal(str(lat)), Decimal(str(lng)))
     try:
-        route = get_routing().route(at, target)
+        route = get_live_routing().route(at, target)
         line, km, minutes = route.polyline, route.distance_km, route.duration_minutes
     except ServiceUnavailable:
         line, km, minutes = None, None, eta.estimate_minutes(at, target)

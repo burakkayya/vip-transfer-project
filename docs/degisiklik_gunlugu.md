@@ -2,6 +2,11 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-12
+
+- **K-61 inceleme düzeltmeleri (code-reviewer: 9 bulgu, kritik yok).** Sürücünün canlı konumundan başlayan rotalar (yaklaşma, ETA) artık Redis'e yazılmıyor (`get_live_routing`); ücretli rota sayacı yalnızca Google'a gerçekten giden istekte artıyor. Popüler yer adayları: yalnızca otel/işletme/ilgi noktası sayılır (konut adresi tutulmaz), IP başına günde bir sayım, en az 2 kişi, küme 500 yer ve 90 gün ile sınırlı. Admin'de yer kaydı: bölge aktif ilçe olmalı ve konumla uyuşmalı (`popular_place_region_mismatch`, `popular_place_region_invalid`); "Listeye al" formunda isteğe bağlı konum; eşzamanlı çift kayıt 500 yerine `popular_place_exists`; aday gizleme denetim kaydına yazılır. Adres ayrıntısı önbelleği varsayılan kapalı (Google oturum faturalaması). Kısa sorgu eşiği 5'ten 4 karaktere indi. Uçuş: paylaşım süresi yoklama aralığından kısa tutulur, günlük sınır dolunca paylaşılan yanıtlar yine kullanılır. Redis yanıt vermezse 30 sn denenmez. 4 yeni test, toplam 153.
+- **Ücretli API maliyeti: önbellek ve popüler yerler (K-61).** Rota (`CachedRouting`), adres arama ve ayrıntı (`CachedPlaces`) yanıtları Redis'te paylaşılır (`app/services/api_cache.py`); aynı uçuş birden çok rezervasyonda tek sorguyla izlenir (`flight_tracking._arrivals`). Yeni `popular_places` tablosu (migration 0008) ve `app/services/popular_places.py`: adres aramasında önce kendi listemiz, kısa sorguda ücretli aramaya gidilmez. Admin'de yeni "Popüler yerler" sayfası (liste, adaylar, 7 günlük ücretli/ücretsiz istek tablosu) ve `/admin/popular-places*`, `/admin/api-usage` uçları. Müşteri akışı değişmedi. 6 yeni test (`tests/test_api_cache.py`), toplam 149. `test_flights` içindeki gece saatine bağlı kırılgan doğrulama düzeltildi.
+
 ## 2026-11-11
 
 - **Uçuş takibi log'unda uçuş numarası (kullanıcı kararı).** Sorgu hatası log satırlarına uçuş numarası bacak kimliğiyle birlikte yazılır; KVKK kapsamında görülürse yeniden konuşulacak (açık konu).

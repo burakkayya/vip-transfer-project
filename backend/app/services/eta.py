@@ -26,7 +26,7 @@ from app.config import get_settings
 from app.errors import ServiceUnavailable
 from app.models import BookingLeg
 from app.models.enums import LegStatus
-from app.providers.routing import Point, get_routing, haversine_km
+from app.providers.routing import Point, get_live_routing, haversine_km
 from app.services import trip_updates
 
 log = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ def estimate_minutes(origin: Point, destination: Point) -> int:
 def routed_minutes(origin: Point, destination: Point) -> int:
     """Rota sağlayıcısıyla süre; hata olursa tahmine düşer (bildirim asla başarısız olmaz)."""
     try:
-        return max(1, get_routing().route(origin, destination).duration_minutes)
+        return max(1, get_live_routing().route(origin, destination).duration_minutes)
     except ServiceUnavailable:
         log.warning("ETA rotası alınamadı", exc_info=True)
         return estimate_minutes(origin, destination)
