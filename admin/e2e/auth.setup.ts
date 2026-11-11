@@ -28,7 +28,8 @@ setup("admin oturumu aç", async ({ page }) => {
   await page.getByRole("button", { name: "Devam" }).click();
 
   const codeInput = page.getByLabel("Doğrulama kodu");
-  await expect(codeInput).toBeVisible();
+  // Parola karması ve dev sunucuda ilk derleme girişi birkaç saniye sürebilir.
+  await expect(codeInput).toBeVisible({ timeout: 20_000 });
 
   // İlk girişte (setup_required) sayfa sırrı gösterir; sonraki girişlerde saklanan sır kullanılır.
   const shown = page.locator(".hint .mono");
