@@ -54,3 +54,35 @@ def test_google_route_without_polyline_is_none(monkeypatch):
     r = GoogleRouting("key").route(A, B)
     assert r.polyline is None
     assert r.distance_km == Decimal("12.00")
+
+
+def test_dev_and_prod_require_google_providers(monkeypatch):
+    """Haritayla ilgili her şey Google: sahte adres ve kuş uçuşu rota yalnızca otomatik testlerde."""
+    import pytest
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    monkeypatch.setenv("GETAWAY_ENV", "dev")
+    with pytest.raises(ValidationError, match="Google olmalı"):
+        Settings(places_provider="fake", routing_provider="haversine", google_maps_api_key="k")
+    with pytest.raises(ValidationError, match="GOOGLE_MAPS_API_KEY"):
+        Settings(places_provider="google", routing_provider="google", google_maps_api_key="")
+    ok = Settings(places_provider="google", routing_provider="google", google_maps_api_key="k")
+    assert ok.routing_provider == "google"
+
+
+def test_google_route_is_cached_for_same_points(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        calls["n"] += 1
+        return _Resp({"routes": [{"distanceMeters": 12000, "duration": "900s", "polyline": {"encodedPolyline": "abc"}}]})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    g = GoogleRouting("key")
+    assert g.route(A, B).polyline == "abc"
+    assert g.route(A, B).polyline == "abc"
+    assert calls["n"] == 1
+    g.route(B, A)
+    assert calls["n"] == 2

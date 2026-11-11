@@ -1,0 +1,164 @@
+# Gerçek Android uygulamalarının (müşteri + sürücü) emülatörde uçtan uca testi.
+# Linux makinede backend (PostgreSQL+PostGIS, Redis, sahte SMS/ödeme) kurulur, iki uygulama sürüm (release)
+# APK olarak derlenir, Maestro akışları (.maestro/android) ekranlarda gezinir.
+# Çıktı: ekran görüntüleri, video (asıl ve küçük kopya), uygulama ve backend günlüğü "android-emulator-sonuc" yapıtında.
+# Her PR'da değil, elle veya ci/ios-*, ci/android-* dallarına gönderimde çalışır.
+name: Android emülatör
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["ci/ios-*", "ci/android-*"]
+
+concurrency:
+  group: android-emu-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GETAWAY_ENV: dev
+  GETAWAY_DATABASE_URL: postgresql+psycopg://getaway:getaway@localhost:5432/getaway
+  GETAWAY_REDIS_URL: redis://localhost:6379/0
+  GETAWAY_SMS_PROVIDER: console
+  GETAWAY_PAYMENT_PROVIDER: fake
+  # K-58: haritayla ilgili her şey Google (yedek yok). Anahtarlar depo gizli değişkenlerinden gelir
+  # (Settings → Secrets and variables → Actions); günlükte GitHub tarafından maskelenir.
+  GETAWAY_PLACES_PROVIDER: google
+  GETAWAY_ROUTING_PROVIDER: google
+  GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
+  GETAWAY_PUSH_PROVIDER: console
+  GETAWAY_PUBLIC_WEB_URL: http://localhost:8000
+  OUT: ${{ github.workspace }}/android-out
+
+jobs:
+  android:
+    name: Android emülatör (Maestro)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: getaway
+          POSTGRES_PASSWORD: getaway
+          POSTGRES_DB: getaway
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U getaway" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Google anahtarları tanımlı mı
+        env:
+          IOS_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_IOS_KEY }}
+          ANDROID_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_ANDROID_KEY }}
+        run: |
+          for N in GETAWAY_GOOGLE_MAPS_API_KEY IOS_KEY ANDROID_KEY; do
+            [ -n "${!N}" ] || { echo "::error::Depo gizli değişkeni eksik: $N (Settings → Secrets → Actions)"; exit 1; }
+          done
+      - run: mkdir -p "$OUT"
+
+      # ---------- Backend ----------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Backend kurulum, tohum veri ve başlatma
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          alembic upgrade head
+          python -m app.cli seed
+          python -m app.cli seed-demo
+          nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > "$OUT/backend.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/docs > /dev/null && break; sleep 1; done
+          curl -sf http://localhost:8000/docs > /dev/null && echo "API hazır"
+
+      # ---------- Android derlemeleri ----------
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      # Uygulama kodu değişmediyse derleme önbellekten gelir. Derleme adımı değişirse "v1" elle artırılır.
+      - name: Derleme önbelleği
+        id: apkcache
+        uses: actions/cache/restore@v4
+        with:
+          path: android-apps
+          key: android-apps-v3-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}
+      - name: Uygulamaları derle (müşteri, sürücü)
+        if: steps.apkcache.outputs.cache-hit != 'true'
+        working-directory: mobile
+        env:
+          # Emülatör bilgisayara 10.0.2.2 ile ulaşır; sürüm derlemesinde düz HTTP yalnızca bu test için açılır.
+          GETAWAY_API_URL: http://10.0.2.2:8000
+          GETAWAY_WEB_URL: http://10.0.2.2:8000
+          GETAWAY_ANDROID_CLEARTEXT: "1"
+          # Android Google Maps SDK anahtarı (paket adı + Expo hata ayıklama imzası SHA-1 kısıtlı). Anahtar
+          # değişirse önbellek anahtarındaki "v3" elle artırılır.
+          GETAWAY_GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_ANDROID_KEY }}
+        run: |
+          npm ci
+          mkdir -p ../android-apps
+          for V in customer driver; do
+            echo "::group::$V"
+            # Gradle de uygulama yapılandırmasını (app.config.ts) okur: çeşit değişkeni derlemede de verilmeli,
+            # yoksa sürücü paketine müşteri ayarları gömülür.
+            export APP_VARIANT=$V
+            npx expo prebuild --platform android --clean
+            (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon -q)
+            cp android/app/build/outputs/apk/release/app-release.apk "../android-apps/$V.apk"
+            echo "::endgroup::"
+          done
+          ls -la ../android-apps
+      - name: Derlemeyi önbelleğe kaydet
+        if: steps.apkcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: android-apps
+          key: ${{ steps.apkcache.outputs.cache-primary-key }}
+
+      # ---------- Emülatör ve akışlar ----------
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Araçlar (Maestro, ffmpeg, psql)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg postgresql-client > /dev/null
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Akışları çalıştır
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          ram-size: 4096M
+          disk-size: 6000M
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # Kapalı animasyonlarda Reanimated giriş animasyonları bitmiyor, paneller boş kalıyor.
+          disable-animations: false
+          script: bash .github/scripts/android-flows.sh
+
+      - name: Sonuçları yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-sonuc
+          path: |
+            android-out
+            ~/.maestro/tests
+          retention-days: 14

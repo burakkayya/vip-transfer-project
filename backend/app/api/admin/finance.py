@@ -17,7 +17,7 @@ from sqlalchemy.orm import joinedload
 from app.api.admin.common import Page, page
 from app.api.deps import ClientIp, DbSession, FinanceStaff, Now
 from app.errors import Conflict, NotFound, ServiceUnavailable
-from app.models import Driver, DriverLedger, DriverPayout, Invoice, Payment, Refund
+from app.models import BookingLeg, Driver, DriverLedger, DriverPayout, Invoice, Payment, Refund
 from app.models.enums import (
     InvoiceStatus,
     LedgerStatus,
@@ -91,9 +91,15 @@ def list_ledger(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends(p
         q = q.where(DriverLedger.status == status)
     if driver_id:
         q = q.where(DriverLedger.driver_id == driver_id)
-    rows = db.scalars(q.order_by(DriverLedger.created_at.desc()).limit(p.limit).offset(p.offset))
+    rows = list(db.scalars(q.order_by(DriverLedger.created_at.desc()).limit(p.limit).offset(p.offset)))
+    legs = {leg.id: leg for leg in db.scalars(
+        select(BookingLeg).options(joinedload(BookingLeg.booking))
+        .where(BookingLeg.id.in_([r.booking_leg_id for r in rows])))}
     return [
         {"id": str(r.id), "driver_id": str(r.driver_id), "leg_id": str(r.booking_leg_id),
+         "booking_id": str(legs[r.booking_leg_id].booking_id) if r.booking_leg_id in legs else None,
+         "booking_code": legs[r.booking_leg_id].booking.booking_code if r.booking_leg_id in legs else None,
+         "in_payout": r.payout_id is not None,
          "gross": f"{r.gross_amount:.2f}", "commission": f"{r.commission_amount:.2f}",
          "net": f"{r.net_amount:.2f}", "currency": r.currency.value,
          "net_try": f"{r.net_amount_try:.2f}" if r.net_amount_try is not None else None,

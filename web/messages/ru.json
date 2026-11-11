@@ -94,7 +94,7 @@
     "searchPlaceholder": "Отель, адрес или аэропорт",
     "searching": "Поиск…",
     "noResults": "Ничего не найдено. Попробуйте название отеля или района.",
-    "regionHint": "Цена для района {region}",
+    "regionHint": "Район: {region}",
     "clear": "Очистить",
     "oneWay": "В одну сторону",
     "quickAirports": "Аэропорты",

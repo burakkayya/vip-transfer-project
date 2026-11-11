@@ -1,8 +1,9 @@
-"""Adres arama, ilçe çözümleme ve ilçe bazlı fiyat (geliştirmede sahte adres sağlayıcısı)."""
+"""Adres arama, ilçe çözümleme ve gerçek noktaya göre fiyat (K-58; testte sahte adres sağlayıcısı)."""
 
 from decimal import Decimal as D
 
 import jwt
+import pytest
 
 from app import demo
 from app.config import get_settings
@@ -40,14 +41,16 @@ def test_address_resolves_to_district_and_airport(client):
     assert place(client, "Ölüdeniz")["region"]["code"] == "fethiye"
 
 
-def test_price_uses_district_not_exact_address(client):
-    """Aynı ilçedeki iki farklı adres, ilçe merkezi seçimiyle aynı fiyatı alır."""
+def test_price_uses_exact_address_not_district(client):
+    """K-58: fiyat seçilen gerçek noktalar arasındaki mesafeyle hesaplanır; aynı ilçedeki farklı
+    adresler farklı fiyat alabilir, yalnızca ilçe seçilirse ilçe merkezi kullanılır."""
     airport = {"place_token": place(client, "Antalya Havalimanı")["place_token"]}
     kalkan = quote(client, airport, {"place_token": place(client, "Kalkan")["place_token"]})
     kas = quote(client, airport, {"place_token": place(client, "Kaş Merkez")["place_token"]})
-    by_region = quote(client, {"region_id": region_id(client, "ayt")}, {"region_id": region_id(client, "kas")})
-    assert kalkan["total"] == kas["total"] == by_region["total"]
-    assert D(kalkan["legs"][0]["distance_km"]) > 100
+    assert D(kalkan["legs"][0]["distance_km"]) > D(kas["legs"][0]["distance_km"]) > 100
+    assert D(kalkan["total"]) > D(kas["total"])
+    # Fiyat 5'in katına yuvarlanır (K-32).
+    assert D(kalkan["total"]) % 5 == 0 and D(kas["total"]) % 5 == 0
 
 
 def test_same_district_uses_real_points(client):

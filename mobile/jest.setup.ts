@@ -22,6 +22,13 @@ jest.mock("expo-secure-store", () => {
   };
 });
 
+// Haritalar Google anahtarı ister (K-58); testler anahtarlı derlemeyi varsayar (anahtarsız durum ayrıca test edilir).
+jest.mock("@/lib/config", () => ({
+  ...jest.requireActual("@/lib/config"),
+  GOOGLE_MAPS_IOS: true,
+  GOOGLE_MAPS_ANDROID: true,
+}));
+
 // react-native-maps yerel modül ister; testte prop'larını açığa çıkaran basit host bileşenleri kullanılır.
 // MapView ref'i kamera komutlarını jest.fn olarak sunar (taklidin `__commands` dışa aktarımı).
 jest.mock("react-native-maps", () => {

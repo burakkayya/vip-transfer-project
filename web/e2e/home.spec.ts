@@ -78,7 +78,7 @@ test("address suggestions are keyboard operable", async ({ page }) => {
   await input.press("Enter");
   const chosen = page.locator(".address.from .address-chosen");
   await expect(chosen.locator("strong")).toHaveText(title ?? "");
-  await expect(chosen.getByText(/Fiyat .+ bölgesine göre/)).toBeVisible();
+  await expect(chosen.getByText(/Bölge: .+/)).toBeVisible();
 });
 
 test("reduced motion shows all sections", async ({ page }) => {

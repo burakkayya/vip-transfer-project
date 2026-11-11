@@ -134,27 +134,23 @@ def _point(place: Place, region: Region) -> Point:
     return point
 
 
-# Aynı ilçe içinde alış ve bırakış bundan yakınsa aynı nokta sayılır.
+# Alış ve bırakış bundan yakınsa aynı nokta sayılır.
 SAME_PLACE_KM = Decimal("0.3")
-_CENTROID_ROUTES: dict[tuple, Route] = {}
 
 
-def _centroid(region: Region) -> Point:
-    return Point(region.latitude, region.longitude)
+def _price_route(router: RoutingProvider, origin: Point, destination: Point) -> Route:
+    """Fiyat mesafesi müşterinin seçtiği gerçek noktalar arasındaki karayolu mesafesidir (K-58).
+    Yalnızca ilçe veya havalimanı seçildiyse o bölgenin merkezi kullanılır."""
+    return router.route(origin, destination)
 
 
-def _price_route(router: RoutingProvider, a: Region, b: Region, origin: Point, destination: Point) -> Route:
-    """Fiyat mesafesi ilçe bazlıdır (fiyatlandirma.md):
-    farklı bölgeler arasında bölge merkezleri, aynı bölge içinde gerçek noktalar kullanılır.
-    Merkezler arası rota sabit olduğu için önbelleğe alınır (aynı ilçe çifti aynı fiyatı alır)."""
-    if a.id == b.id:
-        return router.route(origin, destination)
-    key = (type(router).__name__, a.id, a.latitude, a.longitude, b.id, b.latitude, b.longitude)
-    if key not in _CENTROID_ROUTES:
-        if len(_CENTROID_ROUTES) > 5000:
-            _CENTROID_ROUTES.clear()
-        _CENTROID_ROUTES[key] = router.route(_centroid(a), _centroid(b))
-    return _CENTROID_ROUTES[key]
+def preview_route(db: Session, pickup: Place, dropoff: Place, *, router: RoutingProvider) -> Route:
+    """Fiyatsız rota önizlemesi: noktalar teklifle aynı kurallarla çözülür ve doğrulanır."""
+    origin = _point(pickup, _region(db, pickup.region_id))
+    destination = _point(dropoff, _region(db, dropoff.region_id))
+    if haversine_km(origin, destination) < SAME_PLACE_KM:
+        raise DomainError("alış ve bırakış noktası aynı olamaz", code="same_place")
+    return _price_route(router, origin, destination)
 
 
 def _convert(amount_eur: Decimal, currency: Currency, rate: ExchangeRate | None, step: Decimal) -> Decimal:
@@ -175,16 +171,16 @@ def build_quote(
     dropoff_region = _region(db, req.dropoff.region_id)
     origin = _point(req.pickup, pickup_region)
     destination = _point(req.dropoff, dropoff_region)
-    if pickup_region.id == dropoff_region.id and haversine_km(origin, destination) < SAME_PLACE_KM:
+    if haversine_km(origin, destination) < SAME_PLACE_KM:
         raise DomainError("alış ve bırakış noktası aynı olamaz", code="same_place")
 
-    outbound = _price_route(router, pickup_region, dropoff_region, origin, destination)
+    outbound = _price_route(router, origin, destination)
     routes = [outbound]
     if req.return_pickup_at is not None:
         earliest_return = req.pickup_at + timedelta(minutes=outbound.duration_minutes)
         if req.return_pickup_at < earliest_return:
             raise DomainError("dönüş saati gidiş varışından önce olamaz", code="invalid_return_time")
-        routes.append(_price_route(router, dropoff_region, pickup_region, destination, origin))
+        routes.append(_price_route(router, destination, origin))
 
     rule = active_pricing_rule(db, vt.id, now)
     discount = active_round_trip_discount(db, now) if len(routes) == 2 else None

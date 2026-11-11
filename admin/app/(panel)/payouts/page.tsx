@@ -17,6 +17,9 @@ interface Entry {
   net_try: string | null;
   status: string;
   created_at: string;
+  booking_id: string | null;
+  booking_code: string | null;
+  in_payout: boolean;
 }
 interface Payout { id: string; driver_id: string; total_try: string; status: string; paid_at: string | null; created_at: string }
 
@@ -53,6 +56,20 @@ export default function PayoutsPage() {
     if (ok) {
       void payouts.reload();
       void ledger.reload();
+    }
+  }
+
+  // K-57: yalnızca henüz ödeme kaydına girmemiş bekleyen hakediş iptal edilir.
+  async function cancelEntry(e: Entry) {
+    const reason = prompt(`Hakediş iptal edilecek (${money(e.net, e.currency)}). Gerekçe:`);
+    if (!reason || reason.trim().length < 3) return;
+    const ok = await action.run(
+      () => api(`admin/ledger/${e.id}/cancel`, { body: { reason: reason.trim() } }),
+      "Hakediş iptal edildi.",
+    );
+    if (ok) {
+      void ledger.reload();
+      void payouts.reload();
     }
   }
 
@@ -109,11 +126,27 @@ export default function PayoutsPage() {
         columns={[
           { key: "created", title: "Tarih", render: (e) => dt(e.created_at) },
           { key: "driver", title: "Sürücü", render: (e) => <a href={`/drivers/${e.driver_id}`}>{short(e.driver_id)}</a> },
+          {
+            key: "booking",
+            title: "Rezervasyon",
+            render: (e) => (e.booking_id ? <a href={`/bookings/${e.booking_id}`} className="mono">{e.booking_code}</a> : "—"),
+          },
           { key: "gross", title: "Brüt", align: "right", render: (e) => money(e.gross, e.currency) },
           { key: "comm", title: "Komisyon", align: "right", render: (e) => money(e.commission, e.currency) },
           { key: "net", title: "Net", align: "right", render: (e) => money(e.net, e.currency) },
           { key: "try", title: "Net (TL)", align: "right", render: (e) => (e.net_try ? money(e.net_try, "TRY") : "kur bekliyor") },
           { key: "status", title: "Durum", render: (e) => <Badge value={e.status} labels={LEDGER_STATUS} /> },
+          {
+            key: "act",
+            title: "",
+            render: (e) => e.status === "beklemede" && (e.in_payout
+              ? <span className="hint">Ödeme kaydında</span>
+              : (
+                <button className="btn small danger" disabled={action.busy} onClick={() => cancelEntry(e)}>
+                  Hakedişi iptal et
+                </button>
+              )),
+          },
         ]}
       />
       {pager(ledger.data?.length)}

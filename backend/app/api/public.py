@@ -17,6 +17,8 @@ from app.api.schemas import (
     QuoteLegOut,
     QuoteOut,
     RegionOut,
+    RoutePreviewIn,
+    RoutePreviewOut,
     VehicleTypeOut,
     _locale,
 )
@@ -49,7 +51,9 @@ def to_place(db: Session, p: PlaceIn) -> quotes.Place:
         # Koordinat ve bölge jetondan gelir; kullanıcının notu (otel, oda no) adrese eklenir.
         address = resolved.address if not p.address else f"{resolved.address} ({p.address})"[:300]
         return quotes.Place(region_id=resolved.region.id, lat=resolved.lat, lng=resolved.lng, address=address)
-    return quotes.Place(region_id=p.region_id, lat=p.lat, lng=p.lng, address=p.address)
+    # K-58: fiyat gerçek noktalardan hesaplandığı için istemcinin gönderdiği ham koordinata güvenilmez;
+    # jeton yoksa yalnızca bölge (ilçe/havalimanı merkezi) kullanılır.
+    return quotes.Place(region_id=p.region_id, lat=None, lng=None, address=p.address)
 
 
 def to_quote_input(db: Session, body: QuoteIn) -> quotes.QuoteInput:
@@ -94,6 +98,18 @@ def quote_out(q: quotes.Quote) -> QuoteOut:
 def create_quote(body: QuoteIn, db: DbSession, now: Now):
     q = quotes.build_quote(db, to_quote_input(db, body), router=get_routing(), now=now)
     return quote_out(q)
+
+
+@router.post("/routes/preview", response_model=RoutePreviewOut)
+def route_preview(body: RoutePreviewIn, db: DbSession, ip: ClientIp):
+    """Rota adımında, fiyat istenmeden önce iki nokta arasındaki karayolu çizgisi (K-58: düz çizgi değil).
+    Noktalar teklifle aynı kuralla çözülür (imzalı adres jetonu ya da bölge merkezi); ücretli Routes API'ye
+    gittiği için IP başına adres aramasıyla aynı dakikalık sınır uygulanır. Sonuç 10 dk önbellekte kalır,
+    hemen ardından gelen fiyat teklifi aynı rotayı yeniden istemez."""
+    places.check_rate_limit(ip)
+    route = quotes.preview_route(db, to_place(db, body.pickup), to_place(db, body.dropoff), router=get_routing())
+    return RoutePreviewOut(distance_km=route.distance_km, duration_minutes=route.duration_minutes,
+                           route_polyline=route.polyline)
 
 
 # --- Adres arama (ekran 3) -----------------------------------------------------

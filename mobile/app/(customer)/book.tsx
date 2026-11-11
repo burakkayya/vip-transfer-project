@@ -65,7 +65,7 @@ function Counter(props: { label: string; icon: IconName; value: number; min: num
   );
 }
 
-/** Müşteri ekranı 3: ana sayfa ve yeni rezervasyon (web ile aynı akış). Fiyat, adreslerin ilçesine göre hesaplanır. */
+/** Müşteri ekranı 3: ana sayfa ve yeni rezervasyon (web ile aynı akış). Fiyat, seçilen noktalar arası karayolu mesafesine göre hesaplanır (K-58). */
 export default function Book() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [types, setTypes] = useState<VehicleType[]>([]);
@@ -109,6 +109,18 @@ export default function Book() {
     const b = pt(to);
     if (a && b) return [a, b];
     return a ? [a] : undefined;
+  }, [from, to]);
+  // Rota adımında fiyat istenmeden önce de karayolu çizgisi gösterilir (K-58: düz çizgi değil).
+  // Çizgi hangi nokta çiftine aitse onunla saklanır; noktalar değişince eski çizgi kendiliğinden gizlenir.
+  const [preview, setPreview] = useState<{ from: Endpoint; to: Endpoint; line: string | null } | null>(null);
+  const previewRoute = preview && preview.from === from && preview.to === to ? preview.line : null;
+  useEffect(() => {
+    if (!from || !to) return;
+    let live = true;
+    api<{ route_polyline: string | null }>("routes/preview", { body: { pickup: place(from), dropoff: place(to) } })
+      .then((r) => { if (live) setPreview({ from, to, line: r.route_polyline ?? null }); })
+      .catch(() => undefined);
+    return () => { live = false; };
   }, [from, to]);
 
   const request = (vt: string, withDetails: boolean) => ({
@@ -190,6 +202,7 @@ export default function Book() {
 
   const selected = vehicle ? quotes[vehicle] : undefined;
   const selectedQuote = selected && !(selected instanceof ApiError) ? selected : null;
+  const mapRoute = selectedQuote?.legs[0]?.route_polyline ?? previewRoute;
   const selectedType = types.find((x) => x.code === vehicle);
   const legal = (slug: string) => WebBrowser.openBrowserAsync(`${WEB_URL}/${LOCALE}/legal/${slug}`);
   const total = selectedQuote ? String(Number(selectedQuote.price) + (d.guarantee ? Number(selectedQuote.guarantee_fee) : 0)) : "0";
@@ -264,7 +277,7 @@ export default function Book() {
   // --- 1. Rota, zaman, kişi -------------------------------------------------------
   if (step === "trip") {
     return (
-      <MapSheet map={<MapCanvas seed={seed} mode={from && to ? "route" : "idle"} focusTop={0.4} endpoints={endpoints} />} mapRatio={0.26} overlay={overlay}
+      <MapSheet map={<MapCanvas seed={seed} mode={from && to ? "route" : "idle"} focusTop={0.4} endpoints={endpoints} route={from && to ? previewRoute : null} />} mapRatio={0.26} overlay={overlay}
         bottom={<Button title={t("book.showPrices")} iconRight="arrow-forward" onPress={loadQuotes} busy={busy} disabled={!from || !to || types.length === 0} />}>
         {stepper}
         <H2>{t("book.routeTitle")}</H2>
@@ -297,7 +310,7 @@ export default function Book() {
   // --- 2. Araç seçimi --------------------------------------------------------------
   if (step === "vehicle") {
     return (
-      <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.62} endpoints={endpoints} route={selectedQuote?.legs[0]?.route_polyline} />} mapRatio={0.36} overlay={overlay}
+      <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.62} endpoints={endpoints} route={mapRoute} />} mapRatio={0.36} overlay={overlay}
         bottom={
           <Button
             title={selectedType && selectedQuote ? `${t("book.select", { name: selectedType.name })} · ${money(selectedQuote.price, selectedQuote.currency, LOCALE)}` : t("book.chooseVehicle")}
@@ -370,7 +383,7 @@ export default function Book() {
 
   // --- 3. Bilgiler ve onay ------------------------------------------------------------
   return (
-    <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.7} endpoints={endpoints} route={selectedQuote?.legs[0]?.route_polyline} />} mapRatio={0.2} overlay={overlay}
+    <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.7} endpoints={endpoints} route={mapRoute} />} mapRatio={0.2} overlay={overlay}
       bottom={
         <>
           <Row spread>

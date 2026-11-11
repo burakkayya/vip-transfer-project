@@ -14,6 +14,7 @@ import { accessToken, api, wsUrl } from "@/lib/api";
 import { reachable } from "@/lib/config";
 import { dateTime, money } from "@/lib/format";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
+import { customerLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
 import type { Booking, DriverLocation, Eta, RefundQuote } from "@/lib/types";
 import { VEHICLE_IMAGE } from "@/lib/vehicles";
 
@@ -111,6 +112,29 @@ export default function BookingScreen() {
     const id = setInterval(tick, 10_000);
     return () => clearInterval(id);
   }, [tracking, code]);
+
+  // K-59: yolculuk durumu bildirim ekranında sabit (iOS Canlı Etkinlik, Android kalıcı bildirim).
+  useEffect(() => {
+    if (!booking) return;
+    const l = booking.legs.find((x) => !["bitti", "iptal"].includes(x.status)) ?? booking.legs[booking.legs.length - 1];
+    if (booking.status === "iptal") {
+      void endLiveTrip(booking.booking_code);
+      return;
+    }
+    const live = customerLiveProps({
+      bookingStatus: booking.status,
+      legStatus: l.status,
+      from: l.pickup_region.name,
+      to: l.dropoff_region.name,
+      driver: l.driver,
+      etaMinutes: eta?.eta_minutes ?? null,
+      bookingType: booking.booking_type,
+      pickupAt: l.pickup_at,
+    });
+    if (!live) return;
+    if (live.done) void endLiveTrip(booking.booking_code, live.props);
+    else void showLiveTrip(booking.booking_code, live.props, `getaway://booking/${booking.booking_code}`);
+  }, [booking, eta]);
 
   // Okunmamış mesaj sayısı (K-50).
   useEffect(() => {

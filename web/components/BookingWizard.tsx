@@ -113,6 +113,23 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   // kalır (harita her çizimde yeniden sığdırılmaz).
   const mapFrom = useMemo(() => mapPoint(trip.from), [trip.from]);
   const mapTo = useMemo(() => mapPoint(trip.to), [trip.to]);
+  // Teklifler gelmeden de karayolu çizgisi gösterilir (K-58: düz çizgi değil).
+  // Çizgi hangi nokta çiftine aitse onunla saklanır; noktalar değişince eski çizgi kendiliğinden gizlenir.
+  const [preview, setPreview] = useState<{ from: Endpoint; to: Endpoint; line: string | null } | null>(null);
+  const tripFrom = trip.from;
+  const tripTo = trip.to;
+  const previewRoute = preview && preview.from === tripFrom && preview.to === tripTo ? preview.line : null;
+  useEffect(() => {
+    const from = tripFrom;
+    const to = tripTo;
+    if (!from || !to) return;
+    const ctrl = new AbortController();
+    api<{ route_polyline: string | null }>("routes/preview", {
+      body: { pickup: toPlace(from), dropoff: toPlace(to) },
+      signal: ctrl.signal,
+    }).then((r) => setPreview({ from, to, line: r.route_polyline ?? null }), () => undefined);
+    return () => ctrl.abort();
+  }, [tripFrom, tripTo]);
 
   const clearFieldError = (k: keyof FieldErrors) =>
     setFieldErrors((s) => {
@@ -343,7 +360,7 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
   return (
     <div className="wizard" ref={top}>
       <div className="wizard-map">
-        <RouteMap from={mapFrom} to={mapTo} route={routeLeg?.route_polyline} meta={routeMeta} />
+        <RouteMap from={mapFrom} to={mapTo} route={routeLeg?.route_polyline ?? previewRoute} meta={routeMeta} />
       </div>
       <div className="wizard-main">
         {sessionError ? (

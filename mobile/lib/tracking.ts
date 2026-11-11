@@ -7,6 +7,7 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 import { api, loadSession } from "./api";
+import { endLiveTrip } from "./liveTrip";
 import { storage } from "./storage";
 
 export const LOCATION_TASK = "getaway-trip-location";
@@ -30,7 +31,11 @@ if (backgroundSupported) {
       body: { lat: pos.coords.latitude, lng: pos.coords.longitude, heading },
     }).catch(async (e: { code?: string }) => {
       // Yolculuk bittiyse (veya iptal edildiyse) paylaşım kendiliğinden durur.
-      if (e?.code === "trip_not_active" || e?.code === "not_found") await stopBackgroundTracking();
+      // Canlı etkinlik de kapanır (uygulama kapalıyken iptal edilen yolculuk kilit ekranında kalmasın).
+      if (e?.code === "trip_not_active" || e?.code === "not_found") {
+        await stopBackgroundTracking();
+        await endLiveTrip(legId);
+      }
     });
   });
 }

@@ -116,7 +116,7 @@ class GooglePlaces:
         )
 
 
-# Geliştirme: Google anahtarı olmadan adres akışını denemek için örnek yerler.
+# Yalnızca otomatik testler: ağa çıkmadan adres akışını denemek için örnek yerler.
 # (kimlik, başlık, açıklama, enlem, boylam, ilçe, il, havalimanı mı)
 _FAKE_PLACES: list[tuple[str, str, str, str, str, str, str, bool]] = [
     ("fake-ayt", "Antalya Havalimanı (AYT)", "Muratpaşa, Antalya", "36.8987", "30.8005", "Muratpaşa", "Antalya", True),

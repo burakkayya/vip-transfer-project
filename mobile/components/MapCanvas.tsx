@@ -1,12 +1,12 @@
-// iOS/Android: gerçek harita (react-native-maps; iOS Apple Maps, Android Google Maps).
-// Web'de Metro MapCanvas.web.tsx'i (stilize SVG) seçer; iki dosya aynı MapCanvasProps'u kabul eder.
+// iOS/Android: gerçek Google haritası (react-native-maps, PROVIDER_GOOGLE; iki platformda da Google Maps SDK).
+// Web'de Metro MapCanvas.web.tsx'i (Google Maps JavaScript) seçer; iki dosya aynı MapCanvasProps'u kabul eder.
 // Rota rayı dili: alış = dolu daire, varış = dolu kare, çizgi lake siyah 4 px.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
-import MapView, { Marker, Polyline, type MapStyleElement, type Region } from "react-native-maps";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE, Polyline, type MapStyleElement, type Region } from "react-native-maps";
 import { useReducedMotion } from "react-native-reanimated";
 
-import { GOOGLE_MAPS_IOS } from "@/lib/config";
+import { GOOGLE_MAPS_ANDROID, GOOGLE_MAPS_IOS } from "@/lib/config";
 import { decodePolyline } from "@/lib/polyline";
 import { palette } from "@/lib/tokens";
 import type { LatLng, MapCanvasProps } from "./mapTypes";
@@ -23,8 +23,7 @@ const EDGE = 40;
 const TOP_INSET = 56;
 
 /**
- * Android (Google Maps) koyu harita stili; renkler palet tokenlarından. iOS Apple Maps
- * `userInterfaceStyle="dark"` ile koyulaşır, `customMapStyle`'ı yok sayar. Koyu modda rota
+ * Google Maps koyu harita stili (iOS ve Android); renkler palet tokenlarından. Koyu modda rota
  * kâğıt beyazı çizildiği için zemin koyu olmalı (WCAG 1.4.11, en az 3:1).
  */
 const DARK_MAP_STYLE: MapStyleElement[] = [
@@ -59,6 +58,8 @@ function regionFor(points: LatLng[]): Region {
     longitudeDelta: Math.max((maxLng - minLng) * 1.4, 0.02),
   };
 }
+
+const mapsKey = Platform.OS === "ios" ? GOOGLE_MAPS_IOS : GOOGLE_MAPS_ANDROID;
 
 export default function MapCanvas(props: MapCanvasProps) {
   const ref = useRef<MapView>(null);
@@ -116,14 +117,21 @@ export default function MapCanvas(props: MapCanvasProps) {
       importantForAccessibility={summary ? "yes" : "no-hide-descendants"}
       accessibilityElementsHidden={!summary}
     >
+      {!mapsKey ? (
+        // Haritayla ilgili her şey Google (K-58): anahtarsız derlemede sahte harita yerine açık uyarı.
+        <View style={[StyleSheet.absoluteFill, st.notice]}>
+          <Text style={st.noticeText}>Google Haritalar anahtarı bu derlemede tanımlı değil.</Text>
+        </View>
+      ) : (
       <MapView
         ref={ref}
-        provider={Platform.OS === "ios" && GOOGLE_MAPS_IOS ? "google" : undefined}
+        // Haritayla ilgili her şey Google (K-58): iOS'ta da Apple Maps değil Google Haritalar.
+        provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={regionFor(route)}
         onMapReady={() => setReady(true)}
         userInterfaceStyle={props.dark ? "dark" : "light"}
-        customMapStyle={props.dark && Platform.OS === "android" ? DARK_MAP_STYLE : undefined}
+        customMapStyle={props.dark ? DARK_MAP_STYLE : undefined}
         scrollEnabled={false}
         zoomEnabled={false}
         rotateEnabled={false}
@@ -165,6 +173,7 @@ export default function MapCanvas(props: MapCanvasProps) {
           </Marker>
         ) : null}
       </MapView>
+      )}
     </View>
   );
 }
@@ -176,4 +185,6 @@ const st = StyleSheet.create({
   driver: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   driverInner: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   driverDot: { width: 8, height: 8, borderRadius: 4 },
+  notice: { backgroundColor: "#ECE9E2", alignItems: "center", justifyContent: "center", padding: 24 },
+  noticeText: { fontSize: 13, color: "#55555A", textAlign: "center" },
 });

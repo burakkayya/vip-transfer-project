@@ -22,6 +22,7 @@ from app.models import (
     Consent,
     Customer,
     DispatchOffer,
+    DriverLedger,
     FlightInfo,
     Payment,
     Refund,
@@ -33,6 +34,7 @@ from app.models.enums import (
     BookingType,
     ConsentType,
     FlightDirection,
+    LedgerStatus,
     LegStatus,
     OfferStatus,
     PaymentProviderCode,
@@ -283,15 +285,36 @@ def create_booking(
 # --- İptal ve iade -----------------------------------------------------------
 
 CANCELLABLE = {BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED, BookingStatus.ASSIGNED}
+# Personel (K-57) yolculuk başlamış olsa da iptal edebilir; tamamlanmış yolculukta iptal yoktur,
+# para iadesi ve hakediş iptali ayrı işlemlerdir.
+STAFF_CANCELLABLE = CANCELLABLE | {BookingStatus.IN_PROGRESS}
 
 
-def paid_payment(db: Session, booking: Booking) -> Payment | None:
-    return db.scalar(
-        select(Payment).where(
+def paid_payment(db: Session, booking: Booking, *, lock: bool = False) -> Payment | None:
+    """Rezervasyonun iade edilebilir (ödenmiş) ödemesi; birden fazlaysa en yenisi.
+    `lock`: iade tutarı denetimi eşzamanlı iadelerle yarışmasın diye satır kilitlenir."""
+    q = (
+        select(Payment)
+        .where(
             Payment.booking_id == booking.id,
             Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED]),
         )
+        .order_by(Payment.created_at.desc())
+        .limit(1)
     )
+    return db.scalar(q.with_for_update(of=Payment) if lock else q)
+
+
+def lock_booking(db: Session, booking: Booking) -> None:
+    """Rezervasyonu ve bacaklarını satır kilidiyle tazeler (sürücü olayıyla aynı sıra: önce bacaklar,
+    sonra rezervasyon; kilitlenme döngüsü oluşmasın)."""
+    legs = list(db.scalars(
+        select(BookingLeg).where(BookingLeg.booking_id == booking.id).order_by(BookingLeg.id).with_for_update(of=BookingLeg)
+    ))
+    db.scalar(select(Booking).where(Booking.id == booking.id).with_for_update(of=Booking))
+    for leg in legs:
+        db.refresh(leg)
+    db.refresh(booking)
 
 
 def refund_quote(db: Session, booking: Booking, now: datetime) -> cancellation.RefundQuote:
@@ -315,9 +338,14 @@ def cancel_booking(
     now: datetime,
     ip: str | None,
     override_refund_percent: int | None = None,
+    by_staff: bool = False,
+    cancel_driver_earnings: bool = False,
 ) -> Refund | None:
-    """İptal eder ve politikaya göre iade başlatır. Yalnızca personel iade oranını ezebilir."""
-    if booking.status not in CANCELLABLE:
+    """İptal eder ve politikaya göre iade başlatır. Yalnızca personel iade oranını ezebilir,
+    başlamış yolculuğu iptal edebilir ve bacakların bekleyen sürücü hakedişlerini iptal edebilir."""
+    # Sürücünün aynı anda yolculuğu bitirmesiyle veya eşzamanlı iadeyle yarışmasın (K-57).
+    lock_booking(db, booking)
+    if booking.status not in (STAFF_CANCELLABLE if by_staff else CANCELLABLE):
         raise Conflict("bu rezervasyon iptal edilemez", code="not_cancellable")
     quote = refund_quote(db, booking, now)
     percent = quote.refund_percent
@@ -332,7 +360,9 @@ def cancel_booking(
     booking.cancelled_at = now
     booking.cancel_reason = reason[:500]
     for leg in booking.legs:
-        was_assigned = leg.driver_id is not None and leg.status not in (LegStatus.COMPLETED, LegStatus.CANCELLED)
+        if leg.status is LegStatus.COMPLETED:
+            continue  # gidiş-dönüşte tamamlanmış bacak tamamlanmış kalır (hakedişi ayrıca iptal edilebilir)
+        was_assigned = leg.driver_id is not None and leg.status is not LegStatus.CANCELLED
         leg.status = LegStatus.CANCELLED
         if was_assigned:
             trip_updates.to_driver(db, leg, "trip_cancelled",
@@ -346,7 +376,10 @@ def cancel_booking(
         offer.status = OfferStatus.WITHDRAWN
 
     refund = None
-    payment = paid_payment(db, booking)
+    payment = paid_payment(db, booking, lock=True)
+    if payment is not None:
+        # Daha önce elle iade yapıldıysa iptal iadesi kalan tutarı aşmaz (iptal engellenmez).
+        amount = min(amount, refundable_amount(db, payment))
     if payment is not None and amount > 0:
         refund = Refund(
             payment_id=payment.id,
@@ -359,6 +392,15 @@ def cancel_booking(
         db.add(refund)
         db.flush()
         execute_refund(db, refund, payment, provider)
+    cancelled_earnings = 0
+    if cancel_driver_earnings:
+        for entry in db.scalars(
+            select(DriverLedger).where(DriverLedger.booking_leg_id.in_([leg.id for leg in booking.legs]))
+        ):
+            # Ödeme kaydına girmiş hakediş iptali engellemez, olduğu gibi kalır (muhasebe çözer).
+            if entry.status is LedgerStatus.PENDING and entry.payout_id is None:
+                cancel_ledger_entry(db, entry, actor_id=actor_id, reason=reason, ip=ip)
+                cancelled_earnings += 1
     audit.record(
         db,
         actor_id=actor_id,
@@ -369,10 +411,76 @@ def cancel_booking(
             "refund_percent": percent,
             "refund_amount": amount,
             "override": override_refund_percent is not None,
+            "cancelled_earnings": cancelled_earnings,
         },
         ip=ip,
     )
     return refund
+
+
+def refundable_amount(db: Session, payment: Payment) -> Decimal:
+    """Ödemeden henüz iade edilmemiş (veya iadesi sürmeyen) tutar."""
+    used = db.scalar(
+        select(func.coalesce(func.sum(Refund.amount), 0)).where(
+            Refund.payment_id == payment.id, Refund.status != RefundStatus.FAILED
+        )
+    )
+    return max(payment.amount - Decimal(used), Decimal("0"))
+
+
+def staff_refund(
+    db: Session,
+    booking: Booking,
+    *,
+    provider: PaymentProvider,
+    actor_id: uuid.UUID,
+    amount: Decimal,
+    reason: str,
+    ip: str | None,
+) -> Refund:
+    """Personelin elle başlattığı para iadesi (K-57): iptalden bağımsız, tamamlanmış yolculukta da.
+    Tutar, ödemenin kalan iade edilebilir kısmını aşamaz."""
+    payment = paid_payment(db, booking, lock=True)
+    if payment is None:
+        raise Conflict("bu rezervasyonda iade edilebilecek ödeme yok", code="no_refundable_payment")
+    amount = amount.quantize(Decimal("0.01"))
+    if amount <= 0:
+        raise DomainError("iade tutarı sıfırdan büyük olmalı", code="invalid_refund_amount")
+    if amount > refundable_amount(db, payment):
+        raise Conflict("iade tutarı kalan iade edilebilir tutarı aşıyor", code="refund_exceeds_payment")
+    base = booking.quoted_price if booking.quoted_price > 0 else payment.amount
+    percent = min(100, int((amount * 100 / base).to_integral_value()))
+    refund = Refund(payment_id=payment.id, amount=amount, reason=reason[:255],
+                    policy_id=None, refund_percent=percent, created_by=actor_id)
+    db.add(refund)
+    db.flush()
+    execute_refund(db, refund, payment, provider)
+    audit.record(db, actor_id=actor_id, action="booking.refund", entity_type="booking", entity_id=booking.id,
+                 changes={"amount": amount, "percent": percent, "status": refund.status.value, "reason": reason[:255]},
+                 ip=ip)
+    return refund
+
+
+def cancel_ledger_entry(
+    db: Session, entry: DriverLedger, *, actor_id: uuid.UUID, reason: str, ip: str | None
+) -> None:
+    """Sürücü hakedişini iptal eder (K-57). Yalnızca henüz ödeme kaydına girmemiş bekleyen hakediş
+    iptal edilir: ödeme kaydı oluşturulduysa banka dosyası dışa aktarılmış olabilir, tutar sessizce
+    değişmesin diye iptal reddedilir (muhasebe önce kaydı çözer)."""
+    locked = db.scalar(select(DriverLedger).where(DriverLedger.id == entry.id).with_for_update(of=DriverLedger))
+    if locked is not None:
+        db.refresh(entry)
+    if entry.status is LedgerStatus.CANCELLED:
+        raise Conflict("hakediş zaten iptal edilmiş", code="ledger_already_cancelled")
+    if entry.status is LedgerStatus.PAID:
+        raise Conflict("ödenmiş hakediş iptal edilemez", code="ledger_paid")
+    if entry.payout_id is not None:
+        raise Conflict("hakediş bir ödeme kaydında; ödeme kaydı oluşturulduktan sonra iptal edilemez",
+                       code="ledger_in_payout")
+    entry.status = LedgerStatus.CANCELLED
+    audit.record(db, actor_id=actor_id, action="ledger.cancel", entity_type="driver_ledger", entity_id=entry.id,
+                 changes={"net_amount": entry.net_amount, "currency": entry.currency.value, "reason": reason[:255]},
+                 ip=ip)
 
 
 def execute_refund(db: Session, refund: Refund, payment: Payment, provider: PaymentProvider) -> None:

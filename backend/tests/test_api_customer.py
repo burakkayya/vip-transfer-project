@@ -55,15 +55,23 @@ def test_quote_rejects_over_capacity_and_unknown_region(client):
     assert client.post("/api/v1/quotes", json=body).status_code == 404
 
 
-def test_quote_rejects_address_far_from_region(client):
-    body = {
-        "pickup": {"region_id": region_id(client, "ayt"), "lat": "41.0", "lng": "29.0"},
-        "dropoff": {"region_id": region_id(client, "kemer")},
+def test_quote_ignores_raw_client_coordinates(client):
+    """K-58: fiyat gerçek noktalardan hesaplanır; jetonsuz ham koordinat fiyatı değiştiremez."""
+    base = {
+        "pickup": {"region_id": region_id(client, "ayt")},
+        "dropoff": {"region_id": region_id(client, "alanya")},
         "vehicle_type_code": "minivan",
         "pickup_at": future(72),
         "passenger_count": 1,
     }
-    assert client.post("/api/v1/quotes", json=body).json()["error"]["code"] == "address_outside_region"
+    honest = client.post("/api/v1/quotes", json=base).json()
+    # Alış Alanya'ya, bırakış Antalya'ya doğru kaydırılmış koordinatlarla mesafe kısaltılmaya çalışılır.
+    forged = {**base,
+              "pickup": {**base["pickup"], "lat": "36.75", "lng": "31.15"},
+              "dropoff": {**base["dropoff"], "lat": "36.70", "lng": "31.30"}}
+    r = client.post("/api/v1/quotes", json=forged).json()
+    assert r["total"] == honest["total"]
+    assert r["legs"][0]["distance_km"] == honest["legs"][0]["distance_km"]
 
 
 def test_guarantee_not_sold_until_legal_confirmation(client):
@@ -309,3 +317,15 @@ def test_expired_open_payment_is_not_reused(client, db):
     assert second["payment_id"] != first["payment_id"]
     booking = db.scalar(select(Booking).where(Booking.booking_code == code))
     assert len(db.scalars(select(Payment).where(Payment.booking_id == booking.id)).all()) == 2
+
+
+def test_route_preview_returns_road_polyline(client):
+    """Rota adımı fiyat istemeden karayolu çizgisini alır (düz çizgi yerine)."""
+    body = {"pickup": {"region_id": region_id(client, "ayt")}, "dropoff": {"region_id": region_id(client, "alanya")}}
+    r = client.post("/api/v1/routes/preview", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["route_polyline"]
+    assert float(data["distance_km"]) > 0 and data["duration_minutes"] > 0
+    same = {"pickup": body["pickup"], "dropoff": body["pickup"]}
+    assert client.post("/api/v1/routes/preview", json=same).json()["error"]["code"] == "same_place"
