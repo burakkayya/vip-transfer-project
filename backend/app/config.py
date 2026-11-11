@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     google_maps_api_key: str = ""
     # Adres araması ücretli bir servise gider; IP başına dakikalık sınır.
     places_rate_limit_per_minute: int = 60
+    # K-61: ücretli yanıtların Redis önbelleği (saniye). 0 önbelleği kapatır.
+    routes_cache_seconds: int = 24 * 3600
+    places_autocomplete_cache_seconds: int = 3600
+    places_details_cache_seconds: int = 24 * 3600
+    # Kendi popüler yer listemizden bu kadar sonuç çıktıysa ve sorgu kısaysa Google'a gidilmez.
+    popular_places_enough: int = 3
+    popular_places_short_query: int = 5
     # Adres jetonunun geçerliliği (adres seçiminden rezervasyona kadar).
     place_token_hours: int = 6
     # Haversine yedeğinde kuş uçuşu mesafeyi karayoluna yaklaştırmak için.
@@ -82,6 +89,9 @@ class Settings(BaseSettings):
     flight_poll_near_minutes: int = 15
     # Ücretli API için günlük üst sınır (ücretsiz plan ayda ~200 sorgu).
     flight_daily_call_limit: int = 60
+    # K-61: aynı uçuş (numara, gün, havalimanı) bu süre içinde yeniden sorulmaz; aynı uçuştaki
+    # rezervasyonlar tek sorguyu paylaşır. 0 paylaşımı kapatır.
+    flight_cache_minutes: int = 10
     # Uçuş başına en fazla sorgu; art arda bu kadar "bulunamadı" gelirse sorgu durur (yanlış numara).
     flight_max_checks: int = 14
     flight_max_misses: int = 3

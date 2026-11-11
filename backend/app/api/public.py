@@ -23,10 +23,11 @@ from app.api.schemas import (
     _locale,
 )
 from app.config import get_settings
+from app.errors import ServiceUnavailable
 from app.models import Region, VehicleType
 from app.providers.places import get_places
 from app.providers.routing import get_routing
-from app.services import places, quotes
+from app.services import api_cache, places, popular_places, quotes
 
 router = APIRouter(tags=["public"])
 
@@ -118,19 +119,42 @@ def route_preview(body: RoutePreviewIn, db: DbSession, ip: ClientIp):
 @router.get("/places/autocomplete", response_model=list[PlaceSuggestionOut])
 def autocomplete(
     ip: ClientIp,
+    db: DbSession,
     q: Annotated[str, Query(min_length=2, max_length=120)],
     session: str | None = None,
     lang: str = "tr",
 ):
+    """Önce kendi popüler yer listemiz (K-61), sonra ücretli arama. Kısa sorguda liste yeterince sonuç
+    verdiyse ücretli aramaya gidilmez; müşteri yazmaya devam ederse tam arama yapılır."""
     places.check_rate_limit(ip)
-    return [s.__dict__ for s in get_places().autocomplete(q, places.valid_session(session), _locale(lang))]
+    s = get_settings()
+    local = popular_places.search(db, q)
+    out = [popular_places.suggestion(p).__dict__ for p in local]
+    if len(local) >= s.popular_places_enough and len(q.strip()) < s.popular_places_short_query:
+        api_cache.count("places_ac_local")
+        return out
+    try:
+        remote = get_places().autocomplete(q, places.valid_session(session), _locale(lang))
+    except ServiceUnavailable:
+        if not out:
+            raise
+        remote = []  # arama servisi yanıt vermedi; kendi listemiz yine önerilir
+    known = {p.google_place_id for p in local if p.google_place_id}
+    out += [r.__dict__ for r in remote if r.place_id not in known]
+    return out[:8]
 
 
 @router.get("/places/{place_id}", response_model=PlaceOut)
 def place_details(place_id: str, db: DbSession, ip: ClientIp, session: str | None = None, lang: str = "tr"):
     """Seçilen adresin ilçesini (veya havalimanını) çözer ve fiyat teklifinde kullanılacak jetonu döner."""
     places.check_rate_limit(ip)
-    detail = get_places().details(place_id[:300], places.valid_session(session), _locale(lang))
-    region = places.resolve_region(db, detail)
+    if popular_places.is_local(place_id):
+        region, detail = popular_places.details(db, place_id[:40])
+        api_cache.count("places_det_local")
+    else:
+        detail = get_places().details(place_id[:300], places.valid_session(session), _locale(lang))
+        region = places.resolve_region(db, detail)
+        # Sık seçilen yerler admin panelinde popüler listeye aday olarak görünür.
+        api_cache.bump_pick(detail.place_id, detail.address)
     return PlaceOut(place_token=places.issue_token(region, detail), address=detail.address,
                     lat=detail.lat, lng=detail.lng, region=RegionOut.model_validate(region))

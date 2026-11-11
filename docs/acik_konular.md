@@ -34,7 +34,9 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 - [ ] CI kapsamı (`.github/workflows/ci.yml`, 2026-11-08): web ve admin Playwright + axe testleri ile `next build` henüz CI'da yok (çalışan backend, seed ve sunucu ister). İlk CI koşusu GitHub'da henüz görülmedi; Linux'ta `pip install` çözümü yerelde denenemedi.
 - [ ] Manuel rezervasyon (K-54): sürücüye nakit ödeme (yolcunun parayı sürücüye vermesi) desteklenmiyor; gerekirse sürücü hakedişinden mahsup modeli tasarlanmalı. WhatsApp Business API ile otomatik mesaj gönderimi yok (metin elle kopyalanır). Havale/EFT ile alınan tahsilatın fatura ve muhasebe akışı (e-Arşiv) ile mutabakatı doğrulanmalı. Ödeme bağlantılı SMS metni (`booking_created_admin`) hukuk ve ileti izni (İYS) açısından kontrol edilmeli.
 - [ ] Sohbet ve yeniden atama (K-50): atanmış iş başka sürücüye devredilirse yeni sürücü önceki sürücünün müşteriyle yazışmasını görür. Devirde eski yazışmanın yeni sürücüden gizlenmesi değerlendirilmeli (admin incelemesinde mesajı yazan sürücü doğru görünür, 0006).
-- [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı.
+- [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı. 2026-11-12 (K-61): rota, adres ve uçuş yanıtları önbelleğe alındı, admin "Popüler yerler" sayfasında günlük ücretli/ücretsiz istek sayıları görünüyor; karar canlıda birkaç haftalık sayılara göre verilecek.
+- [ ] Google Haritalar koşulları ve önbellek (K-61): Places içeriğinin saklanması kısıtlıdır (place_id süresiz, enlem/boylam en çok 30 gün, diğer içerik yalnızca geçici). Arama önbelleği 1 saat, ayrıntı ve rota önbelleği 24 saat; süreler `GETAWAY_*_CACHE_SECONDS` ile kısaltılır ya da 0 ile kapatılır. Adaydan "Listeye al" ile eklenen popüler yerin konumu Google'dan bir kez alınıp kalıcı saklanıyor; canlıya çıkmadan önce koşullar hukuken gözden geçirilmeli, gerekirse bu yerlerin konumu admin tarafından haritadan elle girilmeli ya da 30 günde bir yenilenmeli.
+- [ ] Popüler yer adayları Redis'te sayılıyor (`place_picks`); Redis sıfırlanırsa aday sayıları kaybolur (liste etkilenmez).
 
 ## Geliştirme sırasında ortaya çıkanlar
 

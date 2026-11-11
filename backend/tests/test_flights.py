@@ -25,8 +25,9 @@ def _dt(v: str) -> datetime:
 def _fresh_budget():
     # Testler ayrı Redis veritabanını (15) kullanır; günlük sayaç her testte sıfırlanır.
     r = redis.Redis.from_url(get_settings().redis_url)
-    for key in r.scan_iter("flight_calls:*"):
-        r.delete(key)
+    for pattern in ("flight_calls:*", "flight_arr:*"):
+        for key in r.scan_iter(pattern):
+            r.delete(key)
     yield
 
 
@@ -158,7 +159,8 @@ def test_not_found_stops_after_misses_and_big_delay_keeps_tracking(client, db, o
         flight_tracking.refresh_flights(db, now + timedelta(minutes=minutes), fake)
     db.expire_all()
     assert db.query(FlightInfo).filter_by(flight_no="XQ999").one().status == fl.NOT_FOUND
-    assert _calls(fake, "XQ999") == get_settings().flight_max_misses
+    # Alış gece yarısından hemen sonraysa her denemede iki gün sorulur; deneme sayısı sınırlıdır.
+    assert db.query(FlightInfo).filter_by(flight_no="XQ999").one().check_count == get_settings().flight_max_misses
 
     # Alıştan 3 saatten fazla geçse de tahmini iniş henüz gelmediği için takip sürer.
     calls = _calls(fake, "LH1300")

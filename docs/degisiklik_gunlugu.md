@@ -2,6 +2,10 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-12
+
+- **Ücretli API maliyeti: önbellek ve popüler yerler (K-61).** Rota (`CachedRouting`), adres arama ve ayrıntı (`CachedPlaces`) yanıtları Redis'te paylaşılır (`app/services/api_cache.py`); aynı uçuş birden çok rezervasyonda tek sorguyla izlenir (`flight_tracking._arrivals`). Yeni `popular_places` tablosu (migration 0008) ve `app/services/popular_places.py`: adres aramasında önce kendi listemiz, kısa sorguda ücretli aramaya gidilmez. Admin'de yeni "Popüler yerler" sayfası (liste, adaylar, 7 günlük ücretli/ücretsiz istek tablosu) ve `/admin/popular-places*`, `/admin/api-usage` uçları. Müşteri akışı değişmedi. 6 yeni test (`tests/test_api_cache.py`), toplam 149. `test_flights` içindeki gece saatine bağlı kırılgan doğrulama düzeltildi.
+
 ## 2026-11-11
 
 - **Uçuş takibi log'unda uçuş numarası (kullanıcı kararı).** Sorgu hatası log satırlarına uçuş numarası bacak kimliğiyle birlikte yazılır; KVKK kapsamında görülürse yeniden konuşulacak (açık konu).

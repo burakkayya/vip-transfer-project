@@ -8,6 +8,11 @@ Uçuş indi, iptal edildi, yönlendirildi veya art arda `flight_max_misses` kez 
 uçuş başına en fazla `flight_max_checks` sorgu yapılır. Günlük sorgu sayısı Redis sayacıyla
 `flight_daily_call_limit` ile sınırlıdır (Redis yoksa sorgu yapılmaz).
 
+Aynı uçuş numarası birden çok rezervasyonda varsa sorgu paylaşılır (K-61): sağlayıcı yanıtı
+`flight_cache_minutes` dakika Redis'te tutulur, günlük sayaç yalnızca gerçek sorguda artar. Paylaşılan
+yanıtı kullanan uçuşun `checked_at` değeri yanıtın alındığı an olur; böylece aynı uçuştaki rezervasyonlar
+aynı anda vadesi gelir ve hiçbiri diğerinden daha eski veri görmez.
+
 Her uçuş ayrı işlemde (commit) yazılır: bir uçuştaki beklenmeyen hata ötekileri ve harcanan sorgunun
 kaydını (checked_at) geri almaz.
 
@@ -32,7 +37,7 @@ from app.localtime import LOCAL_TZ, local_date
 from app.models import Booking, BookingLeg, FlightInfo
 from app.models.enums import BookingStatus, FlightDirection, LegStatus
 from app.providers import flights as fl
-from app.services import trip_updates
+from app.services import api_cache, trip_updates
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +72,49 @@ def _take_call_budget(now: datetime) -> bool:
         log.warning("uçuş sorgu sayacı okunamadı; sorgu yapılmadı")
         return False
     return used <= s.flight_daily_call_limit
+
+
+class _BudgetExhausted(Exception):
+    """Günlük sorgu sınırı doldu ya da sayaç okunamadı: bu turda başka sorgu yapılmaz."""
+
+
+def _pack(rows: list[fl.FlightStatus]) -> list[dict]:
+    return [{"status": r.status,
+             "scheduled": r.scheduled_at.isoformat() if r.scheduled_at else None,
+             "estimated": r.estimated_at.isoformat() if r.estimated_at else None} for r in rows]
+
+
+def _unpack(rows: list[dict]) -> list[fl.FlightStatus]:
+    def at(v: str | None) -> datetime | None:
+        return datetime.fromisoformat(v) if v else None
+
+    return [fl.FlightStatus(status=r["status"], scheduled_at=at(r["scheduled"]), estimated_at=at(r["estimated"]))
+            for r in rows]
+
+
+def _arrivals(provider: fl.FlightProvider, flight_no: str, day: date, iata: str | None,
+              now: datetime) -> tuple[list[fl.FlightStatus], datetime]:
+    """Sağlayıcı yanıtı ve alındığı an. Yakın zamanda aynı uçuş sorulduysa o yanıt kullanılır."""
+    minutes = get_settings().flight_cache_minutes
+    key = f"flight_arr:v1:{flight_no}:{day.isoformat()}:{iata or '-'}"
+    if minutes > 0:
+        hit = api_cache.get(key)
+        try:
+            if isinstance(hit, dict):
+                fetched_at = datetime.fromisoformat(hit["at"])
+                if timedelta(0) <= now - fetched_at < timedelta(minutes=minutes):
+                    rows = _unpack(hit["rows"])
+                    api_cache.count("flights_hit", now)
+                    return rows, fetched_at
+        except (KeyError, TypeError, ValueError):
+            pass
+    if not _take_call_budget(now):
+        raise _BudgetExhausted
+    rows = provider.arrivals(flight_no, day, iata)
+    api_cache.count("flights_call", now)
+    if minutes > 0:
+        api_cache.put(key, {"at": now.isoformat(), "rows": _pack(rows)}, minutes * 60)
+    return rows, now
 
 
 def _expected(fi: FlightInfo, leg: BookingLeg) -> datetime:
@@ -121,10 +169,13 @@ def _notify(db: Session, leg: BookingLeg, fi: FlightInfo, previous: str | None) 
             fi.notified_at = fi.estimated_at
 
 
-def _check(db: Session, fi: FlightInfo, leg: BookingLeg, provider: fl.FlightProvider) -> bool:
+def _check(db: Session, fi: FlightInfo, leg: BookingLeg, provider: fl.FlightProvider, now: datetime) -> bool:
     candidates: list[fl.FlightStatus] = []
     for day in _days(fi, leg):
-        candidates += provider.arrivals(fi.flight_no, day, leg.pickup_region.iata_code)
+        rows, fetched_at = _arrivals(provider, fi.flight_no, day, leg.pickup_region.iata_code, now)
+        candidates += rows
+        # Paylaşılan yanıt kullanıldıysa sonraki sorgu yanıtın alındığı ana göre zamanlanır.
+        fi.checked_at = min(fi.checked_at or now, fetched_at)
     result = _closest(candidates, leg.pickup_at)
     if result is None:
         fi.miss_count += 1
@@ -165,14 +216,15 @@ def refresh_flights(db: Session, now: datetime, provider: fl.FlightProvider | No
         if fi is None or leg is None or not _due(fi, leg, now):
             continue
         flight_no = fi.flight_no
-        if not _take_call_budget(now):
-            break
         fi.checked_at = now
         fi.check_count += 1
         try:
-            if _check(db, fi, leg, provider):
+            if _check(db, fi, leg, provider, now):
                 updated += 1
             db.commit()
+        except _BudgetExhausted:
+            db.rollback()
+            break
         except ServiceUnavailable as exc:
             log.warning("uçuş %s sorgulanamadı (bacak %s): %s", flight_no, leg_id, exc)
             db.commit()  # harcanan sorgu (checked_at) kalır

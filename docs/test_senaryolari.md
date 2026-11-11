@@ -293,6 +293,15 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 - **Kök betik testleri**: `node --test "scripts/*.test.mjs"` (renk tokenı üreticisi, 5 test). Token kaynağı ile üretilmiş dosyaların uyumu: `node scripts/sync-tokens.mjs --check`.
 - **Ekran görüntüsü ve axe betikleri**: `scripts/ui-shots` (`npm ci`, sonra `node web.js --out after` vb.; ayrıntı `scripts/ui-shots/README.md`). Geliştirme veritabanında rezervasyon ve sahte ödeme oluşturur.
 
+## Popüler yerler ve API kullanımı (K-61)
+
+1. Admin'de (operasyon rolü) **Katalog → Popüler yerler** açılır. "Yeni yer" ile ad, açıklama, bölge ve konum girilip kaydedilir (ör. üç otel: "Rixos ...").
+2. Web ya da mobil rezervasyonda adres alanına adın ilk 3-4 harfi yazılır: kayıtlı yerler ilk sırada görünür. Yazmaya devam edilince (5+ karakter) tam arama sonuçları da eklenir.
+3. Listeden kayıtlı yer seçilir; fiyat teklifi normal akışla gelir.
+4. Müşteriler ücretli aramadan adres seçtikçe aynı sayfadaki "Adaylar" tablosunda birikir. "Listeye al" ad ve açıklamayı sorar ve yeri listeye ekler; "Gizle" adayı kaldırır.
+5. Yer "Kapat" ile pasifleştirilince aramada görünmez.
+6. Sayfanın altındaki "Ücretli servis kullanımı" tablosunda gün gün rota, adres arama, adres seçimi ve uçuş için ücretli ve ücretsiz (önbellek + liste) istek sayıları görünür. Aynı rota için ikinci fiyat teklifinde "ücretsiz" sayısı artar.
+
 ## Uçuş takibi (K-60)
 
 Ön koşul: backend `.env`'de `GETAWAY_FLIGHT_PROVIDER=aerodatabox` ve anahtar, ARQ işçisi çalışıyor.

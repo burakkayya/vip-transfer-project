@@ -37,6 +37,28 @@ class Region(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
 
 
+class PopularPlace(Base):
+    """Sık seçilen otel, marina ve buluşma noktaları (K-61). Liste bize aittir: adı ve konumu admin girer
+    ya da onaylar. Adres aramasında önce buradan önerilir; kısa sorguda ücretli API'ye gidilmez."""
+
+    __tablename__ = "popular_places"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(150))
+    subtitle: Mapped[str] = mapped_column(String(200), default="")
+    # Arama metni: ad + açıklama, Türkçe karakterleri sadeleştirilmiş (providers.places.normalize).
+    search_text: Mapped[str] = mapped_column(String(400), index=True)
+    region_id: Mapped[int] = mapped_column(ForeignKey("regions.id"))
+    latitude: Mapped[Decimal] = mapped_column(Numeric(9, 6))
+    longitude: Mapped[Decimal] = mapped_column(Numeric(9, 6))
+    # Aynı yer Google sonucunda da çıkarsa çift gösterilmesin diye saklanır.
+    google_place_id: Mapped[str | None] = mapped_column(String(300), unique=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = created_at()
+
+    region: Mapped[Region] = relationship()
+
+
 class PricingRule(Base):
     __tablename__ = "pricing_rules"
     __table_args__ = (

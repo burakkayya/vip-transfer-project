@@ -161,13 +161,55 @@ class FakePlaces:
                             district=p[5], province=p[6], is_airport=p[7])
 
 
+@dataclass
+class CachedPlaces:
+    """Adres araması ve adres ayrıntısını Redis'te kısa süre saklar (K-61): aynı sorgu ("lara", "rixos")
+    her müşteride yeniden ücretli API'ye gitmez. Öneri listesi `autocomplete_ttl`, seçilen yerin ayrıntısı
+    `details_ttl` saniye tutulur."""
+
+    inner: PlacesProvider
+    autocomplete_ttl: int
+    details_ttl: int
+
+    def autocomplete(self, query: str, session: str, language: str) -> list[Suggestion]:
+        from app.services import api_cache
+
+        key = f"places_ac:v1:{language}:{normalize(query)[:120]}"
+        hit = api_cache.get(key)
+        if isinstance(hit, list):
+            api_cache.count("places_ac_hit")
+            return [Suggestion(**row) for row in hit]
+        out = self.inner.autocomplete(query, session, language)
+        api_cache.count("places_ac_call")
+        api_cache.put(key, [s.__dict__ for s in out], self.autocomplete_ttl)
+        return out
+
+    def details(self, place_id: str, session: str, language: str) -> PlaceDetails:
+        from app.services import api_cache
+
+        key = f"places_det:v1:{language}:{place_id}"
+        hit = api_cache.get(key)
+        if isinstance(hit, dict):
+            try:
+                detail = PlaceDetails(**{**hit, "lat": Decimal(hit["lat"]), "lng": Decimal(hit["lng"])})
+                api_cache.count("places_det_hit")
+                return detail
+            except (KeyError, TypeError, ArithmeticError):
+                pass
+        detail = self.inner.details(place_id, session, language)
+        api_cache.count("places_det_call")
+        api_cache.put(key, {**detail.__dict__, "lat": str(detail.lat), "lng": str(detail.lng)}, self.details_ttl)
+        return detail
+
+
 @lru_cache
 def get_places() -> PlacesProvider:
     s = get_settings()
     if s.places_provider == "google":
         if not s.google_maps_api_key:
             raise RuntimeError("GETAWAY_GOOGLE_MAPS_API_KEY tanımlı değil")
-        return GooglePlaces(s.google_maps_api_key)
+        return CachedPlaces(GooglePlaces(s.google_maps_api_key), s.places_autocomplete_cache_seconds,
+                            s.places_details_cache_seconds)
     if s.places_provider == "fake":
         return FakePlaces()
     raise RuntimeError(f"desteklenmeyen adres sağlayıcısı: {s.places_provider}")
