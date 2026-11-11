@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, CheckConstraint, ForeignKey, Index, Numeric, String, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, ForeignKey, Index, Numeric, SmallInteger, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, Money, Rate, created_at, str_enum, uuid_pk
@@ -159,6 +159,16 @@ class FlightInfo(Base):
     direction: Mapped[FlightDirection] = mapped_column(str_enum(FlightDirection))
     scheduled_at: Mapped[datetime | None]
     estimated_at: Mapped[datetime | None]
+    # K-60: uçuş takibi. status sade durum (providers.flights), checked_at son sorgu,
+    # provider_scheduled_at sağlayıcının planlanan inişi (scheduled_at müşterinin girdiği değer kalır),
+    # notified_at sürücüye bildirilen son tahmini iniş (aynı kayma için tekrar bildirim gitmez),
+    # check_count uçuş başına sorgu, miss_count art arda "bulunamadı".
+    status: Mapped[str | None] = mapped_column(String(20))
+    checked_at: Mapped[datetime | None]
+    provider_scheduled_at: Mapped[datetime | None]
+    notified_at: Mapped[datetime | None]
+    check_count: Mapped[int] = mapped_column(SmallInteger, default=0, server_default="0")
+    miss_count: Mapped[int] = mapped_column(SmallInteger, default=0, server_default="0")
     actual_at: Mapped[datetime | None]
     purge_at: Mapped[datetime] = mapped_column(index=True)
 

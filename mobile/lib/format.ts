@@ -11,6 +11,12 @@ export function dateTime(iso: string | null | undefined, locale = "tr"): string 
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: TZ }).format(new Date(iso));
 }
 
+/** Yalnızca saat, Türkiye saatiyle (uçuşun tahmini inişi). */
+export function clock(iso: string | null | undefined, locale = "tr"): string {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: TZ }).format(new Date(iso));
+}
+
 export function date(iso: string | null | undefined, locale = "tr"): string {
   if (!iso) return "—";
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: TZ }).format(new Date(iso));

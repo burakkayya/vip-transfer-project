@@ -14,6 +14,11 @@ export function dateTime(iso: string, locale: string): string {
   );
 }
 
+/** Yalnızca saat ve dakika, Türkiye saatiyle (uçuşun tahmini inişi). */
+export function shortTime(iso: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: TZ }).format(new Date(iso));
+}
+
 /** Saniyeli saat, Türkiye saatiyle (canlı konumun son güncelleme zamanı). */
 export function clockTime(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { timeStyle: "medium", timeZone: TZ }).format(new Date(iso));

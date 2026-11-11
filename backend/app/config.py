@@ -72,6 +72,22 @@ class Settings(BaseSettings):
     # Verilen koordinat seçilen bölgenin merkezine en fazla bu kadar uzak olabilir.
     region_max_radius_km: Decimal = Decimal("40")
 
+    # K-60: uçuş takibi. "aerodatabox" (RapidAPI anahtarı) veya "off" (takip kapalı, akış etkilenmez).
+    flight_provider: Literal["aerodatabox", "off"] = "off"
+    aerodatabox_api_key: str = ""
+    # Havalimanından alışta uçuş, alıştan bu kadar saat önce sorgulanmaya başlar.
+    flight_track_hours_before: int = 4
+    # Sorgu aralığı; alışa 1 saatten az kalınca kısa aralık. Uçuş indiyse/iptalse sorgu durur.
+    flight_poll_minutes: int = 45
+    flight_poll_near_minutes: int = 15
+    # Ücretli API için günlük üst sınır (ücretsiz plan ayda ~200 sorgu).
+    flight_daily_call_limit: int = 60
+    # Uçuş başına en fazla sorgu; art arda bu kadar "bulunamadı" gelirse sorgu durur (yanlış numara).
+    flight_max_checks: int = 14
+    flight_max_misses: int = 3
+    # Tahmini iniş bu kadar dakika değişince sürücüye bildirim gider.
+    flight_notify_shift_minutes: int = 15
+
     payment_provider: str = "fake"
     paytr_merchant_id: str = ""
     paytr_merchant_key: str = ""

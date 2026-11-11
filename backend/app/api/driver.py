@@ -242,6 +242,10 @@ class TripOut(BaseModel):
     luggage_count: int
     flight_no: str | None
     driver_amount: MoneyStr
+    # K-60: uçuş takibi (geliş uçuşunda tahmini iniş; takip kapalıysa None)
+    flight_status: str | None = None
+    flight_scheduled_at: datetime | None = None
+    flight_estimated_at: datetime | None = None
     currency: str
     route_polyline: str | None = None
     booking_type: str | None = None
@@ -269,6 +273,9 @@ def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
         passenger_count=b.passenger_count,
         luggage_count=b.luggage_count,
         flight_no=leg.flight.flight_no if leg.flight else None,
+        flight_status=leg.flight.status if leg.flight else None,
+        flight_scheduled_at=(leg.flight.provider_scheduled_at or leg.flight.scheduled_at) if leg.flight else None,
+        flight_estimated_at=leg.flight.estimated_at if leg.flight else None,
         driver_amount=leg.leg_price - (leg.leg_price * b.commission_rate).quantize(Decimal("0.01")),
         currency=b.currency.value,
         route_polyline=route_line.route_polyline(leg) if with_route else None,

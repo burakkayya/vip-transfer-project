@@ -12,7 +12,7 @@ import {
 } from "@/components/ui";
 import { accessToken, api, wsUrl } from "@/lib/api";
 import { reachable } from "@/lib/config";
-import { dateTime, money } from "@/lib/format";
+import { clock, dateTime, money } from "@/lib/format";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
 import { customerLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
 import type { Booking, DriverLocation, Eta, RefundQuote } from "@/lib/types";
@@ -40,6 +40,14 @@ function Searching() {
 }
 
 /** Müşteri ekranları 2, 4, 5: rezervasyon detayı, ödeme, canlı takip, iptal. */
+// K-60: uçuş takibi açıksa tahmini iniş saati (Türkiye saati) gösterilir.
+function flightText(f: { flight_no: string; status: string | null; estimated_at: string | null }) {
+  if (f.status === "iptal") return `${f.flight_no} · ${t("bookings.flightCancelled")}`;
+  if (!f.estimated_at || !f.status || f.status === "bilinmiyor" || f.status === "yonlendirildi") return f.flight_no;
+  const time = clock(f.estimated_at, LOCALE);
+  return `${f.flight_no} · ${f.status === "indi" ? t("bookings.flightLanded", { time }) : t("bookings.flightEta", { time })}`;
+}
+
 export default function BookingScreen() {
   const { code, pay } = useLocalSearchParams<{ code: string; pay?: string }>();
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -333,7 +341,7 @@ export default function BookingScreen() {
           <View key={l.id} style={{ gap: 10 }}>
             {booking.legs.length > 1 ? <T style={[s.hint, { fontWeight: "700" }]}>{i === 0 ? "1 · " : "2 · "}{dateTime(l.pickup_at, LOCALE)}</T> : null}
             <RouteStops from={l.pickup_region.name} to={l.dropoff_region.name} fromHint={l.pickup_address ?? undefined} toHint={l.dropoff_address ?? undefined} />
-            {l.flight ? <Info icon="airplane-outline" label={t("bookings.flight")}>{l.flight.flight_no}</Info> : null}
+            {l.flight ? <Info icon="airplane-outline" label={t("bookings.flight")}>{flightText(l.flight)}</Info> : null}
           </View>
         ))}
         <View style={{ height: 1, backgroundColor: colors.line }} />
