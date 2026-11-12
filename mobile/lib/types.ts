@@ -42,7 +42,8 @@ export interface BookingLeg {
   dropoff_address: string | null;
   pickup_at: string;
   flight: { flight_no: string; status: string | null; estimated_at: string | null } | null;
-  driver: { first_name: string; vehicle: string; plate: string } | null;
+  driver: DriverBrief | null;
+  passenger_status?: string | null;
   /** Ayağın rota çizgisi (Google encoded polyline). Yalnız detay ucunda dolu; listelerde null. */
   route_polyline?: string | null;
 }
@@ -56,6 +57,8 @@ export interface Booking {
   passenger_name: string;
   passenger_count: number;
   luggage_count: number;
+  child_seat_count?: number;
+  market_stop?: boolean;
   total_amount: string;
   currency: Currency;
   created_at: string;
@@ -92,6 +95,10 @@ export interface DriverMe {
   status: "basvuru" | "onayli" | "askida" | "pasif";
   is_online: boolean;
   missing_documents: string[];
+  languages?: string[];
+  has_photo?: boolean;
+  rating_avg?: string | null;
+  rating_count?: number;
 }
 
 export interface Trip {
@@ -108,6 +115,11 @@ export interface Trip {
   passenger_name: string;
   passenger_count: number;
   luggage_count: number;
+  child_seat_count?: number;
+  market_stop?: boolean;
+  passenger_status?: string | null;
+  passenger_status_at?: string | null;
+  customer_locale?: string | null;
   flight_no: string | null;
   flight_status?: string | null;
   flight_estimated_at?: string | null;
@@ -193,6 +205,8 @@ export interface Job {
   passenger_initial: string;
   passenger_count: number;
   luggage_count: number;
+  child_seat_count?: number;
+  market_stop?: boolean;
   has_flight: boolean;
   vehicle_type: string;
   distance_km: string;
@@ -221,6 +235,8 @@ export interface ChatMessage {
   body: string;
   created_at: string;
   read_at: string | null;
+  translated_body?: string | null;
+  translated_lang?: string | null;
 }
 
 export interface Chat {
@@ -244,4 +260,31 @@ export interface Eta {
   status: string | null;
   eta_minutes: number | null;
   location: DriverLocation | null;
+}
+
+/** K-62 sürücü kartı. */
+export interface DriverBrief {
+  first_name: string;
+  vehicle: string;
+  plate: string;
+  color?: string | null;
+  languages?: string[];
+  has_photo?: boolean;
+}
+
+export interface MeetingGuide {
+  airport: string | null;
+  guides: { id: number; terminal: string; steps: { text: string; photo_path: string | null }[] }[];
+}
+
+export interface Rating {
+  leg_id: string | null;
+  rated: boolean;
+  stars: number | null;
+  tip_amount: string | null;
+  tip_status: string | null;
+  currency: Currency;
+  tip_max: string;
+  tip_suggestions: string[];
+  iframe_url: string | null;
 }

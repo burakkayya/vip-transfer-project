@@ -278,12 +278,11 @@ def update_profile(body: ProfileIn, driver: CurrentDriver, db: DbSession, now: N
 async def upload_photo(driver: CurrentDriver, db: DbSession, now: Now, file: Annotated[UploadFile, File()]):
     """Müşteriye sürücü kartında gösterilen profil fotoğrafı (JPEG/PNG, en çok 5 MB, şifreli saklanır)."""
     data = await file.read(meeting.MAX_PHOTO_BYTES + 1)
-    content_type = file.content_type or ""
-    meeting.validate_photo(content_type, data)
+    clean = meeting.clean_photo(file.content_type or "", data)
     storage = get_storage()
     old = driver.photo_key
-    driver.photo_key = storage.put(f"driver_photo/{driver.id}", data)
-    driver.photo_content_type = content_type
+    driver.photo_key = storage.put(f"driver_photo/{driver.id}", clean)
+    driver.photo_content_type = meeting.PHOTO_CONTENT_TYPE
     audit.record(db, actor_id=driver.user_id, action="driver.photo", entity_type="driver", entity_id=driver.id)
     db.commit()
     if old:
@@ -507,7 +506,7 @@ def earnings(driver: CurrentDriver, db: DbSession):
             {"id": str(r.id), "leg_id": str(r.booking_leg_id), "net_amount": f"{r.net_amount:.2f}",
              "currency": r.currency.value,
              "net_amount_try": f"{r.net_amount_try:.2f}" if r.net_amount_try is not None else None,
-             "status": r.status.value, "created_at": r.created_at.isoformat()}
+             "status": r.status.value, "created_at": r.created_at.isoformat(), "kind": r.kind}
             for r in rows
         ],
     )

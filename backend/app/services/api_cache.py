@@ -99,6 +99,23 @@ def count(name: str, at: datetime | None = None) -> None:
         _failed(exc)
 
 
+def take_budget(name: str, amount: int, limit: int, at: datetime | None = None) -> bool:
+    """Günlük bütçeden `amount` düşer; sınır aşılacaksa False. Redis yoksa izin verilir (akış durmaz)."""
+    key = f"api_budget:{name}:{local_date(at or datetime.now().astimezone()).isoformat()}"
+    try:
+        r = _client()
+        used = r.incrby(key, amount)
+        if used == amount:
+            r.expire(key, 2 * 86400)
+        if used > limit:
+            r.decrby(key, amount)
+            return False
+        return True
+    except redis.RedisError as exc:
+        _failed(exc)
+        return True
+
+
 def stats(day: str) -> dict[str, int]:
     try:
         return {k: int(v) for k, v in _client().hgetall(f"api_stats:{day}").items()}

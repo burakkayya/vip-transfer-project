@@ -37,6 +37,8 @@ interface Details {
   note: string;
   instant: boolean;
   guarantee: boolean;
+  childSeats: number;
+  marketStop: boolean;
 }
 
 type FieldErrors = Partial<Record<"name" | "flight" | "flight-return", string>>;
@@ -66,6 +68,7 @@ function described(id: string, error: string | undefined, hint = true) {
 
 export default function BookingWizard(props: { regions: Region[]; vehicleTypes: VehicleType[]; initial: Trip }) {
   const t = useTranslations("book");
+  const tm = useTranslations("meet");
   const tTrip = useTranslations("trip");
   const tErr = useTranslations("errors");
   const tBk = useTranslations("bookings");
@@ -98,6 +101,8 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
     note: "",
     instant: false,
     guarantee: false,
+    childSeats: 0,
+    marketStop: false,
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [finalQuote, setFinalQuote] = useState<Quote | null>(null);
@@ -254,6 +259,8 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
         expected_total: finalQuote!.total,
         passenger_name: details.passengerName.trim(),
         note: details.note.trim() || null,
+        child_seat_count: Math.min(details.childSeats, trip.pax),
+        market_stop: details.marketStop,
         flights: [
           { leg_order: 1, flight_no: details.flightNo.trim() },
           { leg_order: 2, flight_no: trip.roundTrip ? details.flightNoReturn.trim() : "" },
@@ -529,6 +536,32 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
                 </div>
               )}
             </div>
+            <fieldset className="extras">
+              <legend>{tm("extrasTitle")}</legend>
+              <div className="field">
+                <label htmlFor="child-seats">{tm("childSeatLabel")}</label>
+                <select
+                  id="child-seats"
+                  aria-describedby="child-seats-hint"
+                  value={details.childSeats}
+                  onChange={(e) => setD("childSeats", Number(e.target.value))}
+                >
+                  {Array.from({ length: Math.min(4, trip.pax) + 1 }, (_, n) => (
+                    <option key={n} value={n}>
+                      {n === 0 ? tm("childSeatNone") : tm("childSeats", { count: n })}
+                    </option>
+                  ))}
+                </select>
+                <span className="hint" id="child-seats-hint">{tm("childSeatHint")}</span>
+              </div>
+              <div className="option-card">
+                <input id="market-stop" type="checkbox" aria-describedby="market-stop-hint" checked={details.marketStop} onChange={(e) => setD("marketStop", e.target.checked)} />
+                <label htmlFor="market-stop">
+                  <strong>{tm("marketStop")}</strong>
+                  <span className="hint" id="market-stop-hint">{tm("marketStopHint")}</span>
+                </label>
+              </div>
+            </fieldset>
             <div className="field">
               <label htmlFor="note">{t("note")}</label>
               <textarea id="note" rows={3} maxLength={500} aria-describedby="note-hint" value={details.note} onChange={(e) => setD("note", e.target.value)} />

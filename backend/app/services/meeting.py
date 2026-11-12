@@ -10,8 +10,11 @@
 
 from __future__ import annotations
 
+import io
 import secrets
 from datetime import datetime, timedelta
+
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -28,6 +31,7 @@ PASSENGER_STATUSES = {"indi": "passenger_landed", "bagajda": "passenger_baggage"
 STATUS_EARLIEST = timedelta(hours=12)
 PRE_PICKUP = (LegStatus.ASSIGNED, LegStatus.EN_ROUTE, LegStatus.ARRIVED)
 PHOTO_TYPES = {"image/jpeg": b"\xff\xd8\xff", "image/png": b"\x89PNG\r\n\x1a\n"}
+PHOTO_CONTENT_TYPE = "image/jpeg"  # yeniden kodlanmış hali
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 MAX_GUIDE_STEPS = 8
 
@@ -89,8 +93,9 @@ def set_passenger_status(db: Session, booking: Booking, status: str, now: dateti
         raise Conflict("sürücü atanınca durumunuzu bildirebilirsiniz", code="no_pickup_pending")
     if now < leg.pickup_at - STATUS_EARLIEST:
         raise Conflict("durum alış gününde bildirilebilir", code="too_early")
-    if leg.passenger_status == status:
-        return leg  # aynı dokunuş tekrar bildirim üretmez
+    order = list(PASSENGER_STATUSES)
+    if leg.passenger_status is not None and order.index(status) <= order.index(leg.passenger_status):
+        return leg  # durum yalnızca ileri gider; aynı ya da geri dokunuş bildirim üretmez
     leg.passenger_status = status
     leg.passenger_status_at = now
     trip_updates.to_driver(db, leg, PASSENGER_STATUSES[status], passenger=booking.passenger_name.split()[0])
@@ -134,7 +139,13 @@ def on_assigned(leg: BookingLeg, now: datetime) -> None:
     leg.driver_card_sent_at = now if near else None
 
 
-def validate_photo(content_type: str, data: bytes) -> None:
+MAX_PHOTO_SIDE = 1200
+Image.MAX_IMAGE_PIXELS = 40_000_000  # çözülme bombasına karşı
+
+
+def clean_photo(content_type: str, data: bytes) -> bytes:
+    """Fotoğrafı doğrular ve meta verisiz (EXIF: konum, cihaz, tarih) JPEG olarak yeniden kodlar.
+    Sürücü fotoğrafı takip bağlantısıyla üçüncü kişilere de gösterildiği için ham dosya saklanmaz."""
     magic = PHOTO_TYPES.get(content_type)
     if magic is None:
         raise DomainError("yalnızca JPEG veya PNG yüklenebilir", code="invalid_file_type")
@@ -142,6 +153,15 @@ def validate_photo(content_type: str, data: bytes) -> None:
         raise DomainError("fotoğraf en fazla 5 MB olabilir", code="file_too_large")
     if not data.startswith(magic):
         raise DomainError("dosya içeriği türüyle uyuşmuyor", code="invalid_file_type")
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            img = ImageOps.exif_transpose(img).convert("RGB")
+            img.thumbnail((MAX_PHOTO_SIDE, MAX_PHOTO_SIDE))
+            out = io.BytesIO()
+            img.save(out, format="JPEG", quality=85, optimize=True)
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
+        raise DomainError("fotoğraf okunamadı", code="invalid_file_type") from exc
+    return out.getvalue()
 
 
 def card_leg(booking: Booking) -> BookingLeg:
@@ -154,6 +174,17 @@ def card_leg(booking: Booking) -> BookingLeg:
     if not with_driver:
         raise NotFound("sürücü henüz atanmadı", code="driver_not_assigned")
     return with_driver[-1]
+
+
+PHOTO_AFTER_TRIP = timedelta(days=1)
+
+
+def photo_leg(booking: Booking, now: datetime) -> BookingLeg:
+    """Sürücü fotoğrafı yalnızca yolculuk süresince ve bittikten 1 gün sonrasına kadar gösterilir."""
+    leg = card_leg(booking)
+    if leg.status is LegStatus.CANCELLED or now > leg.pickup_at + timedelta(minutes=leg.duration_minutes or 0) + PHOTO_AFTER_TRIP:
+        raise NotFound("fotoğraf yok", code="photo_missing")
+    return leg
 
 
 def driver_photo(driver: Driver | None) -> tuple[str, str]:

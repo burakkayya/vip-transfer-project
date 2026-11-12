@@ -11,6 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
+import redis
 from fastapi import APIRouter, Response
 from pydantic import BaseModel, Field
 
@@ -98,8 +99,8 @@ def guide_photo(guide_id: int, index: int, db: DbSession):
 
 
 @customer_router.get("/bookings/{code}/driver-photo")
-def driver_photo(code: str, customer: CurrentCustomer, db: DbSession):
-    leg = meeting.card_leg(_own_booking(db, customer, code))
+def driver_photo(code: str, customer: CurrentCustomer, db: DbSession, now: Now):
+    leg = meeting.photo_leg(_own_booking(db, customer, code), now)
     key, content_type = meeting.driver_photo(leg.driver)
     return Response(get_storage().get(key), media_type=content_type, headers=PHOTO_CACHE)
 
@@ -142,18 +143,23 @@ class TrackOut(BaseModel):
     locale: str
 
 
-def _track_rate_limit(ip: str, now: datetime) -> None:
-    key = f"track_rl:{ip}:{now:%Y%m%d%H%M}"
-    count = _redis().incr(key)
-    if count == 1:
-        _redis().expire(key, 70)
+def _track_rate_limit(token: str, ip: str, now: datetime) -> None:
+    """Bağlantı + IP başına dakikalık sınır (ortak IP'deki farklı bağlantılar birbirini engellemez).
+    Redis yanıt vermezse sınır atlanır; sayfa açık kalır."""
+    key = f"track_rl:{token[:12]}:{ip}:{now:%Y%m%d%H%M}"
+    try:
+        count = _redis().incr(key)
+        if count == 1:
+            _redis().expire(key, 70)
+    except redis.RedisError:
+        return
     if count > get_settings().track_rate_limit_per_minute:
         raise TooManyRequests("çok fazla istek, lütfen biraz bekleyin")
 
 
 @public_router.get("/track/{token}", response_model=TrackOut)
 def track(token: str, db: DbSession, ip: ClientIp, now: Now):
-    _track_rate_limit(ip, now)
+    _track_rate_limit(token, ip, now)
     booking = meeting.tracked(db, token, now)
     leg = meeting.tracked_leg(booking)
     location = None
@@ -178,7 +184,7 @@ def track(token: str, db: DbSession, ip: ClientIp, now: Now):
 
 @public_router.get("/track/{token}/driver-photo")
 def track_driver_photo(token: str, db: DbSession, ip: ClientIp, now: Now):
-    _track_rate_limit(ip, now)
+    _track_rate_limit(token, ip, now)
     leg = meeting.tracked_leg(meeting.tracked(db, token, now))
     key, content_type = meeting.driver_photo(leg.driver)
     return Response(get_storage().get(key), media_type=content_type, headers=PHOTO_CACHE)
@@ -237,13 +243,17 @@ def get_rating(code: str, customer: CurrentCustomer, db: DbSession):
 @customer_router.post("/bookings/{code}/rating", response_model=RatingOut, status_code=201)
 def rate_trip(code: str, body: RatingIn, customer: CurrentCustomer, db: DbSession, ip: ClientIp, now: Now):
     booking = _own_booking(db, customer, code)
+    if body.tip_amount:
+        ratings.check_tip(booking, body.tip_amount)  # geçersiz bahşiş puanı da geri aldırmasın
     rating = ratings.rate(db, booking, stars=body.stars, comment=body.comment, now=now)
+    db.commit()
     iframe_url = None
     if body.tip_amount:
+        # Ödeme sağlayıcısı yanıt vermezse puan kayıtlı kalır; bahşiş "Bahşiş öde" ile yeniden denenir.
         rating, checkout = ratings.start_tip(db, booking, customer, get_payment_provider(),
                                              amount=body.tip_amount, user_ip=ip, now=now)
         iframe_url = checkout.iframe_url
-    db.commit()
+        db.commit()
     return _rating_out(booking, ratings.rateable_leg(booking), rating, iframe_url)
 
 

@@ -23,6 +23,9 @@ router = APIRouter(tags=["admin:meeting-guides"])
 
 class StepIn(BaseModel):
     texts: dict[str, str]
+    # Güncellemede bu adımın fotoğrafı eski adımlardan hangisinden alınır (eski sıra numarası). Alan hiç
+    # gönderilmezse aynı sıradaki fotoğraf kalır; null gönderilirse adımın fotoğrafı yoktur.
+    photo_from: int | None = None
 
     @field_validator("texts")
     @classmethod
@@ -87,12 +90,16 @@ def update_guide(guide_id: int, body: GuideIn, staff: OpsStaff, db: DbSession, i
     if guide is None:
         raise NotFound("rehber bulunamadı")
     region = _airport(db, body.region_id)
+    db.refresh(guide, with_for_update={"of": MeetingGuide})  # eşzamanlı fotoğraf yüklemesiyle ezişmesin
     old = list(guide.steps or [])
-    # Fotoğraflar adım sırasıyla korunur; silinen adımın fotoğrafı depodan kaldırılır.
-    guide.steps = [{"texts": s.texts, "photo_key": old[i].get("photo_key") if i < len(old) else None,
-                    "photo_type": old[i].get("photo_type") if i < len(old) else None}
-                   for i, s in enumerate(body.steps)]
-    removed = [s.get("photo_key") for s in old[len(body.steps):] if s.get("photo_key")]
+    steps = []
+    for i, s in enumerate(body.steps):
+        src = s.photo_from if "photo_from" in s.model_fields_set else i
+        prev = old[src] if src is not None and 0 <= src < len(old) else {}
+        steps.append({"texts": s.texts, "photo_key": prev.get("photo_key"), "photo_type": prev.get("photo_type")})
+    kept = {s["photo_key"] for s in steps if s["photo_key"]}
+    removed = [s.get("photo_key") for s in old if s.get("photo_key") and s.get("photo_key") not in kept]
+    guide.steps = steps
     guide.region_id, guide.region, guide.terminal = region.id, region, body.terminal.strip()
     guide.is_active, guide.updated_at = body.is_active, now
     try:
@@ -118,11 +125,15 @@ async def upload_step_photo(guide_id: int, index: int, staff: OpsStaff, db: DbSe
     if not 0 <= index < len(steps):
         raise NotFound("adım bulunamadı")
     data = await file.read(meeting.MAX_PHOTO_BYTES + 1)
-    meeting.validate_photo(file.content_type or "", data)
+    clean = meeting.clean_photo(file.content_type or "", data)
+    db.refresh(guide, with_for_update={"of": MeetingGuide})
+    steps = [dict(s) for s in guide.steps or []]
+    if not 0 <= index < len(steps):
+        raise NotFound("adım bulunamadı")
     storage = get_storage()
     old = steps[index].get("photo_key")
-    steps[index]["photo_key"] = storage.put(f"meeting_guide/{guide.id}", data)
-    steps[index]["photo_type"] = file.content_type
+    steps[index]["photo_key"] = storage.put(f"meeting_guide/{guide.id}", clean)
+    steps[index]["photo_type"] = meeting.PHOTO_CONTENT_TYPE
     guide.steps, guide.updated_at = steps, now
     audit.record(db, actor_id=staff.id, action="meeting_guide.photo", entity_type="meeting_guide",
                  entity_id=guide.id, changes={"step": index}, ip=ip)

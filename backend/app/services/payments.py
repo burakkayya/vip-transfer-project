@@ -122,7 +122,7 @@ def handle_callback(
         return  # zaten işlendi
 
     if payment.purpose == "tip":
-        _tip_callback(db, payment, result, now)
+        _tip_callback(db, payment, provider, result, now)
         return
 
     booking = db.get(Booking, payment.booking_id, with_for_update={"of": Booking})
@@ -154,7 +154,7 @@ def handle_callback(
     confirm_paid_booking(db, booking, now)
 
 
-def _tip_callback(db: Session, payment: Payment, result, now: datetime) -> None:
+def _tip_callback(db: Session, payment: Payment, provider: PaymentProvider, result, now: datetime) -> None:
     """K-62 bahşiş: rezervasyon durumundan bağımsızdır; ödendiyse sürücü hakedişine eklenir."""
     paid = bool(result.success) and (result.total_amount is None or result.total_amount >= payment.amount)
     if paid:
@@ -165,7 +165,7 @@ def _tip_callback(db: Session, payment: Payment, result, now: datetime) -> None:
     else:
         payment.status = PaymentStatus.FAILED
         payment.failure_reason = ("eksik tahsilat" if result.success else (result.failure_reason or ""))[:255]
-    ratings.on_tip_result(db, payment, paid=paid, now=now)
+    ratings.on_tip_result(db, payment, provider, paid=paid, now=now)
 
 
 def confirm_paid_booking(db: Session, booking: Booking, now: datetime) -> None:

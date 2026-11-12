@@ -10,6 +10,7 @@ import { DOC_LABEL, DOC_STATUS, DOC_TYPES_DRIVER, DOC_TYPES_VEHICLE, DRIVER_STAT
 import { date } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
 import type { DriverDocument, DriverMe, DriverVehicle, VehicleType } from "@/lib/types";
+import DriverProfileCard from "@/components/DriverProfileCard";
 
 type DocAlert = { id: string; doc_type: string; valid_until: string; days_left: number };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -49,7 +50,7 @@ export default function DocumentsScreen() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ owner: "driver", docType: "surucu_belgesi", validUntil: "" });
-  const [vehicle, setVehicle] = useState({ plate: "", type: "minivan", brand: "", model: "", year: "", capacity: "6" });
+  const [vehicle, setVehicle] = useState({ plate: "", type: "minivan", brand: "", model: "", year: "", capacity: "6", color: "" });
 
   const load = useCallback(async () => {
     try {
@@ -118,9 +119,10 @@ export default function DocumentsScreen() {
           model: vehicle.model.trim(),
           year: vehicle.year ? Number(vehicle.year) : null,
           capacity: Number(vehicle.capacity),
+          color: vehicle.color.trim() || null,
         },
       });
-      setVehicle({ plate: "", type: "minivan", brand: "", model: "", year: "", capacity: "6" });
+      setVehicle({ plate: "", type: "minivan", brand: "", model: "", year: "", capacity: "6", color: "" });
       setMessage({ ok: true, text: "Araç eklendi. Araç belgelerini yükleyin." });
       await load();
     } catch (e) {
@@ -154,6 +156,8 @@ export default function DocumentsScreen() {
       {me && me.missing_documents.length > 0 && (
         <Alert tone="warn" text={`Eksik sürücü belgeleri: ${me.missing_documents.map((d) => DOC_LABEL[d] ?? d).join(", ")}`} />
       )}
+
+      {me ? <DriverProfileCard me={me} onSaved={setMe} /> : null}
 
       <Card>
         <Row gap={12}>
@@ -219,6 +223,7 @@ export default function DocumentsScreen() {
           onChange={(type) => setVehicle({ ...vehicle, type })} />
         <Input label="Marka" value={vehicle.brand} onChangeText={(brand) => setVehicle({ ...vehicle, brand })} maxLength={50} />
         <Input label="Model" value={vehicle.model} onChangeText={(model) => setVehicle({ ...vehicle, model })} maxLength={50} />
+        <Input label="Renk (yolcu aracı tanısın)" placeholder="Siyah" value={vehicle.color} onChangeText={(color) => setVehicle({ ...vehicle, color })} maxLength={30} />
         <Row>
           <Input label="Yıl" keyboardType="number-pad" value={vehicle.year} onChangeText={(year) => setVehicle({ ...vehicle, year })} style={{ minWidth: 90 }} />
           <Input label="Yolcu kapasitesi" keyboardType="number-pad" value={vehicle.capacity} onChangeText={(capacity) => setVehicle({ ...vehicle, capacity })} style={{ minWidth: 90 }} />

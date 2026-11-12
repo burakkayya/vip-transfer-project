@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -18,13 +19,17 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.errors import Conflict, DomainError, NotFound
-from app.models import Booking, BookingLeg, Customer, DriverLedger, Payment, TripRating
-from app.models.enums import Currency, LegStatus
+from app.models import Booking, BookingLeg, Customer, DriverLedger, Payment, Refund, TripRating
+from app.models.enums import Currency, LegStatus, PaymentStatus
 from app.providers.payments import Checkout, CheckoutRequest, PaymentProvider
 from app.services import audit, trip_updates
 from app.services.quotes import latest_exchange_rate
 
+log = logging.getLogger(__name__)
 RATING_WINDOW = timedelta(days=14)
+# Açık bahşiş ödeme sayfası bu süre içinde yeniden kullanılır (K-46 gibi: aynı anda tek canlı sayfa).
+TIP_REUSE_WINDOW = timedelta(minutes=25)
+TIP_MIN = {Currency.EUR: Decimal("1"), Currency.TRY: Decimal("20")}
 TIP_OPEN, TIP_PENDING, TIP_PAID, TIP_FAILED = "yok", "beklemede", "odendi", "basarisiz"
 
 
@@ -52,13 +57,18 @@ def _tip_max(currency: Currency) -> Decimal:
 
 def _check_tip(booking: Booking, amount: Decimal) -> Decimal:
     amount = amount.quantize(Decimal("0.01"))
-    if amount <= 0:
-        raise DomainError("bahşiş tutarı sıfırdan büyük olmalı", code="tip_invalid")
+    if amount < TIP_MIN[booking.currency]:
+        raise DomainError(f"bahşiş en az {TIP_MIN[booking.currency]} {booking.currency.value} olabilir",
+                          code="tip_invalid", details={"min": str(TIP_MIN[booking.currency])})
     limit = _tip_max(booking.currency)
     if amount > limit:
         raise DomainError(f"bahşiş en fazla {limit} {booking.currency.value} olabilir", code="tip_too_large",
                           details={"max": str(limit), "currency": booking.currency.value})
     return amount
+
+
+def check_tip(booking: Booking, amount: Decimal) -> Decimal:
+    return _check_tip(booking, amount)
 
 
 def rate(db: Session, booking: Booking, *, stars: int, comment: str | None, now: datetime) -> TripRating:
@@ -93,6 +103,13 @@ def start_tip(db: Session, booking: Booking, customer: Customer, provider: Payme
     if now > leg.pickup_at + RATING_WINDOW:
         raise Conflict("bahşiş süresi doldu", code="rating_closed")
     amount = _check_tip(booking, amount)
+    # Açık (ödenmemiş) bahşiş sayfası varsa ve tutar aynıysa o kullanılır: ikinci canlı sayfa açılmaz.
+    if rating.tip_payment_id is not None:
+        open_payment = db.get(Payment, rating.tip_payment_id)
+        if (open_payment is not None and open_payment.status is PaymentStatus.PENDING
+                and open_payment.amount == amount and open_payment.checkout_url
+                and open_payment.created_at > now - TIP_REUSE_WINDOW):
+            return rating, Checkout(iframe_url=open_payment.checkout_url)
     payment = Payment(
         booking_id=booking.id,
         provider=provider.code,
@@ -121,11 +138,31 @@ def start_tip(db: Session, booking: Booking, customer: Customer, provider: Payme
     return rating, checkout
 
 
-def on_tip_result(db: Session, payment: Payment, *, paid: bool, now: datetime) -> None:
-    """Ödeme bildirimi: bahşiş ödendiyse sürücü hakedişine eklenir (komisyonsuz)."""
+def on_tip_result(db: Session, payment: Payment, provider: PaymentProvider, *, paid: bool, now: datetime) -> None:
+    """Ödeme bildirimi: bahşiş ödendiyse sürücü hakedişine eklenir (komisyonsuz).
+
+    Yerine yenisi açılmış eski bir bahşiş sayfası da ödenebilir (müşteri iki sekmede ödedi, bildirim gecikti):
+    bahşiş henüz ödenmediyse bu ödeme bahşiş sayılır; ödendiyse para müşteriye tamamen iade edilir."""
+    leg_id = db.scalar(select(BookingLeg.id).where(BookingLeg.booking_id == payment.booking_id,
+                                                   BookingLeg.id.in_(select(TripRating.booking_leg_id))
+                                                   ).order_by(BookingLeg.leg_order.desc()).limit(1))
     rating = db.scalar(select(TripRating).where(TripRating.tip_payment_id == payment.id).with_for_update())
-    if rating is None:
-        return  # yerine yenisi açılmış eski ödeme; sonuç bahşişi değiştirmez
+    if rating is None and leg_id is not None:
+        rating = db.scalar(select(TripRating).where(TripRating.booking_leg_id == leg_id).with_for_update())
+        if rating is not None and paid:
+            if rating.tip_status == TIP_PAID:
+                log.error("fazla bahşiş ödemesi iade ediliyor: %s", payment.merchant_oid)
+                refund = Refund(payment_id=payment.id, amount=payment.amount, refund_percent=100,
+                                reason="mükerrer bahşiş ödemesi")
+                db.add(refund)
+                db.flush()
+                from app.services.bookings import execute_refund
+
+                execute_refund(db, refund, payment, provider)
+                return
+            rating.tip_payment_id, rating.tip_amount = payment.id, payment.amount
+    if rating is None or rating.tip_payment_id != payment.id:
+        return  # eski sayfanın başarısız sonucu bahşişi değiştirmez
     if not paid:
         rating.tip_status = TIP_FAILED
         return

@@ -197,7 +197,17 @@ export function ChatPanel(props: { code: string; onClose: () => void; onRead: ()
                 {chat.messages.map((m) => (
                   <li key={m.id} className={m.sender === "customer" ? "mine" : "theirs"}>
                     <span className="sr-only">{m.sender === "customer" ? t("chatYou") : chat.other_name}: </span>
-                    <p className="chat-bubble">{m.body}</p>
+                    {m.sender !== "customer" && m.translated_body ? (
+                      <div className="chat-bubble">
+                        <p>{m.translated_body}</p>
+                        <p className="chat-original" lang="tr">
+                          <span className="sr-only">{t("chatOriginal")}: </span>
+                          {m.body}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="chat-bubble">{m.body}</p>
+                    )}
                     <span className="chat-time">
                       {clockTime(m.created_at, locale).slice(0, 5)}
                       {m.id === lastMine?.id && m.read_at && <> · {t("chatRead")}</>}

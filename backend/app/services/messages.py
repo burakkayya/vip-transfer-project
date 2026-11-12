@@ -8,11 +8,13 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.errors import Conflict, DomainError, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import Booking, BookingLeg, TripMessage
 from app.models.enums import LegStatus
@@ -92,9 +94,11 @@ def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime) ->
     # Gönderen sürücü mesajla saklanır: iş başka sürücüye devredilse de şikâyet incelemesinde doğru kişi görünür.
     msg = TripMessage(booking_leg_id=leg.id, sender=sender, body=body, created_at=now,
                       driver_id=leg.driver_id if sender == "driver" else None)
-    # K-62: alıcının diline çeviri (sürücü tr, müşteri rezervasyon dili). Aynı dildeyse çağrı yapılmaz.
+    # K-62: alıcının diline çeviri (sürücü tr, müşteri rezervasyon dili). Sürücü müşterinin dilini
+    # konuşuyorsa ya da rezervasyon Türkçeyse çağrı yapılmaz.
     target = "tr" if sender == "customer" else leg.booking.locale
-    if leg.booking.locale != "tr":
+    driver_langs = leg.driver.language_list if leg.driver is not None else ["tr"]
+    if leg.booking.locale != "tr" and leg.booking.locale not in driver_langs:
         translated = translate(body, target)
         if translated:
             msg.translated_body, msg.translated_lang = translated, target
@@ -111,18 +115,47 @@ def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime) ->
 
 def translate(text: str, target: str) -> str | None:
     """Çeviri; kapalıysa, metin zaten hedef dildeyse ya da servis yanıt vermezse None (mesaj yine gider)."""
-    translator = get_translator()
+    try:
+        translator = get_translator()
+    except RuntimeError as exc:  # anahtar tanımsız: mesaj çevrilmeden gider
+        log.error("çeviri yapılandırması hatalı: %s", exc)
+        return None
     if translator is None:
         return None
+    if not api_cache.take_budget("translate_chars", len(text), get_settings().translation_daily_char_limit):
+        log.warning("günlük çeviri sınırı doldu")
+        return None
     try:
-        result = translator.translate(text, target)
+        # Telefon ve e-posta dışarı gönderilmez (KVKK); çeviride aynen yerine konur.
+        masked, secrets_ = mask_contacts(text)
+        result = translator.translate(masked, target)
     except ServiceUnavailable as exc:
         log.warning("mesaj çevrilemedi: %s", exc)
         return None
     api_cache.count("translate_call")
+    result = type(result)(text=unmask(result.text, secrets_), source_lang=result.source_lang)
     if (result.source_lang or "").split("-")[0].lower() == target or result.text.strip() == text.strip():
         return None
     return result.text[:MAX_LENGTH * 2]
+
+
+_CONTACT = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+|\+?\d[\d\s().-]{6,}\d")
+
+
+def mask_contacts(text: str) -> tuple[str, list[str]]:
+    found: list[str] = []
+
+    def keep(m: re.Match) -> str:
+        found.append(m.group(0))
+        return f"[{len(found)}]"
+
+    return _CONTACT.sub(keep, text), found
+
+
+def unmask(text: str, found: list[str]) -> str:
+    for i, value in enumerate(found, start=1):
+        text = text.replace(f"[{i}]", value)
+    return text
 
 
 def _other(viewer: str) -> str:

@@ -67,9 +67,15 @@ def upgrade() -> None:
         sa.CheckConstraint("stars between 1 and 5", name="ck_trip_ratings_stars_range"),
     )
     op.create_index("ix_trip_ratings_driver_id", "trip_ratings", ["driver_id"])
+    op.create_index("ix_trip_ratings_tip_payment_id", "trip_ratings", ["tip_payment_id"])
 
 
 def downgrade() -> None:
+    paid = op.get_bind().execute(sa.text(
+        "SELECT count(*) FROM driver_ledger WHERE kind <> 'trip' AND payout_id IS NOT NULL")).scalar()
+    if paid:
+        raise RuntimeError("ödeme kaydına girmiş bahşiş hakedişi var; geri alma para verisini bozar")
+    op.drop_index("ix_trip_ratings_tip_payment_id", table_name="trip_ratings")
     op.drop_index("ix_trip_ratings_driver_id", table_name="trip_ratings")
     op.drop_table("trip_ratings")
     op.drop_index("ix_meeting_guides_region_id", table_name="meeting_guides")

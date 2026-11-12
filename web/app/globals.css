@@ -2825,3 +2825,53 @@ input.readonly:focus {
 .confirm-panel p {
   margin: 0;
 }
+
+/* --- K-62 buluşma deneyimi ------------------------------------------------ */
+.avatar-photo { object-fit: cover; padding: 0; background: var(--soft); }
+.driver-langs { display: flex; align-items: center; gap: 6px; font-size: 0.86rem; margin-top: 2px; }
+.plate { letter-spacing: 0.04em; }
+.passenger-status { padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.status-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.status-step {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; min-height: 64px;
+  border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--paper); color: var(--text);
+  font: inherit; font-weight: 600; font-size: 0.9rem; cursor: pointer; text-align: center;
+}
+.status-step.done { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.status-step[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
+.stack-sm > * + * { margin-top: 8px; }
+.guide-card { margin-top: 12px; }
+.guide-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.guide-tabs button {
+  font: inherit; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); cursor: pointer;
+}
+.guide-tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.guide-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.guide-steps li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; }
+.guide-num {
+  width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; font-weight: 700;
+  background: var(--soft); color: var(--text);
+}
+.guide-steps p { margin: 0; line-height: 1.5; }
+.guide-photo { width: 100%; max-height: 260px; object-fit: cover; border-radius: var(--radius-sm); }
+.small-title { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; margin: 0; }
+.share-link { display: flex; gap: 8px; }
+.share-link input { flex: 1; min-width: 0; }
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.stars { display: flex; gap: 4px; }
+.stars button {
+  font-size: 2rem; line-height: 1; padding: 4px; border: 0; background: none; cursor: pointer; color: var(--line-strong, #d6d5d0);
+}
+.stars button.on { color: var(--accent, #a8875a); }
+.tip-options { border: 0; padding: 0; margin: 0; }
+.tip-options legend { font-weight: 600; margin-bottom: 8px; }
+.chip {
+  font: inherit; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); cursor: pointer;
+}
+.chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.tip-frame { width: 100%; min-height: 420px; border: 0; border-radius: var(--radius-sm); }
+.chat-original { margin: 6px 0 0; font-size: 0.82rem; opacity: 0.7; }
+.chat-bubble > p { margin: 0; }
+.extras { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; }
+.extras legend { font-weight: 600; margin-bottom: 4px; }
+.track-eta:empty { display: none; }

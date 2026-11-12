@@ -13,7 +13,23 @@ from tests.conftest import booking_body, otp_login, pay, random_phone
 from tests.test_api_driver_admin import onboard_driver, ops  # noqa: F401 - fikstür
 
 API = "/api/v1"
-PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+
+
+def _png() -> bytes:
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    img = Image.new("RGB", (40, 30), (200, 30, 30))
+    exif = Image.Exif()
+    exif[0x010F] = "SecretPhoneMaker"  # Make: yeniden kodlamada silinmeli
+    img.save(out, format="PNG", exif=exif)
+    return out.getvalue()
+
+
+PNG = _png()
+JPEG_MAGIC = b"\xff\xd8\xff"
 
 
 def _setup(client, ops_headers, *, hours_ahead=6, **extra):
@@ -75,8 +91,12 @@ def test_passenger_status_and_meeting_guide(client, db, ops):
     assert r.status_code == 200 and r.json()["passenger_status"] == "indi", r.text
     client.post(f"{API}/me/bookings/{code}/passenger-status", headers=customer, json={"status": "indi"})
     client.post(f"{API}/me/bookings/{code}/passenger-status", headers=customer, json={"status": "cikiyor"})
+    # Geri dönüş (bagajda) yok sayılır, bildirim üretmez.
+    r = client.post(f"{API}/me/bookings/{code}/passenger-status", headers=customer, json={"status": "bagajda"})
+    assert r.json()["passenger_status"] == "cikiyor"
     driver_codes = _codes(client, driver, "driver")
     assert driver_codes.count("passenger_landed") == 1 and "passenger_exiting" in driver_codes
+    assert "passenger_baggage" not in driver_codes
     assert client.get(f"{API}/driver/trips/{leg_id}", headers=driver).json()["passenger_status"] == "cikiyor"
     # Rehber "İndim" ile bir kez gider; sürücü "Vardım" deyince tekrar gitmez.
     _event(client, driver, leg_id, "yola_cikti")
@@ -115,7 +135,8 @@ def test_driver_card_photo_languages_and_day_before_job(client, db, ops):
     assert brief == {"first_name": "Mehmet", "vehicle": "Mercedes Vito", "plate": brief["plate"], "color": "Siyah",
                      "languages": ["tr", "en", "de"], "has_photo": True}
     photo = client.get(f"{API}/me/bookings/{code}/driver-photo", headers=customer)
-    assert photo.status_code == 200 and photo.content == PNG and photo.headers["content-type"] == "image/png"
+    assert photo.status_code == 200 and photo.headers["content-type"] == "image/jpeg"
+    assert photo.content.startswith(JPEG_MAGIC) and b"SecretPhoneMaker" not in photo.content  # EXIF silindi
 
     # 40 saat kala atandı: kart henüz gitmedi; alışa 24 saatten az kalınca bir kez gider.
     now = datetime.now(timezone.utc)
@@ -171,6 +192,12 @@ def test_chat_is_translated_for_the_recipient(client, db, ops, monkeypatch):
     assert chat["messages"][0]["translated_body"].startswith("[tr]")
     push = next(u for u in client.get(f"{API}/driver/updates", headers=driver).json() if u["code"] == "new_message")
     assert push["body"].startswith("[tr]")
+    # Telefon ve e-posta çeviri servisine gönderilmez, çeviride aynen yerine konur.
+    r = client.post(f"{API}/me/bookings/{code}/messages", headers=customer,
+                    json={"body": "de: Ruf mich an +49 170 1234567 oder anna@example.com"})
+    sent = fake.calls[-1][0]
+    assert "+49" not in sent and "anna@" not in sent
+    assert "+49 170 1234567" in r.json()["translated_body"] and "anna@example.com" in r.json()["translated_body"]
     # Servis hata verirse mesaj çevrilmeden gider.
     fake.fail = True
     r = client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "Hallo"})
@@ -259,12 +286,19 @@ def test_admin_manages_meeting_guides(client, db, ops):
                     files={"file": ("s.png", PNG, "image/png")})
     assert r.status_code == 200 and r.json()["steps"][1]["has_photo"] is True, r.text
     photo = client.get(f"{API}{r.json()['steps'][1]['photo_path'].removeprefix('/api/v1')}")
-    assert photo.status_code == 200 and photo.content == PNG
+    assert photo.status_code == 200 and photo.content.startswith(JPEG_MAGIC)
+    # Adım sırası değişince fotoğraf adımıyla birlikte gider (photo_from).
+    r = client.put(f"{API}/admin/meeting-guides/{gid}", headers=ops, json={
+        "region_id": gzp, "terminal": "Dış Hatlar", "steps": [{**step, "photo_from": 1}, {**step, "photo_from": 0}]})
+    assert [x["has_photo"] for x in r.json()["steps"]] == [True, False]
     # Adım silinince fotoğrafı da gider.
     r = client.put(f"{API}/admin/meeting-guides/{gid}", headers=ops,
                    json={"region_id": gzp, "terminal": "Dış Hatlar", "steps": [step]})
     assert r.status_code == 200 and len(r.json()["steps"]) == 1
-    assert client.get(f"{API}/meeting-guides/{gid}/photos/1").status_code == 404
+    assert client.get(f"{API}/meeting-guides/{gid}/photos/0").status_code == 200
+    r = client.put(f"{API}/admin/meeting-guides/{gid}", headers=ops,
+                   json={"region_id": gzp, "terminal": "Dış Hatlar", "steps": [{**step, "photo_from": None}]})
+    assert client.get(f"{API}/meeting-guides/{gid}/photos/0").status_code == 404
     support = client.get(f"{API}/admin/meeting-guides", headers=ops).json()
     assert any(g["id"] == gid for g in support)
 
@@ -276,3 +310,59 @@ def test_leg_columns_reset_on_reassignment(db):
     leg.pickup_at = datetime.now(timezone.utc) + timedelta(hours=5)
     meeting.on_assigned(leg, datetime.now(timezone.utc))
     assert leg.driver_card_sent_at is not None
+
+
+def test_translation_skipped_when_driver_speaks_language_and_budget(client, ops, monkeypatch):
+    from app.config import get_settings
+
+    fake = translation.FakeTranslator()
+    monkeypatch.setattr(messages, "get_translator", lambda: fake)
+    driver, customer, code, _, trip = _setup(client, ops)
+    client.put(f"{API}/driver/me/profile", headers=driver, json={"languages": ["tr", "de"]})
+    client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "Hallo"})
+    client.post(f"{API}/driver/trips/{trip['leg_id']}/messages", headers=driver, json={"body": "Hallo"})
+    assert fake.calls == []  # sürücü Almanca konuşuyor
+
+    client.put(f"{API}/driver/me/profile", headers=driver, json={"languages": ["tr"]})
+    monkeypatch.setattr(get_settings(), "translation_daily_char_limit", 0)
+    r = client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "Hallo"})
+    assert r.status_code == 201 and r.json()["translated_body"] is None and fake.calls == []
+
+    def broken():
+        raise RuntimeError("anahtar yok")
+    monkeypatch.setattr(messages, "get_translator", broken)
+    assert client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "x"}).status_code == 201
+
+
+def test_open_tip_page_is_reused_and_stale_paid_page_is_handled(client, db, ops):
+    """Aynı tutarda ikinci sayfa açılmaz; yerine yenisi açılmış eski sayfa ödenirse bahşiş sayılır,
+    bahşiş zaten ödendiyse sonraki ödeme müşteriye iade edilir."""
+    from app.models.enums import RefundStatus
+
+    driver, customer, code, _, trip = _setup(client, ops)
+    _complete(client, driver, trip["leg_id"])
+    first = client.post(f"{API}/me/bookings/{code}/rating", headers=customer, json={"stars": 5, "tip_amount": "5"})
+    again = client.post(f"{API}/me/bookings/{code}/tip", headers=customer, json={"amount": "5"})
+    assert first.json()["iframe_url"] == again.json()["iframe_url"]
+    second = client.post(f"{API}/me/bookings/{code}/tip", headers=customer, json={"amount": "10"})
+    old_oid = first.json()["iframe_url"].rsplit("/", 1)[1]
+    new_oid = second.json()["iframe_url"].rsplit("/", 1)[1]
+    assert old_oid != new_oid
+
+    client.post(f"{API}/payments/fake/{old_oid}/complete", data={"status": "success"})
+    state = client.get(f"{API}/me/bookings/{code}/rating", headers=customer).json()
+    assert state["tip_status"] == "odendi" and state["tip_amount"] == "5.00"
+    client.post(f"{API}/payments/fake/{new_oid}/complete", data={"status": "success"})
+    db.expire_all()
+    tips = list(db.scalars(select(DriverLedger).where(DriverLedger.booking_leg_id == trip["leg_id"],
+                                                      DriverLedger.kind == "tip")))
+    assert len(tips) == 1 and tips[0].net_amount == Decimal("5.00")
+    dup = db.scalar(select(Payment).where(Payment.merchant_oid == new_oid))
+    assert dup.refunds and dup.refunds[0].amount == Decimal("10.00") and dup.refunds[0].status is not RefundStatus.FAILED
+
+
+def test_tip_minimum(client, ops):
+    driver, customer, code, _, trip = _setup(client, ops)
+    _complete(client, driver, trip["leg_id"])
+    r = client.post(f"{API}/me/bookings/{code}/rating", headers=customer, json={"stars": 4, "tip_amount": "0.50"})
+    assert r.json()["error"]["code"] == "tip_invalid"

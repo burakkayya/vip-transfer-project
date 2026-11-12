@@ -297,5 +297,5 @@ class TripRating(Base):
     currency: Mapped[Currency] = mapped_column(str_enum(Currency))
     # yok | beklemede | odendi | basarisiz
     tip_status: Mapped[str] = mapped_column(String(12), default="yok", server_default="yok")
-    tip_payment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("payments.id"))
+    tip_payment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("payments.id"), index=True)
     created_at: Mapped[datetime] = created_at()

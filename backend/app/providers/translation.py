@@ -34,7 +34,8 @@ class GoogleTranslate:
 
     def translate(self, text: str, target: str) -> Translation:
         try:
-            resp = httpx.post(self.url, params={"key": self.api_key},
+            # Anahtar adres satırında değil başlıkta: hata metinlerine ve vekil kayıtlarına düşmez.
+            resp = httpx.post(self.url, headers={"X-Goog-Api-Key": self.api_key},
                               json={"q": text, "target": target, "format": "text"}, timeout=4)
             resp.raise_for_status()
             item = resp.json()["data"]["translations"][0]
