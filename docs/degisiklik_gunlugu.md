@@ -2,6 +2,10 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-12
+
+- **Uçtan uca güvenlik denetimi (yalnızca doküman).** Çok ajanlı denetim: keşif (`docs/security/recon.md`), STRIDE tehdit modeli (`docs/security/threat-model.md`), 10 alanda paralel denetim (`docs/security/findings/*.md`, 121 ham bulgu), bağımsız doğrulama (`docs/security/verification-{A,B,C}.md`; 0 yanlış pozitif, ~29 birleştirme). Birleşik sonuç: 94 kanonik bulgu (0 Kritik, 5 Yüksek, 25 Orta, 47 Düşük, 17 Bilgi) `docs/security/findings.md`; fazlı düzeltme planı `docs/security/remediation-plan.md` (Faz 0: 6, Faz 1: 18, Faz 2: 20 madde). Yüksek bulgular: INF-01 (env yapılandırması), AUTH-01 (personel kaba kuvvet), AUTH-04 (SMS pompalama), PRIV-01 (silme talebi veri silmiyor), RT-01 (parolasız Redis + ARQ pickle). Kod değişikliği yok; düzeltmeler ayrı commit'lerle yapılacak.
+
 ## 2026-11-11
 
 - **Uçuş takibi log'unda uçuş numarası (kullanıcı kararı).** Sorgu hatası log satırlarına uçuş numarası bacak kimliğiyle birlikte yazılır; KVKK kapsamında görülürse yeniden konuşulacak (açık konu).
