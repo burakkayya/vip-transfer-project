@@ -13,11 +13,11 @@ from sqlalchemy import func, select
 
 from app.api.admin.common import Page, page
 from app.api.deps import AdminOnly, AnyStaff, ClientIp, DbSession, Now, OpsOrSupport
-from app.errors import Conflict, DomainError, NotFound
+from app.errors import Conflict, DomainError, Forbidden, NotFound
 from app.models import AuditLog, AuthSession, Booking, Customer, DataRequest, Role, User
-from app.models.enums import BookingStatus, DataRequestStatus, RoleCode, UserKind, UserStatus
+from app.models.enums import DataRequestStatus, DataRequestType, RoleCode, UserKind, UserStatus
 from app.security.crypto import blind_index, mask_email, mask_phone, normalize_phone
-from app.services import audit, auth
+from app.services import audit, auth, privacy
 
 router = APIRouter(tags=["admin:people"])
 
@@ -77,13 +77,30 @@ class DataRequestUpdateIn(BaseModel):
 @router.post("/data-requests/{request_id}")
 def update_data_request(request_id: uuid.UUID, body: DataRequestUpdateIn, staff: OpsOrSupport,
                         db: DbSession, ip: ClientIp, now: Now):
+    """Silme talebi (PRIV-01, F0-4): kapatmak (tamamlandı/reddedildi) yalnızca admin yetkisidir ve
+    "tamamlandı" anonimleştirmeyi aynı işlemde çalıştırır; anonimleştirme yapılamıyorsa talep açık kalır."""
     r = db.get(DataRequest, request_id)
     if r is None:
         raise NotFound("talep bulunamadı")
+    closing = body.status in (DataRequestStatus.COMPLETED, DataRequestStatus.REJECTED)
+    is_deletion = r.request_type is DataRequestType.DELETE
+    if is_deletion and closing and RoleCode.ADMIN.value not in staff.user.role_codes:
+        raise Forbidden("silme talebini yalnızca admin kapatabilir")
+    if r.completed_at is not None and is_deletion:
+        raise Conflict("silme talebi zaten kapatılmış", code="data_request_closed")
+    if is_deletion and body.status is DataRequestStatus.COMPLETED:
+        c = db.get(Customer, r.customer_id)
+        if c is None:
+            raise NotFound("müşteri bulunamadı")
+        privacy.anonymize_customer(db, c, now)  # aktif rezervasyon varsa Conflict, hiçbir şey yazılmaz
+        audit.record(db, actor_id=staff.id, action="customer.anonymize", entity_type="customer", entity_id=c.id,
+                     changes={"data_request_id": str(r.id)}, ip=ip)
+        # Personel notu da serbest metindir; silinen müşteriye ait talepte kişisel veri tutulmaz.
+    else:
+        if body.note:
+            r.note = body.note
     r.status = body.status
-    if body.note:
-        r.note = body.note
-    if body.status in (DataRequestStatus.COMPLETED, DataRequestStatus.REJECTED):
+    if closing:
         r.completed_at = now
     audit.record(db, actor_id=staff.id, action="data_request.update", entity_type="data_request",
                  entity_id=r.id, changes={"status": body.status}, ip=ip)
@@ -94,24 +111,12 @@ def update_data_request(request_id: uuid.UUID, body: DataRequestUpdateIn, staff:
 @router.post("/customers/{customer_id}/anonymize")
 def anonymize_customer(customer_id: uuid.UUID, staff: AdminOnly, db: DbSession, ip: ClientIp, now: Now):
     """Silme talebinin uygulanması: kişisel veriler silinir, rezervasyon ve fatura kayıtları
-    vergi mevzuatı gereği saklanır (saklama süreleri hukukçu teyidi bekliyor)."""
+    vergi mevzuatı gereği saklanır (saklama süreleri hukukçu teyidi bekliyor). Müşterinin açık silme
+    talepleri de kapanır. Kapsam: app.services.privacy.anonymize_customer."""
     c = db.get(Customer, customer_id)
     if c is None:
         raise NotFound("müşteri bulunamadı")
-    active = db.scalar(select(func.count()).where(
-        Booking.customer_id == c.id,
-        Booking.status.in_([BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED,
-                            BookingStatus.ASSIGNED, BookingStatus.IN_PROGRESS])))
-    if active:
-        raise Conflict("aktif rezervasyonu olan müşteri silinemez", code="active_bookings")
-    c.full_name = None
-    c.email = None
-    c.deleted_at = now
-    c.user.phone = None
-    c.user.phone_hash = None
-    c.user.status = UserStatus.DISABLED
-    for s in db.scalars(select(AuthSession).where(AuthSession.user_id == c.user_id, AuthSession.revoked_at.is_(None))):
-        s.revoked_at = now
+    privacy.anonymize_customer(db, c, now)
     audit.record(db, actor_id=staff.id, action="customer.anonymize", entity_type="customer", entity_id=c.id, ip=ip)
     db.commit()
     return {"ok": True}
