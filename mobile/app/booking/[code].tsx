@@ -10,7 +10,7 @@ import {
   DriverAvatar, DriverLanguages, MeetingGuideCard, PassengerStatus, RatingCard, ShareTrip, driverSubline, showPassengerStatus,
 } from "@/components/MeetingTools";
 import {
-  Alert, Avatar, Badge, Button, Card, H2, IconButton, Info, Loading, P, ProgressSegments, RouteStops, Row, Screen, T,
+  Alert, Badge, Button, Card, H2, IconButton, Info, Loading, P, ProgressSegments, RouteStops, Row, Screen, T,
   Timeline, colors, s, statusTone,
 } from "@/components/ui";
 import { accessToken, api, wsUrl } from "@/lib/api";
