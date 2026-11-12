@@ -20,6 +20,9 @@ colors:
   pine-green-soft: "#e6f4ec"
   amber-ink: "#8a6100"
   amber-soft: "#fbf7ee"
+  champagne-soft: "#f5eee2"
+  pine-green-on-dark: "#7fd3a4"
+  signal-red-on-dark: "#ff6b5e"
 typography:
   display:
     fontFamily: "Inter_800ExtraBold"

@@ -202,8 +202,8 @@ export default function Login() {
               <OtpInput value={code} onChange={setCode} onDone={(v) => void verify(v)} />
               {devCode && (
                 <Pressable onPress={() => { setCode(devCode); void verify(devCode); }} style={st.devCode}>
-                  <Ionicons name="flask-outline" size={16} color="#5C4A1C" />
-                  <T style={{ color: "#5C4A1C", flex: 1, fontSize: 13 }}>{t("login.devCode", { code: devCode })}</T>
+                  <Ionicons name="flask-outline" size={16} color={colors.warn} />
+                  <T style={{ color: colors.warn, flex: 1, fontSize: 13 }}>{t("login.devCode", { code: devCode })}</T>
                 </Pressable>
               )}
               <Alert text={error} />
@@ -227,5 +227,5 @@ const st = StyleSheet.create({
   otpBox: { flex: 1, aspectRatio: 0.86, maxWidth: 52, borderRadius: 14, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.brandSoft },
   otpFilled: { backgroundColor: "#fff", borderColor: colors.line },
   otpActive: { borderColor: colors.ink, backgroundColor: "#fff" },
-  devCode: { flexDirection: "row", gap: 8, alignItems: "center", borderWidth: 1, borderStyle: "dashed", borderColor: "#D4B977", backgroundColor: "#FBF7EE", borderRadius: 12, padding: 12 },
+  devCode: { flexDirection: "row", gap: 8, alignItems: "center", borderWidth: 1, borderStyle: "dashed", borderColor: colors.accent, backgroundColor: colors.warnSoft, borderRadius: 12, padding: 12 },
 });

@@ -57,8 +57,18 @@ export default function TrackView(props: { token: string }) {
     <div className="stack track-view">
       <section className="card elevated stack track-card" aria-labelledby="track-title">
         <span className="label">{t("trackLabel")}</span>
-        <h1 id="track-title">
-          {info.pickup_region} → {info.dropoff_region}
+        {/* Kıyı Yolu imzası (K-39): alış daire, varış kare, arada kesikli ray. */}
+        <h1 id="track-title" className="track-route">
+          <span className="mini-rail" aria-hidden="true">
+            <i />
+            <b />
+            <i />
+          </span>
+          <span className="track-stops">
+            <span>{info.pickup_region}</span>
+            <span className="sr-only"> → </span>
+            <span>{info.dropoff_region}</span>
+          </span>
         </h1>
         <p className="leg-when">
           <Icon name="calendar" size={16} /> <span>{dateTime(info.pickup_at, locale)}</span>

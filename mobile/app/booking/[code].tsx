@@ -318,14 +318,14 @@ export default function BookingScreen() {
                 </Row>
                 {location ? (
                   <>
-                    <T style={[s.hint, { color: "#2D5A43" }]}>{t("bookings.liveUpdated", { time: dateTime(location.at, LOCALE) })}</T>
+                    <T style={[s.hint, { color: colors.ok }]}>{t("bookings.liveUpdated", { time: dateTime(location.at, LOCALE) })}</T>
                     <T style={{ color: colors.ink, fontWeight: "600", textDecorationLine: "underline" }}
                       onPress={() => Linking.openURL(`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=16/${location.lat}/${location.lng}`)}>
                       {t("bookings.openMap")} ›
                     </T>
                   </>
                 ) : (
-                  <T style={[s.hint, { color: "#2D5A43" }]}>{t("bookings.liveNone")}</T>
+                  <T style={[s.hint, { color: colors.ok }]}>{t("bookings.liveNone")}</T>
                 )}
               </View>
             ) : null}

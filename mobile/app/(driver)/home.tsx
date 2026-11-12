@@ -32,7 +32,7 @@ function CountdownRing(props: { left: number; total: number }) {
     <View style={{ width: 72, height: 72, alignItems: "center", justifyContent: "center" }}>
       <Svg width={72} height={72} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
         <Circle cx={36} cy={36} r={R} stroke="rgba(255,255,255,0.15)" strokeWidth={6} fill="none" />
-        <AnimatedCircle cx={36} cy={36} r={R} stroke={urgent ? "#FF6B5E" : colors.accent} strokeWidth={6} fill="none" strokeLinecap="round"
+        <AnimatedCircle cx={36} cy={36} r={R} stroke={urgent ? colors.dangerOnDark : colors.accent} strokeWidth={6} fill="none" strokeLinecap="round"
           strokeDasharray={C} animatedProps={anim} />
       </Svg>
       <T style={{ color: "#fff", fontWeight: "800", fontSize: 20 }}>{props.left}</T>
@@ -246,7 +246,7 @@ export default function DriverHome() {
           <Ionicons name="navigate-circle" size={28} color={colors.ok} />
           <View style={{ flex: 1 }}>
             <T style={{ fontWeight: "700", color: colors.ok }}>Aktif yolculuk · {LEG_STATUS[active.status]}</T>
-            <T style={[s.hint, { color: "#2D5A43" }]}>{active.pickup_region} → {active.dropoff_region}</T>
+            <T style={[s.hint, { color: colors.ok }]}>{active.pickup_region} → {active.dropoff_region}</T>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.ok} />
         </Pressable>

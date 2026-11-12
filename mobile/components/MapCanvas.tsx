@@ -185,6 +185,6 @@ const st = StyleSheet.create({
   driver: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   driverInner: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   driverDot: { width: 8, height: 8, borderRadius: 4 },
-  notice: { backgroundColor: "#ECE9E2", alignItems: "center", justifyContent: "center", padding: 24 },
-  noticeText: { fontSize: 13, color: "#55555A", textAlign: "center" },
+  notice: { backgroundColor: palette.limestoneDeep, alignItems: "center", justifyContent: "center", padding: 24 },
+  noticeText: { fontSize: 13, color: palette.slateText, textAlign: "center" },
 });
