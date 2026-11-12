@@ -328,10 +328,12 @@ def advance_trip(
                 code="too_far_from_dropoff",
             )
     leg.status = target
-    db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=driver.user_id))
+    db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=driver.user_id,
+                     latitude=at.lat if at else None, longitude=at.lng if at else None))
     if event is TripEventType.DEPARTED:
         eta.on_departed(db, leg, at)
     elif event is TripEventType.ARRIVED:
+        leg.arrived_at = now  # K-63: ücretsiz bekleme buradan sayılır
         trip_updates.to_customer(db, leg, "driver_arrived")
         meeting.maybe_send_guide(db, leg, now)
     elif event is TripEventType.STARTED:

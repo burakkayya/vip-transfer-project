@@ -146,6 +146,9 @@ class BookingLeg(Base):
     # K-62 bir kez gönderilen müşteri bildirimleri: buluşma rehberi, sürücü kartı.
     meeting_guide_sent_at: Mapped[datetime | None]
     driver_card_sent_at: Mapped[datetime | None]
+    # K-63 kanıtlı bekleme: sürücünün "Vardım" anı ve "Yolcu gelmedi" kaydı.
+    arrived_at: Mapped[datetime | None]
+    no_show_at: Mapped[datetime | None]
 
     booking: Mapped[Booking] = relationship(back_populates="legs")
     pickup_region: Mapped[Region] = relationship(foreign_keys=[pickup_region_id], lazy="joined")
@@ -215,6 +218,9 @@ class TripEvent(Base):
     event_type: Mapped[TripEventType] = mapped_column(str_enum(TripEventType))
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     occurred_at: Mapped[datetime] = created_at()
+    # K-63: sürücünün olay anındaki konumu (kanıt; vardım, yolcu gelmedi, bitti).
+    latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
 
 
 class TripMessage(Base):

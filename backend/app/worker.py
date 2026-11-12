@@ -38,6 +38,10 @@ async def every_hour(ctx) -> None:
     _run(jobs.send_driver_cards)
 
 
+async def evening(ctx) -> None:
+    _run(jobs.send_daily_plans)
+
+
 async def daily(ctx) -> None:
     _run(jobs.expire_documents)
 
@@ -49,4 +53,5 @@ class WorkerSettings:
         cron(every_minute, second=0),
         cron(every_hour, minute=5, second=0),
         cron(daily, hour=0, minute=10, second=0),  # UTC 00:10 = TR 03:10
+        cron(evening, hour=17, minute=0, second=0),  # UTC 17:00 = TR 20:00
     ]

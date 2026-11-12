@@ -72,6 +72,13 @@ CUSTOMER_TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         "de": ("Fahrt abgeschlossen", "Danke, dass Sie mit uns gefahren sind."),
         "ru": ("Поездка завершена", "Спасибо, что выбрали нас."),
     },
+    # K-63 yolcu gelmedi (ücretsiz bekleme sonunda)
+    "no_show": {
+        "tr": ("Sizi bulamadık", "Sürücünüz alış noktasında bekledi, yolculuk gerçekleşmedi. Bir sorun varsa bize yazın."),
+        "en": ("We couldn't find you", "Your driver waited at the pickup point and the ride did not take place. Contact us if something went wrong."),
+        "de": ("Wir konnten Sie nicht finden", "Ihr Fahrer hat am Abholort gewartet, die Fahrt fand nicht statt. Melden Sie sich bei Problemen."),
+        "ru": ("Мы не нашли вас", "Водитель ждал в месте посадки, поездка не состоялась. Напишите нам, если что-то пошло не так."),
+    },
     # K-62 buluşma deneyimi
     "meeting_guide": {
         "tr": ("Hoş geldiniz! Sürücünüzle buluşma", "Çıkıştan buluşma noktasına adım adım yol tarifi için dokunun."),
@@ -97,6 +104,8 @@ DRIVER_TEXTS: dict[str, tuple[str, str]] = {
     "customer_finished": ("Yolcu yolculuğu bitirdi", "{pickup} → {dropoff} tamamlandı. Hakedişiniz Kazanç'a eklendi."),
     "trip_cancelled": ("Yolculuk iptal edildi", "{pickup} → {dropoff}, {pickup_at}."),
     "new_message": ("{sender} yazdı", "{text}"),
+    # K-63 günlük plan
+    "daily_plan": ("Yarın {count} işiniz var", "İlk alış {first}. Planı ve dönüş işi önerilerini görmek için dokunun."),
     # K-62 yolcu durumu, puan, bahşiş
     "passenger_landed": ("{passenger} indi", "{pickup} alışı. Yolcu pasaport ve bagaj aşamasında."),
     "passenger_baggage": ("{passenger} bagajda", "{pickup} alışı. Birazdan çıkışta olacak."),

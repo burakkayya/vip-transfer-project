@@ -120,6 +120,10 @@ export interface Trip {
   passenger_status?: string | null;
   passenger_status_at?: string | null;
   customer_locale?: string | null;
+  customer_note?: string | null;
+  arrived_at?: string | null;
+  no_show_after?: string | null;
+  no_show?: boolean;
   flight_no: string | null;
   flight_status?: string | null;
   flight_estimated_at?: string | null;

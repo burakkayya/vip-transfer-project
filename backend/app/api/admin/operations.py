@@ -148,7 +148,10 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
         "customer_name": (b.customer.full_name[:1] + "***") if b.customer.full_name else None,
         # K-54: kaynak, kanal, ödeme son anı, fiyat değişikliği, ödeme bağlantısı ve paylaşım metni.
         "manual": manual_bookings.manual_info(b),
-        "events": [{"leg_id": str(e.booking_leg_id), "event": e.event_type.value, "at": e.occurred_at} for e in events],
+        # K-63: olay anındaki sürücü konumu (kanıtlı bekleme, yolcu gelmedi).
+        "events": [{"leg_id": str(e.booking_leg_id), "event": e.event_type.value, "at": e.occurred_at,
+                    "lat": str(e.latitude) if e.latitude is not None else None,
+                    "lng": str(e.longitude) if e.longitude is not None else None} for e in events],
         "offers": [{"leg_id": str(o.booking_leg_id), "driver_id": str(o.driver_id), "status": o.status.value,
                     "offered_at": o.offered_at} for o in offers],
         "payments": [

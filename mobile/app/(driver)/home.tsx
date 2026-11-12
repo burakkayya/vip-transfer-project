@@ -338,7 +338,14 @@ export default function DriverHome() {
       {/* Yaklaşan işler */}
       <Row spread>
         <H2>Yaklaşan işler</H2>
-        {trips.length > 0 ? <Badge text={String(trips.length)} tone="dark" /> : null}
+        <Row gap={8}>
+          {trips.length > 0 ? <Badge text={String(trips.length)} tone="dark" /> : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="Günlük plan" onPress={() => { tap(); router.push("/plan"); }}
+            style={{ flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.canvas }}>
+            <Ionicons name="calendar-outline" size={15} color={colors.ink} />
+            <T style={{ fontWeight: "700", fontSize: 13 }}>Günlük plan</T>
+          </Pressable>
+        </Row>
       </Row>
       {trips.length === 0 && (
         <Card flat>

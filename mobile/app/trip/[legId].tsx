@@ -16,6 +16,7 @@ import { LEG_STATUS, NEXT_STEP } from "@/lib/driverLabels";
 import { clock, dateTime, money } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
 import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
+import { CustomerNoteCard, DepartureCard, WaitCard } from "@/components/DriverTripTools";
 import { backgroundSupported, distanceM, navigationUrls, startBackgroundTracking, stopBackgroundTracking } from "@/lib/tracking";
 import type { Approach, Trip } from "@/lib/types";
 
@@ -327,7 +328,11 @@ export default function TripScreen() {
               ? "Konumunuz paylaşılıyor. Arka planda da sürmesi için konum iznini \"Her zaman\" yapın."
               : "Konumunuz paylaşılıyor. Bu önizlemede uygulama açıkken paylaşılır."} />
         ) : null}
-        {status === "bitti" && <Alert tone="ok" text="Yolculuk tamamlandı. Hakedişiniz Kazanç sekmesine eklendi." />}
+        {status === "bitti" && <Alert tone="ok" text={trip.no_show
+          ? "Yolcu gelmedi olarak kaydedildi. Bekleme kanıtınız saklandı, hakedişiniz Kazanç sekmesine eklendi."
+          : "Yolculuk tamamlandı. Hakedişiniz Kazanç sekmesine eklendi."} />}
+        {status === "atandi" ? <DepartureCard trip={trip} position={position} /> : null}
+        {status === "vardi" ? <WaitCard trip={trip} position={position} onDone={setTrip} /> : null}
 
         {/* Navigasyon: aşamaya göre hedef */}
         {open && (
@@ -352,18 +357,13 @@ export default function TripScreen() {
             <Avatar name={trip.passenger_name} size={52} dark={false} />
             <View style={{ flex: 1, gap: 2 }}>
               <T style={{ fontWeight: "700", fontSize: 17 }}>{trip.passenger_name}</T>
-              <T style={s.hint}>{trip.passenger_count} yolcu · {trip.luggage_count} bagaj{trip.flight_no ? ` · ${trip.flight_no}` : ""}</T>
+              {trip.flight_no ? <T style={s.hint}>{trip.flight_no}</T> : null}
               {trip.customer_locale && trip.customer_locale !== "tr" ? (
                 <T style={s.hint}>Yolcunun dili: {LANG_TR[trip.customer_locale] ?? trip.customer_locale.toUpperCase()} · mesajlar çevrilir</T>
               ) : null}
             </View>
           </Row>
-          {trip.child_seat_count || trip.market_stop ? (
-            <View style={{ backgroundColor: colors.accentSoft, borderRadius: 14, padding: 12, gap: 4 }}>
-              {trip.child_seat_count ? <T style={{ fontWeight: "700" }}>{trip.child_seat_count} çocuk koltuğu hazırlayın</T> : null}
-              {trip.market_stop ? <T style={{ fontWeight: "700" }}>Yolda market molası istendi</T> : null}
-            </View>
-          ) : null}
+          <CustomerNoteCard trip={trip} />
           {trip.passenger_status ? (
             <View style={{ backgroundColor: colors.okSoft, borderRadius: 14, padding: 12, flexDirection: "row", gap: 8, alignItems: "center" }}>
               <Ionicons name="walk" size={18} color={colors.ok} />

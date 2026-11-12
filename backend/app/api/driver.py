@@ -42,6 +42,7 @@ from app.services import (
     audit,
     dispatch,
     documents,
+    driver_tools,
     eta,
     live_location,
     meeting,
@@ -321,6 +322,11 @@ class TripOut(BaseModel):
     passenger_status: str | None = None
     passenger_status_at: datetime | None = None
     customer_locale: str | None = None
+    # K-63: müşteri notu (kabul sonrası), kanıtlı bekleme.
+    customer_note: str | None = None
+    arrived_at: datetime | None = None
+    no_show_after: datetime | None = None
+    no_show: bool = False
     flight_no: str | None
     driver_amount: MoneyStr
     # K-60: uçuş takibi (geliş uçuşunda tahmini iniş; takip kapalıysa None)
@@ -358,6 +364,10 @@ def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
         passenger_status=leg.passenger_status,
         passenger_status_at=leg.passenger_status_at,
         customer_locale=b.locale,
+        customer_note=b.note,
+        arrived_at=leg.arrived_at,
+        no_show_after=driver_tools.no_show_after(leg),
+        no_show=leg.no_show_at is not None,
         flight_no=leg.flight.flight_no if leg.flight else None,
         flight_status=leg.flight.status if leg.flight else None,
         flight_scheduled_at=(leg.flight.provider_scheduled_at or leg.flight.scheduled_at) if leg.flight else None,
@@ -395,6 +405,7 @@ def list_offers(driver: CurrentDriver, db: DbSession, now: Now):
         trip.passenger_name = trip.passenger_name.split()[0][:1] + "***"
         trip.pickup_address = None
         trip.dropoff_address = None
+        trip.customer_note = None
         result.append(OfferOut(offer_id=o.id, expires_at=o.expires_at, trip=trip))
     return result
 

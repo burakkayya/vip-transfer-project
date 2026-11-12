@@ -20,6 +20,10 @@ const FIRST_RUN_WINDOW_MS = 3 * 60_000;
 
 function openFor(data: TripUpdate["data"]) {
   if (VARIANT === "driver") {
+    if (data.type === "daily_plan") {
+      router.push("/plan");
+      return;
+    }
     if (!data.leg_id) return;
     if (data.type === "new_message") router.push(`/chat/${data.leg_id}`);
     else router.push(`/trip/${data.leg_id}`);

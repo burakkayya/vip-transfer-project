@@ -35,7 +35,9 @@ TIP_OPEN, TIP_PENDING, TIP_PAID, TIP_FAILED = "yok", "beklemede", "odendi", "bas
 
 def rateable_leg(booking: Booking) -> BookingLeg | None:
     """Puanlanacak bacak: sürücüsü olan son tamamlanmış bacak."""
-    done = [leg for leg in booking.legs if leg.status is LegStatus.COMPLETED and leg.driver_id is not None]
+    # Yolcu gelmedi (K-63) bacağı puanlanmaz.
+    done = [leg for leg in booking.legs
+            if leg.status is LegStatus.COMPLETED and leg.driver_id is not None and leg.no_show_at is None]
     return done[-1] if done else None
 
 
