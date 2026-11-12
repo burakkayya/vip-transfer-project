@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import admin, auth, customer, driver, meeting, payments, public, trips
+from app.api import admin, auth, customer, driver, driver_tools, meeting, payments, public, trips
 from app.config import get_settings
 from app.errors import DomainError
 
@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
     for module in (public, auth, customer, payments, driver):
         app.include_router(module.router, prefix=api)
     app.include_router(trips.driver_router, prefix=api)
+    app.include_router(driver_tools.router, prefix=api)
     app.include_router(trips.customer_router, prefix=api)
     app.include_router(customer.ws_router, prefix=api)
     app.include_router(meeting.customer_router, prefix=api)

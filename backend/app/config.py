@@ -137,6 +137,14 @@ class Settings(BaseSettings):
     # biliniyorsa (adres koordinatı yok) ilçe merkezine daha geniş yarıçap uygulanır.
     trip_finish_radius_m: int = 500
     trip_finish_region_radius_m: int = 3000
+    # K-63 kanıtlı bekleme: ücretsiz bekleme (havalimanı uçuş inişinden/alış saatinden, diğer alış saatinden
+    # ya da varıştan, hangisi geçse), "yolcu gelmedi" için alışa en çok uzaklık, uçuştan çıkış süresi,
+    # çıkış önerisinde pay.
+    no_show_wait_airport_minutes: int = 60
+    no_show_wait_minutes: int = 15
+    no_show_radius_m: int = 300
+    airport_exit_minutes: int = 30
+    departure_buffer_minutes: int = 10
     # Sürücü havuzunda ve teklifte alış/varış noktası bu kadar metre kırpılarak gösterilir (adres gizliliği).
     job_preview_trim_m: int = 400
 

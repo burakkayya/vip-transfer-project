@@ -18,10 +18,11 @@ from app.api.schemas import BookingOut, MoneyStr
 from app.errors import NotFound
 from app.localtime import LOCAL_TZ
 from app.models import Booking, BookingLeg, DispatchOffer, Driver, DriverLedger, Payment, TripEvent
-from app.models.enums import BookingSource, BookingStatus, PaymentStatus
+from app.models.enums import BookingSource, BookingStatus, PaymentStatus, RoleCode, TripEventType
+from app.providers.routing import Point, haversine_km
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
-from app.services import bookings, dispatch, live_location
+from app.services import bookings, dispatch, eta, live_location
 
 router = APIRouter(tags=["admin:operations"])
 
@@ -129,10 +130,24 @@ def _booking(db, booking_id: uuid.UUID) -> Booking:
     return b
 
 
+def _event_out(e: TripEvent, leg, see_coords: bool) -> dict:
+    out = {"leg_id": str(e.booking_leg_id), "event": e.event_type.value, "at": e.occurred_at,
+           "distance_m": None, "lat": None, "lng": None}
+    if e.latitude is not None and e.longitude is not None and leg is not None:
+        point = Point(e.latitude, e.longitude)
+        target = eta.dropoff_point(leg) if e.event_type is TripEventType.FINISHED else eta.pickup_point(leg)
+        out["distance_m"] = int(haversine_km(point, target) * 1000)
+        if see_coords:
+            out["lat"], out["lng"] = str(e.latitude), str(e.longitude)
+    return out
+
+
 @router.get("/bookings/{booking_id}")
 def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
     b = _booking(db, booking_id)
     leg_ids = [leg.id for leg in b.legs]
+    legs_by_id = {leg.id: leg for leg in b.legs}
+    see_coords = bool(staff.user.role_codes & {RoleCode.OPERATIONS.value, RoleCode.ADMIN.value})
     events = db.scalars(select(TripEvent).where(TripEvent.booking_leg_id.in_(leg_ids)).order_by(TripEvent.occurred_at))
     offers = db.scalars(select(DispatchOffer).where(DispatchOffer.booking_leg_id.in_(leg_ids)))
     pays = list(db.scalars(select(Payment).where(Payment.booking_id == b.id).order_by(Payment.created_at)))
@@ -148,7 +163,9 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
         "customer_name": (b.customer.full_name[:1] + "***") if b.customer.full_name else None,
         # K-54: kaynak, kanal, ödeme son anı, fiyat değişikliği, ödeme bağlantısı ve paylaşım metni.
         "manual": manual_bookings.manual_info(b),
-        "events": [{"leg_id": str(e.booking_leg_id), "event": e.event_type.value, "at": e.occurred_at} for e in events],
+        # K-63: olay anındaki sürücü konumu (kanıtlı bekleme, yolcu gelmedi). Herkes alış/varışa uzaklığı görür;
+        # kesin koordinat yalnızca operasyon ve admin rolünde.
+        "events": [_event_out(e, legs_by_id.get(e.booking_leg_id), see_coords) for e in events],
         "offers": [{"leg_id": str(o.booking_leg_id), "driver_id": str(o.driver_id), "status": o.status.value,
                     "offered_at": o.offered_at} for o in offers],
         "payments": [

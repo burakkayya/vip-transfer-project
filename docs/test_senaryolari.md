@@ -290,6 +290,14 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 6. Çeviri açıkken (`GETAWAY_TRANSLATION_PROVIDER=google` ve anahtar) Almanca rezervasyonda müşterinin mesajı sürücüye Türkçe, sürücününki müşteriye Almanca gelir; altında aslı görünür. Sürücü Almanca konuşuyorsa çeviri yapılmaz.
 7. Yolculuk bitince rezervasyon detayında yıldız ve bahşiş kartı çıkar. Bahşiş seçilirse ödeme sayfası açılır; ödenince sürücü "Bahşiş" bildirimi alır, Kazanç'ta komisyonsuz ayrı satır görünür.
 
+### 20. Sürücü araçları (K-63; sürücü uygulaması)
+
+1. Atanmış işi açın: "En geç HH:MM'de yola çıkın" kartı konumunuza göre görünür; geç kaldıysanız "Hemen yola çıkın" yazar.
+2. Yolcu kartında yolcu, bagaj, çocuk koltuğu, dil ve müşteri notu tek kartta görünür.
+3. "Yola çıktım" ve "Vardım" deyin: bekleme sayacı başlar, ücretsiz beklemenin bittiği saat yazar. Süre dolmadan "Yolcu gelmedi" kapalıdır.
+4. Yolcu bu sırada durum bildirir ya da yazarsa bekleme 15 dk uzar. Uçuş takibi kapalıyken uçuşlu havalimanı alışında "Yolcu gelmedi" "operasyonla iletişime geçin" der. Süre dolunca, alış noktasındayken "Yolcu gelmedi" → onay: yolculuk tamamlanır, Kazanç'a hakediş eklenir, müşteriye "Sizi bulamadık" bildirimi gider. Admin rezervasyon detayında "vardi" ve "gelmedi" olaylarının konumu görünür.
+5. Ana sayfadaki "Günlük plan": bugün/yarın işleri, tahmini kazanç ve varış bölgesinden dönüş işi önerileri. Akşam 20:00'de ertesi gün işi olan sürücüye özet bildirimi gelir; bildirime dokununca plan açılır.
+
 ## Otomatik testler
 
 - **GitHub CI** (`.github/workflows/ci.yml`): her PR'da backend pytest, mobil tsc + jest + lint, web ve admin tsc + lint, kök betik testleri ve token uyumu otomatik koşar. Playwright testleri CI'da yoktur, yerelde çalıştırılır.
