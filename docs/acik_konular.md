@@ -25,6 +25,10 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 ## Teknik
 
+### Kıyı Yolu (K-39)
+
+- [ ] Mobilde koyu zemin üstündeki yarı saydam beyazlar (`rgba(255,255,255,…)`) ve Google harita stili token kapsamı dışında kaldı; mobil ekranlar gerçek cihazda yeni renklerle (özellikle `faint` artık daha koyu) gözden geçirilecek.
+
 ### Sürücü araçları (K-63)
 
 - [ ] "Yolcu gelmedi" kaydında müşteri itiraz ederse süreç: admin olay konumlarını ve mesajlaşmayı inceler; gerekirse elle iade (K-57) ve hakediş iptali. Ücretsiz bekleme süreleri (60/15 dk) ve sonrasında ücretli bekleme operasyonla teyit edilecek.

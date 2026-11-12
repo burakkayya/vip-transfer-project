@@ -1,3 +1,4 @@
+import { palette } from "@/lib/tokens";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold, useFonts } from "@expo-google-fonts/inter";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -15,7 +16,7 @@ import "@/lib/tracking";
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   if (Platform.OS !== "web") return <>{children}</>;
   return (
-    <View style={{ flex: 1, backgroundColor: "#E9E6DF", alignItems: "center", justifyContent: "center", paddingVertical: 16 }}>
+    <View style={{ flex: 1, backgroundColor: palette.limestoneDeep, alignItems: "center", justifyContent: "center", paddingVertical: 16 }}>
       <T style={{ color: colors.muted, fontSize: 12, marginBottom: 10, letterSpacing: 1.5, fontWeight: "600" }}>
         {VARIANT === "driver" ? "GETAWAY SÜRÜCÜ" : "GETAWAY MÜŞTERİ"} · WEB ÖNİZLEME
       </T>
@@ -28,14 +29,14 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
           borderRadius: 52,
           overflow: "hidden",
           borderWidth: 11,
-          borderColor: "#0B0B0C",
+          borderColor: palette.lacquerBlack,
           backgroundColor: colors.bg,
           boxShadow: "0 40px 80px rgba(0,0,0,0.25)",
         } as object}
       >
         {/* Gerçek telefondaki çentik ve alt çubuk payı (web'de güvenli alan 0 gelir). */}
         <SafeAreaInsetsContext.Provider value={{ top: 44, bottom: 22, left: 0, right: 0 }}>{children}</SafeAreaInsetsContext.Provider>
-        <View pointerEvents="none" style={{ position: "absolute", top: 10, alignSelf: "center", width: 112, height: 32, borderRadius: 20, backgroundColor: "#0B0B0C" }} />
+        <View pointerEvents="none" style={{ position: "absolute", top: 10, alignSelf: "center", width: 112, height: 32, borderRadius: 20, backgroundColor: palette.lacquerBlack }} />
       </View>
     </View>
   );

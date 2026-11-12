@@ -25,7 +25,7 @@ function Ring(props: { done: number; total: number }) {
     <View style={{ width: 84, height: 84, alignItems: "center", justifyContent: "center" }}>
       <Svg width={84} height={84} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
         <Circle cx={42} cy={42} r={R} stroke="rgba(255,255,255,0.15)" strokeWidth={7} fill="none" />
-        <Circle cx={42} cy={42} r={R} stroke={p >= 1 ? "#7FD3A4" : colors.accent} strokeWidth={7} fill="none" strokeLinecap="round"
+        <Circle cx={42} cy={42} r={R} stroke={p >= 1 ? colors.okOnDark : colors.accent} strokeWidth={7} fill="none" strokeLinecap="round"
           strokeDasharray={C} strokeDashoffset={C * (1 - p)} />
       </Svg>
       <T style={{ color: "#fff", fontWeight: "800", fontSize: 18 }}>{props.done}/{props.total}</T>

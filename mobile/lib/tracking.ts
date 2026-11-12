@@ -2,6 +2,7 @@
 // Geliştirme/mağaza derlemesinde uygulama arka plandayken de sürer: Android'de "Yolculuk sürüyor"
 // kalıcı bildirimli ön plan hizmeti, iOS'ta arka plan konum modu. Expo Go arka plan konumunu
 // desteklemez; orada ekran açıkken ön plan izlemesi kullanılır (trip/[legId].tsx).
+import { palette } from "./tokens";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
@@ -59,7 +60,7 @@ export async function startBackgroundTracking(legId: string): Promise<boolean> {
     foregroundService: {
       notificationTitle: "Yolculuk sürüyor",
       notificationBody: "Konumunuz bu yolculuk boyunca yolcuyla paylaşılıyor.",
-      notificationColor: "#0B0B0C",
+      notificationColor: palette.lacquerBlack,
       killServiceOnDestroy: false,
     },
   });

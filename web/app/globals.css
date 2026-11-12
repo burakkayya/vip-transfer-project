@@ -2875,3 +2875,14 @@ input.readonly:focus {
 .extras { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; }
 .extras legend { font-weight: 600; margin-bottom: 4px; }
 .track-eta:empty { display: none; }
+
+/* K-39 Kıyı Yolu: küçük rota rayı (takip sayfası, rehber). */
+.track-route { display: flex; gap: 14px; align-items: stretch; margin: 4px 0; font-size: clamp(1.4rem, 3.4vw, 1.9rem); letter-spacing: -0.03em; }
+.track-stops { display: flex; flex-direction: column; gap: 14px; }
+.mini-rail { display: flex; flex-direction: column; align-items: center; width: 10px; padding-block: 0.45em; }
+.mini-rail i { flex: none; width: 10px; height: 10px; background: var(--ink); }
+.mini-rail i:first-child { border-radius: 999px; }
+.mini-rail b { flex: 1; width: 2px; margin: 3px 0; background: repeating-linear-gradient(180deg, var(--ink) 0 4px, transparent 4px 7px); }
+.track-card .label { color: var(--color-champagne-brass-ink); }
+.guide-num { font-variant-numeric: tabular-nums; }
+.status-step.done { box-shadow: inset 0 -3px 0 var(--accent); }

@@ -20,6 +20,9 @@ colors:
   pine-green-soft: "#e6f4ec"
   amber-ink: "#8a6100"
   amber-soft: "#fbf7ee"
+  champagne-soft: "#f5eee2"
+  pine-green-on-dark: "#7fd3a4"
+  signal-red-on-dark: "#ff6b5e"
 typography:
   display:
     fontFamily: "Inter, system-ui, sans-serif"
@@ -131,7 +134,7 @@ components:
 
 Bu dosya müşteri web sitesini (`web/`) ve admin panelini (`admin/`) kapsar. Mobil uygulamalar kendi dosyasını taşır: `mobile/DESIGN.md`. **Renk tokenları üç yüzeyde ortaktır** (yukarıdaki `colors`); tipografi, şekil ve bileşenler yüzeye göre ayrılır. Ürün gerçekleri `PRODUCT.md`'dedir.
 
-Durum (2026-11-02): frontmatter, birleştirme kararıyla hedef değerleri taşır. Web ve admin zaten bu renkleri kullanır; `slate-faint`, `champagne-brass-ink` ve yumuşak durum zeminleri tarama sırasında CSS değişkeni olarak eklenecektir.
+Durum (2026-11-12): web, admin ve mobil renkleri bu frontmatter'dan üretilir (`node scripts/sync-tokens.mjs`; CI `--check` ile denetler). Mobil `colors` nesnesi `palette`'e bağlıdır; mobilde yeni sabit renk yazılmaz (`mobile/__tests__/tokens.test.ts` denetler).
 
 ## Overview
 
@@ -168,7 +171,10 @@ Siyah-beyaz bir yol; tek sıcak vurgu ve yalnızca anlam taşıyan durum renkler
 - **Soluk Arduvaz** (slate-faint): metin olarak kullanılabilecek en açık gri (4,52:1). Daha açık gri yalnızca süs ve devre dışı çizgilerde.
 - **Saç Çizgisi** (hairline) ve **Güçlü Saç Çizgisi** (hairline-strong): kart kenarı, tablo satırı, ayırıcı.
 
+- **Şampanya Zemini** (champagne-soft): mobilde pirinç vurgulu yumuşak blok zemini (anlık transfer ipucu, sürücü kartı rozeti).
+
 ### Durum
+- **Koyu zemin durumları** (pine-green-on-dark, signal-red-on-dark): yalnızca lake siyah üstünde küçük durum işareti (ödendi, geri sayım sonu); beyaz zeminde kullanılmaz.
 - **Sinyal Kırmızısı** (signal-red, zemin signal-red-soft): hata, iptal, yıkıcı eylem.
 - **Çam Yeşili** (pine-green, zemin pine-green-soft): onaylandı, ödendi, başarı.
 - **Kehribar Mürekkebi** (amber-ink, zemin amber-soft): bekliyor, uyarı, geliştirme kodu kutusu.

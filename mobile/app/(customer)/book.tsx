@@ -294,8 +294,8 @@ export default function Book() {
         </Row>
         {instant ? (
           <View style={{ flexDirection: "row", gap: 10, alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: 14, padding: 12 }}>
-            <Ionicons name="flash" size={18} color="#8A6A37" />
-            <T style={{ flex: 1, color: "#6B5228", fontSize: 13.5 }}>{t("book.instant")}</T>
+            <Ionicons name="flash" size={18} color={colors.accentInk} />
+            <T style={{ flex: 1, color: colors.accentInk, fontSize: 13.5 }}>{t("book.instant")}</T>
           </View>
         ) : (
           <DateTimeField label="" value={at} onChange={setAt} minimumDate={new Date()} />
