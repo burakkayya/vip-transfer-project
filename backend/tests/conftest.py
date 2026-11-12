@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 os.environ.setdefault(
     "GETAWAY_DATABASE_URL", "postgresql+psycopg://getaway:getaway@localhost:5432/getaway_test"
 )
-os.environ.setdefault("GETAWAY_REDIS_URL", "redis://localhost:6379/15")
+os.environ.setdefault("GETAWAY_REDIS_URL", "redis://:getaway-redis@localhost:6379/15")
 os.environ["GETAWAY_ENV"] = "test"
 os.environ["GETAWAY_SMS_PROVIDER"] = "console"
 os.environ["GETAWAY_PAYMENT_PROVIDER"] = "fake"

@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
+from app.config import DEV_ENVS, get_settings
 from app.errors import TooManyRequests, Unauthorized
 from app.models import OtpChallenge
 from app.models.enums import OtpPurpose
@@ -75,7 +75,7 @@ def request_code(
     db.add(challenge)
     db.flush()
     sms.send(phone, OTP_TEXT.get(locale, OTP_TEXT["en"]).format(code=code))
-    dev_code = code if s.env != "prod" and s.sms_provider == "console" else None
+    dev_code = code if s.env in DEV_ENVS and s.sms_provider == "console" else None
     return OtpIssued(challenge_id=challenge.id, expires_at=challenge.expires_at, dev_code=dev_code)
 
 

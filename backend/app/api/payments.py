@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy import select
 
 from app.api.deps import DbSession, Now
-from app.config import get_settings
+from app.config import DEV_ENVS, get_settings
 from app.errors import NotFound
 from app.models import Payment
 from app.models.enums import PaymentProviderCode
@@ -15,6 +15,8 @@ from app.providers.payments import FakeProvider, get_payment_provider
 from app.services import payments
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+# Sahte ödeme sayfası (INF-01): main.py bu router'ı yalnızca env dev/test iken ekler; üretimde uç hiç yoktur.
+fake_router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 @router.post("/paytr/callback", response_class=PlainTextResponse)
@@ -60,13 +62,14 @@ def _frame_headers() -> dict[str, str]:
 
 
 def _fake_provider() -> FakeProvider:
+    # İkinci savunma hattı: router dev/test dışında eklenmez; yine de izin listesi ve sağlayıcı denetlenir.
     provider = get_payment_provider()
-    if get_settings().env == "prod" or not isinstance(provider, FakeProvider):
+    if get_settings().env not in DEV_ENVS or not isinstance(provider, FakeProvider):
         raise NotFound("bulunamadı")
     return provider
 
 
-@router.get("/fake/{oid}", response_class=HTMLResponse, include_in_schema=False)
+@fake_router.get("/fake/{oid}", response_class=HTMLResponse, include_in_schema=False)
 def fake_page(oid: str, db: DbSession):
     _fake_provider()
     payment = db.scalar(select(Payment).where(Payment.merchant_oid == oid))
@@ -78,7 +81,7 @@ def fake_page(oid: str, db: DbSession):
     )
 
 
-@router.post("/fake/{oid}/complete", response_class=HTMLResponse, include_in_schema=False)
+@fake_router.post("/fake/{oid}/complete", response_class=HTMLResponse, include_in_schema=False)
 async def fake_complete(oid: str, request: Request, db: DbSession, now: Now):
     provider = _fake_provider()
     payment = db.scalar(select(Payment).where(Payment.merchant_oid == oid))

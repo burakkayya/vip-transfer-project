@@ -6,6 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 from functools import lru_cache
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,6 +15,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 _DEV_JWT_SECRET = "dev-only-jwt-secret-change-me-0123456789"
 _DEV_FERNET_KEY = "Z2V0YXdheS1kZXYtb25seS1maWVsZC1rZXktMDAwMDA="
 _DEV_BLIND_INDEX_KEY = "dev-only-blind-index-key"
+# docker-compose.yml ile aynı yerel değerler (yalnızca geliştirme).
+_DEV_DB_PASSWORD = "getaway"
+_DEV_REDIS_PASSWORD = "getaway-redis"
+
+# Sahte ödeme sayfası, /docs ve dev_code gibi geliştirme kolaylıkları yalnızca bu ortamlarda açılır.
+DEV_ENVS = frozenset({"dev", "test"})
+_MIN_SECRET_BYTES = 32
+_DB_SSLMODES = frozenset({"require", "verify-ca", "verify-full"})
+_LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"})
+
+
+def _is_public_https(url: str) -> bool:
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and bool(host) and host not in _LOCAL_HOSTS and not host.endswith(".localhost")
 
 
 class Settings(BaseSettings):
@@ -21,9 +37,10 @@ class Settings(BaseSettings):
         env_file=".env", env_prefix="GETAWAY_", extra="ignore"
     )
 
-    env: str = "dev"  # dev | test | prod
-    database_url: str = "postgresql+psycopg://getaway:getaway@localhost:5432/getaway"
-    redis_url: str = "redis://localhost:6379/0"
+    # Bilinmeyen değer (ör. "production", "Prod") açılışta reddedilir (INF-01).
+    env: Literal["dev", "test", "prod"] = "dev"
+    database_url: str = f"postgresql+psycopg://getaway:{_DEV_DB_PASSWORD}@localhost:5432/getaway"
+    redis_url: str = f"redis://:{_DEV_REDIS_PASSWORD}@localhost:6379/0"
     # 8081/8082: mobil uygulamanın web önizlemesi (müşteri / sürücü), yalnızca geliştirme.
     cors_origins: list[str] = [
         "http://localhost:3000",
@@ -128,6 +145,7 @@ class Settings(BaseSettings):
                 raise ValueError("üretimde sahte adres sağlayıcısı kullanılamaz")
             if self.push_provider == "console":
                 raise ValueError("üretimde push sağlayıcısı fcm olmalı")
+            self._prod_checks()
         # Sahte adres ve kuş uçuşu rota yalnızca otomatik testlerde; geliştirme ve canlıda Google zorunlu.
         if self.env != "test":
             if self.places_provider != "google" or self.routing_provider != "google":
@@ -137,6 +155,41 @@ class Settings(BaseSettings):
         if self.push_provider == "fcm" and not Path(self.fcm_credentials_file or "").is_file():
             raise ValueError("push_provider=fcm için GETAWAY_FCM_CREDENTIALS_FILE geçerli bir dosya olmalı")
         return self
+
+    def _prod_checks(self) -> None:
+        """INF-02 ve RT-01: geliştirme varsayılanlarıyla üretimde açılmayı engeller.
+        Hata iletileri değer içermez, yalnızca alan adını söyler."""
+        if self.sms_provider == "console":
+            raise ValueError("üretimde konsol SMS sağlayıcısı kullanılamaz (GETAWAY_SMS_PROVIDER)")
+        if self.paytr_test_mode:
+            raise ValueError("üretimde PayTR test modu kapalı olmalı (GETAWAY_PAYTR_TEST_MODE=false)")
+        if self.payment_provider == "paytr":
+            empty = [k for k in ("paytr_merchant_id", "paytr_merchant_key", "paytr_merchant_salt") if not getattr(self, k)]
+            if empty:
+                raise ValueError(f"PayTR seçiliyken merchant alanları boş olamaz: {empty}")
+        for name in ("jwt_secret", "blind_index_key"):
+            if len(getattr(self, name).encode("utf-8")) < _MIN_SECRET_BYTES:
+                raise ValueError(f"{name} en az {_MIN_SECRET_BYTES} bayt olmalı")
+
+        db = urlsplit(self.database_url)
+        sslmode = (parse_qs(db.query).get("sslmode") or [""])[-1]
+        db_password = unquote(db.password or "")
+        if not db_password or db_password == _DEV_DB_PASSWORD:
+            raise ValueError("üretimde veritabanı adresi geliştirme kimlik bilgisi ya da parolasız olamaz (GETAWAY_DATABASE_URL)")
+        if sslmode not in _DB_SSLMODES:
+            raise ValueError("üretimde veritabanı bağlantısı sslmode=verify-full (en az require) olmalı (GETAWAY_DATABASE_URL)")
+
+        redis = urlsplit(self.redis_url)
+        redis_password = unquote(redis.password or "")
+        if redis.scheme != "rediss":
+            raise ValueError("üretimde Redis adresi TLS'li (rediss://) olmalı (GETAWAY_REDIS_URL)")
+        if not redis_password or redis_password == _DEV_REDIS_PASSWORD:
+            raise ValueError("üretimde Redis adresi parola içermeli, geliştirme parolası olamaz (GETAWAY_REDIS_URL)")
+
+        if not self.cors_origins or not all(_is_public_https(o) for o in self.cors_origins):
+            raise ValueError("üretimde CORS kaynakları yalnızca https:// ve localhost dışı olmalı (GETAWAY_CORS_ORIGINS)")
+        if not _is_public_https(self.public_web_url):
+            raise ValueError("üretimde public_web_url https:// ve localhost dışı olmalı (GETAWAY_PUBLIC_WEB_URL)")
 
 
 @lru_cache
