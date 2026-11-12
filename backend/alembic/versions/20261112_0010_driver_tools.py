@@ -22,6 +22,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Eski kod "gelmedi" olay türünü tanımaz; yolculuk tamamlandığı için "bitti" sayılır.
+    op.execute("UPDATE trip_events SET event_type = 'bitti' WHERE event_type = 'gelmedi'")
     op.drop_column("booking_legs", "no_show_at")
     op.drop_column("booking_legs", "arrived_at")
     op.drop_column("trip_events", "longitude")

@@ -25,6 +25,11 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 ## Teknik
 
+### Sürücü araçları (K-63)
+
+- [ ] "Yolcu gelmedi" kaydında müşteri itiraz ederse süreç: admin olay konumlarını ve mesajlaşmayı inceler; gerekirse elle iade (K-57) ve hakediş iptali. Ücretsiz bekleme süreleri (60/15 dk) ve sonrasında ücretli bekleme operasyonla teyit edilecek.
+- [ ] Olay konumları (`trip_events`) kişisel veri: saklama süresi K-18/K-31 ile birlikte belirlenecek (öneri: yolculuktan 1 yıl sonra konum alanlarını boşaltan görev).
+
 ### Buluşma deneyimi (K-62)
 
 - [ ] Sohbet çevirisi Google Cloud Translation'a (yurt dışı) mesaj metni gönderir. Telefon ve e-posta maskeleniyor ama serbest metinde ad, otel, oda numarası olabilir: KVKK m.9 yurt dışı aktarım için aydınlatma metni ve gerekirse açık rıza hukukçuyla teyit edilecek. Teyit gelene kadar `GETAWAY_TRANSLATION_PROVIDER=off` (varsayılan) kalır; anahtar `GETAWAY_TRANSLATION_API_KEY` ile verilir.

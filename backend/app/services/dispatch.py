@@ -328,8 +328,11 @@ def advance_trip(
                 code="too_far_from_dropoff",
             )
     leg.status = target
+    # K-63: konum yalnızca kanıt gereken olaylarda saklanır (varış, bitiş); yola çıkış konumu sürücünün evi
+    # olabileceği için tutulmaz.
+    keep = at is not None and event in (TripEventType.ARRIVED, TripEventType.FINISHED)
     db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=driver.user_id,
-                     latitude=at.lat if at else None, longitude=at.lng if at else None))
+                     latitude=at.lat if keep else None, longitude=at.lng if keep else None))
     if event is TripEventType.DEPARTED:
         eta.on_departed(db, leg, at)
     elif event is TripEventType.ARRIVED:

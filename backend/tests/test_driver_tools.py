@@ -156,3 +156,86 @@ def test_offer_hides_customer_note(client, ops):
 def test_now_fixture_cleanup(client):
     assert utcnow not in client.app.dependency_overrides
     assert abs((utcnow() - datetime.now(timezone.utc)).total_seconds()) < 5
+
+
+def _arrive(client, driver, leg_id, at=None):
+    _event(client, driver, leg_id, "yola_cikti")
+    if at:
+        _event(client, driver, leg_id, "vardi", at)
+    else:
+        _event(client, driver, leg_id, "vardi")
+    return client.get(f"{API}/driver/trips/{leg_id}", headers=driver).json()
+
+
+def test_no_show_requires_verified_arrival(client, ops, clock):
+    driver, _, _, _, trip = _setup(client, ops)
+    at = _ayt(client)
+    t = _arrive(client, driver, trip["leg_id"])  # konumsuz "Vardım"
+    clock(_dt(t["no_show_after"]) + timedelta(minutes=1))
+    r = client.post(f"{API}/driver/trips/{trip['leg_id']}/no-show", headers=driver, json={"lat": at[0], "lng": at[1]})
+    assert r.json()["error"]["code"] == "arrival_unverified"
+
+
+def test_no_show_blocked_when_flight_unverified(client, db, ops, clock):
+    from app.models import BookingLeg, FlightInfo
+
+    driver, _, _, _, trip = _setup(client, ops, flights=[{"leg_order": 1, "flight_no": "ZQ 4711"}])
+    at = _ayt(client)
+    t = _arrive(client, driver, trip["leg_id"], at)  # uçuş takibi kapalı: tahmini iniş yok
+    clock(_dt(t["no_show_after"]) + timedelta(hours=3))
+    r = client.post(f"{API}/driver/trips/{trip['leg_id']}/no-show", headers=driver, json={"lat": at[0], "lng": at[1]})
+    assert r.json()["error"]["code"] == "flight_unverified"
+    leg = db.get(BookingLeg, trip["leg_id"])
+    assert isinstance(leg.flight, FlightInfo)
+    # Bulunamadı (son durum) da doğrulanmamış sayılır; uçuş sonraki uçuş testlerinin sorgusuna girmez.
+    leg.flight.status = "bulunamadi"
+    db.commit()
+    r = client.post(f"{API}/driver/trips/{trip['leg_id']}/no-show", headers=driver, json={"lat": at[0], "lng": at[1]})
+    assert r.json()["error"]["code"] == "flight_unverified"
+
+
+def test_passenger_signal_extends_wait(client, db, ops, clock):
+    driver, customer, code, _, trip = _setup(client, ops)
+    at = _ayt(client)
+    before = _arrive(client, driver, trip["leg_id"], at)
+    unlock = _dt(before["no_show_after"])
+    # Yolcu "çıkıyorum" der: bekleme o andan 15 dk uzar (alış saatinden önce de olsa en az eski süre).
+    clock(unlock - timedelta(minutes=2))
+    client.post(f"{API}/me/bookings/{code}/passenger-status", headers=customer, json={"status": "cikiyor"})
+    after = client.get(f"{API}/driver/trips/{trip['leg_id']}", headers=driver).json()
+    assert _dt(after["no_show_after"]) == unlock - timedelta(minutes=2) + timedelta(minutes=15)
+    clock(unlock + timedelta(minutes=1))
+    r = client.post(f"{API}/driver/trips/{trip['leg_id']}/no-show", headers=driver, json={"lat": at[0], "lng": at[1]})
+    assert r.json()["error"]["code"] == "wait_not_over"
+
+
+def test_customer_message_extends_wait(client, ops, clock):
+    driver, customer, code, _, trip = _setup(client, ops)
+    at = _ayt(client)
+    t = _arrive(client, driver, trip["leg_id"], at)
+    unlock = _dt(t["no_show_after"])
+    client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "Pasaport kuyruğundayım"})
+    clock(unlock + timedelta(minutes=1))
+    # Mesaj gerçek saatte (alıştan önce) yazıldı; bekleme sınırı değişmez, geçmiştir.
+    r = client.post(f"{API}/driver/trips/{trip['leg_id']}/no-show", headers=driver, json={"lat": at[0], "lng": at[1]})
+    assert r.status_code == 200, r.text
+
+
+def test_departure_only_before_pickup_and_support_sees_distance(client, db, ops, clock):
+    from tests.conftest import staff_headers
+
+    driver, _, code, _, trip = _setup(client, ops)
+    at = _ayt(client)
+    _arrive(client, driver, trip["leg_id"], at)
+    r = client.get(f"{API}/driver/trips/{trip['leg_id']}/departure", headers=driver, params={"lat": at[0], "lng": at[1]})
+    assert r.json()["error"]["code"] == "invalid_transition"
+
+    booking = db.scalar(select(Booking).where(Booking.booking_code == code))
+    support = staff_headers(client, db, ["destek"])
+    events = client.get(f"{API}/admin/bookings/{booking.id}", headers=support).json()["events"]
+    arrived = next(e for e in events if e["event"] == "vardi")
+    assert arrived["distance_m"] is not None and arrived["lat"] is None
+    departed = next(e for e in events if e["event"] == "yola_cikti")
+    assert departed["distance_m"] is None  # yola çıkış konumu saklanmaz
+    full = client.get(f"{API}/admin/bookings/{booking.id}", headers=ops).json()["events"]
+    assert next(e for e in full if e["event"] == "vardi")["lat"] is not None
