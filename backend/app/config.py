@@ -62,6 +62,16 @@ class Settings(BaseSettings):
     otp_ttl_seconds: int = 300
     otp_max_attempts: int = 5
     otp_max_per_hour: int = 5
+    # AUTH-04 (SMS pompalama): IP başına ve tüm sistem için saatlik OTP isteği sınırı.
+    otp_max_per_ip_per_hour: int = 10
+    otp_global_max_per_hour: int = 100
+
+    # AUTH-01: personel girişinde hesap bazlı deneme sınırı (parola + 2FA hataları birlikte sayılır).
+    staff_login_max_failures: int = 10
+    staff_login_window_minutes: int = 15
+    staff_lockout_minutes: int = 15
+    # MFA ara jetonu başına en fazla TOTP denemesi; sonra jeton geçersiz olur.
+    staff_mfa_max_attempts: int = 5
 
     sms_provider: str = "console"
     netgsm_usercode: str = ""

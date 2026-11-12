@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -241,44 +242,127 @@ class StaffLoginStep:
     provisioning_uri: str | None = None
 
 
+_LOGIN_FAILED = "e-posta veya parola hatalı"
+_MFA_SESSION_INVALID = "doğrulama oturumu geçersiz, tekrar giriş yapın"
+
+
+def _is_locked(user: User, now: datetime) -> bool:
+    return user.locked_until is not None and user.locked_until > now
+
+
+def _register_failure(db: Session, user: User, now: datetime, ip: str | None, *, stage: str) -> None:
+    """AUTH-01: parola ve TOTP hataları aynı hesap sayacına yazılır. Pencere içinde eşik aşılırsa
+    hesap geçici kilitlenir; kilit bilgisi yalnızca denetim kaydına gider, yanıta yansımaz."""
+    s = get_settings()
+    started = user.failed_login_started_at
+    if started is None or now - started >= timedelta(minutes=s.staff_login_window_minutes):
+        user.failed_login_count = 0
+        user.failed_login_started_at = now
+    user.failed_login_count = (user.failed_login_count or 0) + 1
+    action = "staff.login_failed" if stage == "password" else "staff.2fa_failed"
+    audit.record(db, actor_id=user.id, action=action, entity_type="user", entity_id=user.id,
+                 changes={"failures": user.failed_login_count}, ip=ip)
+    if user.failed_login_count >= s.staff_login_max_failures:
+        audit.record(db, actor_id=user.id, action="staff.locked", entity_type="user", entity_id=user.id,
+                     changes={"failures": user.failed_login_count, "minutes": s.staff_lockout_minutes,
+                              "stage": stage}, ip=ip)
+        user.locked_until = now + timedelta(minutes=s.staff_lockout_minutes)
+        user.failed_login_count = 0
+        user.failed_login_started_at = None
+        user.mfa_jti = None
+        user.mfa_attempts = 0
+
+
+def _match_totp_step(secret: str, code: str, now: datetime) -> int | None:
+    """valid_window=1 ile eşleşen TOTP zaman adımını döner (tekrar kullanım denetimi için)."""
+    totp = pyotp.TOTP(secret)
+    base = totp.timecode(now)
+    matched = None
+    for step in (base - 1, base, base + 1):
+        if hmac.compare_digest(totp.generate_otp(step), code):
+            matched = step
+    return matched
+
+
 def staff_login(db: Session, email: str, password: str, ip: str | None) -> StaffLoginStep:
+    now = _now()
     email = normalize_email(email)
+    # Satır kilidi: paralel denemeler sayacı atlatamasın.
     user = db.scalar(
-        select(User).where(User.kind == UserKind.STAFF, User.email_hash == blind_index(email))
+        select(User)
+        .where(User.kind == UserKind.STAFF, User.email_hash == blind_index(email))
+        .with_for_update(of=User)
     )
+    # Parola her durumda doğrulanır (kilitli/olmayan hesap yanıt süresinden ayırt edilmesin).
     ok = verify_password(user.password_hash if user else None, password)
-    if not ok or user is None or user.status is not UserStatus.ACTIVE:
-        audit.record(db, actor_id=user.id if user else None, action="staff.login_failed",
-                     entity_type="user", entity_id=user.id if user else None, ip=ip)
-        raise Unauthorized("e-posta veya parola hatalı")
+    if user is None:
+        audit.record(db, actor_id=None, action="staff.login_failed", entity_type="user", entity_id=None, ip=ip)
+        raise Unauthorized(_LOGIN_FAILED)
+    if _is_locked(user, now):
+        # Kullanıcı numaralandırması olmasın: yanıt yanlış parola ile aynı.
+        audit.record(db, actor_id=user.id, action="staff.login_blocked", entity_type="user",
+                     entity_id=user.id, changes={"reason": "locked"}, ip=ip)
+        raise Unauthorized(_LOGIN_FAILED)
+    if not ok or user.status is not UserStatus.ACTIVE:
+        _register_failure(db, user, now, ip, stage="password")
+        raise Unauthorized(_LOGIN_FAILED)
+    # Yalnızca son verilen jeton geçerli; öncekiler ve kalan deneme hakları iptal.
+    user.mfa_jti = uuid.uuid4()
+    user.mfa_attempts = 0
     if user.two_factor_enabled:
-        return StaffLoginStep(tokens.create_mfa_token(user.id, "mfa"), setup_required=False)
+        return StaffLoginStep(tokens.create_mfa_token(user.id, "mfa", user.mfa_jti), setup_required=False)
     # İlk giriş: 2FA kurulumu zorunlu (K-22).
     if not user.two_factor_secret:
         user.two_factor_secret = pyotp.random_base32()
     uri = pyotp.TOTP(user.two_factor_secret).provisioning_uri(name=email, issuer_name=TOTP_ISSUER)
     return StaffLoginStep(
-        tokens.create_mfa_token(user.id, "mfa_setup"), setup_required=True, provisioning_uri=uri
+        tokens.create_mfa_token(user.id, "mfa_setup", user.mfa_jti), setup_required=True, provisioning_uri=uri
     )
 
 
 def staff_verify_2fa(
     db: Session, mfa_token: str, code: str, *, device_info: str | None, ip: str | None
 ) -> TokenPair:
+    now = _now()
+    s = get_settings()
     try:
         payload = tokens.decode_token(mfa_token, "mfa")
     except tokens.TokenError:
         try:
             payload = tokens.decode_token(mfa_token, "mfa_setup")
         except tokens.TokenError as exc:
-            raise Unauthorized("doğrulama oturumu geçersiz, tekrar giriş yapın") from exc
-    user = db.get(User, uuid.UUID(payload["sub"]))
+            raise Unauthorized(_MFA_SESSION_INVALID) from exc
+    try:
+        user_id = uuid.UUID(payload["sub"])
+        jti = uuid.UUID(payload["jti"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise Unauthorized(_MFA_SESSION_INVALID) from exc
+    user = db.scalar(select(User).where(User.id == user_id).with_for_update(of=User))
     if user is None or user.kind is not UserKind.STAFF or not user.two_factor_secret:
         raise Unauthorized("geçersiz istek")
-    if not pyotp.TOTP(user.two_factor_secret).verify(code, valid_window=1):
-        audit.record(db, actor_id=user.id, action="staff.2fa_failed", entity_type="user",
-                     entity_id=user.id, ip=ip)
+    # Tek kullanımlık jeton: yalnızca kullanıcıda kayıtlı son jti kabul edilir.
+    if user.mfa_jti is None or user.mfa_jti != jti:
+        raise Unauthorized(_MFA_SESSION_INVALID)
+    if _is_locked(user, now) or user.status is not UserStatus.ACTIVE:
+        user.mfa_jti = None
+        audit.record(db, actor_id=user.id, action="staff.login_blocked", entity_type="user",
+                     entity_id=user.id, changes={"reason": "locked" if _is_locked(user, now) else "inactive"},
+                     ip=ip)
+        raise Unauthorized(_MFA_SESSION_INVALID)
+    step = _match_totp_step(user.two_factor_secret, code, now)
+    replay = step is not None and user.totp_last_step is not None and step <= user.totp_last_step
+    if step is None or replay:
+        user.mfa_attempts = (user.mfa_attempts or 0) + 1
+        if user.mfa_attempts >= s.staff_mfa_max_attempts:
+            user.mfa_jti = None  # jetonun deneme hakkı bitti
+        _register_failure(db, user, now, ip, stage="totp_replay" if replay else "totp")
         raise Unauthorized("doğrulama kodu hatalı", code="totp_invalid")
+    user.mfa_jti = None
+    user.mfa_attempts = 0
+    user.totp_last_step = step
+    user.failed_login_count = 0
+    user.failed_login_started_at = None
+    user.locked_until = None
     if not user.two_factor_enabled:
         user.two_factor_enabled = True
         audit.record(db, actor_id=user.id, action="staff.2fa_enabled", entity_type="user",

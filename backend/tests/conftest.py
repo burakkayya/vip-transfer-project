@@ -22,6 +22,10 @@ os.environ["GETAWAY_ROUTING_PROVIDER"] = "haversine"
 os.environ["GETAWAY_PLACES_PROVIDER"] = "fake"
 os.environ["GETAWAY_PUSH_PROVIDER"] = "console"
 os.environ["GETAWAY_STORAGE_DIR"] = tempfile.mkdtemp(prefix="getaway-test-")
+# Tüm TestClient istekleri tek IP'den gelir; IP başına ve küresel OTP sınırı (AUTH-04) süiti kırmasın.
+# Sınırların kendisi test_auth_hardening.py'de düşük değerlerle ayrıca sınanır.
+os.environ["GETAWAY_OTP_MAX_PER_IP_PER_HOUR"] = "100000"
+os.environ["GETAWAY_OTP_GLOBAL_MAX_PER_HOUR"] = "100000"
 
 import pyotp  # noqa: E402
 import pytest  # noqa: E402

@@ -41,11 +41,13 @@ def create_access_token(user_id: uuid.UUID, session_id: uuid.UUID, kind: str) ->
     return jwt.encode(payload, s.jwt_secret, algorithm=ALGORITHM)
 
 
-def create_mfa_token(user_id: uuid.UUID, purpose: str) -> str:
-    """Parola doğrulandıktan sonra 2FA adımına geçiş için kısa ömürlü jeton."""
+def create_mfa_token(user_id: uuid.UUID, purpose: str, jti: uuid.UUID) -> str:
+    """Parola doğrulandıktan sonra 2FA adımına geçiş için kısa ömürlü jeton.
+    `jti` kullanıcı satırında saklanır; jeton tek kullanımlıktır (AUTH-01, AUTH-07)."""
     s = get_settings()
     payload = {
         "sub": str(user_id),
+        "jti": str(jti),
         "typ": purpose,  # mfa | mfa_setup
         "iat": _now(),
         "exp": _now() + timedelta(minutes=s.jwt_mfa_minutes),

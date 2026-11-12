@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -18,6 +19,8 @@ from app.models import OtpChallenge
 from app.models.enums import OtpPurpose
 from app.providers.sms import SmsSender
 from app.security.crypto import blind_index
+
+logger = logging.getLogger(__name__)
 
 OTP_TEXT = {
     "tr": "getawaytransfers.com dogrulama kodunuz: {code}. Kimseyle paylasmayin.",
@@ -60,6 +63,23 @@ def request_code(
         )
     )
     if recent >= s.otp_max_per_hour:
+        raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+    # AUTH-04: numara değiştirerek SMS pompalamaya karşı IP başına ve küresel saatlik sınır.
+    # Not: IP, AUTH-05 düzelene kadar sahtelenebilir; küresel sınır yine de toplam maliyeti sınırlar.
+    if ip:
+        per_ip = db.scalar(
+            select(func.count(OtpChallenge.id)).where(
+                OtpChallenge.ip == ip,
+                OtpChallenge.created_at > now - timedelta(hours=1),
+            )
+        )
+        if per_ip >= s.otp_max_per_ip_per_hour:
+            raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+    total = db.scalar(
+        select(func.count(OtpChallenge.id)).where(OtpChallenge.created_at > now - timedelta(hours=1))
+    )
+    if total >= s.otp_global_max_per_hour:
+        logger.warning("otp küresel saatlik sınırına ulaşıldı (%s)", s.otp_global_max_per_hour)
         raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
 
     code = f"{secrets.randbelow(10 ** s.otp_length):0{s.otp_length}d}"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, String, Table, UniqueConstraint
+from sqlalchemy import BigInteger, Column, ForeignKey, Index, SmallInteger, String, Table, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, created_at, str_enum, uuid_pk
@@ -42,6 +42,15 @@ class User(Base):
     )
     last_login_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = created_at()
+    # AUTH-01 / AUTH-07: personel girişi kaba kuvvet koruması.
+    failed_login_count: Mapped[int] = mapped_column(SmallInteger, default=0, server_default="0")
+    failed_login_started_at: Mapped[datetime | None]
+    locked_until: Mapped[datetime | None]
+    # Yalnızca son verilen MFA ara jetonu geçerlidir (jti); başarı ya da deneme hakkı bitince boşalır.
+    mfa_jti: Mapped[uuid.UUID | None]
+    mfa_attempts: Mapped[int] = mapped_column(SmallInteger, default=0, server_default="0")
+    # Son kabul edilen TOTP zaman adımı; aynı ya da eski adımın kodu tekrar kabul edilmez.
+    totp_last_step: Mapped[int | None] = mapped_column(BigInteger)
 
     roles: Mapped[list[Role]] = relationship(secondary=user_roles, lazy="selectin")
 
@@ -79,6 +88,11 @@ class OtpChallenge(Base):
     """SMS ile gönderilen tek kullanımlık kod. Kodun kendisi değil, HMAC özeti saklanır."""
 
     __tablename__ = "otp_challenges"
+    # AUTH-04: IP başına ve küresel saatlik sayım için.
+    __table_args__ = (
+        Index("ix_otp_challenges_ip_created_at", "ip", "created_at"),
+        Index("ix_otp_challenges_created_at", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     phone_hash: Mapped[str] = mapped_column(BlindIndex, index=True)
