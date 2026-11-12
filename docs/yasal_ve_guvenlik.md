@@ -25,6 +25,7 @@ Bu dosya hukuki danışmanlık değildir. Maddeler bir hukukçuyla doğrulanmal�
 - Admin girişi 2FA ile korunur. Paylaşımlı admin hesabı yoktur.
 - Sürücüye yalnızca karşılama için gereken bilgiler gösterilir.
 - Google Routes ve FCM gibi servislere yalnızca koordinat ve rota veya bildirim tokenı gönderilir, kimlik bilgisi gönderilmez.
+- İstisna (K-62, hukuki teyit bekliyor, varsayılan kapalı): sohbet çevirisi açıksa mesaj metni Google Cloud Translation'a gider; telefon ve e-posta gönderilmeden maskelenir.
 - Yedekleme, şifreli ve Türkiye'de tutulur. Felaket kurtarma senaryosu yazılır.
 
 ## Veri saklama süreleri (taslak, doğrulanacak)

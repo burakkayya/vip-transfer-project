@@ -125,7 +125,12 @@ export default function ChatScreen() {
                   backgroundColor: own ? colors.ink : colors.canvas,
                   borderBottomRightRadius: own ? 6 : 20, borderBottomLeftRadius: own ? 20 : 6,
                 }}>
-                  <T style={{ color: own ? "#fff" : colors.ink, fontSize: 16, lineHeight: 22 }}>{item.body}</T>
+                  <T style={{ color: own ? "#fff" : colors.ink, fontSize: 16, lineHeight: 22 }}>{!own && item.translated_body ? item.translated_body : item.body}</T>
+                  {!own && item.translated_body ? (
+                    <T style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 4 }}>
+                      {DRIVER ? "Aslı" : t("chat.original")}: {item.body}
+                    </T>
+                  ) : null}
                 </View>
                 <T style={[s.hint, { fontSize: 11, marginTop: 3, marginHorizontal: 6 }]}>
                   {time(item.created_at)}

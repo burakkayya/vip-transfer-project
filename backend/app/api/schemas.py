@@ -169,6 +169,9 @@ class BookingCreateIn(QuoteIn):
     note: str | None = Field(default=None, max_length=500)
     flights: list[FlightIn] = Field(default_factory=list, max_length=2)
     locale: str = "tr"
+    # K-62 ekstralar
+    child_seat_count: int = Field(default=0, ge=0, le=4)
+    market_stop: bool = False
     # Ekran 5: KVKK aydınlatma ve mesafeli satış ön bilgilendirmesi onayı zorunlu.
     accept_disclosure: bool
     accept_distance_sales: bool
@@ -188,11 +191,27 @@ class FlightOut(ORM):
 
 
 class DriverBrief(BaseModel):
-    """Müşteriye gösterilen sürücü bilgisi: yalnızca ad ve araç."""
+    """Müşteriye gösterilen sürücü bilgisi: ad, araç, renk, diller ve fotoğraf var mı (K-62 sürücü kartı)."""
 
     first_name: str
     vehicle: str
     plate: str
+    color: str | None = None
+    languages: list[str] = []
+    has_photo: bool = False
+
+    @classmethod
+    def of(cls, leg: BookingLeg) -> "DriverBrief | None":
+        if leg.driver is None or leg.vehicle is None:
+            return None
+        return cls(
+            first_name=leg.driver.full_name.split()[0],
+            vehicle=f"{leg.vehicle.brand} {leg.vehicle.model}",
+            plate=leg.vehicle.plate,
+            color=leg.vehicle.color,
+            languages=leg.driver.language_list,
+            has_photo=bool(leg.driver.photo_key),
+        )
 
 
 class BookingLegOut(BaseModel):
@@ -209,16 +228,10 @@ class BookingLegOut(BaseModel):
     flight: FlightOut | None
     driver: DriverBrief | None
     route_polyline: str | None = None
+    passenger_status: str | None = None
 
     @classmethod
     def build(cls, leg: BookingLeg, with_route: bool = False) -> "BookingLegOut":
-        driver = None
-        if leg.driver is not None and leg.vehicle is not None:
-            driver = DriverBrief(
-                first_name=leg.driver.full_name.split()[0],
-                vehicle=f"{leg.vehicle.brand} {leg.vehicle.model}",
-                plate=leg.vehicle.plate,
-            )
         return cls(
             id=leg.id,
             leg_order=leg.leg_order,
@@ -231,8 +244,9 @@ class BookingLegOut(BaseModel):
             distance_km=leg.distance_km,
             duration_minutes=leg.duration_minutes,
             flight=FlightOut.model_validate(leg.flight) if leg.flight else None,
-            driver=driver,
+            driver=DriverBrief.of(leg),
             route_polyline=route_line.route_polyline(leg) if with_route else None,
+            passenger_status=leg.passenger_status,
         )
 
 
@@ -245,6 +259,8 @@ class BookingOut(BaseModel):
     passenger_name: str
     passenger_count: int
     luggage_count: int
+    child_seat_count: int = 0
+    market_stop: bool = False
     is_round_trip: bool
     note: str | None
     quoted_price: MoneyStr
@@ -254,6 +270,7 @@ class BookingOut(BaseModel):
     created_at: datetime
     cancelled_at: datetime | None
     legs: list[BookingLegOut]
+    share_active: bool = False
 
     @classmethod
     def build(cls, b: Booking, with_route: bool = False) -> "BookingOut":
@@ -266,6 +283,8 @@ class BookingOut(BaseModel):
             passenger_name=b.passenger_name,
             passenger_count=b.passenger_count,
             luggage_count=b.luggage_count,
+            child_seat_count=b.child_seat_count,
+            market_stop=b.market_stop,
             is_round_trip=b.is_round_trip,
             note=b.note,
             quoted_price=b.quoted_price,
@@ -275,6 +294,7 @@ class BookingOut(BaseModel):
             created_at=b.created_at,
             cancelled_at=b.cancelled_at,
             legs=[BookingLegOut.build(leg, with_route) for leg in b.legs],
+            share_active=b.share_token is not None,
         )
 
 

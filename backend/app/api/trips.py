@@ -45,6 +45,8 @@ class JobOut(BaseModel):
     passenger_initial: str
     passenger_count: int
     luggage_count: int
+    child_seat_count: int = 0
+    market_stop: bool = False
     has_flight: bool
     vehicle_type: str
     distance_km: Decimal
@@ -84,6 +86,8 @@ def _job_out(db, leg: BookingLeg, driver, *, at: Point | None, detail: bool, now
         passenger_initial=b.passenger_name.strip()[:1].upper() + ".",
         passenger_count=b.passenger_count,
         luggage_count=b.luggage_count,
+        child_seat_count=b.child_seat_count,
+        market_stop=b.market_stop,
         has_flight=leg.flight is not None,
         vehicle_type=b.vehicle_type.name,
         distance_km=leg.distance_km,
@@ -193,6 +197,9 @@ class MessageOut(BaseModel):
     body: str
     created_at: datetime
     read_at: datetime | None
+    # K-62: alıcının diline çeviri (yoksa None). İstemci karşı tarafın mesajında çeviriyi, altında aslını gösterir.
+    translated_body: str | None = None
+    translated_lang: str | None = None
 
 
 class ChatOut(BaseModel):
@@ -217,13 +224,13 @@ def _chat(db, leg: BookingLeg, viewer: str, other_name: str, now: datetime) -> C
         open=messages.is_open(leg),
         unread=unread,
         other_name=other_name,
-        messages=[MessageOut(id=m.id, sender=m.sender, body=m.body, created_at=m.created_at, read_at=m.read_at)
-                  for m in rows],
+        messages=[_msg_out(m) for m in rows],
     )
 
 
 def _msg_out(m: TripMessage) -> MessageOut:
-    return MessageOut(id=m.id, sender=m.sender, body=m.body, created_at=m.created_at, read_at=m.read_at)
+    return MessageOut(id=m.id, sender=m.sender, body=m.body, created_at=m.created_at, read_at=m.read_at,
+                      translated_body=m.translated_body, translated_lang=m.translated_lang)
 
 
 @driver_router.get("/trips/{leg_id}/messages", response_model=ChatOut)

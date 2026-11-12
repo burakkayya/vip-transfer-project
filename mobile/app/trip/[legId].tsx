@@ -20,6 +20,8 @@ import { backgroundSupported, distanceM, navigationUrls, startBackgroundTracking
 import type { Approach, Trip } from "@/lib/types";
 
 const SHARING = ["yolda", "vardi", "basladi"];
+const PASSENGER_STATUS: Record<string, string> = { indi: "Yolcu indi", bagajda: "Yolcu bagajda", cikiyor: "Yolcu çıkıyor" };
+const LANG_TR: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", ru: "Rusça", fr: "Fransızca", ar: "Arapça" };
 const OPEN = ["atandi", "yolda", "vardi", "basladi"];
 const FLOW = ["atandi", "yolda", "vardi", "basladi", "bitti"];
 const LOCATION_INTERVAL_MS = 10_000;
@@ -351,8 +353,26 @@ export default function TripScreen() {
             <View style={{ flex: 1, gap: 2 }}>
               <T style={{ fontWeight: "700", fontSize: 17 }}>{trip.passenger_name}</T>
               <T style={s.hint}>{trip.passenger_count} yolcu · {trip.luggage_count} bagaj{trip.flight_no ? ` · ${trip.flight_no}` : ""}</T>
+              {trip.customer_locale && trip.customer_locale !== "tr" ? (
+                <T style={s.hint}>Yolcunun dili: {LANG_TR[trip.customer_locale] ?? trip.customer_locale.toUpperCase()} · mesajlar çevrilir</T>
+              ) : null}
             </View>
           </Row>
+          {trip.child_seat_count || trip.market_stop ? (
+            <View style={{ backgroundColor: colors.accentSoft, borderRadius: 14, padding: 12, gap: 4 }}>
+              {trip.child_seat_count ? <T style={{ fontWeight: "700" }}>{trip.child_seat_count} çocuk koltuğu hazırlayın</T> : null}
+              {trip.market_stop ? <T style={{ fontWeight: "700" }}>Yolda market molası istendi</T> : null}
+            </View>
+          ) : null}
+          {trip.passenger_status ? (
+            <View style={{ backgroundColor: colors.okSoft, borderRadius: 14, padding: 12, flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <Ionicons name="walk" size={18} color={colors.ok} />
+              <T style={{ fontWeight: "700", color: colors.ok }}>
+                {PASSENGER_STATUS[trip.passenger_status] ?? trip.passenger_status}
+                {trip.passenger_status_at ? ` · ${clock(trip.passenger_status_at)}` : ""}
+              </T>
+            </View>
+          ) : null}
           <View style={{ flexDirection: "row", gap: 10 }}>
             <Pressable accessibilityRole="button" accessibilityLabel={unread ? `Yolcuya yaz, ${unread} okunmamış mesaj` : "Yolcuya yaz"}
               onPress={() => router.push(`/chat/${legId}`)}

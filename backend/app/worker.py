@@ -35,6 +35,7 @@ async def every_hour(ctx) -> None:
     _run(jobs.purge_otp_challenges)
     _run(jobs.purge_trip_messages)
     _run(jobs.refresh_exchange_rate)
+    _run(jobs.send_driver_cards)
 
 
 async def daily(ctx) -> None:

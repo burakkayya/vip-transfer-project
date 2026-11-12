@@ -37,7 +37,7 @@ from app.localtime import LOCAL_TZ, local_date
 from app.models import Booking, BookingLeg, FlightInfo
 from app.models.enums import BookingStatus, FlightDirection, LegStatus
 from app.providers import flights as fl
-from app.services import api_cache, trip_updates
+from app.services import api_cache, meeting, trip_updates
 
 log = logging.getLogger(__name__)
 
@@ -161,6 +161,9 @@ def _notify(db: Session, leg: BookingLeg, fi: FlightInfo, previous: str | None) 
     if fi.status in final_codes:
         if fi.status != previous:
             trip_updates.to_driver(db, leg, final_codes[fi.status], **params)
+            if fi.status == fl.LANDED:
+                # K-62: inişte müşteriye buluşma rehberi (bir kez).
+                meeting.maybe_send_guide(db, leg, fi.checked_at or fi.estimated_at)
         return
     reference = fi.notified_at or fi.provider_scheduled_at
     if fi.estimated_at is None or reference is None:

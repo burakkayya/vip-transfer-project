@@ -16,6 +16,7 @@ import { ErrorState } from "./ErrorState";
 import Icon from "./Icon";
 import { useSessionExpired } from "./RequireLogin";
 import { LoadingState } from "./States";
+import { DriverCard, MeetingGuidePanel, PassengerStatus, RatingPanel, SharePanel, showPassengerStatus } from "./MeetingTools";
 import { CHAT_OPEN, ChatPanel, EtaLine, FinishPanel, useTripEta, useUnread } from "./TripTools";
 
 const TRACKABLE = new Set(["yolda", "vardi", "basladi"]);
@@ -114,6 +115,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
   const t = useTranslations("bookings");
   const tb = useTranslations("book");
   const tf = useTranslations("footer");
+  const tm = useTranslations("meet");
   const locale = useLocale();
   const errorText = useApiError();
   const sessionExpired = useSessionExpired();
@@ -294,6 +296,8 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
           </h1>
           <p className="muted booking-meta">
             {booking.vehicle_type.name} · {t("people", { passengers: booking.passenger_count, luggage: booking.luggage_count })}
+            {(booking.child_seat_count ?? 0) > 0 && <> · {tm("childSeats", { count: booking.child_seat_count ?? 0 })}</>}
+            {booking.market_stop && <> · {tm("marketStop")}</>}
           </p>
         </div>
         <div className="booking-head-side">
@@ -363,18 +367,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
               </dl>
             )}
             {leg.driver ? (
-              <div className="driver-card">
-                <span className="avatar" aria-hidden="true">
-                  {leg.driver.first_name.slice(0, 1)}
-                </span>
-                <div className="driver-text">
-                  <span className="sr-only">{t("driver")}: </span>
-                  <strong>{leg.driver.first_name}</strong>
-                  <div className="muted">
-                    {leg.driver.vehicle} · <strong className="tabular">{leg.driver.plate}</strong>
-                  </div>
-                </div>
-              </div>
+              <DriverCard driver={leg.driver} photoSrc={`/bff/me/bookings/${props.code}/driver-photo`} />
             ) : (
               leg.status !== "iptal" && (
                 <p className="muted leg-note">
@@ -385,6 +378,18 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
             )}
             {leg.driver && <EtaLine eta={eta} legId={leg.id} status={leg.status} />}
             {TRACKABLE.has(leg.status) && <LiveBox {...live} />}
+            {leg.driver && showPassengerStatus(leg) && (
+              <PassengerStatus
+                code={props.code}
+                leg={leg}
+                onChange={(st) =>
+                  setBooking((b) => b && { ...b, legs: b.legs.map((x) => (x.id === leg.id ? { ...x, passenger_status: st } : x)) })
+                }
+              />
+            )}
+            {leg.pickup_region.type === "havalimani" && leg.status !== "iptal" && leg.status !== "bitti" && (
+              <MeetingGuidePanel code={props.code} photoBase="/bff/" />
+            )}
           </section>
         );
       })}
@@ -431,6 +436,9 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
           }}
         />
       )}
+
+      {ACTIVE.has(booking.status) && <SharePanel code={props.code} active={booking.share_active ?? false} />}
+      {booking.status === "tamamlandi" && <RatingPanel code={props.code} booking={booking} />}
 
       <section className="card" aria-label={t("details")}>
         <dl className="summary booking-facts">

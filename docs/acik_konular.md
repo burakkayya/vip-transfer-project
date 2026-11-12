@@ -25,6 +25,14 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 ## Teknik
 
+### Buluşma deneyimi (K-62)
+
+- [ ] Sohbet çevirisi Google Cloud Translation'a (yurt dışı) mesaj metni gönderir. Telefon ve e-posta maskeleniyor ama serbest metinde ad, otel, oda numarası olabilir: KVKK m.9 yurt dışı aktarım için aydınlatma metni ve gerekirse açık rıza hukukçuyla teyit edilecek. Teyit gelene kadar `GETAWAY_TRANSLATION_PROVIDER=off` (varsayılan) kalır; anahtar `GETAWAY_TRANSLATION_API_KEY` ile verilir.
+- [ ] Bahşiş şirketin ödeme hesabına gelir olarak düşer, sürücüye hakedişle ödenir: e-Arşiv fatura ve muhasebe kaydı muhasebeciyle teyit edilecek. Bahşişin elle iadesi admin panelinde yok (yalnızca mükerrer ödeme otomatik iade edilir).
+- [ ] Sürücü fotoğrafı onaydan geçmeden müşteriye görünür; admin moderasyonu ve sürücü aydınlatma metnine "fotoğrafınız takip bağlantısıyla üçüncü kişilere gösterilir" maddesi eklenecek.
+- [ ] Buluşma rehberi seed metni geneldir ("isminizin yazılı tabelayla bekler"); her havalimanı ve terminal için gerçek fotoğraflı adımlar admin'den girilecek. Admin panelinde rehber sayfası henüz yok (uçlar hazır).
+- [ ] Bahşiş ödeme sonucu sayfası rezervasyon ödeme sonucuna yönlenir (sahte sağlayıcı); PayTR'de bahşiş için ayrı dönüş adresi düşünülecek.
+
 - [ ] Yurt dışı servislerde veri bölgesi (Sentry, e-posta).
 - [x] Uçuş takip API'sinin seçimi ve maliyeti (2026-11-11, K-60): AeroDataBox (RapidAPI). Ücretsiz plan ayda ~200 sorgu, ticari kullanıma kapalı; canlıda Pro plan ~7,5–8 $/ay.
 - [ ] Uçuş takibi log'larında uçuş numarası yazılıyor (2026-11-11 kullanıcı kararı, şimdilik). Uçuş verisi K-31 gereği yolculuk bitince silinse de log kopyası silinmez; KVKK kapsamında değerlendirilirse log'dan çıkarılmalı veya log saklama süresi bağlanmalı.

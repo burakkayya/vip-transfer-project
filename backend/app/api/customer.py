@@ -79,6 +79,8 @@ def create_booking(body: BookingCreateIn, customer: CurrentCustomer, db: DbSessi
         locale=body.locale,
         ip=ip,
         now=now,
+        child_seat_count=body.child_seat_count,
+        market_stop=body.market_stop,
     )
     db.commit()
     return BookingOut.build(booking)

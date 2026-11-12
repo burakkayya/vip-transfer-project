@@ -159,6 +159,8 @@ export default function JobScreen() {
           <Chip icon="people-outline" text={`${job.passenger_count} yolcu`} />
           <Chip icon="briefcase-outline" text={`${job.luggage_count} bagaj`} />
           {job.has_flight ? <Chip icon="airplane-outline" text="Uçuş var" /> : null}
+          {job.child_seat_count ? <Chip icon="happy-outline" text={`${job.child_seat_count} çocuk koltuğu`} /> : null}
+          {job.market_stop ? <Chip icon="basket-outline" text="Market molası" /> : null}
         </Row>
       </Card>
 

@@ -280,6 +280,16 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 4. Beklenen: "Yolcu yazdı" bildirimi tek kez gelir; dokununca sohbet açılır. Uygulama açıkken aynı mesaj ikinci bildirim olarak çıkmaz.
 5. Çıkış yapın, tekrar mesaj gönderin. Beklenen: bildirim gelmez.
 
+### 19. Buluşma deneyimi (K-62)
+
+1. Web'de ya da mobilde rezervasyon bilgileri adımında "Ekstralar" altından çocuk koltuğu seçin ve "Yolda market molası"nı işaretleyin. Sürücü iş havuzunda ve yolculuk ekranında bunları görür.
+2. Sürücü uygulamasında Belgeler sekmesindeki "Sürücü kartım" kartından fotoğraf yükleyin ve dilleri seçin; araç eklerken renk girin. Müşteri rezervasyon detayında sürücünün fotoğrafını, aracın rengini ve konuştuğu dilleri görür.
+3. Havalimanı alışında, alışa 12 saatten az kala müşteri "İndim", "Bagajdayım", "Çıkıyorum"a dokunur; sürücü her birini bildirim olarak ve yolculuk ekranında görür. Durum geri alınamaz.
+4. "Buluşma noktasına yol tarifi" açılır: adımlar müşterinin dilindedir. Uçuş inince ya da "İndim" ya da sürücü "Vardım" deyince müşteriye rehber bildirimi bir kez gelir.
+5. "Karşılayan yakınınızla paylaşın" bağlantısı oluşturulur; bağlantı gizli pencerede giriş olmadan açılır, adres, telefon ve yolcu adı görünmez. "Paylaşımı kapat" sonrası bağlantı "artık geçerli değil" der.
+6. Çeviri açıkken (`GETAWAY_TRANSLATION_PROVIDER=google` ve anahtar) Almanca rezervasyonda müşterinin mesajı sürücüye Türkçe, sürücününki müşteriye Almanca gelir; altında aslı görünür. Sürücü Almanca konuşuyorsa çeviri yapılmaz.
+7. Yolculuk bitince rezervasyon detayında yıldız ve bahşiş kartı çıkar. Bahşiş seçilirse ödeme sayfası açılır; ödenince sürücü "Bahşiş" bildirimi alır, Kazanç'ta komisyonsuz ayrı satır görünür.
+
 ## Otomatik testler
 
 - **GitHub CI** (`.github/workflows/ci.yml`): her PR'da backend pytest, mobil tsc + jest + lint, web ve admin tsc + lint, kök betik testleri ve token uyumu otomatik koşar. Playwright testleri CI'da yoktur, yerelde çalıştırılır.

@@ -50,6 +50,11 @@ class Booking(Base):
     passenger_name: Mapped[str] = mapped_column(EncryptedString)
     note: Mapped[str | None] = mapped_column(EncryptedString)
     locale: Mapped[str] = mapped_column(String(5), default="tr")
+    # K-62 ekstralar: çocuk koltuğu sayısı, yolda market molası.
+    child_seat_count: Mapped[int] = mapped_column(SmallInteger, default=0, server_default="0")
+    market_stop: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # K-62 girişsiz takip bağlantısı; müşteri paylaşınca oluşur, kaldırınca silinir.
+    share_token: Mapped[str | None] = mapped_column(String(64), unique=True)
 
     # Dondurulmuş fiyatlandırma girdileri
     pricing_rule_id: Mapped[int] = mapped_column(ForeignKey("pricing_rules.id"))
@@ -135,6 +140,12 @@ class BookingLeg(Base):
     driver_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("drivers.id"), index=True)
     vehicle_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("vehicles.id"))
     assigned_at: Mapped[datetime | None]
+    # K-62 yolcunun tek dokunuşla bildirdiği durum (indi, bagajda, çıkıyor) ve zamanı.
+    passenger_status: Mapped[str | None] = mapped_column(String(12))
+    passenger_status_at: Mapped[datetime | None]
+    # K-62 bir kez gönderilen müşteri bildirimleri: buluşma rehberi, sürücü kartı.
+    meeting_guide_sent_at: Mapped[datetime | None]
+    driver_card_sent_at: Mapped[datetime | None]
 
     booking: Mapped[Booking] = relationship(back_populates="legs")
     pickup_region: Mapped[Region] = relationship(foreign_keys=[pickup_region_id], lazy="joined")
@@ -222,6 +233,9 @@ class TripMessage(Base):
     # Sürücü mesajında gönderen sürücü (K-55); 0006 öncesi mesajlarda boş.
     driver_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("drivers.id"))
     body: Mapped[str] = mapped_column(EncryptedString)
+    # K-62 otomatik çeviri: alıcının diline çevrilmiş metin (çeviri kapalıysa ya da aynı dilse boş).
+    translated_body: Mapped[str | None] = mapped_column(EncryptedString)
+    translated_lang: Mapped[str | None] = mapped_column(String(5))
     created_at: Mapped[datetime] = created_at()
     read_at: Mapped[datetime | None]
 
@@ -244,4 +258,44 @@ class TripUpdate(Base):
     title: Mapped[str] = mapped_column(String(120))
     body: Mapped[str] = mapped_column(String(500))
     data: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = created_at()
+
+
+class MeetingGuide(Base):
+    """K-62 havalimanı buluşma rehberi: terminal başına fotoğraflı adımlar, müşterinin dilinde.
+
+    `steps`: [{"texts": {"tr": "...", "en": "...", ...}, "photo_key": "..." | null}, ...]
+    """
+
+    __tablename__ = "meeting_guides"
+    __table_args__ = (UniqueConstraint("region_id", "terminal"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    region_id: Mapped[int] = mapped_column(ForeignKey("regions.id"), index=True)
+    terminal: Mapped[str] = mapped_column(String(40), default="", server_default="")
+    steps: Mapped[list] = mapped_column(JSON, default=list)
+    is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
+    updated_at: Mapped[datetime] = created_at()
+
+    region: Mapped[Region] = relationship(lazy="joined")
+
+
+class TripRating(Base):
+    """K-62 yolculuk sonrası puan ve isteğe bağlı bahşiş. Bahşişin tamamı sürücüye gider."""
+
+    __tablename__ = "trip_ratings"
+    __table_args__ = (CheckConstraint("stars between 1 and 5", name="stars_range"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    booking_leg_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("booking_legs.id", ondelete="CASCADE"), unique=True
+    )
+    driver_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("drivers.id"), index=True)
+    stars: Mapped[int] = mapped_column(SmallInteger)
+    comment: Mapped[str | None] = mapped_column(EncryptedString)
+    tip_amount: Mapped[Decimal] = mapped_column(Money, default=Decimal("0"), server_default="0")
+    currency: Mapped[Currency] = mapped_column(str_enum(Currency))
+    # yok | beklemede | odendi | basarisiz
+    tip_status: Mapped[str] = mapped_column(String(12), default="yok", server_default="yok")
+    tip_payment_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("payments.id"), index=True)
     created_at: Mapped[datetime] = created_at()

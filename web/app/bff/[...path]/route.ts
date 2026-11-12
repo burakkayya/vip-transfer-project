@@ -20,6 +20,9 @@ const ALLOWED: RegExp[] = [
   /^auth\/otp\/(request|verify)$/,
   /^auth\/(logout|me)$/,
   /^me\/.+$/,
+  // K-62 girişsiz takip bağlantısı ve buluşma rehberi fotoğrafları
+  /^track\/[A-Za-z0-9_-]{16,64}(\/driver-photo)?$/,
+  /^meeting-guides\/\d+\/photos\/\d+$/,
 ];
 
 type Tokens = { access_token: string; refresh_token: string; expires_in: number };
@@ -65,7 +68,7 @@ function errorResponse(status: number, code: string, message: string) {
 }
 
 async function callApi(req: NextRequest, path: string, body: string | undefined, token?: string) {
-  const headers: Record<string, string> = { accept: "application/json" };
+  const headers: Record<string, string> = { accept: "application/json, image/*" };
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
   const ua = req.headers.get("user-agent");
@@ -92,11 +95,13 @@ async function refresh(refreshToken: string): Promise<Tokens | null> {
 }
 
 async function relay(upstream: Response): Promise<NextResponse> {
-  const body = upstream.status === 204 ? null : await upstream.text();
-  return new NextResponse(body, {
-    status: upstream.status,
-    headers: { "content-type": upstream.headers.get("content-type") ?? "application/json" },
-  });
+  const type = upstream.headers.get("content-type") ?? "application/json";
+  // Fotoğraflar (sürücü, rehber) ikili olarak aktarılır; metne çevrilirse bozulur.
+  const binary = type.startsWith("image/");
+  const body = upstream.status === 204 ? null : binary ? await upstream.arrayBuffer() : await upstream.text();
+  const headers: Record<string, string> = { "content-type": type };
+  if (binary) headers["cache-control"] = upstream.headers.get("cache-control") ?? "private, max-age=300";
+  return new NextResponse(body, { status: upstream.status, headers });
 }
 
 async function handle(req: NextRequest, { params }: Params) {

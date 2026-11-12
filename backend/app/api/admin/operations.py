@@ -170,7 +170,7 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
         ),
         # K-57: bacakların sürücü hakedişleri (admin iptal edebilir).
         "earnings": [
-            {"id": str(e.id), "leg_id": str(e.booking_leg_id), "driver_id": str(e.driver_id),
+            {"id": str(e.id), "leg_id": str(e.booking_leg_id), "driver_id": str(e.driver_id), "kind": e.kind,
              "net": f"{e.net_amount:.2f}", "currency": e.currency.value,
              "net_try": f"{e.net_amount_try:.2f}" if e.net_amount_try is not None else None,
              "status": e.status.value, "in_payout": e.payout_id is not None}
