@@ -121,6 +121,9 @@ def test_tracks_delay_and_landing(client, db, ops):
     assert _driver_codes(client, b.driver) == ["flight_delayed", "flight_landed"]
     body = client.get(f"{API}/me/bookings/{b.code}", headers=b.customer).json()
     assert body["legs"][0]["flight"]["status"] == fl.LANDED
+    # K-62: inişte müşteriye buluşma rehberi bir kez gider.
+    customer_codes = [u["code"] for u in client.get(f"{API}/me/updates", headers=b.customer).json()]
+    assert customer_codes.count("meeting_guide") == 1
 
     # İnen uçuş bir daha sorgulanmaz.
     calls = _calls(fake, "TK1980")

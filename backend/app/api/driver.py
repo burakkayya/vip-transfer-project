@@ -7,13 +7,13 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.localtime import local_date
 from app.api.deps import ClientIp, CurrentDriver, DbSession, Now, current_driver_user
-from app.api.schemas import DocumentOut, MoneyStr
+from app.api.schemas import SUPPORTED_LOCALES, DocumentOut, MoneyStr
 from app.errors import Conflict, DomainError, Forbidden, NotFound
 from app.models import (
     BookingLeg,
@@ -38,7 +38,18 @@ from app.models.enums import (
 )
 from app.providers.storage import get_storage
 from app.providers.routing import Point
-from app.services import audit, dispatch, documents, eta, live_location, notifications, route_line, system_settings
+from app.services import (
+    audit,
+    dispatch,
+    documents,
+    eta,
+    live_location,
+    meeting,
+    notifications,
+    ratings,
+    route_line,
+    system_settings,
+)
 
 router = APIRouter(prefix="/driver", tags=["driver"])
 
@@ -55,15 +66,25 @@ class DriverOut(BaseModel):
     status: DriverStatus
     is_online: bool
     missing_documents: list[str]
+    # K-62 sürücü kartı ve puan
+    languages: list[str] = []
+    has_photo: bool = False
+    rating_avg: Decimal | None = None
+    rating_count: int = 0
 
 
 def _driver_out(db, driver: Driver, today: date) -> DriverOut:
+    avg, count = ratings.driver_summary(db, driver.id)
     return DriverOut(
         id=driver.id,
         full_name=driver.full_name,
         status=driver.status,
         is_online=driver.is_online,
         missing_documents=dispatch.missing_documents(db, DocumentOwner.DRIVER, driver.id, today),
+        languages=driver.language_list,
+        has_photo=bool(driver.photo_key),
+        rating_avg=avg,
+        rating_count=count,
     )
 
 
@@ -160,6 +181,11 @@ class VehicleIn(BaseModel):
     model: str = Field(max_length=50)
     year: int | None = Field(default=None, ge=1990, le=2100)
     capacity: int = Field(ge=1, le=50)
+    color: str | None = Field(default=None, max_length=30)
+
+
+class VehicleColorIn(BaseModel):
+    color: str | None = Field(default=None, max_length=30)
 
 
 class VehicleOut(BaseModel):
@@ -171,6 +197,7 @@ class VehicleOut(BaseModel):
     capacity: int
     status: VehicleStatus
     missing_documents: list[str]
+    color: str | None = None
 
 
 def _vehicle_ids(db, driver: Driver) -> list[uuid.UUID]:
@@ -192,7 +219,7 @@ def _own_vehicle(db, driver: Driver, vehicle_id: uuid.UUID) -> Vehicle:
 def _vehicle_out(db, v: Vehicle, today: date) -> VehicleOut:
     return VehicleOut(
         id=v.id, plate=v.plate, vehicle_type_code=v.vehicle_type.code, brand=v.brand, model=v.model,
-        capacity=v.capacity, status=v.status,
+        capacity=v.capacity, status=v.status, color=v.color,
         missing_documents=dispatch.missing_documents(db, DocumentOwner.VEHICLE, v.id, today),
     )
 
@@ -206,7 +233,7 @@ def add_vehicle(body: VehicleIn, driver: CurrentDriver, db: DbSession, now: Now)
     if db.scalar(select(Vehicle.id).where(Vehicle.plate == plate)):
         raise Conflict("bu plaka kayıtlı")
     vehicle = Vehicle(plate=plate, vehicle_type_id=vt.id, vehicle_type=vt, brand=body.brand, model=body.model,
-                      year=body.year, capacity=body.capacity)
+                      year=body.year, capacity=body.capacity, color=(body.color or "").strip() or None)
     db.add(vehicle)
     db.flush()
     db.add(DriverVehicleAssignment(driver_id=driver.id, vehicle_id=vehicle.id, valid_from=now))
@@ -219,6 +246,55 @@ def add_vehicle(body: VehicleIn, driver: CurrentDriver, db: DbSession, now: Now)
 def list_vehicles(driver: CurrentDriver, db: DbSession, now: Now):
     ids = _vehicle_ids(db, driver)
     return [_vehicle_out(db, v, local_date(now)) for v in db.scalars(select(Vehicle).where(Vehicle.id.in_(ids)))]
+
+
+@router.patch("/vehicles/{vehicle_id}", response_model=VehicleOut)
+def update_vehicle_color(vehicle_id: uuid.UUID, body: VehicleColorIn, driver: CurrentDriver, db: DbSession, now: Now):
+    """K-62: araç rengi müşterinin aracı tanıması için sürücü kartında görünür."""
+    vehicle = _own_vehicle(db, driver, vehicle_id)
+    vehicle.color = (body.color or "").strip() or None
+    db.commit()
+    return _vehicle_out(db, vehicle, local_date(now))
+
+
+# --- Sürücü kartı (K-62) -------------------------------------------------------
+
+
+class ProfileIn(BaseModel):
+    languages: list[str] = Field(min_length=1, max_length=6)
+
+
+@router.put("/me/profile", response_model=DriverOut)
+def update_profile(body: ProfileIn, driver: CurrentDriver, db: DbSession, now: Now):
+    langs = list(dict.fromkeys(x.lower()[:2] for x in body.languages))
+    if any(x not in SUPPORTED_LOCALES for x in langs):
+        raise DomainError("desteklenmeyen dil", code="invalid_language")
+    driver.languages = ",".join(langs)
+    db.commit()
+    return _driver_out(db, driver, local_date(now))
+
+
+@router.post("/me/photo", response_model=DriverOut)
+async def upload_photo(driver: CurrentDriver, db: DbSession, now: Now, file: Annotated[UploadFile, File()]):
+    """Müşteriye sürücü kartında gösterilen profil fotoğrafı (JPEG/PNG, en çok 5 MB, şifreli saklanır)."""
+    data = await file.read(meeting.MAX_PHOTO_BYTES + 1)
+    content_type = file.content_type or ""
+    meeting.validate_photo(content_type, data)
+    storage = get_storage()
+    old = driver.photo_key
+    driver.photo_key = storage.put(f"driver_photo/{driver.id}", data)
+    driver.photo_content_type = content_type
+    audit.record(db, actor_id=driver.user_id, action="driver.photo", entity_type="driver", entity_id=driver.id)
+    db.commit()
+    if old:
+        storage.delete(old)
+    return _driver_out(db, driver, local_date(now))
+
+
+@router.get("/me/photo")
+def my_photo(driver: CurrentDriver):
+    key, content_type = meeting.driver_photo(driver)
+    return Response(get_storage().get(key), media_type=content_type, headers={"Cache-Control": "private, max-age=300"})
 
 
 # --- Teklifler ve yolculuklar ------------------------------------------------
@@ -240,6 +316,12 @@ class TripOut(BaseModel):
     passenger_name: str
     passenger_count: int
     luggage_count: int
+    # K-62: ekstralar, yolcunun bildirdiği durum ve dili (sürücü sohbette çeviri görür).
+    child_seat_count: int = 0
+    market_stop: bool = False
+    passenger_status: str | None = None
+    passenger_status_at: datetime | None = None
+    customer_locale: str | None = None
     flight_no: str | None
     driver_amount: MoneyStr
     # K-60: uçuş takibi (geliş uçuşunda tahmini iniş; takip kapalıysa None)
@@ -272,6 +354,11 @@ def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
         passenger_name=b.passenger_name,
         passenger_count=b.passenger_count,
         luggage_count=b.luggage_count,
+        child_seat_count=b.child_seat_count,
+        market_stop=b.market_stop,
+        passenger_status=leg.passenger_status,
+        passenger_status_at=leg.passenger_status_at,
+        customer_locale=b.locale,
         flight_no=leg.flight.flight_no if leg.flight else None,
         flight_status=leg.flight.status if leg.flight else None,
         flight_scheduled_at=(leg.flight.provider_scheduled_at or leg.flight.scheduled_at) if leg.flight else None,

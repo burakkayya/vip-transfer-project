@@ -7,15 +7,19 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app.errors import Conflict, DomainError, NotFound, TooManyRequests
+from app.errors import Conflict, DomainError, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import Booking, BookingLeg, TripMessage
 from app.models.enums import LegStatus
-from app.services import trip_updates
+from app.providers.translation import get_translator
+from app.services import api_cache, trip_updates
+
+log = logging.getLogger(__name__)
 
 OPEN_STATUSES = (LegStatus.ASSIGNED, LegStatus.EN_ROUTE, LegStatus.ARRIVED, LegStatus.STARTED)
 MAX_LENGTH = 1000
@@ -88,14 +92,37 @@ def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime) ->
     # Gönderen sürücü mesajla saklanır: iş başka sürücüye devredilse de şikâyet incelemesinde doğru kişi görünür.
     msg = TripMessage(booking_leg_id=leg.id, sender=sender, body=body, created_at=now,
                       driver_id=leg.driver_id if sender == "driver" else None)
+    # K-62: alıcının diline çeviri (sürücü tr, müşteri rezervasyon dili). Aynı dildeyse çağrı yapılmaz.
+    target = "tr" if sender == "customer" else leg.booking.locale
+    if leg.booking.locale != "tr":
+        translated = translate(body, target)
+        if translated:
+            msg.translated_body, msg.translated_lang = translated, target
     db.add(msg)
-    preview = body if len(body) <= 120 else body[:117] + "…"
+    shown = msg.translated_body or body
+    preview = shown if len(shown) <= 120 else shown[:117] + "…"
     if sender == "customer":
         trip_updates.to_driver(db, leg, "new_message", sender=leg.booking.passenger_name.split()[0], text=preview)
     else:
         trip_updates.to_customer(db, leg, "new_message", sender=leg.driver.full_name.split()[0], text=preview)
     db.flush()
     return msg
+
+
+def translate(text: str, target: str) -> str | None:
+    """Çeviri; kapalıysa, metin zaten hedef dildeyse ya da servis yanıt vermezse None (mesaj yine gider)."""
+    translator = get_translator()
+    if translator is None:
+        return None
+    try:
+        result = translator.translate(text, target)
+    except ServiceUnavailable as exc:
+        log.warning("mesaj çevrilemedi: %s", exc)
+        return None
+    api_cache.count("translate_call")
+    if (result.source_lang or "").split("-")[0].lower() == target or result.text.strip() == text.strip():
+        return None
+    return result.text[:MAX_LENGTH * 2]
 
 
 def _other(viewer: str) -> str:

@@ -103,6 +103,18 @@ class Settings(BaseSettings):
     # Tahmini iniş bu kadar dakika değişince sürücüye bildirim gider.
     flight_notify_shift_minutes: int = 15
 
+    # K-62 sohbet çevirisi: "google" (Cloud Translation Basic), "fake" (yalnızca testler), "off" (kapalı).
+    translation_provider: Literal["google", "fake", "off"] = "off"
+    translation_api_key: str = ""
+    # K-62 bahşiş üst sınırı (rezervasyon para birimine göre).
+    tip_max_eur: Decimal = Decimal("100")
+    tip_max_try: Decimal = Decimal("4000")
+    # K-62 girişsiz takip bağlantısı son alıştan bu kadar saat sonra kapanır; IP başına dakikalık sınır.
+    share_link_hours_after: int = 12
+    track_rate_limit_per_minute: int = 30
+    # K-62 sürücü kartı alıştan bu kadar saat önce gönderilir (daha geç atanırsa atanınca).
+    driver_card_hours_before: int = 24
+
     payment_provider: str = "fake"
     paytr_merchant_id: str = ""
     paytr_merchant_key: str = ""

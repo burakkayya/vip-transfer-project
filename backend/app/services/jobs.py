@@ -35,7 +35,7 @@ from app.models.enums import (
     LegStatus,
     VehicleStatus,
 )
-from app.services import audit, dispatch, flight_tracking, system_settings
+from app.services import audit, dispatch, flight_tracking, meeting, system_settings
 
 log = logging.getLogger(__name__)
 
@@ -148,6 +148,11 @@ def refresh_flights(db: Session, now: datetime) -> int:
     return flight_tracking.refresh_flights(db, now)
 
 
+def send_driver_cards(db: Session, now: datetime) -> int:
+    """K-62: alıştan bir gün önce müşteriye sürücü kartı (fotoğraf, diller, araç, renk, plaka)."""
+    return meeting.send_driver_cards(db, now)
+
+
 ALL_JOBS = (
     purge_flight_data,
     refresh_exchange_rate,
@@ -156,4 +161,5 @@ ALL_JOBS = (
     purge_otp_challenges,
     expire_dispatch_offers,
     refresh_flights,
+    send_driver_cards,
 )

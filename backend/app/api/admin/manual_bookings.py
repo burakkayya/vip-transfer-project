@@ -321,6 +321,8 @@ def create_manual_booking(body: AdminBookingIn, staff: OpsStaff, db: DbSession, 
         ip=ip,
         now=now,
         admin=entry,
+        child_seat_count=body.child_seat_count,
+        market_stop=body.market_stop,
     )
     if body.payment is not None:
         # Onay SMS'i (booking_confirmed) ödeme kaydında gider; ayrıca bağlantı SMS'i gönderilmez.

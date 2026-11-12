@@ -147,6 +147,8 @@ def create_booking(
     ip: str | None,
     now: datetime,
     admin: AdminEntry | None = None,
+    child_seat_count: int = 0,
+    market_stop: bool = False,
 ) -> Booking:
     if quote.total != expected_total:
         raise Conflict(
@@ -154,6 +156,8 @@ def create_booking(
             code="price_changed",
             details={"total": str(quote.total), "currency": quote.currency.value},
         )
+    if child_seat_count > passenger_count:
+        raise DomainError("çocuk koltuğu sayısı yolcu sayısını geçemez", code="child_seats_exceed_passengers")
     system_total = quote.total
     if admin is not None and admin.override_total is not None and admin.override_total != quote.total:
         if not (admin.override_reason and admin.override_reason.strip()):
@@ -188,6 +192,8 @@ def create_booking(
         vehicle_type_id=quote.vehicle_type.id,
         passenger_count=passenger_count,
         luggage_count=luggage_count,
+        child_seat_count=child_seat_count,
+        market_stop=market_stop,
         is_round_trip=quote.is_round_trip,
         passenger_name=passenger_name,
         note=note,
@@ -297,6 +303,7 @@ def paid_payment(db: Session, booking: Booking, *, lock: bool = False) -> Paymen
         select(Payment)
         .where(
             Payment.booking_id == booking.id,
+            Payment.purpose == "booking",  # K-62: bahşiş iade hesabına girmez
             Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED]),
         )
         .order_by(Payment.created_at.desc())
@@ -395,7 +402,8 @@ def cancel_booking(
     cancelled_earnings = 0
     if cancel_driver_earnings:
         for entry in db.scalars(
-            select(DriverLedger).where(DriverLedger.booking_leg_id.in_([leg.id for leg in booking.legs]))
+            select(DriverLedger).where(DriverLedger.booking_leg_id.in_([leg.id for leg in booking.legs]),
+                                       DriverLedger.kind == "trip")
         ):
             # Ödeme kaydına girmiş hakediş iptali engellemez, olduğu gibi kalır (muhasebe çözer).
             if entry.status is LedgerStatus.PENDING and entry.payout_id is None:

@@ -21,7 +21,7 @@ from app.models.enums import (
     PaymentStatus,
 )
 from app.providers.payments import Checkout, CheckoutRequest, PaymentProvider
-from app.services import audit, dispatch, notifications
+from app.services import audit, dispatch, notifications, ratings
 from app.services.bookings import execute_refund
 
 log = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ def _open_payment(db: Session, booking: Booking, now: datetime) -> Payment | Non
         select(Payment)
         .where(
             Payment.booking_id == booking.id,
+            Payment.purpose == "booking",
             Payment.status == PaymentStatus.PENDING,
             Payment.checkout_url.is_not(None),
             Payment.amount == booking.total_amount,
@@ -120,6 +121,10 @@ def handle_callback(
     if payment.status is not PaymentStatus.PENDING:
         return  # zaten işlendi
 
+    if payment.purpose == "tip":
+        _tip_callback(db, payment, result, now)
+        return
+
     booking = db.get(Booking, payment.booking_id, with_for_update={"of": Booking})
     if not result.success:
         payment.status = PaymentStatus.FAILED
@@ -147,6 +152,20 @@ def handle_callback(
         return
 
     confirm_paid_booking(db, booking, now)
+
+
+def _tip_callback(db: Session, payment: Payment, result, now: datetime) -> None:
+    """K-62 bahşiş: rezervasyon durumundan bağımsızdır; ödendiyse sürücü hakedişine eklenir."""
+    paid = bool(result.success) and (result.total_amount is None or result.total_amount >= payment.amount)
+    if paid:
+        payment.status = PaymentStatus.PAID
+        payment.paid_at = now
+        audit.record(db, actor_id=None, action="payment.paid", entity_type="payment", entity_id=payment.id,
+                     changes={"amount": payment.amount, "currency": payment.currency, "purpose": "tip"})
+    else:
+        payment.status = PaymentStatus.FAILED
+        payment.failure_reason = ("eksik tahsilat" if result.success else (result.failure_reason or ""))[:255]
+    ratings.on_tip_result(db, payment, paid=paid, now=now)
 
 
 def confirm_paid_booking(db: Session, booking: Booking, now: datetime) -> None:

@@ -72,6 +72,19 @@ CUSTOMER_TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         "de": ("Fahrt abgeschlossen", "Danke, dass Sie mit uns gefahren sind."),
         "ru": ("Поездка завершена", "Спасибо, что выбрали нас."),
     },
+    # K-62 buluşma deneyimi
+    "meeting_guide": {
+        "tr": ("Hoş geldiniz! Sürücünüzle buluşma", "Çıkıştan buluşma noktasına adım adım yol tarifi için dokunun."),
+        "en": ("Welcome! Meeting your driver", "Tap for step-by-step directions from arrivals to the meeting point."),
+        "de": ("Willkommen! Treffpunkt mit Ihrem Fahrer", "Tippen Sie für eine Schritt-für-Schritt-Wegbeschreibung zum Treffpunkt."),
+        "ru": ("Добро пожаловать! Встреча с водителем", "Нажмите, чтобы увидеть пошаговый путь от выхода до места встречи."),
+    },
+    "driver_card": {
+        "tr": ("Sizi karşılayacak sürücü: {driver}", "{color}{vehicle} · {plate}. Konuştuğu diller: {languages}."),
+        "en": ("Your driver: {driver}", "{color}{vehicle} · {plate}. Speaks: {languages}."),
+        "de": ("Ihr Fahrer: {driver}", "{color}{vehicle} · {plate}. Sprachen: {languages}."),
+        "ru": ("Ваш водитель: {driver}", "{color}{vehicle} · {plate}. Языки: {languages}."),
+    },
     "new_message": {
         "tr": ("{sender} yazdı", "{text}"),
         "en": ("Message from {sender}", "{text}"),
@@ -84,6 +97,12 @@ DRIVER_TEXTS: dict[str, tuple[str, str]] = {
     "customer_finished": ("Yolcu yolculuğu bitirdi", "{pickup} → {dropoff} tamamlandı. Hakedişiniz Kazanç'a eklendi."),
     "trip_cancelled": ("Yolculuk iptal edildi", "{pickup} → {dropoff}, {pickup_at}."),
     "new_message": ("{sender} yazdı", "{text}"),
+    # K-62 yolcu durumu, puan, bahşiş
+    "passenger_landed": ("{passenger} indi", "{pickup} alışı. Yolcu pasaport ve bagaj aşamasında."),
+    "passenger_baggage": ("{passenger} bagajda", "{pickup} alışı. Birazdan çıkışta olacak."),
+    "passenger_exiting": ("{passenger} çıkıyor", "{pickup} alışı. Yolcu karşılama alanına geliyor."),
+    "trip_rated": ("Yolculuğunuz {stars}/5 puan aldı", "{pickup} → {dropoff}"),
+    "tip_received": ("Bahşiş: {amount} {currency}", "{pickup} → {dropoff}. Kazanç'a eklendi."),
     # K-60 uçuş takibi
     "flight_delayed": ("Uçuş saati değişti: {flight}", "Tahmini iniş {time} (planlanan {scheduled}). {pickup} alışı."),
     "flight_landed": ("Uçuş indi: {flight}", "{time} itibarıyla indi. {pickup} alışı."),

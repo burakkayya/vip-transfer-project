@@ -43,7 +43,7 @@ from app.models.enums import (
 )
 from app.config import get_settings
 from app.providers.routing import Point, haversine_km
-from app.services import audit, eta, notifications, system_settings, trip_updates
+from app.services import audit, eta, meeting, notifications, system_settings, trip_updates
 from app.services.quotes import latest_exchange_rate
 
 ACTIVE_LEG_STATUSES = (LegStatus.ASSIGNED, LegStatus.EN_ROUTE, LegStatus.ARRIVED, LegStatus.STARTED)
@@ -205,6 +205,7 @@ def assign(
         offer.status = OfferStatus.WITHDRAWN
     _refresh_booking_status(leg.booking)
     trip_updates.to_customer(db, leg, "driver_assigned")
+    meeting.on_assigned(leg, now)
     audit.record(
         db,
         actor_id=actor_id,
@@ -332,6 +333,7 @@ def advance_trip(
         eta.on_departed(db, leg, at)
     elif event is TripEventType.ARRIVED:
         trip_updates.to_customer(db, leg, "driver_arrived")
+        meeting.maybe_send_guide(db, leg, now)
     elif event is TripEventType.STARTED:
         trip_updates.to_customer(db, leg, "trip_started", eta=leg.duration_minutes or "—")
     elif event is TripEventType.FINISHED:
