@@ -1,35 +1,24 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { buildCsp } from "./lib/csp";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
-
-// Ödeme iFrame'i PayTR'den (geliştirmede backend'in sahte sayfasından) yüklenir.
-const frameSrc = ["'self'", "https://www.paytr.com", process.env.GETAWAY_API_URL ?? "http://localhost:8000"];
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // Google Maps JavaScript API (rezervasyon sayfası rota haritası).
-      "script-src 'self' 'unsafe-inline' https://maps.googleapis.com" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.ggpht.com",
-      "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com",
-      "worker-src 'self' blob:",
-      `frame-src ${frameSrc.join(" ")}`,
-      "frame-ancestors 'self'",
-      "form-action 'self'",
-      "base-uri 'self'",
-      "object-src 'none'",
-    ].join("; "),
-  },
+  // HSTS (WEB-05) yalnızca üretim derlemesinde; yerel http geliştirmesini etkilemez.
+  ...(process.env.NODE_ENV === "production"
+    ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]
+    : []),
 ];
+
+// Sayfa yanıtlarının CSP'si middleware'de istek başına nonce ile yazılır (lib/csp.ts). Middleware'e girmeyen
+// yollar (bff, _next, uzantılı dosyalar) burada nonce'suz ve `'unsafe-inline'` içermeyen politikayı alır.
+// Kaynak deseni middleware.ts'teki matcher'ın tersidir; iki CSP başlığı aynı yanıta yazılmaz.
+const NON_PAGE_SOURCE = "/:path((?:bff|_next|_vercel)(?:/.*)?|.*\\..*)";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -39,7 +28,10 @@ const nextConfig: NextConfig = {
   // Plan kapanışında lint zorunlu hale getirilir.
   eslint: { ignoreDuringBuilds: true },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      { source: NON_PAGE_SOURCE, headers: [{ key: "Content-Security-Policy", value: buildCsp() }] },
+    ];
   },
 };
 

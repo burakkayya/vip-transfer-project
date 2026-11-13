@@ -34,6 +34,10 @@ const AIRPORTS = [
   { code: "bjv", label: "Milas-Bodrum (BJV)" },
 ];
 
+// CSP nonce'ı (WEB-04) istek başına üretilir; önceden derlenmiş HTML nonce taşımadığı için sayfalar her istekte
+// çizilir. Next, middleware'in istek başlığına yazdığı CSP'den nonce'ı okuyup kendi script'lerine ekler.
+export const dynamic = "force-dynamic";
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }

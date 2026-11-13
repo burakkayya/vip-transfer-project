@@ -5,6 +5,7 @@
  * - Durum değiştiren isteklerde Origin kontrolü yapılır (CSRF).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { resolveBffPath } from "@/lib/bffPath";
 
 const API_URL = (process.env.GETAWAY_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 const AT = "ga_at";
@@ -64,7 +65,7 @@ function errorResponse(status: number, code: string, message: string) {
   return NextResponse.json({ error: { code, message, details: {} } }, { status });
 }
 
-async function callApi(req: NextRequest, path: string, body: string | undefined, token?: string) {
+async function callApi(req: NextRequest, upstream: URL, body: string | undefined, token?: string) {
   const headers: Record<string, string> = { accept: "application/json" };
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
@@ -73,7 +74,7 @@ async function callApi(req: NextRequest, path: string, body: string | undefined,
   const ip = clientIp(req);
   if (ip) headers["cf-connecting-ip"] = ip;
   if (token) headers.authorization = `Bearer ${token}`;
-  return fetch(`${API_URL}/api/v1/${path}${req.nextUrl.search}`, {
+  return fetch(upstream, {
     method: req.method,
     headers,
     body,
@@ -100,10 +101,14 @@ async function relay(upstream: Response): Promise<NextResponse> {
 }
 
 async function handle(req: NextRequest, { params }: Params) {
-  const path = (await params).path.join("/");
-  if (!ALLOWED.some((re) => re.test(path))) {
-    return errorResponse(404, "not_found", "not found");
+  // Yol çözülmüş parçalarla denetlenir ve yeniden kodlanır (WEB-01); reddedilen istek backend'e gitmez.
+  const resolved = resolveBffPath((await params).path, ALLOWED, API_URL, req.nextUrl.search);
+  if (!resolved.ok) {
+    return resolved.status === 400
+      ? errorResponse(400, "bad_path", "invalid path")
+      : errorResponse(404, "not_found", "not found");
   }
+  const { path, upstream: target } = resolved;
   if (req.method !== "GET" && !sameOrigin(req)) {
     return errorResponse(403, "forbidden", "origin not allowed");
   }
@@ -112,7 +117,7 @@ async function handle(req: NextRequest, { params }: Params) {
 
   // Giriş: jetonlar çereze yazılır, yanıtta tarayıcıya dönmez.
   if (path === "auth/otp/verify") {
-    const upstream = await callApi(req, path, body);
+    const upstream = await callApi(req, target, body);
     if (!upstream.ok) return relay(upstream);
     const res = NextResponse.json({ ok: true });
     setTokens(res, (await upstream.json()) as Tokens);
@@ -128,10 +133,10 @@ async function handle(req: NextRequest, { params }: Params) {
     access = renewed?.access_token;
   }
 
-  let upstream = await callApi(req, path, body, access);
+  let upstream = await callApi(req, target, body, access);
   if (upstream.status === 401 && refreshToken && !renewed) {
     renewed = await refresh(refreshToken);
-    if (renewed) upstream = await callApi(req, path, body, renewed.access_token);
+    if (renewed) upstream = await callApi(req, target, body, renewed.access_token);
   }
 
   const res = await relay(upstream);
