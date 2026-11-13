@@ -75,6 +75,10 @@ class AuthSession(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     refresh_token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    # AUTH-08: bir önceki (döndürülmüş) jetonun özeti ve dönüş zamanı; eski jeton tekrar gelirse
+    # oturum ailesi iptal edilir.
+    previous_refresh_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    rotated_at: Mapped[datetime | None]
     device_info: Mapped[str | None] = mapped_column(String(255))
     ip: Mapped[str | None] = mapped_column(String(45))
     expires_at: Mapped[datetime]

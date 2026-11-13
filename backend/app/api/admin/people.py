@@ -165,18 +165,30 @@ def update_staff(user_id: uuid.UUID, body: StaffUpdateIn, staff: AdminOnly, db: 
         raise NotFound("kullanıcı bulunamadı")
     if u.id == staff.id and (body.status is UserStatus.DISABLED or (body.roles and RoleCode.ADMIN not in body.roles)):
         raise Conflict("kendi yetkinizi kaldıramazsınız")
+    revoke = False
     if body.roles is not None:
-        u.roles = list(db.scalars(select(Role).where(Role.code.in_(body.roles))))
+        new_roles = list(db.scalars(select(Role).where(Role.code.in_(body.roles))))
+        # AUTH-02: rol değişince eski yetkiyle açılmış oturumlar düşer.
+        revoke = revoke or {r.code for r in new_roles} != {r.code for r in u.roles}
+        u.roles = new_roles
     if body.status is not None:
         u.status = body.status
         if body.status is UserStatus.DISABLED:
             for s in db.scalars(select(AuthSession).where(AuthSession.user_id == u.id, AuthSession.revoked_at.is_(None))):
                 s.revoked_at = now
     if body.reset_2fa:
-        u.two_factor_enabled = False
-        u.two_factor_secret = None
+        # AUTH-02: çalınan cihazdaki oturum ve refresh jetonu da kapanır.
+        auth.reset_staff_2fa(db, u)
+        revoke = True
+    revoked = 0
+    if revoke:
+        # Kendi kaydını düzenleyen admin işlemi yaptığı oturumda kalır; diğer oturumları kapanır.
+        revoked = auth.revoke_all_sessions(db, u.id, keep=staff.session_id if u.id == staff.id else None)
+    changes = body.model_dump(exclude_unset=True)
+    if revoke:
+        changes["sessions_revoked"] = revoked
     audit.record(db, actor_id=staff.id, action="staff_user.update", entity_type="user", entity_id=u.id,
-                 changes=body.model_dump(exclude_unset=True), ip=ip)
+                 changes=changes, ip=ip)
     db.commit()
     return _staff_row(u)
 

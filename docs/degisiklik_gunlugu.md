@@ -2,6 +2,10 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-13
+
+- **Güvenlik Faz 1 / kimlik ve oturum (F1-1..F1-4, F1-14, F1-15: AUTH-02, AUTH-05, AUTH-06, AUTH-08, DB-03, MON-08).** İstemci IP'si yalnızca güvenilir proxy listesinden (`trusted_proxies`) gelen başlıklardan okunur. Askıdaki/pasif sürücü sürücü uçlarında 403 `driver_suspended` alır (profil ve belge uçları açık kalır). Refresh jetonu yeniden kullanımı tespit edilir: eski jeton kısa tolerans penceresi dışında tekrar gelirse oturum ailesi iptal edilir (migration 0009: `previous_refresh_hash`, `rotated_at`). 2FA sıfırlama ve rol değişikliği personelin oturumlarını iptal eder ve denetim kaydına yazılır; personel oturum süresi config'ten (`staff_session_hours`). Testler üretim benzeri veritabanında çalışmayı reddeder (`assert_safe_test_database`). Testler: `test_auth_phase1.py` (33). Bu commit `config.py`, `conftest.py` ve `.env.example` içinde Faz 1'in diğer başlıklarının ayar alanlarını da taşır.
+
 ## 2026-11-12
 
 - **Güvenlik Faz 0 / F0-2, F0-3 (AUTH-01, AUTH-04, AUTH-07 kısmen).** Personel girişinde hesap bazlı deneme sayacı (15 dk'da 10 hata → 15 dk kilit, satır kilidiyle), kilitli/yanlış parola/olmayan hesap aynı 401 yanıtı (numaralandırma yok), denetim kayıtları (`staff.login_failed/2fa_failed/locked/login_blocked`). MFA ara jetonu tek kullanımlık (`jti`), jeton başına 5 hatalı TOTP denemesi, başarılı TOTP kodunun tekrarı engellenir (`totp_last_step`). OTP isteğinde IP başına 10/saat ve küresel 100/saat sınırı (telefon başına 5/saat korunur; eşikler config'ten). Migration 0008: `users` kilit/MFA alanları, `otp_challenges` indeksleri. Testler: `test_auth_hardening.py` (16; 13'ü düzeltme öncesi kırmızı doğrulandı); süit 205. Kalan: IP sayaçlarının güvenilirliği AUTH-05'e (Faz 1) bağlı; küresel OTP sınırına alarm bağlanmalı.

@@ -116,8 +116,12 @@ def verify_otp(
 
 
 @router.post("/refresh", response_model=TokenOut)
-def refresh(body: RefreshIn, db: DbSession):
-    pair = auth.refresh_session(db, body.refresh_token)
+def refresh(body: RefreshIn, db: DbSession, ip: ClientIp):
+    try:
+        pair = auth.refresh_session(db, body.refresh_token, ip=ip)
+    except Unauthorized:
+        db.commit()  # AUTH-08: yeniden kullanımda oturum iptali ve denetim kaydı kalıcı olsun
+        raise
     db.commit()
     return _tokens(pair)
 

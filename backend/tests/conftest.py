@@ -11,6 +11,12 @@ import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from urllib.parse import urlsplit  # noqa: E402
+
+# DB-03: GETAWAY_TEST_DATABASE_URL verilmişse o kullanılır (önerilen); yoksa GETAWAY_DATABASE_URL,
+# o da yoksa yerel getaway_test. Her durumda db_app, şema silmeden önce assert_safe_test_database çağırır.
+if os.environ.get("GETAWAY_TEST_DATABASE_URL"):
+    os.environ["GETAWAY_DATABASE_URL"] = os.environ["GETAWAY_TEST_DATABASE_URL"]
 os.environ.setdefault(
     "GETAWAY_DATABASE_URL", "postgresql+psycopg://getaway:getaway@localhost:5432/getaway_test"
 )
@@ -33,6 +39,25 @@ import pytest  # noqa: E402
 PDF = b"%PDF-1.4 test document"
 
 
+_LOCAL_DB_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def assert_safe_test_database(url: str) -> None:
+    """DB-03: `alembic downgrade base` tüm veriyi siler. Yalnızca yerel ve adı `_test` içeren
+    (ör. getaway_test, getaway_test_w1) veritabanında çalışır; aksi halde süit durdurulur.
+    İleti parola içermez."""
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    name = parts.path.lstrip("/")
+    if host not in _LOCAL_DB_HOSTS or "_test" not in name:
+        pytest.exit(
+            "Test süiti durduruldu: şema silme (alembic downgrade base) yalnızca yerel (localhost) ve adı "
+            f"'_test' içeren veritabanında çalışır. Bulunan: host={host or '?'} db={name or '?'}. "
+            "GETAWAY_TEST_DATABASE_URL ile ör. .../getaway_test verin.",
+            returncode=3,
+        )
+
+
 def _db_available() -> bool:
     try:
         from sqlalchemy import create_engine, text
@@ -48,6 +73,7 @@ def _db_available() -> bool:
 
 @pytest.fixture(scope="session")
 def db_app():
+    assert_safe_test_database(os.environ["GETAWAY_DATABASE_URL"])
     if not _db_available():
         pytest.skip("test veritabanı yok (docker compose up -d)")
     from alembic import command

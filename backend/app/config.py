@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import ipaddress
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 from functools import lru_cache
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Yalnızca geliştirme ve test için. Üretimde bu değerlerle uygulama açılmaz.
@@ -53,6 +54,16 @@ class Settings(BaseSettings):
     jwt_access_minutes: int = 30
     jwt_refresh_days: int = 30
     jwt_mfa_minutes: int = 5
+    # AUTH-08: personel oturumunun mutlak ömrü (yenileme uzatmaz). Müşteri ve sürücüde jwt_refresh_days.
+    staff_session_hours: int = 12
+    # AUTH-08: döndürülmüş refresh jetonu bu süreden sonra tekrar gelirse oturum ailesi iptal edilir.
+    # Pencere içinde (BFF'nin paralel istekleri aynı jetonla yenilemesi) yalnızca 401 döner, oturum düşmez.
+    refresh_reuse_grace_seconds: int = 10
+
+    # AUTH-05: istemci IP başlığına (cf-connecting-ip, x-forwarded-for) yalnızca soket adresi bu CIDR
+    # listesindeyse güvenilir. Boş (varsayılan): başlıklar yok sayılır, doğrudan soket IP'si kullanılır.
+    # Üretimde Cloudflare aralıkları ve BFF/reverse proxy adresleri yazılır (JSON liste).
+    trusted_proxies: list[str] = []
 
     # Alan düzeyi şifreleme (yasal_ve_guvenlik.md). Üretimde anahtarlar KMS'ten gelir.
     field_encryption_keys: str = _DEV_FERNET_KEY
@@ -92,6 +103,10 @@ class Settings(BaseSettings):
     google_maps_api_key: str = ""
     # Adres araması ücretli bir servise gider; IP başına dakikalık sınır.
     places_rate_limit_per_minute: int = 60
+    # MON-03: kimliksiz fiyat teklifi ve rota önizlemesi ücretli Routes API'ye gider; IP başına ve
+    # tüm istemciler için toplam dakikalık sınır (önizleme ile teklif aynı sayacı paylaşır).
+    quotes_rate_limit_per_minute: int = 60
+    quotes_global_rate_limit_per_minute: int = 1200
     # Adres jetonunun geçerliliği (adres seçiminden rezervasyona kadar).
     place_token_hours: int = 6
     # Haversine yedeğinde kuş uçuşu mesafeyi karayoluna yaklaştırmak için.
@@ -123,6 +138,13 @@ class Settings(BaseSettings):
     public_web_url: str = "http://localhost:3000"
 
     storage_dir: str = "var/storage"
+    # API-07: belge yükleme ucunun gövde üst sınırı (10 MB dosya + multipart payı); akış sırasında uygulanır.
+    document_upload_max_body_bytes: int = 12 * 1024 * 1024
+    # API-07: sürücü (ve aktif araçları) başına pencere içinde yüklenebilecek belge sayısı. Onaysız sürücü
+    # yalnızca başvuru belgelerini (sürücü + araç, ~9 tür) ve birkaç yeniden yüklemeyi yapabilir.
+    document_quota_window_days: int = 30
+    document_quota_unapproved: int = 12
+    document_quota_approved: int = 20
 
     # K-15: tam iade garantisi hukuki teyit gelene kadar satışa kapalı.
     guarantee_enabled: bool = False
@@ -137,6 +159,38 @@ class Settings(BaseSettings):
     trip_finish_region_radius_m: int = 3000
     # Sürücü havuzunda ve teklifte alış/varış noktası bu kadar metre kırpılarak gösterilir (adres gizliliği).
     job_preview_trim_m: int = 400
+
+    # BIZ-02 (F1-8): yolculuk adımlarının zaman ve konum makullüğü.
+    # "Yola çıktım" en erken alıştan bu kadar dakika önce, "Yolcu alındı" en erken bu toleransla kabul edilir.
+    trip_depart_window_minutes: int = 180
+    trip_start_early_minutes: int = 30
+    # Sürücü "bitti" demeden önce "başladı"dan bu yana planlanan sürenin en az bu oranı geçmeli.
+    trip_min_duration_ratio: float = 0.25
+    # Bu oranın altında biten sürücü bitirişi kabul edilir ama erken bitiş olarak denetim kaydına yazılır.
+    trip_early_finish_ratio: float = 0.5
+    # Son konum örneğinden bitiş konumuna gerekli hız bu değeri aşarsa bitiş reddedilir (konum sıçraması).
+    trip_max_speed_kmh: int = 160
+    trip_location_jump_slack_m: int = 300
+
+    # RT-03/04/05 (F1-16): canlı takip WebSocket'i.
+    ws_auth_timeout_seconds: float = 5
+    ws_first_message_max_bytes: int = 4096
+    ws_poll_seconds: float = 3
+    ws_revalidate_seconds: float = 30
+    ws_max_lifetime_seconds: int = 4 * 3600
+    ws_max_per_session: int = 3
+    ws_max_per_booking: int = 5
+    ws_max_total: int = 2000
+    # Canlı konum Redis istemcisi zaman aşımları (saniye).
+    redis_socket_timeout_seconds: float = 1
+
+    @field_validator("trusted_proxies")
+    @classmethod
+    def _valid_cidrs(cls, v: list[str]) -> list[str]:
+        # Hatalı CIDR açılışta reddedilir; sessizce "hiçbir şeye güvenme"ye düşmesin.
+        for cidr in v:
+            ipaddress.ip_network(cidr.strip(), strict=False)
+        return [c.strip() for c in v]
 
     @model_validator(mode="after")
     def _no_dev_secrets_in_prod(self) -> "Settings":

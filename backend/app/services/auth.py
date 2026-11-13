@@ -41,13 +41,16 @@ def issue_session(
 ) -> TokenPair:
     s = get_settings()
     refresh = tokens.new_refresh_token()
+    # AUTH-08: personel oturumu mutlak 12 saat (yenileme uzatmaz); müşteri ve sürücü jwt_refresh_days.
+    lifetime = (timedelta(hours=s.staff_session_hours) if user.kind is UserKind.STAFF
+                else timedelta(days=s.jwt_refresh_days))
     session = AuthSession(
         id=uuid.uuid4(),
         user_id=user.id,
         refresh_token_hash=tokens.hash_refresh_token(refresh),
         device_info=(device_info or "")[:255] or None,
         ip=ip,
-        expires_at=_now() + timedelta(days=s.jwt_refresh_days),
+        expires_at=_now() + lifetime,
     )
     db.add(session)
     user.last_login_at = _now()
@@ -58,17 +61,44 @@ def issue_session(
     )
 
 
-def refresh_session(db: Session, refresh_token: str) -> TokenPair:
+def _handle_refresh_reuse(db: Session, token_hash: str, ip: str | None) -> None:
+    """AUTH-08: döndürülmüş (eski) jeton tekrar geldi. Tolerans penceresi dışındaysa jeton çalınmış
+    sayılır: oturum ailesi (aynı oturum satırı, tüm rotasyonları) iptal edilir ve denetim kaydı yazılır.
+    Çağıran, Unauthorized yükseltmeden önce commit etmelidir."""
+    session = db.scalar(
+        select(AuthSession).where(AuthSession.previous_refresh_hash == token_hash).with_for_update(of=AuthSession)
+    )
+    if session is None or session.revoked_at is not None:
+        return
+    now = _now()
+    grace = timedelta(seconds=get_settings().refresh_reuse_grace_seconds)
+    if session.rotated_at is not None and now - session.rotated_at < grace:
+        return  # eşzamanlı meşru yenileme (BFF paralel istekleri): yalnızca bu istek reddedilir
+    session.revoked_at = now
+    audit.record(db, actor_id=session.user_id, action="security.refresh_reuse", entity_type="session",
+                 entity_id=session.id,
+                 changes={"user_kind": session.user.kind.value,
+                          "rotated_at": session.rotated_at.isoformat() if session.rotated_at else None},
+                 ip=ip)
+
+
+def refresh_session(db: Session, refresh_token: str, *, ip: str | None = None) -> TokenPair:
+    token_hash = tokens.hash_refresh_token(refresh_token)
     session = db.scalar(
         select(AuthSession)
-        .where(AuthSession.refresh_token_hash == tokens.hash_refresh_token(refresh_token))
+        .where(AuthSession.refresh_token_hash == token_hash)
         .with_for_update(of=AuthSession)
     )
-    if session is None or session.revoked_at or session.expires_at <= _now():
+    if session is None:
+        _handle_refresh_reuse(db, token_hash, ip)
+        raise Unauthorized("oturum geçersiz")
+    if session.revoked_at or session.expires_at <= _now():
         raise Unauthorized("oturum geçersiz")
     if session.user.status is not UserStatus.ACTIVE:
         raise Unauthorized("hesap pasif")
     new_refresh = tokens.new_refresh_token()
+    session.previous_refresh_hash = token_hash
+    session.rotated_at = _now()
     session.refresh_token_hash = tokens.hash_refresh_token(new_refresh)
     s = get_settings()
     return TokenPair(
@@ -88,6 +118,28 @@ def revoke_other_sessions(db: Session, user_id: uuid.UUID, *, keep: uuid.UUID) -
     for s in db.scalars(select(AuthSession).where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None),
                                                   AuthSession.id != keep)):
         s.revoked_at = _now()
+
+
+def revoke_all_sessions(db: Session, user_id: uuid.UUID, *, keep: uuid.UUID | None = None) -> int:
+    """Kullanıcının tüm açık oturumlarını (ve dolayısıyla refresh jetonlarını) iptal eder.
+    `keep` verilirse o oturum açık kalır (ör. kendi kaydını düzenleyen admin). İptal sayısını döner."""
+    q = select(AuthSession).where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))
+    if keep is not None:
+        q = q.where(AuthSession.id != keep)
+    n = 0
+    for s in db.scalars(q):
+        s.revoked_at = _now()
+        n += 1
+    return n
+
+
+def reset_staff_2fa(db: Session, user: User) -> None:
+    """AUTH-02: 2FA sıfırlanınca sır ve bekleyen MFA durumu silinir; bir sonraki girişte yeni kurulum."""
+    user.two_factor_enabled = False
+    user.two_factor_secret = None
+    user.mfa_jti = None
+    user.mfa_attempts = 0
+    user.totp_last_step = None
 
 
 def get_active_session(db: Session, session_id: uuid.UUID) -> AuthSession:
@@ -311,9 +363,10 @@ def staff_login(db: Session, email: str, password: str, ip: str | None) -> Staff
     user.mfa_attempts = 0
     if user.two_factor_enabled:
         return StaffLoginStep(tokens.create_mfa_token(user.id, "mfa", user.mfa_jti), setup_required=False)
-    # İlk giriş: 2FA kurulumu zorunlu (K-22).
-    if not user.two_factor_secret:
-        user.two_factor_secret = pyotp.random_base32()
+    # İlk giriş: 2FA kurulumu zorunlu (K-22). AUTH-02: her kurulum başlangıcında yeni sır; önceki
+    # girişte (ör. parolayı ele geçiren biri tarafından) görülen sır geçersiz olur.
+    user.two_factor_secret = pyotp.random_base32()
+    user.totp_last_step = None
     uri = pyotp.TOTP(user.two_factor_secret).provisioning_uri(name=email, issuer_name=TOTP_ISSUER)
     return StaffLoginStep(
         tokens.create_mfa_token(user.id, "mfa_setup", user.mfa_jti), setup_required=True, provisioning_uri=uri
@@ -325,11 +378,13 @@ def staff_verify_2fa(
 ) -> TokenPair:
     now = _now()
     s = get_settings()
+    setup = False
     try:
         payload = tokens.decode_token(mfa_token, "mfa")
     except tokens.TokenError:
         try:
             payload = tokens.decode_token(mfa_token, "mfa_setup")
+            setup = True
         except tokens.TokenError as exc:
             raise Unauthorized(_MFA_SESSION_INVALID) from exc
     try:
@@ -342,6 +397,10 @@ def staff_verify_2fa(
         raise Unauthorized("geçersiz istek")
     # Tek kullanımlık jeton: yalnızca kullanıcıda kayıtlı son jti kabul edilir.
     if user.mfa_jti is None or user.mfa_jti != jti:
+        raise Unauthorized(_MFA_SESSION_INVALID)
+    # AUTH-02: jeton türü hesabın 2FA durumuyla eşleşmeli (kurulum jetonu yalnızca kurulmamış hesapta).
+    if setup == user.two_factor_enabled:
+        user.mfa_jti = None
         raise Unauthorized(_MFA_SESSION_INVALID)
     if _is_locked(user, now) or user.status is not UserStatus.ACTIVE:
         user.mfa_jti = None
