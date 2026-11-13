@@ -4,16 +4,18 @@ saf `app.pricing` fonksiyonlarıyla fiyatı üretir."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from functools import lru_cache
 
+import redis
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app import pricing
 from app.config import get_settings
 from app.currency import convert_eur_price, currency_for_country
-from app.errors import DomainError, NotFound, ServiceUnavailable
+from app.errors import DomainError, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import (
     ExchangeRate,
     PricingRule,
@@ -142,6 +144,29 @@ def _price_route(router: RoutingProvider, origin: Point, destination: Point) -> 
     """Fiyat mesafesi müşterinin seçtiği gerçek noktalar arasındaki karayolu mesafesidir (K-58).
     Yalnızca ilçe veya havalimanı seçildiyse o bölgenin merkezi kullanılır."""
     return router.route(origin, destination)
+
+
+@lru_cache
+def _redis() -> redis.Redis:
+    return redis.Redis.from_url(get_settings().redis_url)
+
+
+def _bump(key: str) -> int:
+    pipe = _redis().pipeline()
+    pipe.incr(key)
+    pipe.expire(key, 70)
+    return int(pipe.execute()[0])
+
+
+def check_rate_limit(ip: str) -> None:
+    """MON-03: kimliksiz teklif ve rota önizlemesi ücretli Routes API'ye gider. IP başına ve küresel
+    dakikalık sınır; ikisi de aşılınca 429. (IP, `ClientIp` bağımlılığından gelir.)"""
+    s = get_settings()
+    minute = f"{datetime.now(timezone.utc):%Y%m%d%H%M}"
+    if _bump(f"quotes_rl:ip:{ip}:{minute}") > s.quotes_rate_limit_per_minute:
+        raise TooManyRequests("çok fazla fiyat sorgusu, lütfen biraz bekleyin")
+    if _bump(f"quotes_rl:all:{minute}") > s.quotes_global_rate_limit_per_minute:
+        raise TooManyRequests("fiyat servisi şu an yoğun, lütfen biraz sonra tekrar deneyin")
 
 
 def preview_route(db: Session, pickup: Place, dropoff: Place, *, router: RoutingProvider) -> Route:

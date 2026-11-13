@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import admin, auth, customer, driver, payments, public, trips
+from app.body_limit import UploadBodyLimit
 from app.config import DEV_ENVS, get_settings
 from app.errors import DomainError
 
@@ -26,6 +27,8 @@ def create_app() -> FastAPI:
         redoc_url=None,
         openapi_url="/openapi.json" if dev_tools else None,
     )
+    # API-07: yükleme gövdesi sınırı akış sırasında (en içteki middleware; güvenlik başlıkları 413'e de eklenir).
+    app.add_middleware(UploadBodyLimit)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=s.cors_origins,

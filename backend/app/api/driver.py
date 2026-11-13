@@ -116,13 +116,18 @@ async def upload_document(
     db: DbSession,
     doc_type: Annotated[DocumentType, Form()],
     file: Annotated[UploadFile, File()],
+    now: Now,
     valid_until: Annotated[date | None, Form()] = None,
     vehicle_id: Annotated[uuid.UUID | None, Form()] = None,
 ):
     owner_type, owner_id = DocumentOwner.DRIVER, driver.id
+    vehicle_ids = _vehicle_ids(db, driver)
     if vehicle_id is not None:
         _own_vehicle(db, driver, vehicle_id)
         owner_type, owner_id = DocumentOwner.VEHICLE, vehicle_id
+    # API-07: gövde sınırı akış sırasında `app.body_limit`'te; burada adet kotası ve tek bekleyen belge.
+    documents.check_upload_quota(db, driver=driver, vehicle_ids=vehicle_ids, owner_type=owner_type,
+                                 owner_id=owner_id, doc_type=doc_type, now=now)
     data = await file.read(documents.MAX_DOCUMENT_BYTES + 1)
     doc = documents.upload(
         db,
@@ -309,6 +314,11 @@ def list_offers(driver: CurrentDriver, db: DbSession, now: Now):
         trip.passenger_name = trip.passenger_name.split()[0][:1] + "***"
         trip.pickup_address = None
         trip.dropoff_address = None
+        # PRIV-03: kabul öncesi kesin nokta verilmez; iş havuzundaki gibi yalnızca bölge düzeyi
+        # (ilçe / havalimanı merkezi, herkese açık). Kesin koordinat kabul yanıtında gelir.
+        leg = o.leg
+        trip.pickup_lat, trip.pickup_lng = leg.pickup_region.latitude, leg.pickup_region.longitude
+        trip.dropoff_lat, trip.dropoff_lng = leg.dropoff_region.latitude, leg.dropoff_region.longitude
         result.append(OfferOut(offer_id=o.id, expires_at=o.expires_at, trip=trip))
     return result
 

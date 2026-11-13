@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime, timedelta
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.errors import Conflict, DomainError
+from app.config import get_settings
+from app.errors import Conflict, DomainError, TooManyRequests
 from app.models import Document, DocumentReview, Driver, Vehicle
 from app.models.enums import (
     DocumentOwner,
@@ -28,6 +30,48 @@ _MAGIC = {
     "image/jpeg": (b"\xff\xd8\xff",),
     "image/png": (b"\x89PNG\r\n\x1a\n",),
 }
+
+
+def check_upload_quota(
+    db: Session,
+    *,
+    driver: Driver,
+    vehicle_ids: list[uuid.UUID],
+    owner_type: DocumentOwner,
+    owner_id: uuid.UUID,
+    doc_type: DocumentType,
+    now: datetime,
+) -> None:
+    """API-07: disk ve denetim tablosu şişirilmesine karşı yükleme kotası.
+
+    - Aynı sahip ve `doc_type` için incelemede bekleyen belge varsa yenisi kabul edilmez (409).
+    - Sürücü ve aktif araçları için son `document_quota_window_days` günde yüklenen belge sayısı sınırlıdır;
+      onaysız sürücünün hakkı daha dardır (429). Dosya boyutu tek tek 10 MB ile sınırlı olduğundan
+      toplam boyut da adet x 10 MB ile sınırlanmış olur.
+    """
+    s = get_settings()
+    pending = db.scalar(
+        select(func.count()).select_from(Document).where(
+            Document.owner_type == owner_type,
+            Document.owner_id == owner_id,
+            Document.doc_type == doc_type,
+            Document.status == DocumentStatus.PENDING,
+        )
+    )
+    if pending:
+        raise Conflict("bu belge türü için incelemede bekleyen bir belge var", code="document_pending_exists")
+    limit = s.document_quota_approved if driver.status is DriverStatus.APPROVED else s.document_quota_unapproved
+    owned = (Document.owner_type == DocumentOwner.DRIVER) & (Document.owner_id == driver.id)
+    if vehicle_ids:
+        owned = owned | ((Document.owner_type == DocumentOwner.VEHICLE) & Document.owner_id.in_(vehicle_ids))
+    recent = db.scalar(
+        select(func.count()).select_from(Document).where(
+            owned, Document.created_at > now - timedelta(days=s.document_quota_window_days)
+        )
+    ) or 0
+    if recent >= limit:
+        raise TooManyRequests("belge yükleme sınırına ulaşıldı, lütfen operasyon ekibiyle iletişime geçin",
+                              code="document_quota_exceeded")
 
 
 def upload(

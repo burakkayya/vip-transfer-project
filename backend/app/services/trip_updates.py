@@ -72,24 +72,33 @@ CUSTOMER_TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         "de": ("Fahrt abgeschlossen", "Danke, dass Sie mit uns gefahren sind."),
         "ru": ("Поездка завершена", "Спасибо, что выбрали нас."),
     },
+    # PRIV-04: mesaj metni ve gönderen adı bildirime (trip_updates.body, FCM) kopyalanmaz;
+    # içerik uygulamada şifreli kaynaktan (trip_messages) okunur.
     "new_message": {
-        "tr": ("{sender} yazdı", "{text}"),
-        "en": ("Message from {sender}", "{text}"),
-        "de": ("Nachricht von {sender}", "{text}"),
-        "ru": ("Сообщение от {sender}", "{text}"),
+        "tr": ("Yeni mesaj", "Sürücünüz size yazdı. Okumak için uygulamayı açın."),
+        "en": ("New message", "Your driver sent you a message. Open the app to read it."),
+        "de": ("Neue Nachricht", "Ihr Fahrer hat Ihnen geschrieben. Öffnen Sie die App, um sie zu lesen."),
+        "ru": ("Новое сообщение", "Водитель написал вам. Откройте приложение, чтобы прочитать."),
     },
 }
 
 DRIVER_TEXTS: dict[str, tuple[str, str]] = {
     "customer_finished": ("Yolcu yolculuğu bitirdi", "{pickup} → {dropoff} tamamlandı. Hakedişiniz Kazanç'a eklendi."),
     "trip_cancelled": ("Yolculuk iptal edildi", "{pickup} → {dropoff}, {pickup_at}."),
-    "new_message": ("{sender} yazdı", "{text}"),
-    # K-60 uçuş takibi
-    "flight_delayed": ("Uçuş saati değişti: {flight}", "Tahmini iniş {time} (planlanan {scheduled}). {pickup} alışı."),
-    "flight_landed": ("Uçuş indi: {flight}", "{time} itibarıyla indi. {pickup} alışı."),
-    "flight_cancelled": ("Uçuş iptal: {flight}", "{pickup} alışı. Operasyonla iletişime geçin."),
-    "flight_diverted": ("Uçuş başka havalimanına yönlendirildi: {flight}", "{pickup} alışı. Operasyonla iletişime geçin."),
+    "new_message": ("Yeni mesaj", "Yolcu size yazdı. Okumak için uygulamayı açın."),
+    # K-60 uçuş takibi. PRIV-04: uçuş numarası bildirime yazılmaz (yolculuk ekranında görünür).
+    "flight_delayed": ("Uçuş saati değişti", "Tahmini iniş {time} (planlanan {scheduled}). {pickup} alışı."),
+    "flight_landed": ("Uçuş indi", "{time} itibarıyla indi. {pickup} alışı."),
+    "flight_cancelled": ("Uçuş iptal edildi", "{pickup} alışı. Operasyonla iletişime geçin."),
+    "flight_diverted": ("Uçuş başka havalimanına yönlendirildi", "{pickup} alışı. Operasyonla iletişime geçin."),
 }
+
+# PRIV-04: çağıran bu değerleri geçse de metne girmez (şablon değişse bile ikinci savunma).
+_PRIVATE_PARAMS = frozenset({"text", "flight", "sender"})
+
+
+def _values(leg: BookingLeg, params: dict[str, object]) -> _Safe:
+    return _Safe({**leg_params(leg), **{k: str(v) for k, v in params.items() if k not in _PRIVATE_PARAMS}})
 
 
 def _data(leg: BookingLeg, code: str) -> dict[str, str]:
@@ -110,7 +119,7 @@ def to_customer(db: Session, leg: BookingLeg, code: str, **params: object) -> Tr
     booking = leg.booking
     texts = CUSTOMER_TEXTS[code]
     title_t, body_t = texts.get(booking.locale) or texts["en"]
-    values = _Safe({**leg_params(leg), **{k: str(v) for k, v in params.items()}})
+    values = _values(leg, params)
     title, body = title_t.format_map(values)[:120], body_t.format_map(values)[:500]
     data = _data(leg, code)
     update = TripUpdate(id=uuid.uuid4(), booking_leg_id=leg.id, recipient_type="customer",
@@ -124,7 +133,7 @@ def to_driver(db: Session, leg: BookingLeg, code: str, **params: object) -> Trip
     if leg.driver is None:
         return None
     title_t, body_t = DRIVER_TEXTS[code]
-    values = _Safe({**leg_params(leg), **{k: str(v) for k, v in params.items()}})
+    values = _values(leg, params)
     title, body = title_t.format_map(values)[:120], body_t.format_map(values)[:500]
     data = _data(leg, code)
     update = TripUpdate(id=uuid.uuid4(), booking_leg_id=leg.id, recipient_type="driver",

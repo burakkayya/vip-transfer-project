@@ -95,7 +95,8 @@ def quote_out(q: quotes.Quote) -> QuoteOut:
 
 
 @router.post("/quotes", response_model=QuoteOut)
-def create_quote(body: QuoteIn, db: DbSession, now: Now):
+def create_quote(body: QuoteIn, db: DbSession, now: Now, ip: ClientIp):
+    quotes.check_rate_limit(ip)  # MON-03: ücretli Routes API, kimliksiz uç
     q = quotes.build_quote(db, to_quote_input(db, body), router=get_routing(), now=now)
     return quote_out(q)
 
@@ -107,6 +108,7 @@ def route_preview(body: RoutePreviewIn, db: DbSession, ip: ClientIp):
     gittiği için IP başına adres aramasıyla aynı dakikalık sınır uygulanır. Sonuç 10 dk önbellekte kalır,
     hemen ardından gelen fiyat teklifi aynı rotayı yeniden istemez."""
     places.check_rate_limit(ip)
+    quotes.check_rate_limit(ip)  # MON-03: teklifle aynı Routes API sayacı
     route = quotes.preview_route(db, to_place(db, body.pickup), to_place(db, body.dropoff), router=get_routing())
     return RoutePreviewOut(distance_km=route.distance_km, duration_minutes=route.duration_minutes,
                            route_polyline=route.polyline)
