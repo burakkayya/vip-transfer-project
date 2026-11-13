@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -16,8 +17,8 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_db
 from app.errors import Forbidden, Unauthorized
-from app.models import Customer, Driver, User
-from app.models.enums import DriverStatus, RoleCode, UserKind
+from app.models import BookingLeg, Customer, Driver, User
+from app.models.enums import DriverStatus, LegStatus, RoleCode, UserKind
 from app.security import tokens
 from app.services.auth import get_active_session
 
@@ -134,6 +135,26 @@ _SUSPENDED_ALLOWED_ROUTES = frozenset({
 })
 
 
+# REV-A-5: yolcu araçtayken yolculuk yarıda bırakılmaz. Askıdaki/pasif sürücü yalnızca kendisine atanmış ve
+# STARTED durumundaki bacağın olay ucunu kullanabilir. STARTED'dan tek geçerli adım "bitti" olduğundan
+# (dispatch.TRANSITIONS) başka adım durum makinesince reddedilir; yeni iş, konum, sohbet kapalı kalır.
+_TRIP_EVENT_PATH = re.compile(r"^/api/v1/driver/trips/([0-9a-fA-F-]{36})/events$")
+
+
+def _own_started_trip_event(request: Request, db: Session, driver: Driver) -> bool:
+    if request.method != "POST":
+        return False
+    match = _TRIP_EVENT_PATH.match(request.url.path)
+    if match is None:
+        return False
+    try:
+        leg_id = uuid.UUID(match.group(1))
+    except ValueError:
+        return False
+    status = db.scalar(select(BookingLeg.status).where(BookingLeg.id == leg_id, BookingLeg.driver_id == driver.id))
+    return status is LegStatus.STARTED
+
+
 def current_driver(
     request: Request, db: DbSession, user: Annotated[User, Depends(current_driver_user)]
 ) -> Driver:
@@ -142,7 +163,9 @@ def current_driver(
         raise Forbidden("sürücü kaydı tamamlanmamış", code="driver_profile_missing")
     if driver.status in _BLOCKED_DRIVER_STATUSES:
         # İzinli uçların hepsi parametresiz sabit yollar; tam yol eşleşmesi yeterli.
-        if (request.method, request.url.path) not in _SUSPENDED_ALLOWED_ROUTES:
+        if (request.method, request.url.path) not in _SUSPENDED_ALLOWED_ROUTES and not _own_started_trip_event(
+            request, db, driver
+        ):
             raise Forbidden("sürücü hesabı askıda veya pasif", code="driver_suspended")
     return driver
 

@@ -14,7 +14,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app import cancellation, commission
-from app.errors import Conflict, DomainError, NotFound, ServiceUnavailable
+from app.errors import Conflict, DomainError, Forbidden, NotFound, ServiceUnavailable
 from app.models import (
     Booking,
     BookingLeg,
@@ -551,9 +551,8 @@ def execute_refund(db: Session, refund: Refund, payment: Payment, provider: Paym
 RETRYABLE_REFUND = {RefundStatus.FAILED, RefundStatus.UNKNOWN}
 
 
-def retry_refund(db: Session, refund_id: uuid.UUID, provider: PaymentProvider) -> tuple[Refund, RefundStatus]:
-    """Başarısız ya da belirsiz iadeyi aynı kayıtla yeniden dener (BIZ-03); yeni iade açılmaz.
-    Ödeme satırı kilitlenir ve kalan tutar yeniden denetlenir (eşzamanlı elle iadeyle yarışmasın)."""
+def _lock_refund(db: Session, refund_id: uuid.UUID) -> tuple[Refund, Payment]:
+    """Kilit sırası diğer iade yollarıyla aynı: önce ödeme, sonra iade."""
     refund = db.get(Refund, refund_id)
     if refund is None:
         raise NotFound("iade bulunamadı")
@@ -561,13 +560,47 @@ def retry_refund(db: Session, refund_id: uuid.UUID, provider: PaymentProvider) -
                         .execution_options(populate_existing=True))
     db.scalar(select(Refund).where(Refund.id == refund_id).with_for_update(of=Refund)
               .execution_options(populate_existing=True))
+    return refund, payment
+
+
+def retry_refund(
+    db: Session, refund_id: uuid.UUID, provider: PaymentProvider, *, is_admin: bool = False, reconciled: bool = False
+) -> tuple[Refund, RefundStatus]:
+    """Başarısız ya da belirsiz iadeyi aynı kayıtla yeniden dener (BIZ-03); yeni iade açılmaz.
+    Ödeme satırı kilitlenir ve kalan tutar yeniden denetlenir (eşzamanlı elle iadeyle yarışmasın).
+
+    REV-A-6: PayTR'de iade durum sorgusu yok ve `reference_no` tekilliği doğrulanmadı; belirsiz iadeyi
+    körlemesine yeniden göndermek çift iade riskidir. Belirsiz iade yalnızca admin tarafından ve PayTR
+    panelinden iadenin gerçekleşmediği doğrulandıktan sonra (`reconciled`) yeniden denenir."""
+    refund, payment = _lock_refund(db, refund_id)
     if refund.status not in RETRYABLE_REFUND:
         raise Conflict("yalnızca başarısız veya belirsiz iade tekrar denenebilir", code="refund_not_retryable")
     if payment.provider is PaymentProviderCode.MANUAL:
         raise Conflict("elle tahsilatın iadesi elle kapatılır", code="manual_payment")
+    if refund.status is RefundStatus.UNKNOWN:
+        if not is_admin:
+            raise Forbidden("belirsiz iadeyi yalnızca admin yeniden deneyebilir", code="admin_required")
+        if not reconciled:
+            raise Conflict("belirsiz iade, PayTR panelinden gerçekleşmediği doğrulanmadan yeniden denenemez",
+                           code="reconciliation_required")
     previous = refund.status
     execute_refund(db, refund, payment, provider)
     return refund, previous
+
+
+def mark_unknown_refund_completed(db: Session, refund_id: uuid.UUID, *, reference: str | None) -> Refund:
+    """REV-A-6: belirsiz iade PayTR panelinde gerçekleşmiş görünüyorsa sağlayıcı yeniden çağrılmadan
+    tamamlandı işaretlenir (admin, mutabakat sonrası). Denetim kaydını çağıran yazar."""
+    refund, payment = _lock_refund(db, refund_id)
+    if refund.status is not RefundStatus.UNKNOWN:
+        raise Conflict("yalnızca belirsiz iade elle tamamlandı işaretlenir", code="refund_not_unknown")
+    if payment.provider is PaymentProviderCode.MANUAL:
+        raise Conflict("elle tahsilatın iadesi elle kapatılır", code="manual_payment")
+    refund.status = RefundStatus.COMPLETED
+    if reference:
+        refund.provider_ref = reference[:100]
+    _settle_payment_status(db, payment)
+    return refund
 
 
 def _settle_payment_status(db: Session, payment: Payment) -> None:

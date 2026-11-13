@@ -21,6 +21,8 @@ from app.models import (
     ExchangeRate,
     FlightInfo,
     OtpChallenge,
+    Payment,
+    Refund,
     TripMessage,
     TripUpdate,
     Vehicle,
@@ -33,6 +35,8 @@ from app.models.enums import (
     DocumentStatus,
     DriverStatus,
     LegStatus,
+    PaymentProviderCode,
+    RefundStatus,
     VehicleStatus,
 )
 from app.services import audit, dispatch, flight_tracking, system_settings
@@ -99,6 +103,10 @@ def expire_documents(db: Session, now: datetime) -> int:
                     driver.is_online = False
                     audit.record(db, actor_id=None, action="driver.auto_passive",
                                  entity_type="driver", entity_id=driver.id)
+                    # REV-A-5: elle askıya almadaki gibi yolcu alınmamış işler havuza döner, teklifler geri
+                    # çekilir, oturumlar kapanır. Başlamış (yolcu araçta) yolculuk sürücüde kalır; sürücü onu
+                    # yeniden giriş yapıp bitirebilir (deps.current_driver).
+                    dispatch.release_driver(db, driver, actor_id=None, ip=None, now=now)
             else:
                 vehicle = db.get(Vehicle, owner_id)
                 if vehicle and vehicle.status is VehicleStatus.ACTIVE:
@@ -134,6 +142,34 @@ def cancel_unpaid_bookings(db: Session, now: datetime) -> int:
     return len(bookings)
 
 
+# REV-A-7: sağlayıcı çağrısı 20 sn zaman aşımlıdır; bu süreden uzun PENDING kalan kart iadesinde süreç
+# PENDING commit'i ile sonucun yazılması arasında kesilmiştir (çökme, yeniden başlatma).
+STUCK_REFUND_MINUTES = 15
+
+
+def mark_stuck_refunds_unknown(db: Session, now: datetime) -> int:
+    """PENDING'de takılan kart iadelerini belirsiz (UNKNOWN) yapar: sağlayıcıda gerçekleşmiş olabilir,
+    mutabakat gerekir. Elle tahsilatın iadesi (MANUAL) muhasebeyi beklediği için PENDING kalır.
+
+    Not: iade kaydında güncellenme zamanı yok; eşik oluşturma zamanına göredir. Yeniden denenen eski bir
+    iade sağlayıcı çağrısı sürerken UNKNOWN'a çekilse bile execute_refund sonucu üzerine yazar."""
+    cutoff = now - timedelta(minutes=STUCK_REFUND_MINUTES)
+    refunds = list(db.scalars(
+        select(Refund)
+        .join(Payment, Payment.id == Refund.payment_id)
+        .where(Refund.status == RefundStatus.PENDING, Refund.created_at < cutoff,
+               Payment.provider != PaymentProviderCode.MANUAL)
+        .with_for_update(of=Refund, skip_locked=True)
+    ))
+    for refund in refunds:
+        refund.status = RefundStatus.UNKNOWN
+        audit.record(db, actor_id=None, action="refund.stuck_pending_unknown", entity_type="refund",
+                     entity_id=refund.id, changes={"created_at": refund.created_at,
+                                                   "threshold_minutes": STUCK_REFUND_MINUTES})
+        log.error("iade PENDING'de takıldı, belirsiz yapıldı; mutabakat gerekli: refund=%s", refund.id)
+    return len(refunds)
+
+
 def purge_otp_challenges(db: Session, now: datetime) -> int:
     result = db.execute(delete(OtpChallenge).where(OtpChallenge.created_at < now - timedelta(days=1)))
     return result.rowcount or 0
@@ -156,4 +192,5 @@ ALL_JOBS = (
     purge_otp_challenges,
     expire_dispatch_offers,
     refresh_flights,
+    mark_stuck_refunds_unknown,
 )

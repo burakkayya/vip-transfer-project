@@ -14,7 +14,18 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict
-from app.models import AuthSession, Booking, BookingLeg, Customer, DataRequest, TripMessage, TripUpdate
+from app.models import (
+    AuthSession,
+    Booking,
+    BookingLeg,
+    Customer,
+    DataRequest,
+    OtpChallenge,
+    Payment,
+    Refund,
+    TripMessage,
+    TripUpdate,
+)
 from app.models.enums import BookingStatus, DataRequestStatus, DataRequestType, UserStatus
 
 # bookings.passenger_name NOT NULL; ekranlar ilk harf/ilk kelime kullandığı için boş olmayan sabit.
@@ -23,6 +34,21 @@ ANONYMIZED_NAME = "Anonim"
 ACTIVE_BOOKING_STATUSES = (BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED,
                            BookingStatus.ASSIGNED, BookingStatus.IN_PROGRESS)
 
+# refunds.reason NOT NULL; iptal/iade gerekçesindeki serbest metin bu sabitle değiştirilir.
+ANONYMIZED_REASON = "anonimleştirildi"
+# execute_refund'ın eklediği sistem son eki (" | belirsiz: ...", " | hata: ..."): sağlayıcı sonucu, kişisel veri değil.
+_SYSTEM_SUFFIX_SEP = " | "
+
+
+def anonymized_refund_reason(reason: str | None) -> str:
+    """Kullanıcı/personel serbest metnini atar, sistemin eklediği sağlayıcı sonucu son ekini korur."""
+    suffix = ""
+    if reason and _SYSTEM_SUFFIX_SEP in reason:
+        tail = reason.split(_SYSTEM_SUFFIX_SEP, 1)[1]
+        if tail.startswith(("belirsiz:", "hata:")):
+            suffix = _SYSTEM_SUFFIX_SEP + tail
+    return (ANONYMIZED_REASON + suffix)[:255]
+
 
 def anonymize_customer(db: Session, c: Customer, now: datetime) -> None:
     """Müşterinin kişisel verilerini siler. Aktif rezervasyon varsa Conflict. Commit etmez."""
@@ -30,6 +56,11 @@ def anonymize_customer(db: Session, c: Customer, now: datetime) -> None:
         Booking.customer_id == c.id, Booking.status.in_(ACTIVE_BOOKING_STATUSES)))
     if active:
         raise Conflict("aktif rezervasyonu olan müşteri silinemez", code="active_bookings")
+
+    # REV-A-8: telefonun blind index'iyle tutulan OTP kayıtları silinir (hash'i silmeden önce).
+    if c.user.phone_hash:
+        db.execute(delete(OtpChallenge).where(OtpChallenge.phone_hash == c.user.phone_hash)
+                   .execution_options(synchronize_session=False))
 
     # Hesap
     c.full_name = None
@@ -52,6 +83,14 @@ def anonymize_customer(db: Session, c: Customer, now: datetime) -> None:
     for b in db.scalars(select(Booking).where(Booking.customer_id == c.id)):
         b.passenger_name = ANONYMIZED_NAME
         b.note = None
+        # REV-A-8: iptal gerekçesi müşteri serbest metni olabilir; iptal edildiği bilgisi kalır.
+        if b.cancel_reason is not None:
+            b.cancel_reason = ANONYMIZED_REASON
+    # İade gerekçesi iptal gerekçesinden kopyalanır; tutar, durum ve sağlayıcı sonucu muhasebe için kalır.
+    for refund in db.scalars(
+        select(Refund).join(Payment, Payment.id == Refund.payment_id).where(Payment.booking_id.in_(booking_ids))
+    ):
+        refund.reason = anonymized_refund_reason(refund.reason)
     db.execute(
         update(BookingLeg).where(BookingLeg.booking_id.in_(booking_ids))
         .values(pickup_address=None, dropoff_address=None, pickup_lat=None, pickup_lng=None,

@@ -32,6 +32,7 @@ async def every_minute(ctx) -> None:
     _run(jobs.expire_dispatch_offers)
     _run(jobs.cancel_unpaid_bookings)
     _run(jobs.refresh_flights)
+    _run(jobs.mark_stuck_refunds_unknown)  # REV-A-7
 
 
 async def every_hour(ctx) -> None:

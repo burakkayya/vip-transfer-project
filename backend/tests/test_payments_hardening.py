@@ -173,8 +173,9 @@ def test_refund_timeout_marks_unknown_not_failed(client, db, monkeypatch):
     monkeypatch.setattr(httpx, "post", ok_post)
     monkeypatch.setattr("app.api.admin.finance.get_payment_provider", lambda: paytr)
     before = db.scalar(select(func.count()).select_from(Refund).where(Refund.payment_id == payment.id))
-    finance = staff_headers(client, db, ["muhasebe"])
-    r = client.post(f"{API}/admin/refunds/{refund.id}/retry", headers=finance)
+    # REV-A-6: belirsiz iade yalnızca admin tarafından, PayTR mutabakatı onaylanarak yeniden denenir.
+    admin = staff_headers(client, db, ["admin"])
+    r = client.post(f"{API}/admin/refunds/{refund.id}/retry", headers=admin, json={"reconciled": True})
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "tamamlandi"
     db.expire_all()

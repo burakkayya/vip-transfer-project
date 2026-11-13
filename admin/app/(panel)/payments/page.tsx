@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useMe } from "@/components/Shell";
 import { Badge, ErrorBox, Field, Msg, PageHead, Select, Table, useAction, useData, usePager } from "@/components/ui";
 import { api, withQuery } from "@/lib/api";
 import { dt, money } from "@/lib/format";
-import { PAYMENT_PROVIDER, PAYMENT_STATUS, REFUND_STATUS } from "@/lib/labels";
+import { PAYMENT_PROVIDER, PAYMENT_STATUS, REFUND_STATUS, UNKNOWN_REFUND_ACTION } from "@/lib/labels";
 
 interface Payment {
   id: string;
@@ -31,8 +32,10 @@ interface Refund {
   manual: boolean;
 }
 
-/** Ekran 11: ödemeler ve iadeler. Başarısız iade tekrar denenebilir. */
+/** Ekran 11: ödemeler ve iadeler. Başarısız iade tekrar denenebilir; belirsiz iadede admin mutabakatla karar verir. */
 export default function PaymentsPage() {
+  // Düğme görünürlüğü için; asıl yetki kontrolü backend'de (REV-A-6).
+  const isAdmin = useMe().roles.includes("admin");
   const [status, setStatus] = useState("");
   const [refundStatus, setRefundStatus] = useState("");
   const { limit, offset, setOffset, pager } = usePager();
@@ -41,12 +44,56 @@ export default function PaymentsPage() {
   const action = useAction();
   const currencyOf = (paymentId: string) => payments.data?.find((p) => p.id === paymentId)?.currency ?? "EUR";
 
-  async function retry(id: string) {
+  async function retry(id: string, reconciled = false) {
     const ok = await action.run(async () => {
-      const r = await api<{ status: string }>(`admin/refunds/${id}/retry`, { body: {} });
+      const r = await api<{ status: string }>(`admin/refunds/${id}/retry`, { body: reconciled ? { reconciled: true } : {} });
       action.setMessage({ ok: r.status === "tamamlandi", text: `İade sonucu: ${REFUND_STATUS[r.status] ?? r.status}` });
     });
-    if (ok) void refunds.reload();
+    if (ok) {
+      void refunds.reload();
+      void payments.reload();
+    }
+  }
+
+  /** REV-A-6: belirsiz iade, PayTR panelinde gerçekleşmediği doğrulandıktan sonra yeniden denenir (yalnızca admin). */
+  async function retryUnknown(r: Refund) {
+    if (!confirm(UNKNOWN_REFUND_ACTION.retryConfirm)) return;
+    await retry(r.id, true);
+  }
+
+  /** REV-A-6: PayTR panelinde gerçekleşmiş görünen belirsiz iade sağlayıcı çağrılmadan kapatılır (yalnızca admin). */
+  async function completeUnknown(r: Refund) {
+    if (!confirm(UNKNOWN_REFUND_ACTION.completeConfirm)) return;
+    const reference = prompt(UNKNOWN_REFUND_ACTION.referencePrompt)?.trim() || null;
+    const ok = await action.run(
+      () => api(`admin/refunds/${r.id}/mark-completed`, { body: { confirmed: true, reference } }),
+      "İade tamamlandı işaretlendi.",
+    );
+    if (ok) {
+      void refunds.reload();
+      void payments.reload();
+    }
+  }
+
+  function refundActions(r: Refund) {
+    if (r.manual) {
+      return r.status === "beklemede" ? (
+        <button className="btn small" disabled={action.busy} onClick={() => completeManual(r)}>Elle iade yapıldı</button>
+      ) : null;
+    }
+    if (r.status === "basarisiz") {
+      return <button className="btn small" disabled={action.busy} onClick={() => retry(r.id)}>Tekrar dene</button>;
+    }
+    if (r.status === "belirsiz") {
+      if (!isAdmin) return <span className="muted">{UNKNOWN_REFUND_ACTION.adminOnly}</span>;
+      return (
+        <div className="row">
+          <button className="btn small" disabled={action.busy} onClick={() => retryUnknown(r)}>{UNKNOWN_REFUND_ACTION.retry}</button>
+          <button className="btn small" disabled={action.busy} onClick={() => completeUnknown(r)}>{UNKNOWN_REFUND_ACTION.complete}</button>
+        </div>
+      );
+    }
+    return null;
   }
 
   /** K-54: elle tahsilatın iadesi havale/nakit ile yapıldıktan sonra kapatılır. */
@@ -111,12 +158,7 @@ export default function PaymentsPage() {
           {
             key: "act",
             title: "",
-            render: (r) =>
-              r.manual && r.status === "beklemede" ? (
-                <button className="btn small" disabled={action.busy} onClick={() => completeManual(r)}>Elle iade yapıldı</button>
-              ) : ["basarisiz", "belirsiz"].includes(r.status) && !r.manual && (
-                <button className="btn small" disabled={action.busy} onClick={() => retry(r.id)}>Tekrar dene</button>
-              ),
+            render: refundActions,
           },
         ]}
       />

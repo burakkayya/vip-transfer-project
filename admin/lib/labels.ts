@@ -78,6 +78,17 @@ export const REFUND_STATUS: Record<string, string> = {
   basarisiz: "Başarısız",
   belirsiz: "Belirsiz (sağlayıcı yanıtı yok)",
 };
+/** REV-A-6: belirsiz iadede yalnızca admin, PayTR panelinden mutabakat yaptıktan sonra karar verir. */
+export const UNKNOWN_REFUND_ACTION = {
+  retry: "Gerçekleşmedi, yeniden dene",
+  complete: "Gerçekleşmiş, tamamlandı işaretle",
+  retryConfirm:
+    "PayTR panelinden bu iadenin GERÇEKLEŞMEDİĞİNİ doğruladım. Aynı iade yeniden gönderilecek; iade gerçekleşmişse müşteriye çift iade yapılır. Devam edilsin mi?",
+  completeConfirm:
+    "PayTR panelinde bu iadenin GERÇEKLEŞTİĞİNİ doğruladım. Sağlayıcı yeniden çağrılmadan iade tamamlandı işaretlenecek. Devam edilsin mi?",
+  referencePrompt: "PayTR panelindeki iade referansı (isteğe bağlı):",
+  adminOnly: "Belirsiz iade: PayTR mutabakatı için admin'e iletin.",
+} as const;
 export const LEDGER_STATUS: Record<string, string> = { beklemede: "Beklemede", odendi: "Ödendi", iptal: "İptal" };
 export const PAYOUT_STATUS: Record<string, string> = { beklemede: "Beklemede", odendi: "Ödendi", basarisiz: "Başarısız" };
 export const INVOICE_STATUS: Record<string, string> = {

@@ -9,11 +9,23 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal as D
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app.models import AuthSession, Booking, BookingLeg, Consent, Customer, DataRequest, TripMessage, TripUpdate
+from app.models import (
+    AuthSession,
+    Booking,
+    BookingLeg,
+    Consent,
+    Customer,
+    DataRequest,
+    OtpChallenge,
+    Payment,
+    Refund,
+    TripMessage,
+    TripUpdate,
+)
 from app.models.enums import BookingStatus, DataRequestStatus, DataRequestType
-from tests.conftest import booking_body, otp_login, random_phone, staff_headers
+from tests.conftest import booking_body, otp_login, pay, random_phone, staff_headers
 
 SECRET_NOTE = "Kapı kodu 4711, Anna'nın oğlu karşılayacak"
 
@@ -174,3 +186,66 @@ def test_anonymize_customer_clears_session_ip_and_push_token(client, db):
         assert s.revoked_at is not None and s.ip is None and s.device_info is None
     # consents.ip yasal kanıt olarak kalır (hukukçu teyidi bekliyor, F0-4 kapsamı dışında).
     assert any(x.ip for x in db.scalars(select(Consent).where(Consent.customer_id == customer_id)))
+
+
+# --- REV-A-8: iptal gerekçesi, iade gerekçesi, OTP kayıtları ---------------------------------
+
+CANCEL_TEXT = "Anna Schmidt hastanede, Oda 312, +49 151 0000"
+
+
+def _cancelled_paid_booking(client, db):
+    """Ödenmiş ve müşteri tarafından serbest metin gerekçeyle iptal edilmiş rezervasyon (iade kaydı oluşur)."""
+    headers = otp_login(client, random_phone())
+    r = client.post("/api/v1/me/bookings", json=booking_body(client, hours_ahead=96), headers=headers)
+    assert r.status_code == 201, r.text
+    code = r.json()["booking_code"]
+    pay(client, headers, code)
+    r = client.post(f"/api/v1/me/bookings/{code}/cancel", json={"reason": CANCEL_TEXT}, headers=headers)
+    assert r.status_code == 200, r.text
+    db.expire_all()
+    b = db.scalar(select(Booking).where(Booking.booking_code == code))
+    assert b.cancel_reason == CANCEL_TEXT
+    refunds = list(db.scalars(select(Refund).join(Payment, Payment.id == Refund.payment_id)
+                              .where(Payment.booking_id == b.id)))
+    assert refunds and CANCEL_TEXT in refunds[0].reason
+    return headers, b.customer_id, b.id
+
+
+def test_anonymize_clears_cancel_and_refund_reason(client, db):
+    _, customer_id, booking_id = _cancelled_paid_booking(client, db)
+    admin = staff_headers(client, db, ["admin"])
+    r = client.post(f"/api/v1/admin/customers/{customer_id}/anonymize", json={}, headers=admin)
+    assert r.status_code == 200, r.text
+
+    db.expire_all()
+    b = db.get(Booking, booking_id)
+    assert not b.cancel_reason or "Anna" not in b.cancel_reason
+    refunds = list(db.scalars(select(Refund).join(Payment, Payment.id == Refund.payment_id)
+                              .where(Payment.booking_id == booking_id)))
+    assert refunds
+    for refund in refunds:
+        assert "Anna" not in refund.reason and "312" not in refund.reason
+        # Tutar ve durum muhasebe için kalır.
+        assert refund.amount > 0
+
+
+def test_anonymize_keeps_provider_status_suffix_in_refund_reason(db):
+    from app.services import privacy
+
+    assert privacy.anonymized_refund_reason(f"{CANCEL_TEXT} | belirsiz: yanıt alınamadı") == \
+        f"{privacy.ANONYMIZED_REASON} | belirsiz: yanıt alınamadı"
+    assert privacy.anonymized_refund_reason(CANCEL_TEXT) == privacy.ANONYMIZED_REASON
+
+
+def test_anonymize_deletes_customer_otp_challenges(client, db):
+    headers, customer_id, _ = _customer_with_history(client, db)
+    c = db.get(Customer, customer_id)
+    phone_hash = c.user.phone_hash
+    assert db.scalar(select(func.count()).select_from(OtpChallenge)
+                     .where(OtpChallenge.phone_hash == phone_hash)) >= 1
+    admin = staff_headers(client, db, ["admin"])
+    r = client.post(f"/api/v1/admin/customers/{customer_id}/anonymize", json={}, headers=admin)
+    assert r.status_code == 200, r.text
+    db.expire_all()
+    assert db.scalar(select(func.count()).select_from(OtpChallenge)
+                     .where(OtpChallenge.phone_hash == phone_hash)) == 0

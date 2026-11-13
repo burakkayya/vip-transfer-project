@@ -9,13 +9,14 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.api.admin.common import Page, page
-from app.api.deps import ClientIp, DbSession, FinanceStaff, Now
+from app.api.deps import AdminOnly, ClientIp, DbSession, FinanceStaff, Now
 from app.csv_safe import csv_safe
 from app.errors import Conflict, NotFound, ServiceUnavailable
 from app.models import BookingLeg, Driver, DriverLedger, DriverPayout, Invoice, Payment, Refund
@@ -25,6 +26,7 @@ from app.models.enums import (
     PaymentStatus,
     PayoutStatus,
     RefundStatus,
+    RoleCode,
 )
 from app.providers.payments import get_payment_provider
 from app.services import audit, bookings
@@ -65,12 +67,45 @@ def list_refunds(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends(
     ]
 
 
+class RefundRetryIn(BaseModel):
+    # REV-A-6: belirsiz iadede zorunlu açık onay: "PayTR panelinden iadenin gerçekleşmediğini doğruladım".
+    reconciled: bool = False
+
+
 @router.post("/refunds/{refund_id}/retry")
-def retry_refund(refund_id: uuid.UUID, staff: FinanceStaff, db: DbSession, ip: ClientIp):
-    """Başarısız veya belirsiz (zaman aşımı) iadeyi aynı kayıt ve referansla sürdürür (BIZ-03)."""
-    refund, previous = bookings.retry_refund(db, refund_id, get_payment_provider())
+def retry_refund(refund_id: uuid.UUID, staff: FinanceStaff, db: DbSession, ip: ClientIp,
+                 body: Annotated[RefundRetryIn | None, Body()] = None):
+    """Başarısız iadeyi (muhasebe) ya da mutabakatı yapılmış belirsiz iadeyi (yalnızca admin, `reconciled`)
+    aynı kayıt ve referansla sürdürür (BIZ-03, REV-A-6)."""
+    reconciled = bool(body and body.reconciled)
+    is_admin = RoleCode.ADMIN.value in staff.user.role_codes
+    refund, previous = bookings.retry_refund(db, refund_id, get_payment_provider(),
+                                             is_admin=is_admin, reconciled=reconciled)
     audit.record(db, actor_id=staff.id, action="refund.retry", entity_type="refund", entity_id=refund.id,
-                 changes={"previous": previous, "result": refund.status}, ip=ip)
+                 changes={"previous": previous, "result": refund.status,
+                          "reconciled": reconciled if previous is RefundStatus.UNKNOWN else None}, ip=ip)
+    db.commit()
+    return {"status": refund.status.value}
+
+
+class RefundMarkCompletedIn(BaseModel):
+    # Açık onay: "PayTR panelinde bu iadenin gerçekleştiğini doğruladım".
+    confirmed: bool = False
+    reference: str | None = Field(default=None, max_length=100)
+
+
+@router.post("/refunds/{refund_id}/mark-completed")
+def mark_refund_completed(refund_id: uuid.UUID, body: RefundMarkCompletedIn, staff: AdminOnly, db: DbSession,
+                          ip: ClientIp):
+    """REV-A-6: sağlayıcıda gerçekleşmiş olduğu doğrulanan belirsiz iadeyi, sağlayıcıyı yeniden çağırmadan
+    tamamlandı işaretler (yalnızca admin)."""
+    if not body.confirmed:
+        raise Conflict("iadenin PayTR panelinde gerçekleştiği doğrulanmadan tamamlandı işaretlenemez",
+                       code="reconciliation_required")
+    refund = bookings.mark_unknown_refund_completed(db, refund_id, reference=body.reference)
+    audit.record(db, actor_id=staff.id, action="refund.mark_completed", entity_type="refund", entity_id=refund.id,
+                 changes={"previous": RefundStatus.UNKNOWN, "result": refund.status, "reconciled": True,
+                          "reference": body.reference}, ip=ip)
     db.commit()
     return {"status": refund.status.value}
 
