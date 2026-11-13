@@ -79,8 +79,12 @@ class StatusIn(BaseModel):
 def set_driver_status(driver_id: uuid.UUID, body: StatusIn, staff: OpsStaff, db: DbSession, ip: ClientIp, now: Now):
     d = _get_driver(db, driver_id)
     documents.set_driver_status(db, d, body.status, actor_id=staff.id, reason=body.reason, ip=ip, today=local_date(now))
+    released = 0
+    if body.status is not DriverStatus.APPROVED:
+        # AUTH-06: yolcu alınmamış işler havuza döner, sürücünün oturumları iptal edilir.
+        released = dispatch.release_driver(db, d, actor_id=staff.id, ip=ip, now=now)
     db.commit()
-    return _driver_row(db, d, local_date(now))
+    return {**_driver_row(db, d, local_date(now)), "released_legs": released}
 
 
 def _vehicle_row(db, v: Vehicle, today: date) -> dict:

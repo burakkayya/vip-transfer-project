@@ -8,6 +8,7 @@ Admin her zaman manuel atayabilir. Sürücü yalnızca geçerli belgeleri varken
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -45,6 +46,8 @@ from app.config import get_settings
 from app.providers.routing import Point, haversine_km
 from app.services import audit, eta, notifications, system_settings, trip_updates
 from app.services.quotes import latest_exchange_rate
+
+log = logging.getLogger(__name__)
 
 ACTIVE_LEG_STATUSES = (LegStatus.ASSIGNED, LegStatus.EN_ROUTE, LegStatus.ARRIVED, LegStatus.STARTED)
 BUSY_BUFFER = timedelta(minutes=90)
@@ -298,6 +301,116 @@ def distance_to_dropoff_m(leg: BookingLeg, at: Point) -> int:
     return int(haversine_km(at, eta.dropoff_point(leg)) * 1000)
 
 
+def _record_rejected_event(
+    leg: BookingLeg, driver: Driver, event: TripEventType, reason_code: str, details: dict
+) -> None:
+    """Reddedilen sürücü adımı ayrı bir işlemle denetim kaydına yazılır; istek hatayla geri alınsa da kalır
+    (BIZ-02: erken veya şüpheli bitirme denemeleri incelenebilsin). Kayıt yazılamazsa istek yine reddedilir."""
+    from app.db import SessionLocal
+
+    try:
+        with SessionLocal() as s:
+            audit.record(s, actor_id=driver.user_id, action="booking_leg.event_rejected",
+                         entity_type="booking_leg", entity_id=leg.id,
+                         changes={"event": event, "reason_code": reason_code, **details})
+            s.commit()
+    except Exception:  # noqa: BLE001
+        log.exception("reddedilen yolculuk adımı denetim kaydına yazılamadı (leg=%s)", leg.id)
+
+
+def _reject(leg: BookingLeg, driver: Driver, event: TripEventType, code: str, message: str, **details) -> None:
+    _record_rejected_event(leg, driver, event, code, details)
+    raise Conflict(message, code=code)
+
+
+def _started_at(db: Session, leg: BookingLeg) -> datetime | None:
+    return db.scalar(
+        select(TripEvent.occurred_at)
+        .where(TripEvent.booking_leg_id == leg.id, TripEvent.event_type == TripEventType.STARTED)
+        .order_by(TripEvent.occurred_at.desc())
+        .limit(1)
+    )
+
+
+def planned_minutes(leg: BookingLeg) -> float:
+    """Planlanan yolculuk süresi; rota süresi yoksa mesafeden (ortalama 60 km/sa) tahmin edilir."""
+    if leg.duration_minutes:
+        return float(leg.duration_minutes)
+    return max(1.0, float(leg.distance_km or 0))
+
+
+def _parse_at(value: object) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _check_time_window(leg: BookingLeg, driver: Driver, event: TripEventType, now: datetime) -> None:
+    """BIZ-02: "yola çıktım" ve "yolcu alındı" alış zamanına göre bir pencerenin içinde kabul edilir."""
+    s = get_settings()
+    if event is TripEventType.DEPARTED:
+        earliest = leg.pickup_at - timedelta(minutes=s.trip_depart_window_minutes)
+        if now < earliest:
+            _reject(leg, driver, event, "too_early_to_depart",
+                    f"yola en erken alıştan {s.trip_depart_window_minutes} dk önce çıkabilirsiniz",
+                    pickup_at=leg.pickup_at, earliest=earliest)
+    elif event is TripEventType.STARTED:
+        earliest = leg.pickup_at - timedelta(minutes=s.trip_start_early_minutes)
+        if now < earliest:
+            _reject(leg, driver, event, "too_early_to_start",
+                    f"yolculuk en erken alıştan {s.trip_start_early_minutes} dk önce başlatılabilir",
+                    pickup_at=leg.pickup_at, earliest=earliest)
+
+
+def _speed_kmh(distance_m: float, slack_m: float, seconds: float) -> float:
+    return max(0.0, distance_m - slack_m) / max(seconds, 1.0) * 3.6
+
+
+def _check_finish(db: Session, leg: BookingLeg, driver: Driver, at: Point, now: datetime) -> float | None:
+    """BIZ-02: "bitti" için asgari süre ve konum makullüğü. Gerçekleşen dakikayı döner (bilinmiyorsa None).
+
+    Sınırlama: konum istemcinin beyanıdır. Bu kontroller kaba sahteciliği (alış anında varış koordinatı
+    göndermek, saniyeler içinde onlarca km sıçramak) yakalar; sahte GPS (mocked) tespiti mobil tarafta F2-17'dir.
+    """
+    s = get_settings()
+    started = _started_at(db, leg)
+    if started is None:
+        return None
+    elapsed = (now - started).total_seconds()
+    planned = planned_minutes(leg)
+    minimum = planned * s.trip_min_duration_ratio
+    if elapsed < minimum * 60:
+        _reject(leg, driver, TripEventType.FINISHED, "trip_too_short",
+                f"yolculuk başlayalı {int(elapsed // 60)} dk oldu; en erken {int(minimum + 0.999)} dk sonra bitirilebilir",
+                elapsed_minutes=round(elapsed / 60, 1), planned_minutes=planned)
+
+    # Alıştan bitiş konumuna, başlangıçtan bu yana geçen sürede gidilebilir mi?
+    pickup = eta.pickup_point(leg)
+    pickup_slack = (s.trip_finish_radius_m if leg.pickup_lat is not None and leg.pickup_lng is not None
+                    else s.trip_finish_region_radius_m)
+    from_pickup_m = float(haversine_km(pickup, at)) * 1000
+    checks = [_speed_kmh(from_pickup_m, pickup_slack, elapsed)]
+    # Son paylaşılan konum örneğinden bitiş konumuna sıçrama.
+    from app.services import live_location
+
+    last = live_location.for_leg(leg)
+    if last and (last_at := _parse_at(last.get("at"))) is not None:
+        try:
+            prev = Point(Decimal(str(last["lat"])), Decimal(str(last["lng"])))
+        except (KeyError, ArithmeticError, ValueError):
+            prev = None
+        if prev is not None:
+            jump_m = float(haversine_km(prev, at)) * 1000
+            checks.append(_speed_kmh(jump_m, s.trip_location_jump_slack_m, (now - last_at).total_seconds()))
+    speed = max(checks)
+    if speed > s.trip_max_speed_kmh:
+        _reject(leg, driver, TripEventType.FINISHED, "implausible_location",
+                "konumunuz doğrulanamadı; lütfen konum servislerini kontrol edip tekrar deneyin",
+                implied_speed_kmh=round(speed), limit_kmh=s.trip_max_speed_kmh)
+    return elapsed / 60
+
+
 def advance_trip(
     db: Session, driver: Driver, leg: BookingLeg, event: TripEventType, *, now: datetime,
     at: Point | None = None,
@@ -305,6 +418,9 @@ def advance_trip(
     """Sürücü adımı. `at` sürücünün o anki konumudur (yoksa son paylaşılan konum kullanılır).
 
     K-49: "Yolculuğu bitir" yalnızca varışa `finish_radius_m` içindeyken kabul edilir.
+    BIZ-02: adımlar sırayla ve alış zamanına göre bir pencere içinde kabul edilir; "bitti" için asgari süre ve
+    konum sıçraması kontrol edilir. Reddedilen ve erken (planlanan sürenin yarısından kısa) bitişler denetim
+    kaydına yazılır.
     """
     if leg.driver_id != driver.id:
         raise NotFound("yolculuk bulunamadı")
@@ -316,6 +432,8 @@ def advance_trip(
             f"bu adım için yolculuk '{expected.value}' durumunda olmalı",
             code="invalid_transition",
         )
+    _check_time_window(leg, driver, event, now)
+    actual_minutes: float | None = None
     if event is TripEventType.FINISHED:
         if at is None:
             raise DomainError("yolculuğu bitirmek için konumunuz gerekli", code="location_required")
@@ -326,8 +444,16 @@ def advance_trip(
                 f"varış noktasına {distance} m uzaktasınız; {radius} m içinde bitirebilirsiniz",
                 code="too_far_from_dropoff",
             )
+        actual_minutes = _check_finish(db, leg, driver, at, now)
     leg.status = target
     db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=driver.user_id))
+    if event is TripEventType.FINISHED and actual_minutes is not None:
+        planned = planned_minutes(leg)
+        if actual_minutes < planned * get_settings().trip_early_finish_ratio:
+            audit.record(db, actor_id=driver.user_id, action="booking_leg.driver_early_finish",
+                         entity_type="booking_leg", entity_id=leg.id,
+                         changes={"actual_minutes": round(actual_minutes, 1), "planned_minutes": leg.duration_minutes,
+                                  "pickup_at": leg.pickup_at})
     if event is TripEventType.DEPARTED:
         eta.on_departed(db, leg, at)
     elif event is TripEventType.ARRIVED:
@@ -464,6 +590,67 @@ def decline_job(db: Session, driver: Driver, leg_id: uuid.UUID, *, now: datetime
     elif offer.status in (OfferStatus.SENT, OfferStatus.EXPIRED):
         offer.status = OfferStatus.REJECTED
         offer.responded_at = now
+
+
+# --- Askıya alma (AUTH-06) ------------------------------------------------------
+
+# Yolcu henüz araca binmemiş bacaklar. STARTED (yolcu araçta) bacağa dokunulmaz: yolculuğu ortada
+# havuza düşürmek yolcu güvenliğini bozar; operasyon bu bacağı elle yönetir (denetim kaydına yazılır).
+RELEASABLE_ON_SUSPEND = (LegStatus.ASSIGNED, LegStatus.EN_ROUTE, LegStatus.ARRIVED)
+
+
+def release_driver(
+    db: Session, driver: Driver, *, actor_id: uuid.UUID, ip: str | None, now: datetime
+) -> int:
+    """Onayı kaldırılan (askıya alınan, pasifleştirilen) sürücünün etkileri. Havuza dönen bacak sayısını döner.
+
+    - Yolcu alınmamış bacaklar PENDING'e döner (sürücü ve araç ataması kaldırılır); iş havuzunda ve admin
+      eşleştirme ekranında yeniden görünür.
+    - Sürücüye gönderilmiş açık teklifler geri çekilir.
+    - Sürücünün tüm oturumları iptal edilir (erişim jetonu da oturuma bağlı olduğu için hemen geçersizleşir).
+    """
+    from app.models import AuthSession
+    from app.services import live_location
+
+    legs = list(db.scalars(
+        select(BookingLeg)
+        .where(BookingLeg.driver_id == driver.id, BookingLeg.status.in_(RELEASABLE_ON_SUSPEND))
+        .with_for_update(of=BookingLeg)
+    ))
+    for leg in legs:
+        old_status = leg.status
+        leg.driver_id = None
+        leg.vehicle_id = None
+        leg.driver = None
+        leg.vehicle = None
+        leg.assigned_at = None
+        leg.status = LegStatus.PENDING
+        eta.clear(leg)
+        live_location.clear(leg)
+        _refresh_booking_status(leg.booking)
+        audit.record(db, actor_id=actor_id, action="booking_leg.release_suspended_driver",
+                     entity_type="booking_leg", entity_id=leg.id,
+                     changes={"driver_id": driver.id, "old_status": old_status, "pickup_at": leg.pickup_at}, ip=ip)
+
+    started = list(db.scalars(
+        select(BookingLeg.id).where(BookingLeg.driver_id == driver.id, BookingLeg.status == LegStatus.STARTED)
+    ))
+    if started:
+        audit.record(db, actor_id=actor_id, action="driver.suspended_with_active_trip", entity_type="driver",
+                     entity_id=driver.id, changes={"started_leg_ids": started}, ip=ip)
+
+    for offer in db.scalars(select(DispatchOffer).where(DispatchOffer.driver_id == driver.id,
+                                                        DispatchOffer.status == OfferStatus.SENT)):
+        offer.status = OfferStatus.WITHDRAWN
+
+    revoked = 0
+    for session in db.scalars(select(AuthSession).where(AuthSession.user_id == driver.user_id,
+                                                        AuthSession.revoked_at.is_(None))):
+        session.revoked_at = now
+        revoked += 1
+    audit.record(db, actor_id=actor_id, action="driver.release", entity_type="driver", entity_id=driver.id,
+                 changes={"released_legs": len(legs), "revoked_sessions": revoked}, ip=ip)
+    return len(legs)
 
 
 def _on_leg_finished(db: Session, leg: BookingLeg, now: datetime) -> None:

@@ -5,9 +5,14 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import json
+import logging
+import time
+import uuid
 from datetime import timedelta
 from typing import Literal
 
+import anyio
+import anyio.to_thread
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
@@ -30,13 +35,15 @@ from app.api.schemas import (
     RefundQuoteOut,
     _locale,
 )
+from app.config import get_settings
 from app.currency import currency_for_country
 from app.db import SessionLocal
 from app.errors import DomainError, NotFound
 from app.models import Booking, Consent, DataRequest
-from app.models.enums import ConsentType, DataRequestStatus, DataRequestType
+from app.models.enums import ConsentType, DataRequestStatus, DataRequestType, LegStatus
 from app.providers.payments import get_payment_provider
 from app.providers.routing import get_routing
+from app.security import tokens
 from app.services import audit, bookings, live_location, payments, quotes
 
 router = APIRouter(prefix="/me", tags=["customer"])
@@ -264,23 +271,166 @@ def _dr_out(r: DataRequest) -> DataRequestOut:
 ws_router = APIRouter(tags=["customer"])
 
 
-@ws_router.websocket("/ws/bookings/{code}/location")
-async def ws_location(websocket: WebSocket, code: str):
-    """Jeton ilk mesajda gönderilir: {"token": "<access_token>"} (URL'de jeton taşınmaz)."""
-    await websocket.accept()
+# Kapanış kodları: 4401 kimlik/oturum geçersiz, 4408 ilk mesaj süresinde gelmedi, 4429 bağlantı sınırı,
+# 1009 ilk mesaj çok büyük, 1000 takip bitti (tüm bacaklar bitti/iptal) veya bağlantı ömrü doldu, 1011 sunucu hatası.
+WS_UNAUTHORIZED = 4401
+WS_AUTH_TIMEOUT = 4408
+WS_LIMIT = 4429
+WS_TOO_BIG = 1009
+TERMINAL_LEGS = (LegStatus.COMPLETED, LegStatus.CANCELLED)
+
+log = logging.getLogger(__name__)
+
+
+class _WsCloseError(Exception):
+    def __init__(self, code: int):
+        self.code = code
+
+
+@dataclasses.dataclass(frozen=True)
+class _WsAuth:
+    booking_id: uuid.UUID
+    session_id: uuid.UUID
+    exp: float
+
+
+class _WsSlots:
+    """RT-05: süreç içi eşzamanlı bağlantı sayacı (oturum, rezervasyon ve toplam). Yalnızca olay döngüsünde
+    kullanılır; çok süreçli dağıtımda sınırlar süreç başınadır."""
+
+    def __init__(self) -> None:
+        self.total = 0
+        self.per_session: dict[uuid.UUID, int] = {}
+        self.per_booking: dict[uuid.UUID, int] = {}
+
+    def acquire(self, auth: _WsAuth) -> bool:
+        s = get_settings()
+        if (self.per_session.get(auth.session_id, 0) >= s.ws_max_per_session
+                or self.per_booking.get(auth.booking_id, 0) >= s.ws_max_per_booking):
+            return False
+        self.per_session[auth.session_id] = self.per_session.get(auth.session_id, 0) + 1
+        self.per_booking[auth.booking_id] = self.per_booking.get(auth.booking_id, 0) + 1
+        return True
+
+    def release(self, auth: _WsAuth) -> None:
+        for counts, key in ((self.per_session, auth.session_id), (self.per_booking, auth.booking_id)):
+            left = counts.get(key, 0) - 1
+            if left > 0:
+                counts[key] = left
+            else:
+                counts.pop(key, None)
+
+
+_ws_slots = _WsSlots()
+
+
+def _ws_authenticate(token: str, code: str) -> _WsAuth:
+    """Jeton (imza, tür, `exp`), oturum (iptal, süre, hesap durumu), müşteri ve rezervasyon sahipliği.
+    Bağlantı başında ve döngüde periyodik olarak çağrılır (RT-03). Senkron; thread'de çalıştırılır."""
     try:
-        first = json.loads(await asyncio.wait_for(websocket.receive_text(), timeout=10))
-        with SessionLocal() as db:
-            principal = current_principal(db, HTTPAuthorizationCredentials(scheme="Bearer", credentials=first["token"]))
+        exp = float(tokens.decode_token(token, "access")["exp"])
+    except (tokens.TokenError, KeyError, TypeError, ValueError) as exc:
+        raise _WsCloseError(WS_UNAUTHORIZED) from exc
+    with SessionLocal() as db:
+        try:
+            principal = current_principal(db, HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
             customer = current_customer(db, principal)
             booking = _own_booking(db, customer, code)
-            booking_id = booking.id
-        while True:
-            with SessionLocal() as db:
-                booking = db.get(Booking, booking_id)
-                await websocket.send_json({"location": live_location.for_booking(booking)})
-            await asyncio.sleep(3)
-    except (WebSocketDisconnect, asyncio.TimeoutError):
+        except DomainError as exc:
+            raise _WsCloseError(WS_UNAUTHORIZED) from exc
+        return _WsAuth(booking_id=booking.id, session_id=principal.session_id, exp=exp)
+
+
+def _ws_snapshot(booking_id: uuid.UUID) -> tuple[dict | None, bool]:
+    """(konum, takip bitti mi). Senkron; thread'de çalıştırılır (RT-04)."""
+    with SessionLocal() as db:
+        booking = db.get(Booking, booking_id)
+        if booking is None:
+            return None, True
+        legs = list(booking.legs)
+        if not legs or all(leg.status in TERMINAL_LEGS for leg in legs):
+            return None, True
+        return live_location.for_booking(booking), False
+
+
+async def _ws_first_token(websocket: WebSocket) -> str:
+    s = get_settings()
+    try:
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=s.ws_auth_timeout_seconds)
+    except asyncio.TimeoutError as exc:
+        raise _WsCloseError(WS_AUTH_TIMEOUT) from exc
+    # Not: çerçeve, uvicorn `ws_max_size` sınırına kadar belleğe alınmış olur; asıl sınır sunucu ayarındadır.
+    if len(raw.encode()) > s.ws_first_message_max_bytes:
+        raise _WsCloseError(WS_TOO_BIG)
+    try:
+        token = json.loads(raw)["token"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise _WsCloseError(WS_UNAUTHORIZED) from exc
+    if not isinstance(token, str) or not token:
+        raise _WsCloseError(WS_UNAUTHORIZED)
+    return token
+
+
+async def _ws_stream(websocket: WebSocket, token: str, code: str, auth: _WsAuth) -> None:
+    s = get_settings()
+    loop = asyncio.get_running_loop()
+    opened = loop.time()
+    checked = opened
+    while True:
+        if time.time() >= auth.exp:
+            raise _WsCloseError(WS_UNAUTHORIZED)
+        now = loop.time()
+        if now - opened >= s.ws_max_lifetime_seconds:
+            raise _WsCloseError(1000)
+        if now - checked >= s.ws_revalidate_seconds:
+            fresh = await anyio.to_thread.run_sync(_ws_authenticate, token, code)
+            if fresh.booking_id != auth.booking_id:
+                raise _WsCloseError(WS_UNAUTHORIZED)
+            checked = now
+        location, finished = await anyio.to_thread.run_sync(_ws_snapshot, auth.booking_id)
+        if finished:
+            raise _WsCloseError(1000)
+        await websocket.send_json({"location": location})
+        await asyncio.sleep(s.ws_poll_seconds)
+
+
+@ws_router.websocket("/ws/bookings/{code}/location")
+async def ws_location(websocket: WebSocket, code: str):
+    """Jeton ilk mesajda gönderilir: {"token": "<access_token>"} (URL'de jeton taşınmaz).
+
+    RT-03: oturum ve jeton süresi bağlantı boyunca yeniden doğrulanır; geçersizse 4401 ile kapanır. Tüm bacaklar
+    bitince veya mutlak ömür dolunca 1000 ile kapanır. RT-04: DB ve Redis çağrıları thread'de çalışır.
+    RT-05: kimlik öncesi kısa süre, ilk mesaj boyut sınırı, oturum/rezervasyon/toplam bağlantı sınırı.
+    """
+    s = get_settings()
+    if _ws_slots.total >= s.ws_max_total:
+        await websocket.close(code=WS_LIMIT)
         return
+    _ws_slots.total += 1
+    auth: _WsAuth | None = None
+    try:
+        await websocket.accept()
+        token = await _ws_first_token(websocket)
+        candidate = await anyio.to_thread.run_sync(_ws_authenticate, token, code)
+        if not _ws_slots.acquire(candidate):
+            raise _WsCloseError(WS_LIMIT)
+        auth = candidate
+        await _ws_stream(websocket, token, code, auth)
+    except WebSocketDisconnect:
+        return
+    except _WsCloseError as exc:
+        await _ws_close(websocket, exc.code)
     except Exception:  # noqa: BLE001
-        await websocket.close(code=4401)
+        log.exception("canlı takip WebSocket'i beklenmedik hatayla kapandı (rezervasyon=%s)", code[:12])
+        await _ws_close(websocket, 1011)
+    finally:
+        _ws_slots.total -= 1
+        if auth is not None:
+            _ws_slots.release(auth)
+
+
+async def _ws_close(websocket: WebSocket, code: int) -> None:
+    try:
+        await websocket.close(code=code)
+    except (RuntimeError, WebSocketDisconnect):
+        pass  # istemci zaten kapatmış

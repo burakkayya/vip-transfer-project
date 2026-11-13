@@ -12,6 +12,7 @@ from app.models import AuditLog, Booking, Document, Driver, DriverLedger, Flight
 from app.localtime import local_date
 from app.services import jobs
 from tests.conftest import PDF, booking_body, otp_login, pay, random_phone, staff_headers
+from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
 DRIVER_DOCS = ["surucu_belgesi", "src_belgesi", "adli_sicil"]
 VEHICLE_DOCS = ["arac_ruhsati", "arac_sigortasi", "arac_muayene", "turizm_tasimacilik_yetki"]
@@ -94,6 +95,7 @@ def test_staff_wrong_password_and_wrong_totp(client, db):
     assert db.scalar(select(AuditLog).where(AuditLog.action == "staff.login_failed")) is not None
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_instant_booking_offer_accept_trip_and_ledger(client, db, ops):
     from app.models import ExchangeRate
 
