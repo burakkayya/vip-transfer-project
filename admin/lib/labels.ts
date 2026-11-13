@@ -76,6 +76,7 @@ export const REFUND_STATUS: Record<string, string> = {
   beklemede: "Beklemede",
   tamamlandi: "Tamamlandı",
   basarisiz: "Başarısız",
+  belirsiz: "Belirsiz (sağlayıcı yanıtı yok)",
 };
 export const LEDGER_STATUS: Record<string, string> = { beklemede: "Beklemede", odendi: "Ödendi", iptal: "İptal" };
 export const PAYOUT_STATUS: Record<string, string> = { beklemede: "Beklemede", odendi: "Ödendi", basarisiz: "Başarısız" };

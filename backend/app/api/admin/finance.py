@@ -16,6 +16,7 @@ from sqlalchemy.orm import joinedload
 
 from app.api.admin.common import Page, page
 from app.api.deps import ClientIp, DbSession, FinanceStaff, Now
+from app.csv_safe import csv_safe
 from app.errors import Conflict, NotFound, ServiceUnavailable
 from app.models import BookingLeg, Driver, DriverLedger, DriverPayout, Invoice, Payment, Refund
 from app.models.enums import (
@@ -26,8 +27,7 @@ from app.models.enums import (
     RefundStatus,
 )
 from app.providers.payments import get_payment_provider
-from app.services import audit
-from app.services.bookings import execute_refund
+from app.services import audit, bookings
 from app.services.quotes import latest_exchange_rate
 
 router = APIRouter(tags=["admin:finance"])
@@ -67,15 +67,10 @@ def list_refunds(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends(
 
 @router.post("/refunds/{refund_id}/retry")
 def retry_refund(refund_id: uuid.UUID, staff: FinanceStaff, db: DbSession, ip: ClientIp):
-    refund = db.get(Refund, refund_id, with_for_update=True)
-    if refund is None:
-        raise NotFound("iade bulunamadı")
-    if refund.status is not RefundStatus.FAILED:
-        raise Conflict("yalnızca başarısız iade tekrar denenebilir")
-    refund.status = RefundStatus.PENDING
-    execute_refund(db, refund, refund.payment, get_payment_provider())
+    """Başarısız veya belirsiz (zaman aşımı) iadeyi aynı kayıt ve referansla sürdürür (BIZ-03)."""
+    refund, previous = bookings.retry_refund(db, refund_id, get_payment_provider())
     audit.record(db, actor_id=staff.id, action="refund.retry", entity_type="refund", entity_id=refund.id,
-                 changes={"result": refund.status}, ip=ip)
+                 changes={"previous": previous, "result": refund.status}, ip=ip)
     db.commit()
     return {"status": refund.status.value}
 
@@ -167,8 +162,10 @@ def export_payouts(staff: FinanceStaff, db: DbSession, ip: ClientIp):
     writer = csv.writer(buf, delimiter=";")
     writer.writerow(["odeme_id", "ad_soyad", "iban", "tutar_try", "aciklama"])
     for payout, driver in rows:
-        writer.writerow([payout.id, driver.full_name, driver.iban or "", f"{payout.total_try:.2f}",
-                         f"getawaytransfers hakedis {payout.created_at:%Y-%m-%d}"])
+        # EXT-01: serbest metin hücreleri (sürücünün girdiği ad, IBAN, açıklama) formül olarak çalışmasın.
+        writer.writerow([payout.id, csv_safe(driver.full_name), csv_safe(driver.iban or ""),
+                         f"{payout.total_try:.2f}",
+                         csv_safe(f"getawaytransfers hakedis {payout.created_at:%Y-%m-%d}")])
     # IBAN içeren dosya indirmek hassas bir erişimdir.
     audit.record(db, actor_id=staff.id, action="payout.export", entity_type="driver_payout",
                  changes={"count": len(rows)}, ip=ip)

@@ -114,7 +114,7 @@ export default function PaymentsPage() {
             render: (r) =>
               r.manual && r.status === "beklemede" ? (
                 <button className="btn small" disabled={action.busy} onClick={() => completeManual(r)}>Elle iade yapıldı</button>
-              ) : r.status === "basarisiz" && !r.manual && (
+              ) : ["basarisiz", "belirsiz"].includes(r.status) && !r.manual && (
                 <button className="btn small" disabled={action.busy} onClick={() => retry(r.id)}>Tekrar dene</button>
               ),
           },

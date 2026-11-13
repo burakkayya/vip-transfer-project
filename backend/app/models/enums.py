@@ -191,6 +191,9 @@ class RefundStatus(str, Enum):
     PENDING = "beklemede"
     COMPLETED = "tamamlandi"
     FAILED = "basarisiz"
+    # BIZ-03: sağlayıcıya istek gitti ama sonuç alınamadı (zaman aşımı). Kalan tutardan düşülür;
+    # tekrar deneme aynı kaydı aynı referansla sürdürür, mutabakat gerekir.
+    UNKNOWN = "belirsiz"
 
 
 class LedgerStatus(str, Enum):

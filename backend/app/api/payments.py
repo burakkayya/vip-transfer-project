@@ -6,9 +6,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy import select
 
-from app.api.deps import DbSession, Now
+from app.api.deps import ClientIp, DbSession, Now
 from app.config import DEV_ENVS, get_settings
-from app.errors import NotFound
+from app.errors import DomainError, NotFound
 from app.models import Payment
 from app.models.enums import PaymentProviderCode
 from app.providers.payments import FakeProvider, get_payment_provider
@@ -19,14 +19,42 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 fake_router = APIRouter(prefix="/payments", tags=["payments"])
 
 
+# API-06: PayTR bildirimi birkaç kısa alandan oluşur; daha büyük gövde ve çok alanlı istek okunmaz.
+CALLBACK_MAX_BODY_BYTES = 16 * 1024
+CALLBACK_MAX_FIELDS = 50
+
+
+class PayloadTooLarge(DomainError):
+    status_code = 413
+    code = "payload_too_large"
+
+
+async def _read_callback_form(request: Request) -> dict[str, str]:
+    """Gövdeyi sınırla okur (Content-Length yalanına karşı akış sırasında da sayılır), sonra ayrıştırır."""
+    declared = request.headers.get("content-length")
+    if declared is not None and (not declared.isdigit() or int(declared) > CALLBACK_MAX_BODY_BYTES):
+        raise PayloadTooLarge("bildirim gövdesi çok büyük")
+    chunks, size = [], 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > CALLBACK_MAX_BODY_BYTES:
+            raise PayloadTooLarge("bildirim gövdesi çok büyük")
+        chunks.append(chunk)
+    request._body = b"".join(chunks)  # Starlette form ayrıştırıcısı önbellekteki gövdeyi kullanır
+    form = await request.form()
+    if len(form) > CALLBACK_MAX_FIELDS:
+        raise PayloadTooLarge("bildirimde çok fazla alan var")
+    return {k: str(v) for k, v in form.items()}
+
+
 @router.post("/paytr/callback", response_class=PlainTextResponse)
-async def paytr_callback(request: Request, db: DbSession, now: Now):
+async def paytr_callback(request: Request, db: DbSession, now: Now, ip: ClientIp):
     """PayTR bildirim URL'si. PayTR yanıt olarak düz metin "OK" bekler; aksi halde tekrar dener."""
-    form = {k: str(v) for k, v in (await request.form()).items()}
     provider = get_payment_provider()
     if provider.code is not PaymentProviderCode.PAYTR:
         raise NotFound("PayTR etkin değil")
-    payments.handle_callback(db, provider, form, now)
+    form = await _read_callback_form(request)
+    payments.handle_callback(db, provider, form, now, ip=ip)
     db.commit()
     return "OK"
 

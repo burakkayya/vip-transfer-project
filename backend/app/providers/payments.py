@@ -57,6 +57,9 @@ class RefundResult:
     ok: bool
     provider_ref: str | None = None
     error: str | None = None
+    # BIZ-03: istek sağlayıcıya ulaşmış olabilir ama sonuç alınamadı (okuma zaman aşımı, bozuk yanıt).
+    # Bu durumda iade FAILED sayılmaz; kayıt belirsiz kalır ve aynı referansla sürdürülür.
+    unknown: bool = False
 
 
 class PaymentProvider(Protocol):
@@ -64,7 +67,7 @@ class PaymentProvider(Protocol):
 
     def create_checkout(self, req: CheckoutRequest) -> Checkout: ...
     def parse_callback(self, form: dict[str, str]) -> CallbackResult: ...
-    def refund(self, merchant_oid: str, amount: Decimal) -> RefundResult: ...
+    def refund(self, merchant_oid: str, amount: Decimal, reference: str | None = None) -> RefundResult: ...
 
 
 def _b64_hmac(key: str, message: str) -> str:
@@ -74,10 +77,21 @@ def _b64_hmac(key: str, message: str) -> str:
 
 # Webhook içerikleri maskelenerek saklanır (odeme.md).
 _SENSITIVE_CALLBACK_FIELDS = {"hash", "email", "user_phone", "user_name", "user_address"}
+# API-06: yalnızca PayTR bildirim belgesindeki alanlar saklanır, bilinmeyen alanlar atılır ve her değer
+# kırpılır; böylece büyük/çok alanlı gövdeler payment_webhooks tablosunu şişiremez.
+_KNOWN_CALLBACK_FIELDS = {
+    "merchant_oid", "status", "total_amount", "hash", "failed_reason_code", "failed_reason_msg",
+    "test_mode", "payment_type", "currency", "payment_amount", "installment_count",
+}
+_CALLBACK_VALUE_MAX = 255
 
 
 def mask_payload(form: dict[str, str]) -> dict:
-    return {k: ("***" if k in _SENSITIVE_CALLBACK_FIELDS else v) for k, v in form.items()}
+    return {
+        k: ("***" if k in _SENSITIVE_CALLBACK_FIELDS else str(v)[:_CALLBACK_VALUE_MAX])
+        for k, v in form.items()
+        if k in _KNOWN_CALLBACK_FIELDS
+    }
 
 
 _PAYTR_CURRENCY = {Currency.TRY: "TL", Currency.EUR: "EUR"}
@@ -153,7 +167,7 @@ class PaytrProvider:
             masked_payload=mask_payload(form),
         )
 
-    def refund(self, merchant_oid: str, amount: Decimal) -> RefundResult:
+    def refund(self, merchant_oid: str, amount: Decimal, reference: str | None = None) -> RefundResult:
         return_amount = f"{amount:.2f}"
         token = _b64_hmac(
             self.merchant_key,
@@ -165,11 +179,21 @@ class PaytrProvider:
             "return_amount": return_amount,
             "paytr_token": token,
         }
+        if reference:
+            # BIZ-03: iade kaydına özel benzersiz referans; tekrar denemede aynısı gönderilir.
+            # PayTR'nin isteğe bağlı `reference_no` alanı (belgeye göre; test mağazasında doğrulanmalı).
+            data["reference_no"] = reference
         try:
             resp = httpx.post(f"{self.base_url}/odeme/iade", data=data, timeout=20)
             body = resp.json()
-        except (httpx.HTTPError, ValueError) as exc:
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            # Bağlantı kurulamadı: istek PayTR'ye ulaşmadı, iade yapılmamıştır.
             return RefundResult(ok=False, error=f"bağlantı hatası: {exc.__class__.__name__}")
+        except (httpx.HTTPError, ValueError) as exc:
+            # İstek gitmiş olabilir (okuma zaman aşımı, kopan bağlantı, bozuk yanıt): sonuç belirsiz.
+            return RefundResult(ok=False, unknown=True, error=f"yanıt alınamadı: {exc.__class__.__name__}")
+        if not isinstance(body, dict):
+            return RefundResult(ok=False, unknown=True, error="beklenmeyen yanıt")
         if body.get("status") == "success":
             return RefundResult(ok=True, provider_ref=body.get("reference_no"))
         return RefundResult(ok=False, error=f"{body.get('err_no', '')} {body.get('err_msg', '')}")
@@ -202,7 +226,7 @@ class FakeProvider:
             masked_payload=mask_payload(form),
         )
 
-    def refund(self, merchant_oid: str, amount: Decimal) -> RefundResult:
+    def refund(self, merchant_oid: str, amount: Decimal, reference: str | None = None) -> RefundResult:
         if self.fail_refunds:
             return RefundResult(ok=False, error="sahte iade hatası")
         return RefundResult(ok=True, provider_ref=f"fake-refund-{merchant_oid}")

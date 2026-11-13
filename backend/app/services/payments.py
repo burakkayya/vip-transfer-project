@@ -7,9 +7,11 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+import redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.errors import Conflict, DomainError, NotFound
 from app.models import Booking, Customer, Invoice, Payment, PaymentWebhook, Refund
 from app.models.enums import (
@@ -92,23 +94,59 @@ def start_payment(
     return payment, checkout
 
 
+# Geçersiz imza denetim kaydı örneklemesi: IP başına dakikada ve küresel dakikalık üst sınır.
+INVALID_SIG_AUDIT_PER_IP = 3
+INVALID_SIG_AUDIT_GLOBAL = 50
+
+
+def _invalid_signature_sample(ip: str | None, now: datetime) -> tuple[bool, int | None]:
+    """Geçersiz imza sayacı (API-06, MON-08). Dakikalık küresel sayaç alarm için tutulur (F2-4).
+    Denetim kaydı örneklenir: IP başına dakikada ilk birkaç olay ve küresel üst sınır; böylece
+    sahte bildirim seli değiştirilemez denetim tablosunu da şişiremez. Redis yoksa kayıt yazılır."""
+    minute = now.strftime("%Y%m%d%H%M")
+    try:
+        r = redis.Redis.from_url(get_settings().redis_url, socket_timeout=1, socket_connect_timeout=1)
+        pipe = r.pipeline()
+        total_key = f"security:webhook_invalid:total:{minute}"
+        ip_key = f"security:webhook_invalid:ip:{ip or '-'}:{minute}"
+        pipe.incr(total_key)
+        pipe.expire(total_key, 3600)
+        pipe.incr(ip_key)
+        pipe.expire(ip_key, 120)
+        total, _, per_ip, _ = pipe.execute()
+    except redis.RedisError:
+        return True, None
+    return per_ip <= INVALID_SIG_AUDIT_PER_IP and total <= INVALID_SIG_AUDIT_GLOBAL, int(total)
+
+
 def handle_callback(
-    db: Session, provider: PaymentProvider, form: dict[str, str], now: datetime
+    db: Session, provider: PaymentProvider, form: dict[str, str], now: datetime, ip: str | None = None
 ) -> None:
     """Bildirim imzası geçersizse DomainError. Aynı bildirim birden çok gelirse tekrar işlenmez."""
     result = provider.parse_callback(form)
+    if not result.signature_valid:
+        # API-06: geçersiz imzalı istek payment_webhooks'a yazılmaz; sayaç, özet log ve (örneklenmiş)
+        # security.* denetim kaydı tutulur (MON-08).
+        oid = (result.merchant_oid or "")[:64]
+        audit_it, count = _invalid_signature_sample(ip, now)
+        log.warning("geçersiz imzalı ödeme bildirimi: provider=%s oid=%r ip=%r alan=%d dakikalık=%s",
+                    provider.code.value, oid, ip, len(form), count)
+        if audit_it:
+            audit.record(db, actor_id=None, action="security.webhook.invalid_signature",
+                         entity_type="payment_webhook", entity_id=oid or None,
+                         changes={"provider": provider.code.value, "merchant_oid": oid,
+                                  "field_count": len(form), "minute_count": count}, ip=ip)
+            db.commit()
+        raise DomainError("imza doğrulanamadı", code="invalid_signature")
+
     hook = PaymentWebhook(
         provider=provider.code,
         event_type="payment_" + ("success" if result.success else "failed"),
-        merchant_oid=result.merchant_oid or None,
+        merchant_oid=result.merchant_oid[:64] or None,
         raw_payload=result.masked_payload,
-        signature_valid=result.signature_valid,
+        signature_valid=True,
     )
     db.add(hook)
-    if not result.signature_valid:
-        db.commit()
-        log.error("geçersiz imzalı ödeme bildirimi: %s", result.merchant_oid)
-        raise DomainError("imza doğrulanamadı", code="invalid_signature")
 
     payment = db.scalar(
         select(Payment).where(Payment.merchant_oid == result.merchant_oid).with_for_update()
