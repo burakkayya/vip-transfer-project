@@ -32,6 +32,7 @@ os.environ["GETAWAY_STORAGE_DIR"] = tempfile.mkdtemp(prefix="getaway-test-")
 # Sınırların kendisi test_auth_hardening.py'de düşük değerlerle ayrıca sınanır.
 os.environ["GETAWAY_OTP_MAX_PER_IP_PER_HOUR"] = "100000"
 os.environ["GETAWAY_OTP_GLOBAL_MAX_PER_HOUR"] = "100000"
+os.environ["GETAWAY_OTP_GLOBAL_HARD_LIMIT_PER_HOUR"] = "100000"  # REV-A-1 sert tavan
 
 import pyotp  # noqa: E402
 import pytest  # noqa: E402

@@ -47,6 +47,7 @@ def _prod_kwargs(fcm_file: str) -> dict:
         paytr_merchant_key="m" * 16,
         paytr_merchant_salt="s" * 16,
         paytr_test_mode=False,
+        trusted_proxies=["10.0.0.0/8"],
     )
 
 
@@ -220,9 +221,44 @@ def test_prod_rejects_redis_without_password_or_tls(fcm_file, url):
         _prod(fcm_file, redis_url=url)
 
 
+# --- REV-A-2: güvenilir proxy listesi -------------------------------------------------
+
+
+def test_prod_rejects_empty_trusted_proxies(fcm_file):
+    # BFF arkasında boş liste: tüm kullanıcılar BFF'nin tek IP'sine düşer, IP sınırları herkesi keser.
+    with pytest.raises(ValidationError, match="GETAWAY_TRUSTED_PROXIES"):
+        _prod(fcm_file, trusted_proxies=[])
+
+
+def test_dev_allows_empty_trusted_proxies():
+    assert _dev().trusted_proxies == []
+
+
 def test_default_redis_url_has_password():
     """docker-compose Redis'i --requirepass ile çalışır; varsayılan adres buna uyar."""
     from redis.connection import parse_url
 
     default = Settings.model_fields["redis_url"].default
     assert parse_url(default).get("password")
+
+
+# --- REV-A (düşük not): anahtar rotasyon listesinde geliştirme anahtarı -------------------
+
+
+@pytest.mark.parametrize("position", ["first", "last", "spaced"])
+def test_prod_rejects_dev_fernet_key_anywhere_in_rotation_list(fcm_file, position):
+    from app.config import _DEV_FERNET_KEY
+
+    real = Fernet.generate_key().decode()
+    value = {
+        "first": f"{_DEV_FERNET_KEY},{real}",
+        "last": f"{real},{_DEV_FERNET_KEY}",
+        "spaced": f"{real} , {_DEV_FERNET_KEY} ",
+    }[position]
+    with pytest.raises(ValidationError, match="field_encryption_keys"):
+        _prod(fcm_file, field_encryption_keys=value)
+
+
+def test_prod_accepts_rotation_list_without_dev_key(fcm_file):
+    keys = f"{Fernet.generate_key().decode()},{Fernet.generate_key().decode()}"
+    assert _prod(fcm_file, field_encryption_keys=keys).field_encryption_keys == keys

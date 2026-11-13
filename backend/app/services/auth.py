@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import hmac
+import ipaddress
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 
 import pyotp
+import redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -22,6 +26,26 @@ from app.services import audit
 from app.currency import currency_for_country
 
 TOTP_ISSUER = "getawaytransfers.com"
+
+logger = logging.getLogger(__name__)
+
+
+def ip_bucket(ip: str | None) -> str | None:
+    """REV-A-1/REV-A-4: IP tabanlı sayaçların anahtarı. IPv4 tam adres; IPv6 /64 önekine indirilir
+    (bir abone genelde tüm /64'ü kullanır, adres değiştirerek sayaç atlatılamasın). IPv4-mapped IPv6
+    IPv4 sayılır. IP olmayan değer (ör. test istemcisi, unix soketi) olduğu gibi döner.
+    OTP ve personel girişi aynı yardımcıyı kullanır; IP önekleme kuralı yalnızca burada tanımlıdır."""
+    if not ip:
+        return ip
+    try:
+        addr = ipaddress.ip_address(ip.strip())
+    except ValueError:
+        return ip
+    if isinstance(addr, ipaddress.IPv6Address):
+        if addr.ipv4_mapped is not None:
+            return str(addr.ipv4_mapped)
+        return str(ipaddress.IPv6Network((addr, 64), strict=False))
+    return str(addr)
 
 
 @dataclass(frozen=True)
@@ -302,27 +326,98 @@ def _is_locked(user: User, now: datetime) -> bool:
     return user.locked_until is not None and user.locked_until > now
 
 
+# REV-A-4: (hesap, IP öneki) çifti için başarısız deneme sayacı ve kilit Redis'te tutulur (migration
+# gerektirmez). Böylece başka bir IP'den yapılan denemeler adminin kendi IP'sinden girişini kilitleyemez.
+# Hesap genelindeki DB sayacı (users.failed_login_count) daha yüksek eşikte dağıtık saldırıyı durdurur;
+# Redis erişilemezse hesap geneli eski (çift) eşiğe düşer, koruma kaybolmaz.
+
+
+@lru_cache
+def _login_redis() -> redis.Redis:
+    s = get_settings()
+    return redis.Redis.from_url(s.redis_url, socket_timeout=s.redis_socket_timeout_seconds,
+                                socket_connect_timeout=s.redis_socket_timeout_seconds)
+
+
+def _ip_keys(user_id: uuid.UUID, ip: str | None) -> tuple[str, str]:
+    bucket = ip_bucket(ip) or "-"
+    return f"staff_login:fail:{user_id}:{bucket}", f"staff_login:lock:{user_id}:{bucket}"
+
+
+def _ip_locked(user_id: uuid.UUID, ip: str | None) -> bool:
+    try:
+        return bool(_login_redis().exists(_ip_keys(user_id, ip)[1]))
+    except redis.RedisError:
+        logger.warning("personel giriş IP kilidi okunamadı (Redis); yalnızca hesap kilidi uygulanıyor")
+        return False
+
+
+def _bump_ip_failures(user_id: uuid.UUID, ip: str | None) -> int | None:
+    """Çift sayacını artırır. Pencere ilk hatada başlar (TTL). Redis yoksa None."""
+    fail_key, _ = _ip_keys(user_id, ip)
+    try:
+        pipe = _login_redis().pipeline()
+        pipe.set(fail_key, 0, ex=get_settings().staff_login_window_minutes * 60, nx=True)
+        pipe.incr(fail_key)  # INCR mevcut TTL'yi korur
+        return int(pipe.execute()[1])
+    except redis.RedisError:
+        logger.warning("personel giriş IP sayacı yazılamadı (Redis); hesap geneli düşük eşikte")
+        return None
+
+
+def _lock_ip(user_id: uuid.UUID, ip: str | None) -> bool:
+    fail_key, lock_key = _ip_keys(user_id, ip)
+    try:
+        pipe = _login_redis().pipeline()
+        pipe.set(lock_key, 1, ex=get_settings().staff_lockout_minutes * 60)
+        pipe.delete(fail_key)
+        pipe.execute()
+        return True
+    except redis.RedisError:
+        return False
+
+
+def _clear_ip_failures(user_id: uuid.UUID, ip: str | None) -> None:
+    try:
+        _login_redis().delete(_ip_keys(user_id, ip)[0])
+    except redis.RedisError:
+        pass
+
+
 def _register_failure(db: Session, user: User, now: datetime, ip: str | None, *, stage: str) -> None:
-    """AUTH-01: parola ve TOTP hataları aynı hesap sayacına yazılır. Pencere içinde eşik aşılırsa
-    hesap geçici kilitlenir; kilit bilgisi yalnızca denetim kaydına gider, yanıta yansımaz."""
+    """AUTH-01 / REV-A-4: parola ve TOTP hataları hem (hesap, IP öneki) çift sayacına hem hesap genelindeki
+    sayaca yazılır. Çift eşiği aşılırsa yalnızca o IP öneki için hesap geçici kilitlenir; hesap genelindeki
+    eşik aşılırsa hesap her yerden kilitlenir. Kilit bilgisi yalnızca denetim kaydına gider, yanıta yansımaz."""
     s = get_settings()
     started = user.failed_login_started_at
     if started is None or now - started >= timedelta(minutes=s.staff_login_window_minutes):
         user.failed_login_count = 0
         user.failed_login_started_at = now
     user.failed_login_count = (user.failed_login_count or 0) + 1
+    ip_failures = _bump_ip_failures(user.id, ip)
     action = "staff.login_failed" if stage == "password" else "staff.2fa_failed"
     audit.record(db, actor_id=user.id, action=action, entity_type="user", entity_id=user.id,
-                 changes={"failures": user.failed_login_count}, ip=ip)
-    if user.failed_login_count >= s.staff_login_max_failures:
+                 changes={"failures": user.failed_login_count, "ip_failures": ip_failures}, ip=ip)
+    account_limit = s.staff_login_account_max_failures if ip_failures is not None else s.staff_login_max_failures
+    if user.failed_login_count >= account_limit:
         audit.record(db, actor_id=user.id, action="staff.locked", entity_type="user", entity_id=user.id,
                      changes={"failures": user.failed_login_count, "minutes": s.staff_lockout_minutes,
-                              "stage": stage}, ip=ip)
+                              "stage": stage, "scope": "account"}, ip=ip)
         user.locked_until = now + timedelta(minutes=s.staff_lockout_minutes)
         user.failed_login_count = 0
         user.failed_login_started_at = None
         user.mfa_jti = None
         user.mfa_attempts = 0
+        _clear_ip_failures(user.id, ip)
+        return
+    if ip_failures is not None and ip_failures >= s.staff_login_max_failures and _lock_ip(user.id, ip):
+        audit.record(db, actor_id=user.id, action="staff.locked", entity_type="user", entity_id=user.id,
+                     changes={"failures": ip_failures, "minutes": s.staff_lockout_minutes,
+                              "stage": stage, "scope": "ip"}, ip=ip)
+        if stage != "password":
+            # TOTP aşamasında kilitlenen IP parolayı biliyor: elindeki MFA jetonu da düşer.
+            user.mfa_jti = None
+            user.mfa_attempts = 0
 
 
 def _match_totp_step(secret: str, code: str, now: datetime) -> int | None:
@@ -339,21 +434,34 @@ def _match_totp_step(secret: str, code: str, now: datetime) -> int | None:
 def staff_login(db: Session, email: str, password: str, ip: str | None) -> StaffLoginStep:
     now = _now()
     email = normalize_email(email)
-    # Satır kilidi: paralel denemeler sayacı atlatamasın.
-    user = db.scalar(
-        select(User)
-        .where(User.kind == UserKind.STAFF, User.email_hash == blind_index(email))
-        .with_for_update(of=User)
+    # REV-A-4: argon2 (yavaş) satır kilidi DIŞINDA çalışır; aksi halde paralel denemeler satır kilidinde
+    # kuyruk oluşturup hesabın girişini (ve bağlantı havuzunu) kilitler.
+    candidate = db.scalar(
+        select(User).where(User.kind == UserKind.STAFF, User.email_hash == blind_index(email))
     )
-    # Parola her durumda doğrulanır (kilitli/olmayan hesap yanıt süresinden ayırt edilmesin).
-    ok = verify_password(user.password_hash if user else None, password)
+    checked_hash = candidate.password_hash if candidate else None
+    # Parola her durumda doğrulanır; hesap yoksa sahte özet hesaplanır (kilitli/olmayan hesap yanıt
+    # süresinden ayırt edilmesin).
+    ok = verify_password(checked_hash, password)
+    if candidate is None:
+        audit.record(db, actor_id=None, action="staff.login_failed", entity_type="user", entity_id=None, ip=ip)
+        raise Unauthorized(_LOGIN_FAILED)
+    # Sayaç güncellemesi için kısa satır kilidi: paralel denemeler sayacı atlatamasın.
+    user = db.scalar(
+        select(User).where(User.id == candidate.id).with_for_update(of=User)
+        .execution_options(populate_existing=True)
+    )
     if user is None:
         audit.record(db, actor_id=None, action="staff.login_failed", entity_type="user", entity_id=None, ip=ip)
         raise Unauthorized(_LOGIN_FAILED)
-    if _is_locked(user, now):
+    if user.password_hash != checked_hash:
+        ok = False  # doğrulama ile kilit arasında parola değişti: eski parola kabul edilmez
+    account_locked = _is_locked(user, now)
+    if account_locked or _ip_locked(user.id, ip):
         # Kullanıcı numaralandırması olmasın: yanıt yanlış parola ile aynı.
         audit.record(db, actor_id=user.id, action="staff.login_blocked", entity_type="user",
-                     entity_id=user.id, changes={"reason": "locked"}, ip=ip)
+                     entity_id=user.id,
+                     changes={"reason": "locked", "scope": "account" if account_locked else "ip"}, ip=ip)
         raise Unauthorized(_LOGIN_FAILED)
     if not ok or user.status is not UserStatus.ACTIVE:
         _register_failure(db, user, now, ip, stage="password")
@@ -402,10 +510,11 @@ def staff_verify_2fa(
     if setup == user.two_factor_enabled:
         user.mfa_jti = None
         raise Unauthorized(_MFA_SESSION_INVALID)
-    if _is_locked(user, now) or user.status is not UserStatus.ACTIVE:
+    locked = _is_locked(user, now) or _ip_locked(user.id, ip)
+    if locked or user.status is not UserStatus.ACTIVE:
         user.mfa_jti = None
         audit.record(db, actor_id=user.id, action="staff.login_blocked", entity_type="user",
-                     entity_id=user.id, changes={"reason": "locked" if _is_locked(user, now) else "inactive"},
+                     entity_id=user.id, changes={"reason": "locked" if locked else "inactive"},
                      ip=ip)
         raise Unauthorized(_MFA_SESSION_INVALID)
     step = _match_totp_step(user.two_factor_secret, code, now)
@@ -422,6 +531,7 @@ def staff_verify_2fa(
     user.failed_login_count = 0
     user.failed_login_started_at = None
     user.locked_until = None
+    _clear_ip_failures(user.id, ip)
     if not user.two_factor_enabled:
         user.two_factor_enabled = True
         audit.record(db, actor_id=user.id, action="staff.2fa_enabled", entity_type="user",

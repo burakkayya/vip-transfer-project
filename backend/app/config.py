@@ -74,11 +74,18 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_max_per_hour: int = 5
     # AUTH-04 (SMS pompalama): IP başına ve tüm sistem için saatlik OTP isteği sınırı.
+    # REV-A-1: IP sayacında IPv6 adresi /64 önekine indirilir (IPv4 tam adres).
     otp_max_per_ip_per_hour: int = 10
+    # REV-A-1: küresel eşik ALARM eşiğidir (saatte bir ERROR log), istekleri reddetmez.
     otp_global_max_per_hour: int = 100
+    # REV-A-1: küresel sert tavan; aşılınca herkes 429 alır (yalnızca maliyet felaketi freni).
+    otp_global_hard_limit_per_hour: int = 2000
 
-    # AUTH-01: personel girişinde hesap bazlı deneme sınırı (parola + 2FA hataları birlikte sayılır).
+    # AUTH-01 / REV-A-4: personel girişinde deneme sınırı (parola + 2FA hataları birlikte sayılır).
+    # staff_login_max_failures (hesap, IP öneki) çiftine uygulanır (Redis); hesap genelinde kilit
+    # staff_login_account_max_failures eşiğinde. Redis erişilemezse hesap geneli eski eşiğe (çift eşiği) düşer.
     staff_login_max_failures: int = 10
+    staff_login_account_max_failures: int = 50
     staff_login_window_minutes: int = 15
     staff_lockout_minutes: int = 15
     # MFA ara jetonu başına en fazla TOTP denemesi; sonra jeton geçersiz olur.
@@ -145,6 +152,9 @@ class Settings(BaseSettings):
     document_quota_window_days: int = 30
     document_quota_unapproved: int = 12
     document_quota_approved: int = 20
+    # REV-B-7: yukarıdaki kotalar reddedilen belgeleri saymaz (operasyonun reddi sürücüyü kilitlemesin);
+    # reddedilen ve geri çekilenler dahil tüm yüklemeler için ayrı, geniş üst sınır (disk şişirmesine karşı).
+    document_quota_including_rejected: int = 40
 
     # K-15: tam iade garantisi hukuki teyit gelene kadar satışa kapalı.
     guarantee_enabled: bool = False
@@ -181,6 +191,12 @@ class Settings(BaseSettings):
     ws_max_per_session: int = 3
     ws_max_per_booking: int = 5
     ws_max_total: int = 2000
+    # REV-B-3: kimliği henüz doğrulanmamış bağlantılar ayrı, küçük bir havuzdadır (toplamı tüketemez) ve
+    # IP başına sınırlıdır. `ws_max_total` yalnızca kimliği doğrulanmış bağlantıları sayar.
+    ws_max_pending: int = 200
+    ws_max_pending_per_ip: int = 10
+    # REV-B-4: WebSocket'in DB/Redis işleri HTTP uçlarıyla ortak varsayılan iş parçacığı havuzunu tüketmesin.
+    ws_thread_limit: int = 8
     # Canlı konum Redis istemcisi zaman aşımları (saniye).
     redis_socket_timeout_seconds: float = 1
 
@@ -201,6 +217,11 @@ class Settings(BaseSettings):
                 "blind_index_key": _DEV_BLIND_INDEX_KEY,
             }
             leaked = [k for k, v in dev_values.items() if getattr(self, k) in (v, "")]
+            # Rotasyon listesi (virgüllü): geliştirme anahtarı hangi sırada olursa olsun reddedilir.
+            if "field_encryption_keys" not in leaked and _DEV_FERNET_KEY in {
+                k.strip() for k in self.field_encryption_keys.split(",")
+            }:
+                leaked.append("field_encryption_keys")
             if leaked:
                 raise ValueError(f"üretimde geliştirme anahtarı kullanılamaz: {leaked}")
             if self.payment_provider == "fake":
@@ -254,6 +275,12 @@ class Settings(BaseSettings):
             raise ValueError("üretimde CORS kaynakları yalnızca https:// ve localhost dışı olmalı (GETAWAY_CORS_ORIGINS)")
         if not _is_public_https(self.public_web_url):
             raise ValueError("üretimde public_web_url https:// ve localhost dışı olmalı (GETAWAY_PUBLIC_WEB_URL)")
+        # REV-A-2: liste boşsa backend BFF'nin ilettiği istemci IP'sini yok sayar; BFF arkasında tüm
+        # kullanıcılar tek IP'ye (BFF) düşer ve IP başına sınırlar herkesi birlikte keser.
+        if not self.trusted_proxies:
+            raise ValueError("üretimde güvenilir proxy listesi boş olamaz: BFF arkasında tüm kullanıcılar tek IP'ye "
+                             "düşer; BFF/reverse proxy adreslerini yazın (GETAWAY_TRUSTED_PROXIES, "
+                             "docs/security/client-ip.md)")
 
 
 @lru_cache

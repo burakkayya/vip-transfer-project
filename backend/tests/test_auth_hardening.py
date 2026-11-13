@@ -86,6 +86,15 @@ def test_staff_lockout_writes_audit_event(client, db):
     assert "staff.login_blocked" in actions
 
 
+def _expire_ip_keys(user_id: uuid.UUID) -> None:
+    """REV-A-4: (hesap, IP öneki) sayacı ve kilidi Redis TTL'iyle sona erer; testte süre dolumu taklit edilir."""
+    from app.services import auth
+
+    r = auth._login_redis()
+    for key in r.scan_iter(f"staff_login:*:{user_id}:*"):
+        r.delete(key)
+
+
 def test_staff_lock_expires(client, db):
     from app.models import User
 
@@ -97,6 +106,7 @@ def test_staff_lock_expires(client, db):
     user = db.get(User, user_id)
     user.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
     db.commit()
+    _expire_ip_keys(user_id)
     assert _login(client, email).status_code == 200
 
 
@@ -110,6 +120,7 @@ def test_staff_failures_outside_window_do_not_lock(client, db):
     user = db.get(User, user_id)
     user.failed_login_started_at = datetime.now(timezone.utc) - timedelta(minutes=16)
     db.commit()
+    _expire_ip_keys(user_id)
     # Pencere dolduğu için sayaç sıfırdan başlar; 1 hata daha kilitlemez.
     _login(client, email, "wrong password")
     assert _login(client, email).status_code == 200
@@ -214,7 +225,8 @@ def test_otp_limit_defaults():
 
     fields = Settings.model_fields
     assert fields["otp_max_per_ip_per_hour"].default == 10
-    assert fields["otp_global_max_per_hour"].default == 100
+    assert fields["otp_global_max_per_hour"].default == 100  # REV-A-1: alarm eşiği
+    assert fields["otp_global_hard_limit_per_hour"].default == 2000  # REV-A-1: sert ret tavanı
     assert fields["otp_max_per_hour"].default == 5
 
 
@@ -226,7 +238,8 @@ def test_otp_request_limited_per_ip(db, monkeypatch, sms_outbox):
     from app.services import otp
 
     monkeypatch.setattr(get_settings(), "otp_max_per_ip_per_hour", 3)
-    ip = f"2001:db8::{uuid.uuid4().hex[:4]}:{uuid.uuid4().hex[:4]}"
+    # REV-A-1: IPv6 /64 önekine göre sayılır; her koşu kendi rastgele /64'ünü kullanır.
+    ip = f"2001:db8:{uuid.uuid4().hex[:4]}:{uuid.uuid4().hex[:4]}::{uuid.uuid4().hex[:4]}"
     for _ in range(3):
         otp.request_code(db, get_sms_sender(), phone=_phone(), purpose=OtpPurpose.CUSTOMER_LOGIN,
                          locale="en", ip=ip)
@@ -244,6 +257,7 @@ def test_otp_request_limited_per_ip(db, monkeypatch, sms_outbox):
 
 
 def test_otp_request_global_budget_enforced(client, db, monkeypatch, sms_outbox):
+    """REV-A-1: sert ret artık otp_global_hard_limit_per_hour'da; otp_global_max_per_hour yalnızca alarm."""
     from app.config import get_settings
     from app.errors import TooManyRequests
     from app.models import OtpChallenge
@@ -255,7 +269,7 @@ def test_otp_request_global_budget_enforced(client, db, monkeypatch, sms_outbox)
     monkeypatch.setattr(s, "otp_max_per_ip_per_hour", 10_000)
     existing = db.scalar(select(func.count(OtpChallenge.id)).where(
         OtpChallenge.created_at > datetime.now(timezone.utc) - timedelta(hours=1)))
-    monkeypatch.setattr(s, "otp_global_max_per_hour", existing + 2)
+    monkeypatch.setattr(s, "otp_global_hard_limit_per_hour", existing + 2)
     for i in range(2):
         otp.request_code(db, get_sms_sender(), phone=_phone(), purpose=OtpPurpose.CUSTOMER_LOGIN,
                          locale="en", ip=f"192.0.2.{i + 1}")

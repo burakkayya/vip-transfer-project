@@ -6,8 +6,12 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { resolveBffPath } from "@/lib/bffPath";
+import { clientIpConfig, upstreamIpHeaders } from "@/lib/clientIp";
 
 const API_URL = (process.env.GETAWAY_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+// REV-A-3 / REV-B-1: istemci IP kaynağı açıkça seçilir (BFF_CLIENT_IP_SOURCE, BFF_TRUSTED_HOPS);
+// istemcinin yazdığı IP başlıkları aynen aktarılmaz. docs/security/client-ip.md
+const IP_CONFIG = clientIpConfig();
 const AT = "ga_at";
 const RT = "ga_rt";
 const REFRESH_DAYS = 30;
@@ -46,10 +50,6 @@ function clearTokens(res: NextResponse) {
   res.cookies.set(RT, "", cookieOptions(0));
 }
 
-function clientIp(req: NextRequest): string | null {
-  return req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? null;
-}
-
 function sameOrigin(req: NextRequest): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return false;
@@ -71,8 +71,7 @@ async function callApi(req: NextRequest, upstream: URL, body: string | undefined
   if (contentType) headers["content-type"] = contentType;
   const ua = req.headers.get("user-agent");
   if (ua) headers["user-agent"] = ua;
-  const ip = clientIp(req);
-  if (ip) headers["cf-connecting-ip"] = ip;
+  Object.assign(headers, upstreamIpHeaders((name) => req.headers.get(name), IP_CONFIG));
   if (token) headers.authorization = `Bearer ${token}`;
   return fetch(upstream, {
     method: req.method,
@@ -82,10 +81,10 @@ async function callApi(req: NextRequest, upstream: URL, body: string | undefined
   });
 }
 
-async function refresh(refreshToken: string): Promise<Tokens | null> {
+async function refresh(req: NextRequest, refreshToken: string): Promise<Tokens | null> {
   const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...upstreamIpHeaders((name) => req.headers.get(name), IP_CONFIG) },
     body: JSON.stringify({ refresh_token: refreshToken }),
     cache: "no-store",
   });
@@ -129,13 +128,13 @@ async function handle(req: NextRequest, { params }: Params) {
   let renewed: Tokens | null = null;
 
   if (!access && refreshToken) {
-    renewed = await refresh(refreshToken);
+    renewed = await refresh(req, refreshToken);
     access = renewed?.access_token;
   }
 
   let upstream = await callApi(req, target, body, access);
   if (upstream.status === 401 && refreshToken && !renewed) {
-    renewed = await refresh(refreshToken);
+    renewed = await refresh(req, refreshToken);
     if (renewed) upstream = await callApi(req, target, body, renewed.access_token);
   }
 
