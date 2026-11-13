@@ -9,7 +9,7 @@ import type { Booking } from "@/lib/types";
 const ROUTE = "_p~iF~ps|U_ulLnnqC_mqNvxq`@";
 
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ code: "GA-TEST1" }),
+  useLocalSearchParams: () => ({ code: "GATEST01" }),
   router: { back: jest.fn(), replace: jest.fn(), canGoBack: () => true },
 }));
 
@@ -55,7 +55,7 @@ const region = (name: string, id: number) => ({
 function booking(status: string, legStatus: string): Booking {
   return {
     id: "b1",
-    booking_code: "GA-TEST1",
+    booking_code: "GATEST01",
     booking_type: "planli",
     status,
     vehicle_type: { id: 1, code: "minivan", name: "Minivan", capacity: 6, luggage_capacity: 6 },
@@ -93,7 +93,7 @@ test("passes route polyline to map", async () => {
   await render(<BookingScreen />);
   const line = await screen.findByTestId("map-polyline", all);
   expect(line.props.coordinates).toEqual(decodePolyline(ROUTE));
-  expect(mockedApi).toHaveBeenCalledWith("me/bookings/GA-TEST1");
+  expect(mockedApi).toHaveBeenCalledWith("me/bookings/GATEST01");
   expect(screen.getByLabelText("Map: Havalimanı → Lara")).toBeTruthy();
   expect(screen.queryByTestId("map-driver", all)).toBeNull();
 });

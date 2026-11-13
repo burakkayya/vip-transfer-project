@@ -44,6 +44,27 @@ const withoutLocationUsage: ConfigPlugin = (cfg) =>
 // Yalnızca CI/emülatör testi: Android sürüm (release) derlemesi düz HTTP'yi engeller; emülatördeki uygulama
 // bilgisayardaki backend'e http://10.0.2.2:8000 ile ulaşır. Mağaza derlemesinde bu değişken verilmez.
 const allowCleartext = process.env.GETAWAY_ANDROID_CLEARTEXT === "1";
+
+// MOB-04 (F2-7): mağaza ve önizleme profilleri (EAS `production*`, `preview*`) düz HTTP ile derlenmez.
+// Bu kural `lib/urlPolicy.ts` ile aynıdır; Expo yapılandırma yükleyicisi göreli TS içe aktarımını
+// garanti etmediği için burada kendi başına tutulur.
+const buildProfile = process.env.EAS_BUILD_PROFILE ?? "";
+const storeProfile = /^(production|preview)/.test(buildProfile);
+const isHttps = (url: string) => /^https:\/\/[^/]/.test(url);
+if (storeProfile) {
+  if (!isHttps(apiUrl)) {
+    throw new Error(`EAS profili "${buildProfile}": GETAWAY_API_URL https:// olmalı (MOB-04).`);
+  }
+  if (!isHttps(webUrl)) {
+    throw new Error(`EAS profili "${buildProfile}": GETAWAY_WEB_URL https:// olmalı (MOB-04).`);
+  }
+  if (process.env.GETAWAY_ANDROID_CLEARTEXT !== undefined) {
+    throw new Error(`EAS profili "${buildProfile}": GETAWAY_ANDROID_CLEARTEXT mağaza/önizleme derlemesinde verilemez (MOB-04).`);
+  }
+}
+// Mağaza dışı derleme (geliştirme profili, CI emülatör/simülatör Release derlemesi) yerel/özel ağdaki
+// http backend'e bağlanabilir; çalışma zamanı denetimi (lib/config.ts) bunu yalnızca yerel adreslerle sınırlar.
+const allowLocalHttp = !storeProfile;
 const withCleartext: ConfigPlugin = (cfg) =>
   withAndroidManifest(cfg, (mod) => {
     const appNode = mod.modResults.manifest.application?.[0];
@@ -172,7 +193,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     web: { bundler: "metro", output: "single" },
     experiments: { typedRoutes: false },
     extra: {
-      variant, apiUrl, webUrl,
+      variant, apiUrl, webUrl, allowLocalHttp,
       googleMapsIos: Boolean(googleMapsIosKey),
       googleMapsAndroid: Boolean(googleMapsAndroidKey),
     },

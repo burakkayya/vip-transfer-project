@@ -1,6 +1,7 @@
 // Mobil API istemcisi. Jetonlar cihazın güvenli deposunda (Keychain / Keystore) tutulur.
 import { API_URL } from "./config";
 import { storage } from "./storage";
+import { toWsBase } from "./urlPolicy";
 
 const AT = "ga_access";
 const RT = "ga_refresh";
@@ -71,6 +72,17 @@ function refreshOnce(): Promise<boolean> {
   return refreshing;
 }
 
+/** Erişim jetonunu yeniler (canlı konum soketi 4401 aldığında). Diğer isteklerle aynı tek yenilemeyi paylaşır. */
+export function refreshAccessToken(): Promise<boolean> {
+  return refreshOnce();
+}
+
+/** Oturum düştü (yenileme başarısız): yerel jetonlar silinir, oturum kapanmış sayılır. */
+export async function expireSession(): Promise<void> {
+  await clearTokens();
+  onSignedOut?.();
+}
+
 async function send(path: string, init: RequestInit): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("accept", "application/json");
@@ -86,10 +98,7 @@ async function request(path: string, init: RequestInit): Promise<Response> {
   let res = await send(path, init);
   if (res.status === 401 && !path.startsWith("auth/otp")) {
     if (await refreshOnce()) res = await send(path, init);
-    else {
-      await clearTokens();
-      onSignedOut?.();
-    }
+    else await expireSession();
   }
   if (!res.ok) {
     const data = await res.json().catch(() => null);
@@ -113,6 +122,7 @@ export async function upload<T>(path: string, form: FormData): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** MOB-04: https tabanı her zaman wss olur (lib/urlPolicy.ts). `path` apiPath ile kurulmalıdır. */
 export function wsUrl(path: string): string {
-  return `${API_URL.replace(/^http/, "ws")}/api/v1/${path}`;
+  return `${toWsBase(API_URL)}/api/v1/${path}`;
 }

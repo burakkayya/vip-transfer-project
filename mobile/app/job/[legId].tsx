@@ -9,8 +9,9 @@ import MapSheet from "@/components/MapSheet";
 import { Alert, Badge, Button, Card, IconButton, Info, Loading, RouteStops, Row, Screen, T, colors, s } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { dateTime, money } from "@/lib/format";
-import { errorTextTr } from "@/lib/i18n";
+import { errorTextTr, t } from "@/lib/i18n";
 import { decodePolyline } from "@/lib/polyline";
+import { apiPath, parseLegId } from "@/lib/routeParams";
 import type { Job, Trip } from "@/lib/types";
 
 function Chip(props: { icon: React.ComponentProps<typeof Ionicons>["name"]; text: string }) {
@@ -28,7 +29,23 @@ function Chip(props: { icon: React.ComponentProps<typeof Ionicons>["name"]; text
  * Reddet → iş bu sürücünün havuzundan kalkar.
  */
 export default function JobScreen() {
-  const { legId } = useLocalSearchParams<{ legId: string }>();
+  const params = useLocalSearchParams<{ legId: string }>();
+  // MOB-02: bacak kimliği derin bağlantıdan gelebilir; UUID değilse istek atılmaz.
+  const legId = parseLegId(params.legId);
+  if (!legId) {
+    return (
+      <Screen>
+        <View style={{ height: 40 }} />
+        <Alert text={t("errors.invalid_link")} />
+        <Button title="İşlere dön" variant="secondary" icon="arrow-back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))} />
+      </Screen>
+    );
+  }
+  return <JobDetail legId={legId} />;
+}
+
+function JobDetail({ legId }: { legId: string }) {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
@@ -39,7 +56,7 @@ export default function JobScreen() {
     try {
       const pos = await Location.getLastKnownPositionAsync().catch(() => null);
       const q = pos ? `?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}` : "";
-      setJob(await api<Job>(`driver/jobs/${legId}${q}`));
+      setJob(await api<Job>(apiPath`driver/jobs/${legId}` + q));
       setError(null);
     } catch (e) {
       if (e instanceof ApiError && ["already_taken", "not_found"].includes(e.code)) setGone(true);
@@ -62,8 +79,8 @@ export default function JobScreen() {
   async function accept() {
     setBusy("accept");
     try {
-      const trip = await api<Trip>(`driver/jobs/${legId}/accept`, { body: {} });
-      router.replace(`/trip/${trip.leg_id}`);
+      const trip = await api<Trip>(apiPath`driver/jobs/${legId}/accept`, { body: {} });
+      router.replace({ pathname: "/trip/[legId]", params: { legId: trip.leg_id } });
     } catch (e) {
       if (e instanceof ApiError && e.code === "already_taken") setGone(true);
       setError(errorTextTr(e));
@@ -75,7 +92,7 @@ export default function JobScreen() {
   async function decline() {
     setBusy("decline");
     try {
-      await api(`driver/jobs/${legId}/decline`, { body: {} });
+      await api(apiPath`driver/jobs/${legId}/decline`, { body: {} });
       router.back();
     } catch (e) {
       setError(errorTextTr(e));

@@ -10,11 +10,13 @@ import {
   Alert, Avatar, Badge, Button, Card, H2, IconButton, Info, Loading, P, ProgressSegments, RouteStops, Row, Screen, T,
   Timeline, colors, s, statusTone,
 } from "@/components/ui";
-import { accessToken, api, wsUrl } from "@/lib/api";
+import { api, expireSession } from "@/lib/api";
 import { reachable } from "@/lib/config";
 import { clock, dateTime, money } from "@/lib/format";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
+import { useLiveLocation } from "@/lib/liveSocket";
 import { customerLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
+import { apiPath, consumeAutoPay, parseBookingCode } from "@/lib/routeParams";
 import type { Booking, DriverLocation, Eta, RefundQuote } from "@/lib/types";
 import { VEHICLE_IMAGE } from "@/lib/vehicles";
 
@@ -49,7 +51,23 @@ function flightText(f: { flight_no: string; status: string | null; estimated_at:
 }
 
 export default function BookingScreen() {
-  const { code, pay } = useLocalSearchParams<{ code: string; pay?: string }>();
+  const params = useLocalSearchParams<{ code: string }>();
+  // MOB-02: kod derin bağlantıdan gelebilir; biçimi doğrulanmadan hiçbir istek atılmaz.
+  const code = parseBookingCode(params.code);
+  if (!code) {
+    return (
+      <Screen>
+        <View style={{ height: 40 }} />
+        <Alert text={t("errors.invalid_link")} />
+        <Button title={t("back")} variant="secondary" icon="arrow-back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/bookings"))} />
+      </Screen>
+    );
+  }
+  return <BookingDetail code={code} />;
+}
+
+function BookingDetail({ code }: { code: string }) {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -59,11 +77,13 @@ export default function BookingScreen() {
   const [waitingPayment, setWaitingPayment] = useState(false);
   const [eta, setEta] = useState<Eta | null>(null);
   const [unread, setUnread] = useState(0);
-  const autoPay = useRef(pay === "1");
+  // Otomatik ödeme yalnızca uygulama içi rezervasyon akışından istenir; derin bağlantıdaki `pay=1` yok sayılır.
+  const [autoPayRequested] = useState(() => consumeAutoPay(code));
+  const autoPay = useRef(autoPayRequested);
 
   const load = useCallback(async () => {
     try {
-      const b = await api<Booking>(`me/bookings/${code}`);
+      const b = await api<Booking>(apiPath`me/bookings/${code}`);
       setBooking(b);
       return b;
     } catch (e) {
@@ -75,7 +95,7 @@ export default function BookingScreen() {
   const startPayment = useCallback(async () => {
     setError(null);
     try {
-      const c = await api<{ iframe_url: string }>(`me/bookings/${code}/payments`, { body: {} });
+      const c = await api<{ iframe_url: string }>(apiPath`me/bookings/${code}/payments`, { body: {} });
       setWaitingPayment(true);
       // Kart bilgisi sağlayıcının sayfasında girilir; uygulama kart verisine erişmez.
       await WebBrowser.openBrowserAsync(reachable(c.iframe_url));
@@ -115,7 +135,7 @@ export default function BookingScreen() {
   // Sürücünün tahmini varış süresi (yolcu alınana kadar alışa, sonra varışa) (K-51).
   useEffect(() => {
     if (!tracking) return;
-    const tick = () => api<Eta>(`me/bookings/${code}/eta`).then(setEta).catch(() => undefined);
+    const tick = () => api<Eta>(apiPath`me/bookings/${code}/eta`).then(setEta).catch(() => undefined);
     void tick();
     const id = setInterval(tick, 10_000);
     return () => clearInterval(id);
@@ -147,7 +167,7 @@ export default function BookingScreen() {
   // Okunmamış mesaj sayısı (K-50).
   useEffect(() => {
     if (!hasDriver) return;
-    const tick = () => api<{ unread: number }>(`me/bookings/${code}/messages/unread`).then((r) => setUnread(r.unread)).catch(() => undefined);
+    const tick = () => api<{ unread: number }>(apiPath`me/bookings/${code}/messages/unread`).then((r) => setUnread(r.unread)).catch(() => undefined);
     void tick();
     const id = setInterval(tick, 10_000);
     return () => clearInterval(id);
@@ -164,7 +184,7 @@ export default function BookingScreen() {
   async function finishTrip() {
     setBusy(true);
     try {
-      setBooking(await api<Booking>(`me/bookings/${code}/finish`, { body: {} }));
+      setBooking(await api<Booking>(apiPath`me/bookings/${code}/finish`, { body: {} }));
       setNotice(t("finish.done"));
     } catch (e) {
       setError(errorText(e));
@@ -173,21 +193,16 @@ export default function BookingScreen() {
     }
   }
 
-  // Canlı konum WebSocket ile gelir; jeton URL'de değil ilk mesajda gönderilir.
-  useEffect(() => {
-    if (!tracking) return;
-    const ws = new WebSocket(wsUrl(`ws/bookings/${code}/location`));
-    ws.onopen = () => ws.send(JSON.stringify({ token: accessToken() }));
-    ws.onmessage = (m) => {
-      const data = JSON.parse(String(m.data)) as { location: DriverLocation | null };
-      setLocation(data.location);
-    };
-    return () => ws.close();
-  }, [tracking, code]);
+  // Canlı konum WebSocket ile gelir; jeton URL'de değil ilk mesajda gönderilir. Kapanış kodlarına göre
+  // sınırlı yeniden bağlanma (lib/liveSocket.ts); oturum geçersizse giriş ekranına dönülür.
+  const onAuthLost = useCallback(() => {
+    void expireSession().finally(() => router.replace("/login"));
+  }, []);
+  useLiveLocation(code, tracking, setLocation, onAuthLost);
 
   async function previewCancel() {
     try {
-      setRefund(await api<RefundQuote>(`me/bookings/${code}/cancellation`));
+      setRefund(await api<RefundQuote>(apiPath`me/bookings/${code}/cancellation`));
     } catch (e) {
       setError(errorText(e));
     }
@@ -196,7 +211,7 @@ export default function BookingScreen() {
   async function cancel() {
     setBusy(true);
     try {
-      setBooking(await api<Booking>(`me/bookings/${code}/cancel`, { body: {} }));
+      setBooking(await api<Booking>(apiPath`me/bookings/${code}/cancel`, { body: {} }));
       setRefund(null);
       setNotice(t("bookings.cancelled"));
     } catch (e) {

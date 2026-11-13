@@ -14,8 +14,9 @@ import {
 import { api } from "@/lib/api";
 import { LEG_STATUS, NEXT_STEP } from "@/lib/driverLabels";
 import { clock, dateTime, money } from "@/lib/format";
-import { errorTextTr } from "@/lib/i18n";
+import { errorTextTr, t } from "@/lib/i18n";
 import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
+import { apiPath, parseLegId } from "@/lib/routeParams";
 import { backgroundSupported, distanceM, navigationUrls, startBackgroundTracking, stopBackgroundTracking } from "@/lib/tracking";
 import type { Approach, Trip } from "@/lib/types";
 
@@ -59,7 +60,23 @@ function fmtKm(m: number) {
  * planda da), yolcuyla mesajlaşma ve varışa yakınken yolculuğu bitirme (K-49).
  */
 export default function TripScreen() {
-  const { legId } = useLocalSearchParams<{ legId: string }>();
+  const params = useLocalSearchParams<{ legId: string }>();
+  // MOB-02: bacak kimliği derin bağlantı veya bildirimden gelebilir; UUID değilse istek atılmaz.
+  const legId = parseLegId(params.legId);
+  if (!legId) {
+    return (
+      <Screen>
+        <View style={{ height: 40 }} />
+        <Alert text={t("errors.invalid_link")} />
+        <Button title="Ana sayfaya dön" variant="secondary" icon="arrow-back"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))} />
+      </Screen>
+    );
+  }
+  return <TripDetail legId={legId} />;
+}
+
+function TripDetail({ legId }: { legId: string }) {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,7 +91,7 @@ export default function TripScreen() {
 
   const load = useCallback(async () => {
     try {
-      setTrip(await api<Trip>(`driver/trips/${legId}`));
+      setTrip(await api<Trip>(apiPath`driver/trips/${legId}`));
     } catch (e) {
       setError(errorTextTr(e));
     }
@@ -111,7 +128,7 @@ export default function TripScreen() {
           setPosition(p);
           if (sharing && !bgActive) {
             const heading = pos.coords.heading !== null && pos.coords.heading >= 0 ? pos.coords.heading : null;
-            void api(`driver/trips/${legId}/location`, { body: { lat: p.latitude, lng: p.longitude, heading } }).catch(() => undefined);
+            void api(apiPath`driver/trips/${legId}/location`, { body: { lat: p.latitude, lng: p.longitude, heading } }).catch(() => undefined);
           }
         },
       );
@@ -140,7 +157,7 @@ export default function TripScreen() {
     if (!p || !open) return;
     approachFrom.current = p;
     try {
-      const a = await api<Approach>(`driver/trips/${legId}/approach?lat=${p.latitude}&lng=${p.longitude}`);
+      const a = await api<Approach>(apiPath`driver/trips/${legId}/approach?lat=${p.latitude}&lng=${p.longitude}`);
       setApproach(a?.target ? a : null);
     } catch {
       // Rota yardımcı bilgidir; hata ekranı bozmaz.
@@ -187,7 +204,7 @@ export default function TripScreen() {
 
   useEffect(() => {
     if (!trip) return;
-    const tick = () => api<{ unread: number }>(`driver/trips/${legId}/messages/unread`).then((r) => setUnread(r.unread)).catch(() => undefined);
+    const tick = () => api<{ unread: number }>(apiPath`driver/trips/${legId}/messages/unread`).then((r) => setUnread(r.unread)).catch(() => undefined);
     void tick();
     const id = setInterval(tick, UNREAD_REFRESH_MS);
     return () => clearInterval(id);
@@ -198,7 +215,7 @@ export default function TripScreen() {
     setError(null);
     try {
       const p = positionRef.current;
-      setTrip(await api<Trip>(`driver/trips/${legId}/events`, { body: p ? { event, lat: p.latitude, lng: p.longitude } : { event } }));
+      setTrip(await api<Trip>(apiPath`driver/trips/${legId}/events`, { body: p ? { event, lat: p.latitude, lng: p.longitude } : { event } }));
       setApproach(null);
     } catch (e) {
       setError(errorTextTr(e));
@@ -230,7 +247,7 @@ export default function TripScreen() {
     positionRef.current = p;
     setPosition(p);
     try {
-      if (sharing) await api(`driver/trips/${legId}/location`, { body: { lat, lng, heading: null } });
+      if (sharing) await api(apiPath`driver/trips/${legId}/location`, { body: { lat, lng, heading: null } });
       setSimulated((n) => n + 1);
       setError(null);
       void refreshApproach();

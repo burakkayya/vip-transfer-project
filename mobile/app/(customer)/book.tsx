@@ -16,6 +16,7 @@ import { ApiError, api } from "@/lib/api";
 import { WEB_URL } from "@/lib/config";
 import { money, wallClockIso, wallClockLabel } from "@/lib/format";
 import { LOCALE, errorText, t } from "@/lib/i18n";
+import { requestAutoPay } from "@/lib/routeParams";
 import type { Booking, Endpoint, Profile, Quote, Region, VehicleType } from "@/lib/types";
 import { VEHICLE_ICON, VEHICLE_IMAGE } from "@/lib/vehicles";
 
@@ -185,7 +186,9 @@ export default function Book() {
         }
         setStep("home");
         setVehicle(null);
-        router.push({ pathname: "/booking/[code]", params: { code: booking.booking_code, pay: "1" } });
+        // MOB-02: otomatik ödeme sorgu parametresiyle değil uygulama içi niyetle istenir (derin bağlantı tetikleyemez).
+        requestAutoPay(booking.booking_code);
+        router.push({ pathname: "/booking/[code]", params: { code: booking.booking_code } });
       } catch (e) {
         if (e instanceof ApiError && e.code === "price_changed") {
           setError(t("book.priceChanged", { total: money(q.total, q.currency, LOCALE) }));

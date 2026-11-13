@@ -9,7 +9,8 @@ import { api } from "@/lib/api";
 import { VARIANT } from "@/lib/config";
 import { LOCALE, errorText, errorTextTr, t } from "@/lib/i18n";
 import { setActiveChat } from "@/lib/notify";
-import type { Chat, ChatMessage } from "@/lib/types";
+import { apiPath, parseChatId } from "@/lib/routeParams";
+import type { Chat as ChatData, ChatMessage } from "@/lib/types";
 
 const POLL_MS = 4_000;
 const DRIVER = VARIANT === "driver";
@@ -26,20 +27,35 @@ function time(iso: string) {
  * Telefon numarası paylaşılmaz; yazışma sürücü atanınca açılır, yolculuk bitince yalnızca okunur.
  */
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  // MOB-02: kimlik derin bağlantı veya bildirimden gelebilir; biçimi doğrulanmadan istek atılmaz.
+  const id = parseChatId(params.id, VARIANT);
+  if (!id) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, padding: 20, paddingTop: 60, gap: 12 }}>
+        <Alert text={t("errors.invalid_link")} />
+        <IconButton icon="arrow-back" label={DRIVER ? "Geri" : t("back")}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace(DRIVER ? "/home" : "/bookings"))} />
+      </View>
+    );
+  }
+  return <Chat id={id} />;
+}
+
+function Chat({ id }: { id: string }) {
   const insets = useSafeAreaInsets();
-  const [chat, setChat] = useState<Chat | null>(null);
+  const [chat, setChat] = useState<ChatData | null>(null);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const list = useRef<FlatList<ChatMessage>>(null);
-  const base = DRIVER ? `driver/trips/${id}/messages` : `me/bookings/${id}/messages`;
+  const base = DRIVER ? apiPath`driver/trips/${id}/messages` : apiPath`me/bookings/${id}/messages`;
   const errText = DRIVER ? errorTextTr : errorText;
   const quick = DRIVER ? DRIVER_QUICK : [t("chat.q1"), t("chat.q2"), t("chat.q3"), t("chat.q4")];
 
   const load = useCallback(async () => {
     try {
-      setChat(await api<Chat>(base));
+      setChat(await api<ChatData>(base));
       setError(null);
     } catch (e) {
       setError(errText(e));
