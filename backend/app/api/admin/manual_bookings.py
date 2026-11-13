@@ -32,6 +32,7 @@ from app.api.schemas import (
     RegionOut,
     VehicleTypeOut,
     _locale,
+    validate_pickup_window,
 )
 from app.errors import DomainError, NotFound
 from app.localtime import LOCAL_TZ
@@ -163,9 +164,8 @@ class AdminQuoteIn(BaseModel):
     @field_validator("pickup_at", "return_pickup_at")
     @classmethod
     def _aware(cls, v: datetime | None) -> datetime | None:
-        if v is not None and v.tzinfo is None:
-            raise ValueError("saat dilimi belirtilmeli (ör. 2026-06-01T10:00:00+03:00)")
-        return v
+        # API-09: müşteri teklifiyle aynı aralık kuralı; yoksa aşağıdaki QuoteIn(...) uç içinde 500 üretir.
+        return validate_pickup_window(v)
 
 
 @router.post("/quotes")

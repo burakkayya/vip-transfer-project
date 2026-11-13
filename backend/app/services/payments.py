@@ -22,15 +22,24 @@ from app.models.enums import (
     PaymentProviderCode,
     PaymentStatus,
 )
-from app.providers.payments import Checkout, CheckoutRequest, PaymentProvider
+from app.providers.payments import (
+    PAYTR_TIMEOUT_LIMIT_MINUTES,
+    Checkout,
+    CheckoutRequest,
+    PaymentProvider,
+    callback_currency_matches,
+    log_safe,
+)
 from app.services import audit, dispatch, notifications
 from app.services.bookings import execute_refund
 
 log = logging.getLogger(__name__)
 
-# PayTR ödeme sayfası 30 dakika geçerli (timeout_limit). Açık ödeme bu süre dolmadan yeniden kullanılır; böylece bir
-# rezervasyonun aynı anda yalnızca bir canlı ödeme sayfası olur ve ikinci tahsilat açılmaz (K-46).
-CHECKOUT_REUSE_WINDOW = timedelta(minutes=25)
+# PayTR ödeme sayfası PAYTR_TIMEOUT_LIMIT_MINUTES (30) dakika geçerli. BIZ-09: açık ödeme bu süreden UZUN bir pencere
+# boyunca yeniden kullanılır; yeni sayfa ancak eskisi PayTR'de kesin olarak kapandıktan sonra açılır. Böylece bir
+# rezervasyonun aynı anda yalnızca bir canlı ödeme sayfası olur ve ikinci tahsilat açılmaz (K-46). Bedeli: son
+# 1 dakikada dönen sayfa süresi dolmuş olabilir; müşteri bir dakika sonra yeniden denediğinde yeni sayfa alır.
+CHECKOUT_REUSE_WINDOW = timedelta(minutes=PAYTR_TIMEOUT_LIMIT_MINUTES + 1)
 
 
 def _open_payment(db: Session, booking: Booking, now: datetime) -> Payment | None:
@@ -129,8 +138,9 @@ def handle_callback(
         # security.* denetim kaydı tutulur (MON-08).
         oid = (result.merchant_oid or "")[:64]
         audit_it, count = _invalid_signature_sample(ip, now)
-        log.warning("geçersiz imzalı ödeme bildirimi: provider=%s oid=%r ip=%r alan=%d dakikalık=%s",
-                    provider.code.value, oid, ip, len(form), count)
+        # API-11: oid ve ip saldırgan kontrolünde; tek satır, kontrol karakterleri temizlenmiş ve kırpılmış.
+        log.warning("geçersiz imzalı ödeme bildirimi: provider=%s oid=%s ip=%s alan=%d dakikalık=%s",
+                    provider.code.value, log_safe(oid), log_safe(ip, 64), len(form), count)
         if audit_it:
             audit.record(db, actor_id=None, action="security.webhook.invalid_signature",
                          entity_type="payment_webhook", entity_id=oid or None,
@@ -164,10 +174,26 @@ def handle_callback(
         payment.failure_reason = (result.failure_reason or "")[:255]
         return
 
-    if result.total_amount is not None and result.total_amount < payment.amount:
+    # BIZ-07: imza geçerli olsa da tutar ve para birimi rezervasyonla doğrulanmadan ödeme onaylanmaz.
+    # Reddedilen bildirim yine işlenmiş sayılır (PayTR'ye "OK" döner, tekrar göndermez); ödeme FAILED olur ve
+    # kayıt operasyonun elle mutabakatı için loglanır (log satırında yalnızca bizim ürettiğimiz oid ve tutar var).
+    reject = None
+    if result.total_amount is None:
+        reject = "tahsilat tutarı bildirilmedi"
+    elif result.total_amount < payment.amount:
+        reject = "eksik tahsilat"
+    elif result.currency is not None and not callback_currency_matches(result.currency, payment.currency):
+        reject = "para birimi uyuşmuyor"
+    if reject is not None:
         payment.status = PaymentStatus.FAILED
-        payment.failure_reason = "eksik tahsilat"
-        log.error("eksik tahsilat %s: %s < %s", payment.merchant_oid, result.total_amount, payment.amount)
+        payment.failure_reason = reject
+        log.error("ödeme bildirimi reddedildi (%s): oid=%s tutar=%s/%s para=%s/%s", reject,
+                  log_safe(payment.merchant_oid), result.total_amount, payment.amount,
+                  log_safe(result.currency, 8), payment.currency.value)
+        audit.record(db, actor_id=None, action="payment.callback_rejected", entity_type="payment",
+                     entity_id=payment.id,
+                     changes={"reason": reject, "reported_total": result.total_amount, "amount": payment.amount,
+                              "reported_currency": log_safe(result.currency, 8), "currency": payment.currency})
         return
 
     payment.status = PaymentStatus.PAID

@@ -18,9 +18,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 _PURPOSES = {"customer": OtpPurpose.CUSTOMER_LOGIN, "driver": OtpPurpose.DRIVER_LOGIN}
 
 
+# API-09: kimliksiz uçlardaki jeton alanları biçim ve uzunlukla sınırlı. Yenileme jetonu
+# secrets.token_urlsafe(48) (64 karakter); MFA jetonu kısa bir HS256 JWT (~250 karakter).
+_REFRESH_TOKEN_PATTERN = r"^[A-Za-z0-9_-]{16,128}$"
+_JWT_PATTERN = r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$"
+_JWT_MAX = 1024
+_LOCALE_MAX = 10  # "tr", "en-US", "zh-Hans" gibi; _locale ilk iki harfi kullanır
+
+
 class OtpRequestIn(PhoneIn):
     purpose: Literal["customer", "driver"] = "customer"
-    locale: str = "tr"
+    locale: str = Field(default="tr", max_length=_LOCALE_MAX)
 
 
 class OtpRequestOut(BaseModel):
@@ -32,8 +40,8 @@ class OtpRequestOut(BaseModel):
 class OtpVerifyIn(PhoneIn):
     purpose: Literal["customer", "driver"] = "customer"
     code: str = Field(pattern=r"^\d{4,8}$")
-    country_code: str | None = Field(default=None, min_length=2, max_length=2)
-    locale: str = "tr"
+    country_code: str | None = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")
+    locale: str = Field(default="tr", max_length=_LOCALE_MAX)
 
 
 class TokenOut(BaseModel):
@@ -44,7 +52,7 @@ class TokenOut(BaseModel):
 
 
 class RefreshIn(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(pattern=_REFRESH_TOKEN_PATTERN)
 
 
 class StaffLoginIn(BaseModel):
@@ -59,7 +67,7 @@ class StaffLoginOut(BaseModel):
 
 
 class StaffMfaIn(BaseModel):
-    mfa_token: str
+    mfa_token: str = Field(max_length=_JWT_MAX, pattern=_JWT_PATTERN)
     code: str = Field(pattern=r"^\d{6}$")
 
 

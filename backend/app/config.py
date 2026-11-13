@@ -114,8 +114,13 @@ class Settings(BaseSettings):
     # tüm istemciler için toplam dakikalık sınır (önizleme ile teklif aynı sayacı paylaşır).
     quotes_rate_limit_per_minute: int = 60
     quotes_global_rate_limit_per_minute: int = 1200
+    # MON-12: sürücü `approach` rotası; sürücü başına dakikalık Routes API çağrısı ve yakın konum önbelleği.
+    approach_rate_limit_per_minute: int = 10
+    approach_cache_seconds: int = 60
     # Adres jetonunun geçerliliği (adres seçiminden rezervasyona kadar).
     place_token_hours: int = 6
+    # API-09: teklif ve rezervasyonda alış zamanı en fazla bu kadar gün ileri olabilir.
+    booking_max_advance_days: int = 365
     # Haversine yedeğinde kuş uçuşu mesafeyi karayoluna yaklaştırmak için.
     haversine_road_factor: Decimal = Decimal("1.30")
     # Verilen koordinat seçilen bölgenin merkezine en fazla bu kadar uzak olabilir.

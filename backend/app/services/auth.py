@@ -5,6 +5,7 @@ from __future__ import annotations
 import hmac
 import ipaddress
 import logging
+import unicodedata
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -48,6 +49,29 @@ def ip_bucket(ip: str | None) -> str | None:
     return str(addr)
 
 
+_DEVICE_INFO_MAX = 255  # sessions.device_info String(255)
+
+
+def clean_header_value(value: str | None, max_len: int) -> str | None:
+    """API-08: istemci başlığından (User-Agent vb.) gelen değer kolona yazılmadan önce kontrol karakterlerinden
+    (CR/LF, NUL, ESC, Unicode satır ayırıcıları) arındırılır ve kolon uzunluğuna kırpılır. Boş kalırsa None."""
+    if not value:
+        return None
+    cleaned = "".join(ch for ch in value if not unicodedata.category(ch).startswith(("C", "Zl", "Zp")))
+    return cleaned.strip()[:max_len] or None
+
+
+def safe_ip(ip: str | None) -> str | None:
+    """API-08: kolona yalnızca geçerli IP yazılır (String(45)); IP olmayan değer (test istemcisi, unix soketi,
+    bozuk başlık) None olur."""
+    if not ip or len(ip) > 64:
+        return None
+    try:
+        return str(ipaddress.ip_address(ip.strip()))
+    except ValueError:
+        return None
+
+
 @dataclass(frozen=True)
 class TokenPair:
     access_token: str
@@ -72,8 +96,8 @@ def issue_session(
         id=uuid.uuid4(),
         user_id=user.id,
         refresh_token_hash=tokens.hash_refresh_token(refresh),
-        device_info=(device_info or "")[:255] or None,
-        ip=ip,
+        device_info=clean_header_value(device_info, _DEVICE_INFO_MAX),
+        ip=safe_ip(ip),
         expires_at=_now() + lifetime,
     )
     db.add(session)
