@@ -1,0 +1,21 @@
+# gitleaks yapılandırması (CI: .github/workflows/security.yml, yerel: .pre-commit-config.yaml).
+# Varsayılan kural seti olduğu gibi kullanılır; yalnızca aşağıdaki dar istisnalar eklenir.
+#
+# İstisna ekleme kuralı (docs/security/checklist.md):
+# - Yol hariç tutma tek başına yapılmaz; her istisna dosya yolu VE değer/satır deseniyle (condition = "AND") sınırlanır.
+# - Yalnızca depoda zaten açık duran, üretimde reddedilen geliştirme/test sabitleri için yazılır.
+# - Gerçek bir sızıntı bulunursa istisna yazılmaz: anahtar iptal edilir/döndürülür, sonra geçmiş temizliği değerlendirilir.
+
+title = "Getaway Transfers gitleaks yapılandırması"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """Geliştirme ve test için alan şifreleme anahtarı (backend/app/config.py _DEV_FERNET_KEY). \
+Base64 içeriği düz metin 'dev-only' etiketidir; Settings._prod_checks üretimde bu değerle açılışı reddeder (INF-02). \
+Yalnızca bu dosyada, bu ad ve bu tam değerle yazılmış satır muaftır; değer değişirse yeniden işaretlenir."""
+condition = "AND"
+paths = ['''^backend[/\\]app[/\\]config\.py$''']
+regexTarget = "line"
+regexes = ['''^\s*_DEV_FERNET_KEY\s*=\s*"Z2V0YXdheS1kZXYtb25seS1maWVsZC1rZXktMDAwMDA="\s*$''']

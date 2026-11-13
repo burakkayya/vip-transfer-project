@@ -1,0 +1,32 @@
+# Yerel commit öncesi güvenlik kancaları (INF-12, F2-6). Kurulum ve kullanım: docs/security/checklist.md
+#   pip install pre-commit && pre-commit install
+# Aynı denetimler CI'da da çalışır (.github/workflows/security.yml); kanca atlansa da PR'da yakalanır.
+# Sürüm yükseltme: pre-commit autoupdate (sonra etiketlerin gerçekliğini git ls-remote ile doğrulayın).
+# Not: Python için ruff/flake8 gibi bir lint projede tanımlı değil; JS/TS lint CI'daki lint taban çizgisiyle yürür.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0 # 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c
+    hooks:
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # 1 MB üstü yeni dosya engellenir. UI inceleme ekran görüntüleri (docs/ui-review/screenshots) bilinçli olarak
+        # büyük PNG'lerdir; yalnızca o klasör muaf.
+        args: ["--maxkb=1024"]
+        exclude: ^docs/ui-review/screenshots/
+
+  # Hazırlanan (staged) değişikliklerde gizli bilgi taraması; istisnalar .gitleaks.toml'dadır.
+  # İlk çalışmada Go araç zinciri pre-commit tarafından indirilir.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1 # 83d9cd684c87d95d656c1458ef04895a7f1cbd8e
+    hooks:
+      - id: gitleaks
+
+  # Yerelde yalnızca High önem (-lll) engellenir. Medium kapısı CI'dadır (taban çizgisi backend/.bandit-baseline.json);
+  # pre-commit dosya adlarını tek tek verdiği için taban çizgisi eşleşmesi yerelde güvenilir değildir.
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.4 # 92ae8b82fb422a639f0ed8d99e96cea769594e08
+    hooks:
+      - id: bandit
+        args: ["-c", "backend/.bandit.yml", "-lll"]
+        files: ^backend/app/.*\.py$
