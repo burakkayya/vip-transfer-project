@@ -93,3 +93,22 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+
+  # INF-11: docker-compose.yml image'ları etiket + digest ile sabit; Dependabot ikisini birlikte günceller.
+  # Postgres/PostGIS ve Redis major geçişleri veri uyumluluğu gerektirir, elle yapılır. Aynı image'lar
+  # ci.yml ve android-emulator.yml `services:` altında da var; Dependabot oraları güncellemez, PR'da elle eşlenir.
+  # `docker` ekosistemi eklenmedi: depoda Dockerfile yok (prod Dockerfile yazıldığında eklenecek).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      compose-images:
+        patterns: ["*"]

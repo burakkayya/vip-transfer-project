@@ -1,0 +1,49 @@
+# Kod sahipleri (INF-08). Aşağıdaki güvenlik açısından hassas yollara dokunan PR'lar sahibin onayını ister.
+# Etkili olması için main dal koruma kuralında "Require review from Code Owners" açık olmalıdır.
+# Sahip, depo adresindeki hesaptan alındı (origin: github.com/burakkayya/...). Ekip büyüyünce kişi yerine
+# bir GitHub ekibi (@org/guvenlik) yazılması önerilir. Sonraki eşleşen satır öncekini ezer; genel kural en üstte.
+
+# --- CI/CD, tedarik zinciri ve depo hijyeni ---
+/.github/                                   @burakkayya
+/.gitignore                                 @burakkayya
+/.gitleaks.toml                             @burakkayya
+/.pre-commit-config.yaml                    @burakkayya
+/SECURITY.md                                @burakkayya
+/docker-compose*.yml                        @burakkayya
+/backend/.bandit.yml                        @burakkayya
+/backend/.bandit-baseline.json              @burakkayya
+/backend/requirements*.txt                  @burakkayya
+
+# --- Kimlik doğrulama, yetkilendirme ve yapılandırma ---
+/backend/app/config.py                      @burakkayya
+/backend/app/api/deps.py                    @burakkayya
+/backend/app/services/auth.py               @burakkayya
+/backend/app/services/otp.py                @burakkayya
+/backend/app/security/                      @burakkayya
+
+# --- Veritabanı şeması (migration) ---
+/backend/alembic/                           @burakkayya
+
+# --- Ödeme ---
+/backend/app/providers/payments.py          @burakkayya
+/backend/app/services/payments.py           @burakkayya
+/backend/app/api/payments.py                @burakkayya
+/backend/app/api/admin/finance.py           @burakkayya
+/backend/app/models/finance.py              @burakkayya
+
+# --- Kişisel veri ---
+/backend/app/services/privacy.py            @burakkayya
+
+# --- Web/Admin güvenlik sınırı (BFF, middleware, CSP) ---
+/web/app/bff/                               @burakkayya
+/web/lib/bffPath.ts                         @burakkayya
+/web/middleware.ts                          @burakkayya
+/web/next.config.ts                         @burakkayya
+/admin/app/bff/                             @burakkayya
+/admin/lib/bffPath.ts                       @burakkayya
+/admin/middleware.ts                        @burakkayya
+/admin/next.config.ts                       @burakkayya
+
+# --- Mobil derleme yapılandırması (anahtar ve uç nokta ayarları) ---
+/mobile/app.config.ts                       @burakkayya
+/mobile/eas.json                            @burakkayya

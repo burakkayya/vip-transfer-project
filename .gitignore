@@ -24,12 +24,45 @@ mobile/android/
 mobile/ios/
 
 # --- Ortam ve gizli bilgiler (asla commit edilmez) ---
+# Her dizinde geçerli (eğik çizgisiz desen). Yalnızca değer içermeyen şablonlar (.env.example) izlenir.
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 secrets/
+
+# INF-12: Firebase/FCM, Google ve mağaza imza kimlik dosyaları. Bu dosyalar EAS/CI gizli değişkeninden
+# (dosya tipi secret) üretilir, depoya girmez. İstisna gerekirse dosya adıyla tek tek `!` satırı eklenir.
+google-services.json
+GoogleService-Info.plist
+*firebase-adminsdk*.json
+*serviceAccount*.json
+*service-account*.json
+*service_account*.json
+fcm-sa*.json
+credentials.json
+client_secret*.json
+# Apple APNs/App Store Connect anahtarı (.p8), sertifika paketleri ve Android imza depoları.
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+*.provisionprofile
+# EAS yerel imza bilgisi klasörü (eas credentials yerel kopyası).
+credentials/
+# SSH ve paket kayıt kimlikleri. Gizli değer içermeyen bir .npmrc gerekirse `git add -f` ile bilinçli eklenir.
+id_rsa*
+id_ed25519*
+id_ecdsa*
+.npmrc
+.pypirc
+.netrc
+# Terraform/diğer araçların yerel durum ve değişken dosyaları gizli değer içerebilir.
+*.tfvars
+!*.tfvars.example
 
 # --- Çalışma verisi ve günlükler ---
 backend/var/
