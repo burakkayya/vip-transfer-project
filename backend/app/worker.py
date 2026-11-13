@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+import redis
 from arq import cron
 from arq.connections import RedisSettings
 
@@ -19,13 +20,36 @@ from app.services import jobs
 log = logging.getLogger(__name__)
 
 
-def _run(job) -> int:
-    with SessionLocal() as db:
-        count = job(db, datetime.now(timezone.utc))
-        db.commit()
+# MON-14: her işin son başarılı çalışma zamanı (ISO, UTC). İzleme bu anahtarın yaşına göre alarm kurar
+# (ör. saatlik iş için 2 saatten eski). Anahtar süresizdir; iş hiç başarmazsa eski değer kalır.
+LAST_SUCCESS_KEY = "worker:last_success:{name}"
+
+
+def _mark_success(name: str, at: datetime) -> None:
+    from app.services import quotes  # Redis bağlantısı zaman aşımlı ve paylaşımlı (REV-B-2)
+
+    try:
+        quotes._redis().set(LAST_SUCCESS_KEY.format(name=name), at.isoformat())
+    except redis.RedisError as exc:
+        log.warning("son başarılı çalışma yazılamadı (%s): %s", name, type(exc).__name__)
+
+
+def _run(job) -> bool:
+    """MON-14: iş kendi işleminde ve kendi try/except'inde çalışır; hatası aynı gruptaki sonraki işleri
+    atlatmaz. Hata iletisi kişisel veri (SQL parametresi, ad, telefon) taşıyabileceği için yalnızca iş adı ve
+    istisna tipi loglanır. Başarılı çalışmada son başarı zamanı Redis'e yazılır."""
+    name = job.__name__
+    try:
+        with SessionLocal() as db:  # hata durumunda oturum kapanırken işlem geri alınır
+            count = job(db, datetime.now(timezone.utc))
+            db.commit()
+    except Exception as exc:  # noqa: BLE001 - bir işin hatası diğerlerini durdurmamalı
+        log.error("GÜVENLİK ALARMI zamanlanmış iş başarısız: %s (%s)", name, type(exc).__name__)
+        return False
     if count:
-        log.info("%s: %s kayıt", job.__name__, count)
-    return count
+        log.info("%s: %s kayıt", name, count)
+    _mark_success(name, datetime.now(timezone.utc))
+    return True
 
 
 async def every_minute(ctx) -> None:

@@ -45,7 +45,9 @@ log = logging.getLogger(__name__)
 
 
 def purge_flight_data(db: Session, now: datetime) -> int:
-    """K-18: uçuş bilgisi yolculuktan 24 saat sonra silinir."""
+    """K-18/K-31: `purge_at` dolan uçuş bilgisi silinir. `purge_at`: yolculuk tamamlanınca ve rezervasyon
+    iptal edilince o an (PRIV-10); hiç tamamlanmazsa alıştan 48 saat sonra (bookings.FLIGHT_PURGE_FALLBACK).
+    Saatlik iş olduğu için gerçek silme en geç bir saat içinde olur."""
     result = db.execute(delete(FlightInfo).where(FlightInfo.purge_at <= now))
     return result.rowcount or 0
 
@@ -139,6 +141,8 @@ def cancel_unpaid_bookings(db: Session, now: datetime) -> int:
         b.cancel_reason = "ödeme süresi doldu"
         for leg in b.legs:
             leg.status = LegStatus.CANCELLED
+            if leg.flight is not None:
+                leg.flight.purge_at = now  # PRIV-10: iptal edilen yolculuğun uçuş verisi beklemeden silinir
     return len(bookings)
 
 

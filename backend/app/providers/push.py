@@ -48,7 +48,9 @@ class ConsolePush:
 
     def send(self, token: str, title: str, body: str, data: dict[str, str]) -> None:
         self.outbox.append((token, title, body, data))
-        log.warning("PUSH (console) -> %s…: %s | %s", token[:8], title, body)
+        # PRIV-12: jeton, başlık (ad içerebilir) ve gövde loglanmaz; CI ve geliştirme logları da kişisel veri
+        # taşımasın. İçerik testlerde `outbox`'tan okunur.
+        log.info("PUSH (console): bildirim kutuya yazıldı (%d veri alanı)", len(data))
 
 
 class FcmPush:

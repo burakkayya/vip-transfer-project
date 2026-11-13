@@ -15,13 +15,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import CurrentCustomer, CurrentDriver, DbSession, Now
-from app.api.driver import TripOut, _trip_out
+from app.api.driver import TripOut, _trip_out, approach_route
 from app.api.customer import _own_booking
 from app.api.schemas import BookingOut, MoneyStr
-from app.errors import NotFound, ServiceUnavailable
+from app.errors import NotFound
 from app.models import BookingLeg, DispatchOffer, TripMessage, TripUpdate
 from app.models.enums import BookingType, LegStatus, OfferStatus
-from app.providers.routing import Point, get_routing, haversine_km
+from app.providers.routing import Point, haversine_km
 from app.services import dispatch, eta, live_location, messages, notifications, route_line
 
 driver_router = APIRouter(prefix="/driver", tags=["driver"])
@@ -166,11 +166,8 @@ def approach(
     leg = _own_leg(db, driver, leg_id)
     target = eta.target_point(leg)
     at = Point(Decimal(str(lat)), Decimal(str(lng)))
-    try:
-        route = get_routing().route(at, target)
-        line, km, minutes = route.polyline, route.distance_km, route.duration_minutes
-    except ServiceUnavailable:
-        line, km, minutes = None, None, eta.estimate_minutes(at, target)
+    # MON-12: aktif bacak şartı, sürücü başına sınır, yuvarlanmış başlangıç ve kısa süreli önbellek.
+    line, km, minutes = approach_route(driver, leg, at, target)
     to_dropoff = leg.status is LegStatus.STARTED
     return ApproachOut(
         target="dropoff" if to_dropoff else "pickup",

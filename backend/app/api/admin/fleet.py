@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.localtime import local_date
+from app.api.admin import common
 from app.api.admin.common import Page, page
 from app.api.deps import AdminOnly, ClientIp, DbSession, Now, OpsStaff
 from app.api.schemas import DocumentOut
@@ -193,6 +194,7 @@ def expiring_documents(staff: OpsStaff, db: DbSession, now: Now):
                 Document.status.in_([DocumentStatus.APPROVED, DocumentStatus.EXPIRED]),
             )
             .order_by(Document.valid_until)
+            .limit(common.MAX_LIST)
         )
     )
 

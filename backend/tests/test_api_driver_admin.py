@@ -29,6 +29,9 @@ def upload(client, headers, doc_type, vehicle_id=None):
     return r.json()["id"]
 
 
+SHARED_TEST_PUSH_TOKEN = "fcm-test-device:shared-driver-token-0001"
+
+
 def onboard_driver(client, ops, *, vehicle_type="minivan", online=True):
     """Kayıt, belge yükleme, admin onayı. (sürücü başlıkları, driver_id) döner."""
     headers = otp_login(client, random_phone(), purpose="driver", country_code=None)
@@ -60,7 +63,9 @@ def onboard_driver(client, ops, *, vehicle_type="minivan", online=True):
     assert client.post(f"/api/v1/admin/vehicles/{vehicle_id}/status", headers=ops,
                        json={"status": "aktif"}).status_code == 200
     if online:
-        r = client.post("/api/v1/driver/me/online", headers=headers, json={"is_online": True, "push_token": "tok-1"})
+        # RT-08: jeton biçimi doğrulanır; tüm test sürücüleri aynı cihaz jetonunu paylaşır (son bağlayan alır).
+        r = client.post("/api/v1/driver/me/online", headers=headers,
+                        json={"is_online": True, "push_token": SHARED_TEST_PUSH_TOKEN})
         assert r.status_code == 200, r.text
     return headers, driver_id
 

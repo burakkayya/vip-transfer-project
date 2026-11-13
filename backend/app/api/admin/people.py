@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 
+from app.api.admin import common
 from app.api.admin.common import Page, page
 from app.api.deps import AdminOnly, AnyStaff, ClientIp, DbSession, Now, OpsOrSupport
 from app.errors import Conflict, DomainError, Forbidden, NotFound
@@ -138,7 +139,9 @@ def _staff_row(u: User) -> dict:
 
 @router.get("/users")
 def list_staff(staff: AdminOnly, db: DbSession):
-    return [_staff_row(u) for u in db.scalars(select(User).where(User.kind == UserKind.STAFF))]
+    rows = db.scalars(select(User).where(User.kind == UserKind.STAFF).order_by(User.created_at)
+                      .limit(common.MAX_LIST))
+    return [_staff_row(u) for u in rows]
 
 
 @router.post("/users", status_code=201)
@@ -212,7 +215,8 @@ def list_audit_logs(
     if actor_id:
         q = q.where(AuditLog.actor_id == actor_id)
     if action:
-        q = q.where(AuditLog.action.startswith(action))
+        # DB-13: `%` ve `_` joker değil düz karakter (önek araması).
+        q = q.where(AuditLog.action.startswith(action, autoescape=True))
     if entity_type:
         q = q.where(AuditLog.entity_type == entity_type)
     if entity_id:

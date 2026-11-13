@@ -367,6 +367,8 @@ def cancel_booking(
             continue  # gidiş-dönüşte tamamlanmış bacak tamamlanmış kalır (hakedişi ayrıca iptal edilebilir)
         was_assigned = leg.driver_id is not None and leg.status is not LegStatus.CANCELLED
         leg.status = LegStatus.CANCELLED
+        if leg.flight is not None:
+            leg.flight.purge_at = now  # PRIV-10: iptalde uçuş verisi beklemeden silinir (saatlik iş)
         if was_assigned:
             trip_updates.to_driver(db, leg, "trip_cancelled",
                                    pickup_at=leg.pickup_at.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M"))

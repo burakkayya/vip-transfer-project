@@ -6,10 +6,11 @@ Satış için `ForexSelling` kullanılır.
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation
 
 import httpx
+from defusedxml import DefusedXmlException
+from defusedxml.ElementTree import ParseError, fromstring
 
 from app.errors import ServiceUnavailable
 
@@ -17,11 +18,14 @@ TCMB_URL = "https://www.tcmb.gov.tr/kurlar/today.xml"
 
 
 def parse_tcmb_eur_try(xml_text: str) -> Decimal:
+    """Bandit B314: dış kaynaktan gelen XML defusedxml ile ayrıştırılır; DTD içi varlık (entity), dış varlık
+    ve "billion laughs" genişlemesi reddedilir. Varlıksız DOCTYPE satırı (kaynak eklerse) kabul edilir; kur
+    güncellemesi bu yüzden durmasın."""
     try:
-        root = ET.fromstring(xml_text)
+        root = fromstring(xml_text)
         node = root.find("./Currency[@CurrencyCode='EUR']/ForexSelling")
         rate = Decimal((node.text or "").strip()) if node is not None else Decimal(0)
-    except (ET.ParseError, InvalidOperation) as exc:
+    except (ParseError, DefusedXmlException, InvalidOperation) as exc:
         raise ServiceUnavailable("TCMB kur verisi okunamadı") from exc
     if rate <= 0:
         raise ServiceUnavailable("TCMB kur verisinde EUR bulunamadı")

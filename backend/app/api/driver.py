@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated
 
+import redis
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -14,7 +16,7 @@ from sqlalchemy import func, select
 from app.localtime import local_date
 from app.api.deps import ClientIp, CurrentDriver, DbSession, Now, current_driver_user
 from app.api.schemas import DocumentOut, MoneyStr
-from app.errors import Conflict, DomainError, Forbidden, NotFound
+from app.errors import Conflict, DomainError, Forbidden, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import (
     BookingLeg,
     DispatchOffer,
@@ -36,9 +38,21 @@ from app.models.enums import (
     TripEventType,
     VehicleStatus,
 )
+from app.config import get_settings
+from app.providers import routing
 from app.providers.storage import get_storage
 from app.providers.routing import Point
-from app.services import audit, dispatch, documents, eta, live_location, notifications, route_line, system_settings
+from app.services import (
+    audit,
+    dispatch,
+    documents,
+    eta,
+    live_location,
+    notifications,
+    quotes,
+    route_line,
+    system_settings,
+)
 
 router = APIRouter(prefix="/driver", tags=["driver"])
 
@@ -414,6 +428,58 @@ def post_location(leg_id: uuid.UUID, body: LocationIn, driver: CurrentDriver, db
     # Tahmini süre ve müşteri bildirim eşikleri (yaklaşıyor, 10 dk) (K-51).
     eta.on_location(db, leg, Point(Decimal(str(body.lat)), Decimal(str(body.lng))))
     db.commit()
+
+
+# --- Yaklaşma rotası (MON-12) ------------------------------------------------
+
+# Rota başlangıcı ~100 m'ye yuvarlanır: yakın konumlar aynı önbellek kaydını ve sağlayıcı önbelleğini kullanır,
+# keyfi koordinatla paylaşılan rota önbelleği taşırılamaz.
+APPROACH_ROUND = Decimal("0.001")
+
+
+def _approach_cache_get(key: str) -> tuple[str | None, Decimal | None, int | None] | None:
+    try:
+        raw = quotes._redis().get(key)
+    except redis.RedisError:
+        return None  # önbellek yardımcıdır; Redis arızasında doğrudan hesaplanır (sınır da fail-open)
+    if raw is None:
+        return None
+    data = json.loads(raw)
+    return data["p"], (Decimal(data["km"]) if data["km"] is not None else None), data["min"]
+
+
+def _approach_cache_set(key: str, value: tuple[str | None, Decimal | None, int | None], seconds: int) -> None:
+    line, km, minutes = value
+    try:
+        quotes._redis().set(key, json.dumps({"p": line, "km": str(km) if km is not None else None, "min": minutes}),
+                            ex=seconds)
+    except redis.RedisError:
+        pass
+
+
+def approach_route(driver: Driver, leg: BookingLeg, at: Point, target: Point) -> tuple[str | None, Decimal | None, int | None]:
+    """MON-12: sürücü konumundan hedefe rota (polyline, km, dakika). Ücretli Routes API'ye gider; bu yüzden
+    yalnızca aktif bacakta, yuvarlanmış başlangıçla, kısa süreli Redis önbelleğinden ve sürücü başına dakikalık
+    sınırla çağrılır. Sınır yalnızca sağlayıcıya giden (önbellekte olmayan) isteklerde sayılır; Redis yoksa
+    teklif sınırındaki gibi fail-open."""
+    if leg.status not in dispatch.ACTIVE_LEG_STATUSES:
+        raise Conflict("rota yalnızca aktif yolculukta alınır", code="trip_not_active")
+    s = get_settings()
+    origin = Point(at.lat.quantize(APPROACH_ROUND), at.lng.quantize(APPROACH_ROUND))
+    kind = "dropoff" if leg.status is LegStatus.STARTED else "pickup"
+    key = f"approach:{leg.id}:{kind}:{origin.lat}:{origin.lng}"
+    cached = _approach_cache_get(key)
+    if cached is not None:
+        return cached
+    if quotes._bump(f"approach_rl:driver:{driver.id}:{quotes._minute()}") > s.approach_rate_limit_per_minute:
+        raise TooManyRequests("rota çok sık istendi, lütfen biraz bekleyin")
+    try:
+        route = routing.get_routing().route(origin, target)
+    except ServiceUnavailable:
+        return None, None, eta.estimate_minutes(at, target)  # yedek tahmin önbelleğe yazılmaz
+    result = (route.polyline, route.distance_km, route.duration_minutes)
+    _approach_cache_set(key, result, s.approach_cache_seconds)
+    return result
 
 
 # --- Kazanç ------------------------------------------------------------------

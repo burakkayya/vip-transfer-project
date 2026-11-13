@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
 from app.api.admin import manual_bookings
+from app.api.admin import common
 from app.api.admin.common import Page, page
 from app.api.deps import ClientIp, DbSession, Now, OpsOrFinance, OpsOrSupport, OpsStaff
 from app.api.schemas import BookingOut, MoneyStr
@@ -238,7 +239,7 @@ def pending(staff: OpsStaff, db: DbSession, now: Now):
          "booking_type": leg.booking.booking_type.value, "pickup_at": leg.pickup_at,
          "pickup": leg.pickup_region.name, "dropoff": leg.dropoff_region.name,
          "vehicle_type": leg.booking.vehicle_type.code, "passengers": leg.booking.passenger_count}
-        for leg in dispatch.pending_legs(db, now)
+        for leg in dispatch.pending_legs(db, now)[:common.MAX_LIST]
     ]
 
 
@@ -310,5 +311,6 @@ def force_advance(leg_id: uuid.UUID, body: ForceAdvanceIn, staff: OpsStaff, db: 
 
 @router.get("/drivers/online")
 def online_drivers(staff: OpsStaff, db: DbSession):
-    rows = db.scalars(select(Driver).where(Driver.is_online.is_(True)))
+    rows = db.scalars(select(Driver).where(Driver.is_online.is_(True)).order_by(Driver.full_name)
+                      .limit(common.MAX_LIST))
     return [{"id": str(d.id), "full_name": d.full_name} for d in rows]
