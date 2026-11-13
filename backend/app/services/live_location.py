@@ -86,6 +86,13 @@ def for_booking(booking: Booking) -> dict | None:
     return {"leg_id": str(leg.id), **data} if data else None
 
 
+def for_leg_id(leg_id: uuid.UUID) -> dict | None:
+    """Müşteri canlı takibi (WebSocket): bacak kimliği önceden bilinir, yalnızca Redis okunur (REV-B-4).
+    Biçim `for_booking` ile aynıdır."""
+    data = _read(leg_id)
+    return {"leg_id": str(leg_id), **data} if data else None
+
+
 def for_leg(leg: BookingLeg) -> dict | None:
     """Bacağın son paylaşılan konumu (sürücü tarafı: bitirme kuralı için)."""
     return _read(leg.id)

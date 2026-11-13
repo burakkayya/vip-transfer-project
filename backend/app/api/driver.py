@@ -158,6 +158,21 @@ def list_documents(driver: CurrentDriver, db: DbSession):
     return list(rows)
 
 
+@router.delete("/documents/{doc_id}", status_code=204)
+def withdraw_document(doc_id: uuid.UUID, driver: CurrentDriver, db: DbSession, ip: ClientIp):
+    """REV-B-7: incelemede bekleyen kendi belgesini (sürücü veya aktif aracı) geri çeker. Başkasının belgesi 404,
+    incelenmiş belge 409 `document_not_pending`."""
+    doc = db.get(Document, doc_id, with_for_update={"of": Document})
+    own = doc is not None and (
+        (doc.owner_type is DocumentOwner.DRIVER and doc.owner_id == driver.id)
+        or (doc.owner_type is DocumentOwner.VEHICLE and doc.owner_id in _vehicle_ids(db, driver))
+    )
+    if not own:
+        raise NotFound("belge bulunamadı")
+    documents.withdraw(db, get_storage(), doc, actor_id=driver.user_id, ip=ip)
+    db.commit()
+
+
 class VehicleIn(BaseModel):
     plate: str = Field(pattern=r"^\d{2}\s?[A-Z]{1,3}\s?\d{2,4}$")
     vehicle_type_code: str

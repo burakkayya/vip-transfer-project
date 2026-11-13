@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
 from app.api.admin import manual_bookings
@@ -18,7 +18,7 @@ from app.api.schemas import BookingOut, MoneyStr
 from app.errors import NotFound
 from app.localtime import LOCAL_TZ
 from app.models import Booking, BookingLeg, DispatchOffer, Driver, DriverLedger, Payment, TripEvent
-from app.models.enums import BookingSource, BookingStatus, PaymentStatus
+from app.models.enums import BookingSource, BookingStatus, LegStatus, PaymentStatus, TripEventType
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
 from app.services import bookings, dispatch, live_location
@@ -277,6 +277,35 @@ def send_offers(leg_id: uuid.UUID, staff: OpsStaff, db: DbSession, now: Now):
     sent = dispatch.offer_leg(db, leg, now=now)
     db.commit()
     return {"sent": sent}
+
+
+class ForceAdvanceIn(BaseModel):
+    event: TripEventType
+    # Gerekçe zorunlu; denetim kaydına yazılır.
+    reason: str = Field(min_length=10, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 10:
+            raise ValueError("gerekçe en az 10 karakter olmalı")
+        return v
+
+
+@router.post("/dispatch/legs/{leg_id}/force-advance")
+def force_advance(leg_id: uuid.UUID, body: ForceAdvanceIn, staff: OpsStaff, db: DbSession, ip: ClientIp, now: Now):
+    """REV-B-5: sürücü zaman/konum kontrollerine takılıp kilitlendiğinde operasyonun çıkış yolu. Yalnızca admin ve
+    operasyon. Zaman/konum kontrollerini atlar, durum makinesi sırasını atlamaz; gerekçe denetim kaydına yazılır."""
+    leg = db.get(BookingLeg, leg_id, with_for_update={"of": BookingLeg})
+    if leg is None:
+        raise NotFound("bacak bulunamadı")
+    db.refresh(leg)
+    dispatch.force_advance(db, leg, body.event, actor_id=staff.id, reason=body.reason, now=now, ip=ip)
+    db.commit()
+    if leg.status is LegStatus.COMPLETED:
+        live_location.clear(leg)
+    return {"leg_id": str(leg.id), "status": leg.status.value}
 
 
 @router.get("/drivers/online")

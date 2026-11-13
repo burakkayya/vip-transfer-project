@@ -17,6 +17,8 @@ export default function middleware(req: NextRequest) {
 
 export const config = {
   // bff (backend vekili), Next iç dosyaları ve uzantılı dosyalar dil yönlendirmesine girmez; bunlar
-  // next.config.ts'teki nonce'suz politikayı alır.
-  matcher: ["/((?!bff|_next|_vercel|.*\\..*).*)"],
+  // next.config.ts'teki nonce'suz politikayı alır. REV-B-9: önekler yalnızca tam yol parçası olarak dışlanır
+  // (`/bffx`, `/_nextx` middleware'e girer ve nonce'lı CSP alır). Desen next.config.ts'teki NON_PAGE_SOURCE'un
+  // tam tersidir; değiştirirken ikisi birlikte değişmeli.
+  matcher: ["/((?!(?:bff|_next|_vercel)(?:/|$)|.*\\..*).*)"],
 };

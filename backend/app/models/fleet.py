@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import ForeignKey, Index, Numeric, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, created_at, str_enum, uuid_pk
@@ -89,6 +89,17 @@ class DriverVehicleAssignment(Base):
 
 class Document(Base):
     __tablename__ = "documents"
+    # REV-B-7: sahip + tür başına en fazla bir bekleyen belge (kota kontrolündeki yarışa karşı veritabanı kuralı).
+    __table_args__ = (
+        Index(
+            "uq_documents_one_pending",
+            "owner_type",
+            "owner_id",
+            "doc_type",
+            unique=True,
+            postgresql_where=text("status = 'beklemede'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     owner_type: Mapped[DocumentOwner] = mapped_column(str_enum(DocumentOwner))

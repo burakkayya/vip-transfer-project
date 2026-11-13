@@ -37,6 +37,7 @@ from app.models.enums import (
     DocumentOwner,
     DocumentStatus,
     DriverStatus,
+    FlightDirection,
     LegStatus,
     OfferStatus,
     TripEventType,
@@ -144,20 +145,30 @@ def eligible_candidates(
     return result
 
 
-def offer_leg(db: Session, leg: BookingLeg, *, now: datetime) -> int:
-    """Uygun sürücülere teklif gönderir. Gönderilen teklif sayısını döner."""
+def offer_leg(db: Session, leg: BookingLeg, *, now: datetime, resend_closed: bool = False) -> int:
+    """Uygun sürücülere teklif gönderir. Gönderilen teklif sayısını döner.
+
+    `resend_closed`: bacak havuza geri döndüyse (REV-B-6) önceki turda geri çekilmiş veya süresi dolmuş
+    teklifler yeniden açılır (bacak+sürücü benzersizdir). Sürücünün reddettiği teklif yeniden açılmaz."""
     if leg.driver_id is not None or leg.status is not LegStatus.PENDING:
         return 0
     require_online = leg.booking.booking_type is BookingType.INSTANT
-    already = set(
-        db.scalars(select(DispatchOffer.driver_id).where(DispatchOffer.booking_leg_id == leg.id))
-    )
+    existing = {
+        o.driver_id: o
+        for o in db.scalars(select(DispatchOffer).where(DispatchOffer.booking_leg_id == leg.id))
+    }
     expires = now + timedelta(seconds=get_settings().dispatch_offer_seconds)
     sent = 0
     for c in eligible_candidates(db, leg, require_online=require_online, now=now):
-        if c.driver.id in already:
-            continue
-        db.add(DispatchOffer(booking_leg_id=leg.id, driver_id=c.driver.id, expires_at=expires))
+        old = existing.get(c.driver.id)
+        if old is not None:
+            if not (resend_closed and old.status in (OfferStatus.WITHDRAWN, OfferStatus.EXPIRED)):
+                continue
+            old.status = OfferStatus.SENT
+            old.expires_at = expires
+            old.responded_at = None
+        else:
+            db.add(DispatchOffer(booking_leg_id=leg.id, driver_id=c.driver.id, expires_at=expires))
         notifications.notify_driver(
             db,
             c.driver,
@@ -301,13 +312,26 @@ def distance_to_dropoff_m(leg: BookingLeg, at: Point) -> int:
     return int(haversine_km(at, eta.dropoff_point(leg)) * 1000)
 
 
+REJECTED_EVENT_AUDIT_SECONDS = 60
+
+
 def _record_rejected_event(
     leg: BookingLeg, driver: Driver, event: TripEventType, reason_code: str, details: dict
 ) -> None:
     """Reddedilen sürücü adımı ayrı bir işlemle denetim kaydına yazılır; istek hatayla geri alınsa da kalır
-    (BIZ-02: erken veya şüpheli bitirme denemeleri incelenebilsin). Kayıt yazılamazsa istek yine reddedilir."""
-    from app.db import SessionLocal
+    (BIZ-02: erken veya şüpheli bitirme denemeleri incelenebilsin). Kayıt yazılamazsa istek yine reddedilir.
 
+    REV-B-8: tekrar eden denemeler denetim tablosunu şişirmesin diye bacak+olay başına dakikada bir kayıt yazılır
+    (Redis SET NX). Redis'e ulaşılamazsa kayıt yine yazılır (kayıt kaybı yerine fazla kayıt)."""
+    from app.db import SessionLocal
+    from app.services import live_location
+
+    try:
+        if not live_location._redis().set(f"trip_rej:{leg.id}:{event.value}", "1", nx=True,
+                                          ex=REJECTED_EVENT_AUDIT_SECONDS):
+            return
+    except Exception as exc:  # noqa: BLE001 - Redis hatası kaydı engellemez
+        log.warning("reddedilen adım seyreltme anahtarı yazılamadı (leg=%s): %s", leg.id, type(exc).__name__)
     try:
         with SessionLocal() as s:
             audit.record(s, actor_id=driver.user_id, action="booking_leg.event_rejected",
@@ -346,17 +370,32 @@ def _parse_at(value: object) -> datetime | None:
         return None
 
 
+def effective_pickup_at(leg: BookingLeg) -> datetime:
+    """REV-B-5: zaman penceresinin dayanağı. Havalimanından alışta (geliş uçuşu) uçuş takibinin tahmini veya
+    gerçekleşen inişi alıştan erkense o kullanılır; uçak erken inerse sürücü yolcuyu alabilir. Pencere yalnızca
+    genişler, hiçbir zaman daralmaz."""
+    basis = leg.pickup_at
+    fi = leg.flight
+    if fi is not None and fi.direction is FlightDirection.ARRIVAL:
+        for t in (fi.estimated_at, fi.actual_at):
+            if t is not None and t < basis:
+                basis = t
+    return basis
+
+
 def _check_time_window(leg: BookingLeg, driver: Driver, event: TripEventType, now: datetime) -> None:
-    """BIZ-02: "yola çıktım" ve "yolcu alındı" alış zamanına göre bir pencerenin içinde kabul edilir."""
+    """BIZ-02: "yola çıktım" ve "yolcu alındı" alış zamanına (uçak erken indiyse tahmini inişe) göre bir
+    pencerenin içinde kabul edilir."""
     s = get_settings()
+    basis = effective_pickup_at(leg)
     if event is TripEventType.DEPARTED:
-        earliest = leg.pickup_at - timedelta(minutes=s.trip_depart_window_minutes)
+        earliest = basis - timedelta(minutes=s.trip_depart_window_minutes)
         if now < earliest:
             _reject(leg, driver, event, "too_early_to_depart",
                     f"yola en erken alıştan {s.trip_depart_window_minutes} dk önce çıkabilirsiniz",
                     pickup_at=leg.pickup_at, earliest=earliest)
     elif event is TripEventType.STARTED:
-        earliest = leg.pickup_at - timedelta(minutes=s.trip_start_early_minutes)
+        earliest = basis - timedelta(minutes=s.trip_start_early_minutes)
         if now < earliest:
             _reject(leg, driver, event, "too_early_to_start",
                     f"yolculuk en erken alıştan {s.trip_start_early_minutes} dk önce başlatılabilir",
@@ -445,8 +484,6 @@ def advance_trip(
                 code="too_far_from_dropoff",
             )
         actual_minutes = _check_finish(db, leg, driver, at, now)
-    leg.status = target
-    db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=driver.user_id))
     if event is TripEventType.FINISHED and actual_minutes is not None:
         planned = planned_minutes(leg)
         if actual_minutes < planned * get_settings().trip_early_finish_ratio:
@@ -454,6 +491,40 @@ def advance_trip(
                          entity_type="booking_leg", entity_id=leg.id,
                          changes={"actual_minutes": round(actual_minutes, 1), "planned_minutes": leg.duration_minutes,
                                   "pickup_at": leg.pickup_at})
+    _apply_transition(db, leg, event, target, actor_id=driver.user_id, now=now, at=at)
+
+
+def force_advance(
+    db: Session, leg: BookingLeg, event: TripEventType, *, actor_id: uuid.UUID, reason: str, now: datetime,
+    ip: str | None,
+) -> None:
+    """REV-B-5: operasyonun "zorla ilerlet" adımı. Sürücü zaman/konum kontrollerine takılıp kilitlendiğinde
+    (ör. `trip_too_short`, `implausible_location`, uçuş bilgisi olmadan erken iniş) kullanılır.
+
+    Zaman penceresi, varış yarıçapı, asgari süre ve konum makullüğü kontrollerini ATLAR; durum makinesi sırasını
+    ATLAMAZ (her çağrı tek adım ilerletir). Gerekçe zorunludur ve denetim kaydına yazılır. Çağıran bacak
+    satırını kilitlemiş olmalıdır."""
+    if leg.driver_id is None:
+        raise Conflict("bacağa atanmış sürücü yok", code="leg_not_assigned")
+    if event not in TRANSITIONS:
+        raise Conflict("geçersiz yolculuk adımı", code="invalid_transition")
+    expected, target = TRANSITIONS[event]
+    if leg.status is not expected:
+        raise Conflict(f"bu adım için yolculuk '{expected.value}' durumunda olmalı", code="invalid_transition")
+    old = leg.status
+    _apply_transition(db, leg, event, target, actor_id=actor_id, now=now, at=None)
+    audit.record(db, actor_id=actor_id, action="booking_leg.force_advance", entity_type="booking_leg",
+                 entity_id=leg.id, ip=ip,
+                 changes={"event": event.value, "old_status": old.value, "new_status": target.value,
+                          "driver_id": leg.driver_id, "reason": reason})
+
+
+def _apply_transition(
+    db: Session, leg: BookingLeg, event: TripEventType, target: LegStatus, *, actor_id: uuid.UUID,
+    now: datetime, at: Point | None,
+) -> None:
+    leg.status = target
+    db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=actor_id))
     if event is TripEventType.DEPARTED:
         eta.on_departed(db, leg, at)
     elif event is TripEventType.ARRIVED:
@@ -600,7 +671,7 @@ RELEASABLE_ON_SUSPEND = (LegStatus.ASSIGNED, LegStatus.EN_ROUTE, LegStatus.ARRIV
 
 
 def release_driver(
-    db: Session, driver: Driver, *, actor_id: uuid.UUID, ip: str | None, now: datetime
+    db: Session, driver: Driver, *, actor_id: uuid.UUID | None, ip: str | None, now: datetime
 ) -> int:
     """Onayı kaldırılan (askıya alınan, pasifleştirilen) sürücünün etkileri. Havuza dönen bacak sayısını döner.
 
@@ -608,6 +679,9 @@ def release_driver(
       eşleştirme ekranında yeniden görünür.
     - Sürücüye gönderilmiş açık teklifler geri çekilir.
     - Sürücünün tüm oturumları iptal edilir (erişim jetonu da oturuma bağlı olduğu için hemen geçersizleşir).
+    - REV-B-6: havuza dönen her bacak için uygun sürücülere yeniden teklif gönderilir; sonuç denetim kaydına
+      ve loga yazılır (hiç teklif gidemediyse operasyon elle eşleştirmeli).
+    - `actor_id=None`: sistem (zamanlanmış görev) tarafından çağrı.
     """
     from app.models import AuthSession
     from app.services import live_location
@@ -642,6 +716,17 @@ def release_driver(
     for offer in db.scalars(select(DispatchOffer).where(DispatchOffer.driver_id == driver.id,
                                                         DispatchOffer.status == OfferStatus.SENT)):
         offer.status = OfferStatus.WITHDRAWN
+
+    db.flush()
+    for leg in legs:
+        sent = offer_leg(db, leg, now=now, resend_closed=True)
+        audit.record(db, actor_id=actor_id, action="booking_leg.reoffer_after_release", entity_type="booking_leg",
+                     entity_id=leg.id, changes={"offers_sent": sent, "released_driver_id": driver.id}, ip=ip)
+        if sent:
+            log.info("askıya alınan sürücüden dönen bacak yeniden teklife açıldı (leg=%s, teklif=%s)", leg.id, sent)
+        else:
+            log.warning("askıya alınan sürücüden dönen bacağa uygun sürücü yok, elle eşleştirme gerekli (leg=%s)",
+                        leg.id)
 
     revoked = 0
     for session in db.scalars(select(AuthSession).where(AuthSession.user_id == driver.user_id,

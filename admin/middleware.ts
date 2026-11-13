@@ -13,9 +13,11 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // bff (backend vekili), Next iç dosyaları ve uzantılı dosyalar next.config.ts'teki nonce'suz politikayı alır.
+  // REV-B-9: önekler yalnızca tam yol parçası olarak dışlanır (`/bffx` middleware'e girer). Desen ve `missing`
+  // koşulları next.config.ts'teki yedek kuralların tam tersidir; değiştirirken birlikte değişmeli.
   matcher: [
     {
-      source: "/((?!bff|_next|.*\\..*).*)",
+      source: "/((?!(?:bff|_next)(?:/|$)|.*\\..*).*)",
       // Önceden getirme istekleri sayfa çizmez; nonce gerekmez.
       missing: [
         { type: "header", key: "next-router-prefetch" },
