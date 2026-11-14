@@ -43,14 +43,33 @@ SENSITIVE_KEYS = frozenset(
 REASON_KEYS = frozenset({"reason", "override_reason", "cancel_reason"})
 # REV-C-3: girdi sınırıyla (500) aynı; daha kısa kırpma değiştirilemez kayıtta gerekçeyi kalıcı olarak kaybettiriyordu.
 REASON_MAX_LENGTH = 500
-# CodeQL py/polynomial-redos: eşleşme yalnızca bir sözcüğün başında başlar (geriye bakış) ve alan adı etiketleri
-# noktayla kesin ayrılır; böylece desen girdide doğrusal çalışır. Son etiketin harf olması `_email_sub`'da denetlenir.
-_EMAIL_RE = re.compile(r"(?<![^\s<>()])[^\s@<>()]+@[^\s@<>().]+(?:\.[^\s@<>().]+)+")
+# CodeQL py/polynomial-redos: e-posta tespiti desensiz yapılır. Metin boşluk ve <>() sınırlarından tek geçişte
+# sözcüklere bölünür; her sözcük str işlemleriyle denetlenir (doğrusal).
+_EMAIL_SPLIT_RE = re.compile(r"([\s<>()]+)")
+_EMAIL_TRAIL = ".,;:!?\"'"
 
 
-def _email_sub(m: re.Match) -> str:
-    tld = m.group(0).rsplit(".", 1)[1]
-    return "[e-posta]" if len(tld) >= 2 and tld.isascii() and tld.isalpha() else m.group(0)
+def _is_email(word: str) -> bool:
+    if word.count("@") != 1:
+        return False
+    local, domain = word.split("@")
+    labels = domain.split(".")
+    if not local or len(labels) < 2 or not all(labels):
+        return False
+    tld = labels[-1]
+    return len(tld) >= 2 and tld.isascii() and tld.isalpha()
+
+
+def _mask_emails(text: str) -> str:
+    parts = _EMAIL_SPLIT_RE.split(text)
+    for i in range(0, len(parts), 2):  # tek indeksler ayırıcıdır
+        word = parts[i]
+        core = word.rstrip(_EMAIL_TRAIL)
+        if "@" in core and _is_email(core):
+            parts[i] = "[e-posta]" + word[len(core):]
+    return "".join(parts)
+
+
 _IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,4})?\b")
 
 
@@ -78,7 +97,7 @@ def scrub_reason(value: Any) -> Any:
     if not isinstance(value, str):
         return _clean(value)
     # REV-C-4: e-posta deseni uzun girdide karesel çalışır; desenlerden önce girdi kırpılır.
-    text = _EMAIL_RE.sub(_email_sub, value[: REASON_MAX_LENGTH * 2])
+    text = _mask_emails(value[: REASON_MAX_LENGTH * 2])
     text = _IBAN_RE.sub(_iban_sub, text)
     text = _PHONE_RE.sub(_phone_sub, text)
     if len(text) > REASON_MAX_LENGTH:
