@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import secrets
 import uuid
 from dataclasses import dataclass
@@ -13,7 +14,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app import cancellation, commission
-from app.errors import Conflict, DomainError, ServiceUnavailable
+from app.errors import Conflict, DomainError, Forbidden, NotFound, ServiceUnavailable
 from app.models import (
     Booking,
     BookingLeg,
@@ -42,10 +43,12 @@ from app.models.enums import (
     RefundStatus,
     RegionType,
 )
-from app.providers.payments import PaymentProvider
+from app.providers.payments import PaymentProvider, RefundResult
 from app.localtime import LOCAL_TZ
 from app.services import audit, system_settings, trip_updates
 from app.services.quotes import Quote
+
+log = logging.getLogger(__name__)
 
 # Kod alfabesinde karışabilecek karakterler yok (0/O, 1/I/L).
 _CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
@@ -371,6 +374,8 @@ def cancel_booking(
             continue  # gidiş-dönüşte tamamlanmış bacak tamamlanmış kalır (hakedişi ayrıca iptal edilebilir)
         was_assigned = leg.driver_id is not None and leg.status is not LegStatus.CANCELLED
         leg.status = LegStatus.CANCELLED
+        if leg.flight is not None:
+            leg.flight.purge_at = now  # PRIV-10: iptalde uçuş verisi beklemeden silinir (saatlik iş)
         if was_assigned:
             trip_updates.to_driver(db, leg, "trip_cancelled",
                                    pickup_at=leg.pickup_at.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M"))
@@ -398,7 +403,6 @@ def cancel_booking(
         )
         db.add(refund)
         db.flush()
-        execute_refund(db, refund, payment, provider)
     cancelled_earnings = 0
     if cancel_driver_earnings:
         for entry in db.scalars(
@@ -423,6 +427,10 @@ def cancel_booking(
         },
         ip=ip,
     )
+    if refund is not None:
+        # BIZ-03: iptal, hakediş iptali, denetim kaydı ve PENDING iade birlikte commit edilir; sağlayıcı
+        # ancak bundan sonra çağrılır. Böylece commit hatası iadeyi tekrarlatmaz (rezervasyon iptal kalır).
+        execute_refund(db, refund, payment, provider)
     return refund
 
 
@@ -491,8 +499,21 @@ def cancel_ledger_entry(
                  ip=ip)
 
 
+def refund_reference(refund: Refund) -> str:
+    """Sağlayıcıya gönderilen benzersiz iade referansı (harf ve rakam). Tekrar denemede değişmez."""
+    return "R" + refund.id.hex.upper()
+
+
 def execute_refund(db: Session, refund: Refund, payment: Payment, provider: PaymentProvider) -> None:
-    """Sağlayıcıda iadeyi çalıştırır. Başarısızsa kayıt 'basarisiz' kalır, admin tekrar dener."""
+    """Sağlayıcıda iadeyi çalıştırır (outbox, BIZ-03). Çağıran ödeme satırını kilitlemiş olmalıdır.
+
+    1. Kalan tutar denetlenir, iade PENDING olarak (çağıranın bekleyen değişiklikleriyle birlikte) commit
+       edilir; kilitler bırakılır.
+    2. Sağlayıcı DB kilidi ve açık işlem olmadan, iade kaydına özel referansla çağrılır.
+    3. Sonuç ayrı bir işlemde, ödeme ve iade satırları yeniden kilitlenerek yazılır ve commit edilir.
+       Zaman aşımı gibi belirsiz sonuçta kayıt UNKNOWN kalır (FAILED değil): tutar kalan iade edilebilir
+       tutardan düşülmeye devam eder, tekrar deneme aynı kaydı aynı referansla sürdürür.
+    Başarısızsa kayıt 'basarisiz' kalır, admin tekrar dener."""
     others = db.scalar(
         select(func.coalesce(func.sum(Refund.amount), 0)).where(
             Refund.payment_id == payment.id,
@@ -507,19 +528,114 @@ def execute_refund(db: Session, refund: Refund, payment: Payment, provider: Paym
         # parayı iade edip `complete_manual_refund` ile kapatır (K-54).
         refund.status = RefundStatus.PENDING
         return
-    result = provider.refund(payment.merchant_oid, refund.amount)
+    refund.status = RefundStatus.PENDING
+    refund_id, payment_id = refund.id, payment.id
+    merchant_oid, amount, reference = payment.merchant_oid, refund.amount, refund_reference(refund)
+    db.commit()
+
+    try:
+        result = provider.refund(merchant_oid, amount, reference=reference)
+    except Exception:  # noqa: BLE001 - sağlayıcı istisnası iadeyi belirsiz bırakır, isteği düşürmez
+        log.exception("iade sağlayıcı çağrısı beklenmeyen hata verdi: refund=%s", refund_id)
+        result = RefundResult(ok=False, unknown=True, error="beklenmeyen sağlayıcı hatası")
+
+    # Kilit sırası diğer iade yollarıyla aynı: önce ödeme, sonra iade.
+    db.scalar(select(Payment).where(Payment.id == payment_id).with_for_update(of=Payment)
+              .execution_options(populate_existing=True))
+    db.scalar(select(Refund).where(Refund.id == refund_id).with_for_update(of=Refund)
+              .execution_options(populate_existing=True))
     if result.ok:
         refund.status = RefundStatus.COMPLETED
-        refund.provider_ref = result.provider_ref
+        refund.provider_ref = (result.provider_ref or None) and str(result.provider_ref)[:100]
         _settle_payment_status(db, payment)
+    elif result.unknown:
+        refund.status = RefundStatus.UNKNOWN
+        refund.reason = f"{refund.reason[:150]} | belirsiz: {result.error}"[:255]
+        log.error("iade sonucu belirsiz, mutabakat gerekli: refund=%s", refund_id)
     else:
         refund.status = RefundStatus.FAILED
         refund.reason = f"{refund.reason[:150]} | hata: {result.error}"[:255]
+    db.commit()
+
+
+RETRYABLE_REFUND = {RefundStatus.FAILED, RefundStatus.UNKNOWN}
+
+
+def _lock_refund(db: Session, refund_id: uuid.UUID) -> tuple[Refund, Payment]:
+    """Kilit sırası diğer iade yollarıyla aynı: önce ödeme, sonra iade."""
+    refund = db.get(Refund, refund_id)
+    if refund is None:
+        raise NotFound("iade bulunamadı")
+    payment = db.scalar(select(Payment).where(Payment.id == refund.payment_id).with_for_update(of=Payment)
+                        .execution_options(populate_existing=True))
+    db.scalar(select(Refund).where(Refund.id == refund_id).with_for_update(of=Refund)
+              .execution_options(populate_existing=True))
+    return refund, payment
+
+
+def retry_refund(
+    db: Session, refund_id: uuid.UUID, provider: PaymentProvider, *, is_admin: bool = False, reconciled: bool = False
+) -> tuple[Refund, RefundStatus]:
+    """Başarısız ya da belirsiz iadeyi aynı kayıtla yeniden dener (BIZ-03); yeni iade açılmaz.
+    Ödeme satırı kilitlenir ve kalan tutar yeniden denetlenir (eşzamanlı elle iadeyle yarışmasın).
+
+    REV-A-6: PayTR'de iade durum sorgusu yok ve `reference_no` tekilliği doğrulanmadı; belirsiz iadeyi
+    körlemesine yeniden göndermek çift iade riskidir. Belirsiz iade yalnızca admin tarafından ve PayTR
+    panelinden iadenin gerçekleşmediği doğrulandıktan sonra (`reconciled`) yeniden denenir."""
+    refund, payment = _lock_refund(db, refund_id)
+    if refund.status not in RETRYABLE_REFUND:
+        raise Conflict("yalnızca başarısız veya belirsiz iade tekrar denenebilir", code="refund_not_retryable")
+    if payment.provider is PaymentProviderCode.MANUAL:
+        raise Conflict("elle tahsilatın iadesi elle kapatılır", code="manual_payment")
+    if refund.status is RefundStatus.UNKNOWN:
+        if not is_admin:
+            raise Forbidden("belirsiz iadeyi yalnızca admin yeniden deneyebilir", code="admin_required")
+        if not reconciled:
+            raise Conflict("belirsiz iade, PayTR panelinden gerçekleşmediği doğrulanmadan yeniden denenemez",
+                           code="reconciliation_required")
+    previous = refund.status
+    execute_refund(db, refund, payment, provider)
+    return refund, previous
+
+
+def mark_unknown_refund_completed(
+    db: Session, refund_id: uuid.UUID, *, reference: str | None
+) -> tuple[Refund, RefundStatus]:
+    """REV-A-6: belirsiz iade PayTR panelinde gerçekleşmiş görünüyorsa sağlayıcı yeniden çağrılmadan
+    tamamlandı işaretlenir (admin, mutabakat sonrası). Denetim kaydını çağıran yazar.
+
+    K-74: reddedilmiş tahsilatın (FAILED ödeme) başarısız otomatik iadesi de bu yolla kapatılır; muhasebe
+    parayı PayTR panelinden iade ettiyse rezervasyon incelemeden çıkar. Ödenmiş ödemenin başarısız iadesi
+    kapatılamaz (o yeniden denenir)."""
+    refund, payment = _lock_refund(db, refund_id)
+    previous = refund.status
+    rejected_charge_failed = previous is RefundStatus.FAILED and payment.status is PaymentStatus.FAILED
+    if previous is not RefundStatus.UNKNOWN and not rejected_charge_failed:
+        raise Conflict("yalnızca belirsiz iade elle tamamlandı işaretlenir", code="refund_not_unknown")
+    if payment.provider is PaymentProviderCode.MANUAL:
+        raise Conflict("elle tahsilatın iadesi elle kapatılır", code="manual_payment")
+    if previous is RefundStatus.FAILED:
+        # Başarısız kayıt tutardan düşülmüyordu; kapatılmadan önce başka canlı iade olmadığı denetlenir.
+        others = db.scalar(
+            select(func.coalesce(func.sum(Refund.amount), 0)).where(
+                Refund.payment_id == payment.id, Refund.id != refund.id, Refund.status != RefundStatus.FAILED
+            )
+        )
+        if others + refund.amount > payment.amount:
+            raise Conflict("iade tutarı ödenen tutarı aşıyor", code="refund_exceeds_payment")
+    refund.status = RefundStatus.COMPLETED
+    if reference:
+        refund.provider_ref = reference[:100]
+    _settle_payment_status(db, payment)
+    return refund, previous
 
 
 def _settle_payment_status(db: Session, payment: Payment) -> None:
     db.flush()
     db.refresh(payment)
+    if payment.status is PaymentStatus.FAILED:
+        # K-74: reddedilmiş tahsilatın iadesi; ödeme hiç kabul edilmedi, FAILED kalır (ödenmiş sayılmaz).
+        return
     completed = sum(
         (r.amount for r in payment.refunds if r.status is RefundStatus.COMPLETED), Decimal("0")
     )

@@ -1,0 +1,187 @@
+# Güvenlik taraması (F2-6: INF-05, INF-07, INF-08, INF-12). Her PR'da, main'e her gönderimde ve haftalık.
+# - gitleaks: tüm git geçmişinde gizli bilgi taraması (+ çalışma anında üretilen sahte anahtarla kendini sınama).
+# - bandit: backend/app Python SAST; bilinen bulgular backend/.bandit-baseline.json'da, yeni Medium/High kırar.
+# - pip-audit: backend/requirements.txt bilinen açık taraması (bloklayıcı).
+# - npm audit: web, admin, mobile, scripts/ui-shots. Başta UYARI modunda (plan F2-6): bulgu varsa uyarı ve özet
+#   yazar, işi kırmaz. Depo değişkeni SECURITY_AUDIT_BLOCKING=true yapılınca bloklayıcı olur
+#   (Settings -> Secrets and variables -> Actions -> Variables).
+# - CodeQL: javascript-typescript ve python; sonuçlar Security -> Code scanning sekmesine yüklenir.
+# Gizli anahtar kullanılmaz. Üçüncü taraf kod commit SHA ile sabitlenir; gitleaks ikilisi SHA-256 ile doğrulanır.
+name: Güvenlik taraması
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Pazartesi 04:17 UTC (yeni yayımlanan açıklar kod değişmese de yakalansın).
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Gizli bilgi (gitleaks, tüm geçmiş)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      # https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: gitleaks kur (sürüm sabit, SHA-256 doğrulamalı)
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLo gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks version
+      - name: Kendini sınama (sahte anahtar yakalanmalı)
+        # Sahte anahtar çalışma anında üretilir, depoya yazılmaz. .gitleaks.toml istisnaları bunu susturursa iş kırılır.
+        run: |
+          mkdir -p "$RUNNER_TEMP/gl-selftest"
+          printf 'token = "ghp_%s"\n' "$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 36)" \
+            > "$RUNNER_TEMP/gl-selftest/fixture.txt"
+          set +e
+          "$RUNNER_TEMP/gitleaks" dir --config .gitleaks.toml --redact --no-banner "$RUNNER_TEMP/gl-selftest"
+          rc=$?
+          set -e
+          rm -rf "$RUNNER_TEMP/gl-selftest"
+          if [ "$rc" -ne 1 ]; then echo "::error::gitleaks sahte anahtarı yakalamadı (rc=$rc)"; exit 1; fi
+          echo "Kendini sınama geçti."
+      # HEAD'den ulaşılabilen tüm commit'ler (PR'da birleştirme commit'i: main geçmişi + PR commit'leri).
+      - name: Tüm geçmişi tara
+        run: '"$RUNNER_TEMP/gitleaks" git --config .gitleaks.toml --redact --no-banner --verbose .'
+
+  bandit:
+    name: Python SAST (bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - run: pip install bandit==1.9.4
+      # -ll: Medium ve üstü. Düşük önemli bulgular (dev sabitleri, B105) çıktıyı boğmasın diye gösterilmez;
+      # yerelde tam liste için: bandit -r backend/app -c backend/.bandit.yml
+      - name: bandit (taban çizgisine göre yeni bulgu kırar)
+        run: bandit -r backend/app -c backend/.bandit.yml -ll -b backend/.bandit-baseline.json
+
+  pip-audit:
+    name: Python bağımlılıkları (pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit==2.10.1
+      - name: pip-audit
+        run: pip-audit -r backend/requirements.txt --desc on --progress-spinner off
+
+  npm-audit:
+    name: npm audit (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # web/admin: sunucuda çalışan bağımlılıklar (devDependencies hariç).
+          - app: web
+            omit: "--omit=dev"
+          - app: admin
+            omit: "--omit=dev"
+          # mobile: uygulama paketi ve Expo CLI/derleme zinciri (INF-05) dev dışı sayılır.
+          - app: mobile
+            omit: "--omit=dev"
+          # ui-shots yalnızca geliştirici aracıdır; tüm bağımlılıkları geliştirici makinesinde çalışır.
+          - app: scripts/ui-shots
+            omit: ""
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    env:
+      BLOCKING: ${{ vars.SECURITY_AUDIT_BLOCKING == 'true' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      # npm audit yalnızca package-lock.json okur; npm ci gerekmez (kurulum betiği çalışmaz).
+      - name: npm audit --audit-level=high
+        env:
+          OMIT: ${{ matrix.omit }}
+          APP: ${{ matrix.app }}
+        run: |
+          set +e
+          npm audit $OMIT --audit-level=high > "$RUNNER_TEMP/audit.txt" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/audit.txt"
+          if [ "$rc" -eq 0 ]; then
+            echo "### npm audit ($APP): high/critical yok" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### npm audit ($APP): high/critical bulgu var"
+            echo '```'
+            tail -n 60 "$RUNNER_TEMP/audit.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$BLOCKING" = "true" ]; then
+            echo "::error::npm audit ($APP) high/critical bulgu buldu"
+            exit 1
+          fi
+          echo "::warning::npm audit ($APP) high/critical bulgu buldu (uyarı modu; SECURITY_AUDIT_BLOCKING=true ile bloklayıcı olur)"
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - "**/node_modules/**"
+              - "**/.next/**"
+              - "backend/.venv/**"
+              - "backend/tests/**"
+              - "**/__tests__/**"
+              - "**/e2e/**"
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: "/language:${{ matrix.language }}"

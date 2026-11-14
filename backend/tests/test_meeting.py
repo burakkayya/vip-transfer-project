@@ -4,6 +4,7 @@ sohbet çevirisi, puan ve bahşiş."""
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+import pytest
 from sqlalchemy import select
 
 from app.models import BookingLeg, DriverLedger, Payment, TripRating
@@ -11,8 +12,12 @@ from app.providers import translation
 from app.services import meeting, messages
 from tests.conftest import booking_body, otp_login, pay, random_phone
 from tests.test_api_driver_admin import onboard_driver, ops  # noqa: F401 - fikstür
+from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
 API = "/api/v1"
+
+# Bu testler ileri tarihli işi hemen yürütür; yolculuk zaman kuralları (K-66) burada sınanmaz.
+pytestmark = pytest.mark.usefixtures("relaxed_trip_clock")
 
 
 def _png() -> bytes:
@@ -190,8 +195,9 @@ def test_chat_is_translated_for_the_recipient(client, db, ops, monkeypatch):
     assert r.json()["translated_body"] is None
     chat = client.get(f"{API}/driver/trips/{trip['leg_id']}/messages", headers=driver).json()
     assert chat["messages"][0]["translated_body"].startswith("[tr]")
+    # PRIV-04: mesaj metni (çevirisi dahil) bildirime kopyalanmaz; bildirim yalnızca yeni mesaj olduğunu söyler.
     push = next(u for u in client.get(f"{API}/driver/updates", headers=driver).json() if u["code"] == "new_message")
-    assert push["body"].startswith("[tr]")
+    assert "Geliyorum" not in push["body"] and "Ausgang" not in push["body"] and not push["body"].startswith("[tr]")
     # Telefon ve e-posta çeviri servisine gönderilmez, çeviride aynen yerine konur.
     r = client.post(f"{API}/me/bookings/{code}/messages", headers=customer,
                     json={"body": "de: Ruf mich an +49 170 1234567 oder anna@example.com"})

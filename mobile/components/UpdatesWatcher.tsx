@@ -8,6 +8,7 @@ import { AppState, Platform } from "react-native";
 import { api } from "@/lib/api";
 import { VARIANT } from "@/lib/config";
 import { isActiveChat, presentedUpdateIds, registerPushToken, setupNotifications, showLocal } from "@/lib/notify";
+import { parseBookingCode, parseLegId } from "@/lib/routeParams";
 import { useSession } from "@/lib/session";
 import { storage } from "@/lib/storage";
 import type { TripUpdate } from "@/lib/types";
@@ -18,20 +19,24 @@ const BACKGROUND_MS = 20_000;
 /** İlk açılışta (imleç yokken) eski olaylar bildirilmez; yalnızca son birkaç dakika. */
 const FIRST_RUN_WINDOW_MS = 3 * 60_000;
 
-function openFor(data: TripUpdate["data"]) {
+// MOB-02: bildirim verisi (yerel ya da FCM push) rota parametresi olarak doğrulanır; geçersizse ekran açılmaz.
+export function openFor(data: TripUpdate["data"] | null | undefined) {
+  if (!data) return;
   if (VARIANT === "driver") {
     if (data.type === "daily_plan") {
       router.push("/plan");
       return;
     }
-    if (!data.leg_id) return;
-    if (data.type === "new_message") router.push(`/chat/${data.leg_id}`);
-    else router.push(`/trip/${data.leg_id}`);
+    const legId = parseLegId(data.leg_id);
+    if (!legId) return;
+    if (data.type === "new_message") router.push({ pathname: "/chat/[id]", params: { id: legId } });
+    else router.push({ pathname: "/trip/[legId]", params: { legId } });
     return;
   }
-  if (!data.booking_code) return;
-  if (data.type === "new_message") router.push(`/chat/${data.booking_code}`);
-  else router.push(`/booking/${data.booking_code}`);
+  const code = parseBookingCode(data.booking_code);
+  if (!code) return;
+  if (data.type === "new_message") router.push({ pathname: "/chat/[id]", params: { id: code } });
+  else router.push({ pathname: "/booking/[code]", params: { code } });
 }
 
 export default function UpdatesWatcher() {

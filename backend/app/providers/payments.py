@@ -12,6 +12,8 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
+import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal
 from functools import lru_cache
@@ -22,6 +24,40 @@ import httpx
 from app.config import get_settings
 from app.errors import ServiceUnavailable
 from app.models.enums import Currency, PaymentProviderCode
+
+log = logging.getLogger(__name__)
+
+# BIZ-09: PayTR ödeme sayfasının geçerlilik süresi (timeout_limit, dakika). services.payments yeniden kullanım
+# penceresini bu değerden uzun tutar; böylece aynı rezervasyon için aynı anda iki canlı sayfa olmaz.
+PAYTR_TIMEOUT_LIMIT_MINUTES = 30
+
+# API-10: sağlayıcı ayrıntısı istemciye dönmez; istemci yalnızca bu kodu görür.
+PROVIDER_ERROR_CODE = "payment_provider_error"
+_PROVIDER_ERROR_MESSAGE = "ödeme sayfası oluşturulamadı, lütfen biraz sonra tekrar deneyin"
+
+_LOG_VALUE_MAX = 80
+
+
+def log_safe(value: object, max_len: int = _LOG_VALUE_MAX) -> str:
+    """API-11 (CWE-117): saldırgan kontrolündeki değer loga tek satır ve kısa yazılır. CR/LF, NUL, ESC gibi
+    kontrol karakterleri ve Unicode satır/paragraf ayırıcıları '?' olur; uzunluk kırpılır, kırpıldıysa '…'."""
+    if value is None:
+        return "-"
+    text = str(value)
+    clipped = len(text) > max_len
+    if clipped:
+        text = text[: max_len - 1]
+    text = "".join("?" if unicodedata.category(ch) in ("Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp") else ch
+                   for ch in text)
+    return text + "…" if clipped else text
+
+
+# BIZ-07: PayTR bildirimindeki `currency` değerleri (TL, EUR, USD, ...) ile rezervasyon para birimi eşlemesi.
+_CALLBACK_CURRENCY = {"TL": Currency.TRY, "TRY": Currency.TRY, "EUR": Currency.EUR}
+
+
+def callback_currency_matches(raw: str | None, expected: Currency) -> bool:
+    return _CALLBACK_CURRENCY.get((raw or "").strip().upper()) is expected
 
 
 @dataclass(frozen=True)
@@ -50,6 +86,8 @@ class CallbackResult:
     signature_valid: bool
     failure_reason: str | None
     masked_payload: dict
+    # BIZ-07: bildirimdeki para birimi (PayTR: "TL", "EUR", ...); gönderilmediyse None.
+    currency: str | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +95,9 @@ class RefundResult:
     ok: bool
     provider_ref: str | None = None
     error: str | None = None
+    # BIZ-03: istek sağlayıcıya ulaşmış olabilir ama sonuç alınamadı (okuma zaman aşımı, bozuk yanıt).
+    # Bu durumda iade FAILED sayılmaz; kayıt belirsiz kalır ve aynı referansla sürdürülür.
+    unknown: bool = False
 
 
 class PaymentProvider(Protocol):
@@ -64,7 +105,7 @@ class PaymentProvider(Protocol):
 
     def create_checkout(self, req: CheckoutRequest) -> Checkout: ...
     def parse_callback(self, form: dict[str, str]) -> CallbackResult: ...
-    def refund(self, merchant_oid: str, amount: Decimal) -> RefundResult: ...
+    def refund(self, merchant_oid: str, amount: Decimal, reference: str | None = None) -> RefundResult: ...
 
 
 def _b64_hmac(key: str, message: str) -> str:
@@ -74,10 +115,21 @@ def _b64_hmac(key: str, message: str) -> str:
 
 # Webhook içerikleri maskelenerek saklanır (odeme.md).
 _SENSITIVE_CALLBACK_FIELDS = {"hash", "email", "user_phone", "user_name", "user_address"}
+# API-06: yalnızca PayTR bildirim belgesindeki alanlar saklanır, bilinmeyen alanlar atılır ve her değer
+# kırpılır; böylece büyük/çok alanlı gövdeler payment_webhooks tablosunu şişiremez.
+_KNOWN_CALLBACK_FIELDS = {
+    "merchant_oid", "status", "total_amount", "hash", "failed_reason_code", "failed_reason_msg",
+    "test_mode", "payment_type", "currency", "payment_amount", "installment_count",
+}
+_CALLBACK_VALUE_MAX = 255
 
 
 def mask_payload(form: dict[str, str]) -> dict:
-    return {k: ("***" if k in _SENSITIVE_CALLBACK_FIELDS else v) for k, v in form.items()}
+    return {
+        k: ("***" if k in _SENSITIVE_CALLBACK_FIELDS else str(v)[:_CALLBACK_VALUE_MAX])
+        for k, v in form.items()
+        if k in _KNOWN_CALLBACK_FIELDS
+    }
 
 
 _PAYTR_CURRENCY = {Currency.TRY: "TL", Currency.EUR: "EUR"}
@@ -123,7 +175,7 @@ class PaytrProvider:
             "user_phone": req.customer_phone,
             "merchant_ok_url": self.ok_url,
             "merchant_fail_url": self.fail_url,
-            "timeout_limit": "30",
+            "timeout_limit": str(PAYTR_TIMEOUT_LIMIT_MINUTES),
             "currency": currency,
             "test_mode": test_mode,
             "lang": "tr" if req.locale == "tr" else "en",
@@ -132,9 +184,16 @@ class PaytrProvider:
             resp = httpx.post(f"{self.base_url}/odeme/api/get-token", data=data, timeout=20)
             body = resp.json()
         except (httpx.HTTPError, ValueError) as exc:
-            raise ServiceUnavailable("ödeme sayfası oluşturulamadı") from exc
-        if body.get("status") != "success":
-            raise ServiceUnavailable(f"ödeme sayfası oluşturulamadı: {body.get('reason', '')}")
+            log.warning("PayTR get-token isteği başarısız: oid=%s hata=%s",
+                        log_safe(req.merchant_oid), type(exc).__name__)
+            raise ServiceUnavailable(_PROVIDER_ERROR_MESSAGE, code=PROVIDER_ERROR_CODE) from exc
+        if not isinstance(body, dict) or body.get("status") != "success" or not body.get("token"):
+            # API-10: PayTR `reason` (mağaza yapılandırması ipucu) yalnızca sunucu loguna yazılır; istekte
+            # kişisel veri var ama reason'da yok, yine de tek satır ve kırpılmış yazılır.
+            reason = body.get("reason") if isinstance(body, dict) else "beklenmeyen yanıt"
+            log.warning("PayTR ödeme sayfası oluşturulamadı: oid=%s reason=%s",
+                        log_safe(req.merchant_oid), log_safe(reason, 300))
+            raise ServiceUnavailable(_PROVIDER_ERROR_MESSAGE, code=PROVIDER_ERROR_CODE)
         return Checkout(iframe_url=f"{self.base_url}/odeme/guvenli/{body['token']}")
 
     def parse_callback(self, form: dict[str, str]) -> CallbackResult:
@@ -151,9 +210,10 @@ class PaytrProvider:
             signature_valid=valid,
             failure_reason=form.get("failed_reason_msg"),
             masked_payload=mask_payload(form),
+            currency=form.get("currency") or None,
         )
 
-    def refund(self, merchant_oid: str, amount: Decimal) -> RefundResult:
+    def refund(self, merchant_oid: str, amount: Decimal, reference: str | None = None) -> RefundResult:
         return_amount = f"{amount:.2f}"
         token = _b64_hmac(
             self.merchant_key,
@@ -165,11 +225,21 @@ class PaytrProvider:
             "return_amount": return_amount,
             "paytr_token": token,
         }
+        if reference:
+            # BIZ-03: iade kaydına özel benzersiz referans; tekrar denemede aynısı gönderilir.
+            # PayTR'nin isteğe bağlı `reference_no` alanı (belgeye göre; test mağazasında doğrulanmalı).
+            data["reference_no"] = reference
         try:
             resp = httpx.post(f"{self.base_url}/odeme/iade", data=data, timeout=20)
             body = resp.json()
-        except (httpx.HTTPError, ValueError) as exc:
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            # Bağlantı kurulamadı: istek PayTR'ye ulaşmadı, iade yapılmamıştır.
             return RefundResult(ok=False, error=f"bağlantı hatası: {exc.__class__.__name__}")
+        except (httpx.HTTPError, ValueError) as exc:
+            # İstek gitmiş olabilir (okuma zaman aşımı, kopan bağlantı, bozuk yanıt): sonuç belirsiz.
+            return RefundResult(ok=False, unknown=True, error=f"yanıt alınamadı: {exc.__class__.__name__}")
+        if not isinstance(body, dict):
+            return RefundResult(ok=False, unknown=True, error="beklenmeyen yanıt")
         if body.get("status") == "success":
             return RefundResult(ok=True, provider_ref=body.get("reference_no"))
         return RefundResult(ok=False, error=f"{body.get('err_no', '')} {body.get('err_msg', '')}")
@@ -200,9 +270,10 @@ class FakeProvider:
             signature_valid=valid,
             failure_reason=form.get("failed_reason_msg"),
             masked_payload=mask_payload(form),
+            currency=form.get("currency") or None,
         )
 
-    def refund(self, merchant_oid: str, amount: Decimal) -> RefundResult:
+    def refund(self, merchant_oid: str, amount: Decimal, reference: str | None = None) -> RefundResult:
         if self.fail_refunds:
             return RefundResult(ok=False, error="sahte iade hatası")
         return RefundResult(ok=True, provider_ref=f"fake-refund-{merchant_oid}")

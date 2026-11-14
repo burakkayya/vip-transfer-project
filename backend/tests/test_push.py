@@ -16,6 +16,7 @@ from app.services import push_outbox
 from tests.conftest import otp_login, random_phone
 from tests.test_api_driver_admin import onboard_driver, ops  # noqa: F401 - fikstür
 from tests.test_trips import _accepted, _event
+from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
 API = "/api/v1"
 
@@ -128,6 +129,7 @@ def test_push_token_bound_to_one_account_and_released_on_logout(client, db):
     assert db.scalar(select(Customer).where(Customer.push_token == token)) is None
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_trip_update_push_carries_update_id_and_invalid_token_is_cleared(client, db, ops, monkeypatch):
     driver, customer, code, leg_id = _accepted(client, ops)
     token = f"fcm-{uuid.uuid4()}"

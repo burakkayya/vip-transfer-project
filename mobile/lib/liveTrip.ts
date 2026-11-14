@@ -149,6 +149,12 @@ export async function endLiveTrip(key: string, final?: LiveTripProps): Promise<v
   await storage.remove(KEY_STORE).catch(() => undefined);
 }
 
+/** Çıkışta (MOB-01): hangi yolculuğa ait olursa olsun etkin canlı etkinliği hemen kaldırır. */
+export async function endActiveLiveTrip(): Promise<void> {
+  const active = current?.key ?? (await storage.get(KEY_STORE).catch(() => null));
+  if (active) await endLiveTrip(active);
+}
+
 /** Yolculuk yakın mı: planlı işte etkinlik alışa 90 dk kala başlar. */
 function soon(pickupAt: string | undefined, now: number): boolean {
   if (!pickupAt) return true;

@@ -3,17 +3,20 @@ saf `app.pricing` fonksiyonlarıyla fiyatı üretir."""
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from functools import lru_cache
 
+import redis
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app import pricing
 from app.config import get_settings
 from app.currency import convert_eur_price, currency_for_country
-from app.errors import DomainError, NotFound, ServiceUnavailable
+from app.errors import DomainError, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import (
     ExchangeRate,
     PricingRule,
@@ -26,6 +29,7 @@ from app.pricing import round_up_to_step
 from app.providers.routing import Point, Route, RoutingProvider, haversine_km
 from app.services import system_settings
 
+log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Place:
@@ -142,6 +146,53 @@ def _price_route(router: RoutingProvider, origin: Point, destination: Point) -> 
     """Fiyat mesafesi müşterinin seçtiği gerçek noktalar arasındaki karayolu mesafesidir (K-58).
     Yalnızca ilçe veya havalimanı seçildiyse o bölgenin merkezi kullanılır."""
     return router.route(origin, destination)
+
+
+@lru_cache
+def _redis() -> redis.Redis:
+    # REV-B-2: zaman aşımı olmadan yavaş/düşük Redis kimliksiz teklif ucunu asılı bırakır.
+    s = get_settings()
+    return redis.Redis.from_url(
+        s.redis_url,
+        socket_connect_timeout=s.redis_socket_timeout_seconds,
+        socket_timeout=s.redis_socket_timeout_seconds,
+    )
+
+
+def _bump(key: str) -> int:
+    """Dakikalık sayacı artırır. Redis hatasında 0 döner (fail-open): rezervasyon akışı Redis arızasında
+    durmaz; maliyet koruması o süre için devre dışı kalır ve loglanır."""
+    try:
+        pipe = _redis().pipeline()
+        pipe.incr(key)
+        pipe.expire(key, 70)
+        return int(pipe.execute()[0])
+    except redis.RedisError as exc:
+        log.warning("teklif hız sınırı sayacına ulaşılamadı, sınır uygulanmadı: %s", type(exc).__name__)
+        return 0
+
+
+def _minute() -> str:
+    return f"{datetime.now(timezone.utc):%Y%m%d%H%M}"
+
+
+def check_rate_limit(ip: str) -> None:
+    """MON-03: kimliksiz teklif ve rota önizlemesi ücretli Routes API'ye gider. IP başına ve küresel
+    dakikalık sınır; ikisi de aşılınca 429. (IP, `ClientIp` bağımlılığından gelir.)"""
+    s = get_settings()
+    minute = _minute()
+    if _bump(f"quotes_rl:ip:{ip}:{minute}") > s.quotes_rate_limit_per_minute:
+        raise TooManyRequests("çok fazla fiyat sorgusu, lütfen biraz bekleyin")
+    if _bump(f"quotes_rl:all:{minute}") > s.quotes_global_rate_limit_per_minute:
+        raise TooManyRequests("fiyat servisi şu an yoğun, lütfen biraz sonra tekrar deneyin")
+
+
+def check_user_rate_limit(user_id: object) -> None:
+    """F1-5 kalanı: kimlikli rezervasyon oluşturma da teklifi yeniden hesaplar (Routes API). Kullanıcı başına
+    aynı dakikalık sınır. Küresel sayaca eklenmez: kimliksiz trafik dolduğunda ödeme yapacak müşteri
+    rezervasyon oluşturmaya devam edebilsin."""
+    if _bump(f"quotes_rl:user:{user_id}:{_minute()}") > get_settings().quotes_rate_limit_per_minute:
+        raise TooManyRequests("çok fazla fiyat sorgusu, lütfen biraz bekleyin")
 
 
 def preview_route(db: Session, pickup: Place, dropoff: Place, *, router: RoutingProvider) -> Route:

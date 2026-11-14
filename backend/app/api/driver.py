@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated
 
+import redis
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -14,7 +16,7 @@ from sqlalchemy import func, select
 from app.localtime import local_date
 from app.api.deps import ClientIp, CurrentDriver, DbSession, Now, current_driver_user
 from app.api.schemas import SUPPORTED_LOCALES, DocumentOut, MoneyStr
-from app.errors import Conflict, DomainError, Forbidden, NotFound
+from app.errors import Conflict, DomainError, Forbidden, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import (
     BookingLeg,
     DispatchOffer,
@@ -36,6 +38,8 @@ from app.models.enums import (
     TripEventType,
     VehicleStatus,
 )
+from app.config import get_settings
+from app.providers import routing
 from app.providers.storage import get_storage
 from app.providers.routing import Point
 from app.services import (
@@ -47,6 +51,7 @@ from app.services import (
     live_location,
     meeting,
     notifications,
+    quotes,
     ratings,
     route_line,
     system_settings,
@@ -138,13 +143,18 @@ async def upload_document(
     db: DbSession,
     doc_type: Annotated[DocumentType, Form()],
     file: Annotated[UploadFile, File()],
+    now: Now,
     valid_until: Annotated[date | None, Form()] = None,
     vehicle_id: Annotated[uuid.UUID | None, Form()] = None,
 ):
     owner_type, owner_id = DocumentOwner.DRIVER, driver.id
+    vehicle_ids = _vehicle_ids(db, driver)
     if vehicle_id is not None:
         _own_vehicle(db, driver, vehicle_id)
         owner_type, owner_id = DocumentOwner.VEHICLE, vehicle_id
+    # API-07: gövde sınırı akış sırasında `app.body_limit`'te; burada adet kotası ve tek bekleyen belge.
+    documents.check_upload_quota(db, driver=driver, vehicle_ids=vehicle_ids, owner_type=owner_type,
+                                 owner_id=owner_id, doc_type=doc_type, now=now)
     data = await file.read(documents.MAX_DOCUMENT_BYTES + 1)
     doc = documents.upload(
         db,
@@ -173,6 +183,21 @@ def list_documents(driver: CurrentDriver, db: DbSession):
         .order_by(Document.created_at.desc())
     )
     return list(rows)
+
+
+@router.delete("/documents/{doc_id}", status_code=204)
+def withdraw_document(doc_id: uuid.UUID, driver: CurrentDriver, db: DbSession, ip: ClientIp):
+    """REV-B-7: incelemede bekleyen kendi belgesini (sürücü veya aktif aracı) geri çeker. Başkasının belgesi 404,
+    incelenmiş belge 409 `document_not_pending`."""
+    doc = db.get(Document, doc_id, with_for_update={"of": Document})
+    own = doc is not None and (
+        (doc.owner_type is DocumentOwner.DRIVER and doc.owner_id == driver.id)
+        or (doc.owner_type is DocumentOwner.VEHICLE and doc.owner_id in _vehicle_ids(db, driver))
+    )
+    if not own:
+        raise NotFound("belge bulunamadı")
+    documents.withdraw(db, get_storage(), doc, actor_id=driver.user_id, ip=ip)
+    db.commit()
 
 
 class VehicleIn(BaseModel):
@@ -406,6 +431,11 @@ def list_offers(driver: CurrentDriver, db: DbSession, now: Now):
         trip.pickup_address = None
         trip.dropoff_address = None
         trip.customer_note = None
+        # PRIV-03: kabul öncesi kesin nokta verilmez; iş havuzundaki gibi yalnızca bölge düzeyi
+        # (ilçe / havalimanı merkezi, herkese açık). Kesin koordinat kabul yanıtında gelir.
+        leg = o.leg
+        trip.pickup_lat, trip.pickup_lng = leg.pickup_region.latitude, leg.pickup_region.longitude
+        trip.dropoff_lat, trip.dropoff_lng = leg.dropoff_region.latitude, leg.dropoff_region.longitude
         result.append(OfferOut(offer_id=o.id, expires_at=o.expires_at, trip=trip))
     return result
 
@@ -486,6 +516,59 @@ def post_location(leg_id: uuid.UUID, body: LocationIn, driver: CurrentDriver, db
     # Tahmini süre ve müşteri bildirim eşikleri (yaklaşıyor, 10 dk) (K-51).
     eta.on_location(db, leg, Point(Decimal(str(body.lat)), Decimal(str(body.lng))))
     db.commit()
+
+
+# --- Yaklaşma rotası (MON-12) ------------------------------------------------
+
+# Rota başlangıcı ~100 m'ye yuvarlanır: yakın konumlar aynı önbellek kaydını ve sağlayıcı önbelleğini kullanır,
+# keyfi koordinatla paylaşılan rota önbelleği taşırılamaz.
+APPROACH_ROUND = Decimal("0.001")
+
+
+def _approach_cache_get(key: str) -> tuple[str | None, Decimal | None, int | None] | None:
+    try:
+        raw = quotes._redis().get(key)
+    except redis.RedisError:
+        return None  # önbellek yardımcıdır; Redis arızasında doğrudan hesaplanır (sınır da fail-open)
+    if raw is None:
+        return None
+    data = json.loads(raw)
+    return data["p"], (Decimal(data["km"]) if data["km"] is not None else None), data["min"]
+
+
+def _approach_cache_set(key: str, value: tuple[str | None, Decimal | None, int | None], seconds: int) -> None:
+    line, km, minutes = value
+    try:
+        quotes._redis().set(key, json.dumps({"p": line, "km": str(km) if km is not None else None, "min": minutes}),
+                            ex=seconds)
+    except redis.RedisError:
+        pass
+
+
+def approach_route(driver: Driver, leg: BookingLeg, at: Point, target: Point) -> tuple[str | None, Decimal | None, int | None]:
+    """MON-12: sürücü konumundan hedefe rota (polyline, km, dakika). Ücretli Routes API'ye gider; bu yüzden
+    yalnızca aktif bacakta, yuvarlanmış başlangıçla, kısa süreli Redis önbelleğinden ve sürücü başına dakikalık
+    sınırla çağrılır. Sınır yalnızca sağlayıcıya giden (önbellekte olmayan) isteklerde sayılır; Redis yoksa
+    teklif sınırındaki gibi fail-open."""
+    if leg.status not in dispatch.ACTIVE_LEG_STATUSES:
+        raise Conflict("rota yalnızca aktif yolculukta alınır", code="trip_not_active")
+    s = get_settings()
+    origin = Point(at.lat.quantize(APPROACH_ROUND), at.lng.quantize(APPROACH_ROUND))
+    kind = "dropoff" if leg.status is LegStatus.STARTED else "pickup"
+    key = f"approach:{leg.id}:{kind}:{origin.lat}:{origin.lng}"
+    cached = _approach_cache_get(key)
+    if cached is not None:
+        return cached
+    if quotes._bump(f"approach_rl:driver:{driver.id}:{quotes._minute()}") > s.approach_rate_limit_per_minute:
+        raise TooManyRequests("rota çok sık istendi, lütfen biraz bekleyin")
+    try:
+        # K-61: canlı konumdan başlayan rota paylaşılan 24 saatlik önbelleğe girmez; kısa önbellek yukarıda.
+        route = routing.get_live_routing().route(origin, target)
+    except ServiceUnavailable:
+        return None, None, eta.estimate_minutes(at, target)  # yedek tahmin önbelleğe yazılmaz
+    result = (route.polyline, route.distance_km, route.duration_minutes)
+    _approach_cache_set(key, result, s.approach_cache_seconds)
+    return result
 
 
 # --- Kazanç ------------------------------------------------------------------

@@ -13,8 +13,13 @@ from app.services import driver_tools
 from tests.conftest import future, otp_login, pay, random_phone, region_id
 from tests.test_api_driver_admin import onboard_driver, ops  # noqa: F401 - fikstür
 from tests.test_meeting import _codes, _event, _setup
+from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
 API = "/api/v1"
+
+# Bu testler ileri tarihli işi hemen yürütür; güvenlik yolculuk zaman kuralları (K-66) burada sınanmaz.
+# K-63'ün kendi kuralları (ücretsiz bekleme, çıkış önerisi, gelmedi) etkilenmez.
+pytestmark = pytest.mark.usefixtures("relaxed_trip_clock")
 
 
 def _dt(v: str) -> datetime:

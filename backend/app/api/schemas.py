@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, field_validator, model_validator
 
+from app.config import get_settings
 from app.models import Booking, BookingLeg
 from app.models.enums import (
     BookingStatus,
@@ -29,7 +30,8 @@ class ORM(BaseModel):
 
 
 class PhoneIn(BaseModel):
-    phone: str
+    # API-09: E.164 en çok 16 karakter; boşluk, tire ve parantezle yazılmış biçime pay bırakılır.
+    phone: str = Field(max_length=40)
 
     @field_validator("phone")
     @classmethod
@@ -40,6 +42,29 @@ class PhoneIn(BaseModel):
 def _locale(v: str) -> str:
     v = v.lower()[:2]
     return v if v in SUPPORTED_LOCALES else "en"
+
+
+# API-09: alış zamanı makul aralıkta olmalı. Alt sınır anlık işin "şimdi" alışına pay bırakır (rezervasyon
+# servisi anlık işte en çok 5 dk geçmişi, planlı işte en az scheduled_min_lead_hours ileriyi ayrıca denetler);
+# üst sınır booking_max_advance_days. Uç değerler (9999 yılı) böylece hesaplamada OverflowError/500 üretmez.
+PICKUP_PAST_TOLERANCE = timedelta(minutes=15)
+DB_INT_MAX = 2_147_483_647  # PostgreSQL integer (bölge kimliği)
+
+
+def validate_pickup_window(v: datetime | None) -> datetime | None:
+    """Saat dilimli ve [şimdi - 15 dk, şimdi + booking_max_advance_days] aralığında olmalı. Başka giriş
+    modelleri (ör. admin teklif formu) da aynı kuralı bu fonksiyonla uygulayabilir."""
+    if v is None:
+        return v
+    if v.tzinfo is None:
+        raise ValueError("saat dilimi belirtilmeli (ör. 2026-06-01T10:00:00+03:00)")
+    now = datetime.now(timezone.utc)
+    if v < now - PICKUP_PAST_TOLERANCE:
+        raise ValueError("alış zamanı geçmişte olamaz")
+    max_days = get_settings().booking_max_advance_days
+    if v > now + timedelta(days=max_days):
+        raise ValueError(f"alış zamanı en fazla {max_days} gün ileri olabilir")
+    return v
 
 
 # --- Katalog -----------------------------------------------------------------
@@ -75,7 +100,7 @@ class PlaceIn(BaseModel):
     `lat`/`lng` geriye uyumluluk için kabul edilir ama yok sayılır (K-58: fiyat gerçek noktadan
     hesaplandığından koordinat yalnızca imzalı adres jetonundan gelir)."""
 
-    region_id: int | None = None
+    region_id: int | None = Field(default=None, ge=1, le=DB_INT_MAX)
     place_token: str | None = Field(default=None, max_length=2000)
     lat: Decimal | None = Field(default=None, ge=-90, le=90)
     lng: Decimal | None = Field(default=None, ge=-180, le=180)
@@ -105,20 +130,18 @@ class PlaceOut(BaseModel):
 class QuoteIn(BaseModel):
     pickup: PlaceIn
     dropoff: PlaceIn
-    vehicle_type_code: str
+    vehicle_type_code: str = Field(max_length=30)  # vehicle_types.code String(30)
     pickup_at: datetime
     return_pickup_at: datetime | None = None
     passenger_count: int = Field(ge=1, le=50)
     luggage_count: int = Field(default=0, ge=0, le=50)
-    country_code: str | None = Field(default=None, min_length=2, max_length=2)
+    country_code: str | None = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")
     with_guarantee: bool = False
 
     @field_validator("pickup_at", "return_pickup_at")
     @classmethod
     def _aware(cls, v: datetime | None) -> datetime | None:
-        if v is not None and v.tzinfo is None:
-            raise ValueError("saat dilimi belirtilmeli (ör. 2026-06-01T10:00:00+03:00)")
-        return v
+        return validate_pickup_window(v)
 
 
 class RoutePreviewIn(BaseModel):
@@ -164,11 +187,12 @@ class FlightIn(BaseModel):
 
 class BookingCreateIn(QuoteIn):
     booking_type: BookingType = BookingType.SCHEDULED
-    expected_total: Decimal
+    # API-09: müşterinin onayladığı toplam; sonlu, negatif değil, en çok 10 tam + 2 ondalık basamak.
+    expected_total: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
     passenger_name: str = Field(min_length=2, max_length=120)
     note: str | None = Field(default=None, max_length=500)
     flights: list[FlightIn] = Field(default_factory=list, max_length=2)
-    locale: str = "tr"
+    locale: str = Field(default="tr", max_length=10)
     # K-62 ekstralar
     child_seat_count: int = Field(default=0, ge=0, le=4)
     market_stop: bool = False

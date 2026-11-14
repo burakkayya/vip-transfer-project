@@ -10,7 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import admin, auth, customer, driver, driver_tools, meeting, payments, public, trips
-from app.config import get_settings
+from app.body_limit import UploadBodyLimit
+from app.config import DEV_ENVS, get_settings
 from app.errors import DomainError
 
 log = logging.getLogger(__name__)
@@ -18,13 +19,16 @@ log = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     s = get_settings()
+    dev_tools = s.env in DEV_ENVS  # izin listesi: yeni bir ortam eklenirse varsayılan olarak kapalı kalır
     app = FastAPI(
         title="getawaytransfers.com API",
         version="0.1.0",
-        docs_url=None if s.env == "prod" else "/docs",
+        docs_url="/docs" if dev_tools else None,
         redoc_url=None,
-        openapi_url=None if s.env == "prod" else "/openapi.json",
+        openapi_url="/openapi.json" if dev_tools else None,
     )
+    # API-07: yükleme gövdesi sınırı akış sırasında (en içteki middleware; güvenlik başlıkları 413'e de eklenir).
+    app.add_middleware(UploadBodyLimit)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=s.cors_origins,
@@ -64,6 +68,9 @@ def create_app() -> FastAPI:
     api = "/api/v1"
     for module in (public, auth, customer, payments, driver):
         app.include_router(module.router, prefix=api)
+    if dev_tools:
+        # Sahte ödeme uçları (INF-01) yalnızca dev/test'te kayıtlıdır.
+        app.include_router(payments.fake_router, prefix=api)
     app.include_router(trips.driver_router, prefix=api)
     app.include_router(driver_tools.router, prefix=api)
     app.include_router(trips.customer_router, prefix=api)

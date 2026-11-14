@@ -50,6 +50,12 @@ _EARLY_PICKUP_HOUR = 3
 _AFTER_EXPECTED = timedelta(hours=3)
 
 
+def mask_flight_no(flight_no: str | None) -> str:
+    """PRIV-13: uçuş numarası tarih ve bacakla birlikte yolcuyu tanımlayabilir; loglarda yalnızca havayolu
+    kodu (ilk iki karakter) kalır, ör. "TK1980" -> "TK***"."""
+    return f"{(flight_no or '')[:2]}***"
+
+
 def _hhmm(at: datetime | None) -> str:
     return at.astimezone(LOCAL_TZ).strftime("%H:%M") if at else "?"
 
@@ -223,7 +229,9 @@ def refresh_flights(db: Session, now: datetime, provider: fl.FlightProvider | No
         fi, leg = db.get(FlightInfo, fi_id), db.get(BookingLeg, leg_id)
         if fi is None or leg is None or not _due(fi, leg, now):
             continue
-        flight_no = fi.flight_no
+        # PRIV-13: loglarda uçuş numarası maskeli. Günlük sorgu sınırı `_arrivals` içinde, yalnızca sağlayıcıya
+        # gerçekten gidildiğinde sayılır (K-61 paylaşılan yanıt).
+        flight_no = mask_flight_no(fi.flight_no)
         fi.checked_at = now
         fi.check_count += 1
         try:

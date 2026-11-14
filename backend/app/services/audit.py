@@ -3,6 +3,7 @@ anahtarlar yazılmadan önce maskelenir."""
 
 from __future__ import annotations
 
+import re
 import uuid
 from decimal import Decimal
 from enum import Enum
@@ -29,13 +30,92 @@ SENSITIVE_KEYS = frozenset(
         "note",
         "token",
         "code",
+        # DB-07: elle tahsilat/iade dekont referansı. Asıl değer ödeme/iade kaydında (`provider_ref`) durur;
+        # denetim kaydında tekrarı gerekmez.
+        "reference",
     }
 )
+
+# DB-07: gerekçe alanları operasyonel olarak okunmalı (force-advance, fiyat ezme, sohbet incelemesi, iptal ve
+# iade gerekçesi) ve denetim kaydı değiştirilemez olduğu için silme talebinde de anonimleştirilemez. Bu yüzden
+# tamamen maskelenmez: uzunluğu kırpılır, e-posta / IBAN / telefon desenleri temizlenir. Ad gibi serbest kişisel
+# veri desenle yakalanamaz (kalan risk, docs/security/findings.md DB-07).
+REASON_KEYS = frozenset({"reason", "override_reason", "cancel_reason"})
+# REV-C-3: girdi sınırıyla (500) aynı; daha kısa kırpma değiştirilemez kayıtta gerekçeyi kalıcı olarak kaybettiriyordu.
+REASON_MAX_LENGTH = 500
+# CodeQL py/polynomial-redos: e-posta tespiti desensiz yapılır. Metin boşluk ve <>() sınırlarından tek geçişte
+# sözcüklere bölünür; her sözcük str işlemleriyle denetlenir (doğrusal).
+_EMAIL_SPLIT_RE = re.compile(r"([\s<>()]+)")
+_EMAIL_TRAIL = ".,;:!?\"'"
+
+
+def _is_email(word: str) -> bool:
+    if word.count("@") != 1:
+        return False
+    local, domain = word.split("@")
+    labels = domain.split(".")
+    if not local or len(labels) < 2 or not all(labels):
+        return False
+    tld = labels[-1]
+    return len(tld) >= 2 and tld.isascii() and tld.isalpha()
+
+
+def _mask_emails(text: str) -> str:
+    parts = _EMAIL_SPLIT_RE.split(text)
+    for i in range(0, len(parts), 2):  # tek indeksler ayırıcıdır
+        word = parts[i]
+        core = word.rstrip(_EMAIL_TRAIL)
+        if "@" in core and _is_email(core):
+            parts[i] = "[e-posta]" + word[len(core):]
+    return "".join(parts)
+
+
+_IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,4})?\b")
+
+
+def _iban_sub(m: re.Match) -> str:
+    """REV-C-3: yalnızca mod-97 denetiminden geçen dizi IBAN sayılır. Sistemin ürettiği kimlikler
+    (rezervasyon kodu, merchant_oid) aynı biçime uyabilir; onlar gerekçede okunur kalmalıdır."""
+    text = m.group(0)
+    compact = "".join(text.split())
+    digits = "".join(str(int(c, 36)) for c in compact[4:] + compact[:4])
+    return "[iban]" if int(digits) % 97 == 1 else text
+
+# Rakamla başlayıp biten, aralarında boşluk/nokta/tire/parantez olabilen dizi; en az 10 rakam telefon sayılır.
+_PHONE_RE = re.compile(r"\+?\(?\d[\d\s().\-/]{6,}\d")
+_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{2}[./]\d{2}[./]\d{4}")
+
+
+def _phone_sub(m: re.Match) -> str:
+    text = m.group(0)
+    if _DATE_RE.search(text) or sum(c.isdigit() for c in text) < 10:
+        return text
+    return "[telefon]"
+
+
+def scrub_reason(value: Any) -> Any:
+    if not isinstance(value, str):
+        return _clean(value)
+    # REV-C-4: e-posta deseni uzun girdide karesel çalışır; desenlerden önce girdi kırpılır.
+    text = _mask_emails(value[: REASON_MAX_LENGTH * 2])
+    text = _IBAN_RE.sub(_iban_sub, text)
+    text = _PHONE_RE.sub(_phone_sub, text)
+    if len(text) > REASON_MAX_LENGTH:
+        text = text[:REASON_MAX_LENGTH] + "…"
+    return text
+
+
+def _clean_item(key: Any, value: Any) -> Any:
+    if key in SENSITIVE_KEYS:
+        return "***"
+    if key in REASON_KEYS:
+        return scrub_reason(value)
+    return _clean(value)
 
 
 def _clean(value: Any) -> Any:
     if isinstance(value, dict):
-        return {k: ("***" if k in SENSITIVE_KEYS else _clean(v)) for k, v in value.items()}
+        return {k: _clean_item(k, v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_clean(v) for v in value]
     if isinstance(value, Decimal):

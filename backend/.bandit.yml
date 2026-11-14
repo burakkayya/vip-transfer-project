@@ -1,0 +1,7 @@
+# Bandit (Python SAST) yapılandırması. CI (.github/workflows/security.yml) ve pre-commit aynı dosyayı kullanır.
+# Kural susturma (skips) bilerek yok: bilinen bulgular backend/.bandit-baseline.json taban çizgisindedir,
+# taban çizgisinde olmayan her yeni Medium/High bulgu CI'ı kırar. Taban çizgisi yalnızca bulgu düzeltildiğinde
+# ya da gerekçesi docs/security altında yazılı olarak kabul edildiğinde yenilenir (docs/security/checklist.md).
+exclude_dirs:
+  - tests
+  - .venv

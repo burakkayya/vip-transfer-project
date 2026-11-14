@@ -9,7 +9,7 @@ import type { Trip } from "@/lib/types";
 const ROUTE = "_p~iF~ps|U_ulLnnqC_mqNvxq`@";
 
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ legId: "leg-1" }),
+  useLocalSearchParams: () => ({ legId: "3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b" }),
   router: { back: jest.fn(), replace: jest.fn(), canGoBack: () => true },
 }));
 
@@ -38,8 +38,8 @@ const mockedApi = api as jest.MockedFunction<typeof api>;
 
 function trip(status: string): Trip {
   return {
-    leg_id: "leg-1",
-    booking_code: "GA-TEST1",
+    leg_id: "3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b",
+    booking_code: "GATEST01",
     status,
     pickup_at: "2026-11-03T10:00:00Z",
     pickup_region: "Havalimanı",
@@ -70,13 +70,13 @@ test("passes route polyline to map", async () => {
   const line = await screen.findByTestId("map-polyline", all);
   expect(line.props.coordinates).toEqual(decodePolyline(ROUTE));
   // Tekil yolculuk ucu polyline'ı döndürür; liste ucu döndürmez.
-  expect(mockedApi).toHaveBeenCalledWith("driver/trips/leg-1");
+  expect(mockedApi).toHaveBeenCalledWith("driver/trips/3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b");
   expect(screen.getByLabelText("Harita: Havalimanı → Lara")).toBeTruthy();
   expect(screen.queryByTestId("map-driver", all)).toBeNull();
 });
 
 test("shows the last shared position as driver marker", async () => {
-  mockedApi.mockImplementation(async (path: string) => (path === "driver/trips/leg-1" ? trip("yolda") : {}) as never);
+  mockedApi.mockImplementation(async (path: string) => (path === "driver/trips/3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b" ? trip("yolda") : {}) as never);
   await render(<TripScreen />);
   await screen.findByTestId("map-polyline", all);
   fireEvent.press(await screen.findByText(/Geliştirme: hedefe yakın konum/));

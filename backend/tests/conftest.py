@@ -11,10 +11,16 @@ import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from urllib.parse import urlsplit  # noqa: E402
+
+# DB-03: GETAWAY_TEST_DATABASE_URL verilmişse o kullanılır (önerilen); yoksa GETAWAY_DATABASE_URL,
+# o da yoksa yerel getaway_test. Her durumda db_app, şema silmeden önce assert_safe_test_database çağırır.
+if os.environ.get("GETAWAY_TEST_DATABASE_URL"):
+    os.environ["GETAWAY_DATABASE_URL"] = os.environ["GETAWAY_TEST_DATABASE_URL"]
 os.environ.setdefault(
     "GETAWAY_DATABASE_URL", "postgresql+psycopg://getaway:getaway@localhost:5432/getaway_test"
 )
-os.environ.setdefault("GETAWAY_REDIS_URL", "redis://localhost:6379/15")
+os.environ.setdefault("GETAWAY_REDIS_URL", "redis://:getaway-redis@localhost:6379/15")
 os.environ["GETAWAY_ENV"] = "test"
 os.environ["GETAWAY_SMS_PROVIDER"] = "console"
 os.environ["GETAWAY_PAYMENT_PROVIDER"] = "fake"
@@ -22,11 +28,35 @@ os.environ["GETAWAY_ROUTING_PROVIDER"] = "haversine"
 os.environ["GETAWAY_PLACES_PROVIDER"] = "fake"
 os.environ["GETAWAY_PUSH_PROVIDER"] = "console"
 os.environ["GETAWAY_STORAGE_DIR"] = tempfile.mkdtemp(prefix="getaway-test-")
+# Tüm TestClient istekleri tek IP'den gelir; IP başına ve küresel OTP sınırı (AUTH-04) süiti kırmasın.
+# Sınırların kendisi test_auth_hardening.py'de düşük değerlerle ayrıca sınanır.
+os.environ["GETAWAY_OTP_MAX_PER_IP_PER_HOUR"] = "100000"
+os.environ["GETAWAY_OTP_GLOBAL_MAX_PER_HOUR"] = "100000"
+os.environ["GETAWAY_OTP_GLOBAL_HARD_LIMIT_PER_HOUR"] = "100000"  # REV-A-1 sert tavan
 
 import pyotp  # noqa: E402
 import pytest  # noqa: E402
 
 PDF = b"%PDF-1.4 test document"
+
+
+_LOCAL_DB_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def assert_safe_test_database(url: str) -> None:
+    """DB-03: `alembic downgrade base` tüm veriyi siler. Yalnızca yerel ve adı `_test` içeren
+    (ör. getaway_test, getaway_test_w1) veritabanında çalışır; aksi halde süit durdurulur.
+    İleti parola içermez."""
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    name = parts.path.lstrip("/")
+    if host not in _LOCAL_DB_HOSTS or "_test" not in name:
+        pytest.exit(
+            "Test süiti durduruldu: şema silme (alembic downgrade base) yalnızca yerel (localhost) ve adı "
+            f"'_test' içeren veritabanında çalışır. Bulunan: host={host or '?'} db={name or '?'}. "
+            "GETAWAY_TEST_DATABASE_URL ile ör. .../getaway_test verin.",
+            returncode=3,
+        )
 
 
 def _db_available() -> bool:
@@ -44,6 +74,7 @@ def _db_available() -> bool:
 
 @pytest.fixture(scope="session")
 def db_app():
+    assert_safe_test_database(os.environ["GETAWAY_DATABASE_URL"])
     if not _db_available():
         pytest.skip("test veritabanı yok (docker compose up -d)")
     from alembic import command
@@ -71,6 +102,19 @@ def client(db_app):
     from fastapi.testclient import TestClient
 
     return TestClient(db_app)
+
+
+@pytest.fixture(autouse=True)
+def _generous_rate_limits(monkeypatch):
+    """Süit aynı test istemcisi IP'sinden dakikada yüzlerce teklif ve yer araması yapar; dakikalık kötüye kullanım
+    sınırları (MON-03) bu testlerin konusu değildir. Sınırı sınayan testler değeri kendi içinde düşürür."""
+    from app.config import get_settings
+
+    s = get_settings()
+    for name in ("quotes_rate_limit_per_minute", "quotes_global_rate_limit_per_minute",
+                 "places_rate_limit_per_minute", "track_rate_limit_per_minute"):
+        if hasattr(s, name):
+            monkeypatch.setattr(s, name, 1_000_000)
 
 
 @pytest.fixture(autouse=True)

@@ -9,6 +9,7 @@ import * as TaskManager from "expo-task-manager";
 import { Platform } from "react-native";
 import { api, loadSession } from "./api";
 import { endLiveTrip } from "./liveTrip";
+import { apiPath, parseLegId } from "./routeParams";
 import { storage } from "./storage";
 
 export const LOCATION_TASK = "getaway-trip-location";
@@ -22,20 +23,33 @@ type LocationTaskData = { locations?: Location.LocationObject[] };
 if (backgroundSupported) {
   TaskManager.defineTask<LocationTaskData>(LOCATION_TASK, async ({ data, error }) => {
     if (error || !data?.locations?.length) return;
-    const legId = await storage.get(LEG_KEY);
-    if (!legId) return;
+    const stored = await storage.get(LEG_KEY);
+    if (!stored) return;
+    // MOB-02: saklanan değer de yola eklenmeden önce doğrulanır.
+    const legId = parseLegId(stored);
+    if (!legId) {
+      await stopBackgroundTracking();
+      return;
+    }
     const pos = data.locations[data.locations.length - 1];
     // Süreç arka planda yeniden başlamış olabilir: jeton önce güvenli depodan okunur.
-    await loadSession();
+    // MOB-01: oturum yoksa (çıkış yapıldı) konum toplanmaya devam etmez.
+    if (!(await loadSession())) {
+      await stopBackgroundTracking();
+      return;
+    }
     const heading = pos.coords.heading !== null && pos.coords.heading >= 0 ? pos.coords.heading : null;
-    await api(`driver/trips/${legId}/location`, {
+    await api(apiPath`driver/trips/${legId}/location`, {
       body: { lat: pos.coords.latitude, lng: pos.coords.longitude, heading },
-    }).catch(async (e: { code?: string }) => {
+    }).catch(async (e: { code?: string; status?: number }) => {
       // Yolculuk bittiyse (veya iptal edildiyse) paylaşım kendiliğinden durur.
       // Canlı etkinlik de kapanır (uygulama kapalıyken iptal edilen yolculuk kilit ekranında kalmasın).
       if (e?.code === "trip_not_active" || e?.code === "not_found") {
         await stopBackgroundTracking();
         await endLiveTrip(legId);
+      } else if (e?.status === 401 || e?.status === 403) {
+        // MOB-01: oturum düştü veya bu bacak bu sürücünün değil: görev kendini durdurur.
+        await stopBackgroundTracking();
       }
     });
   });

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from decimal import Decimal
 from functools import lru_cache
@@ -64,9 +65,11 @@ class GoogleRouting:
     url: str = "https://routes.googleapis.com/directions/v2:computeRoutes"
     # Rota önizlemesi ve her araç tipinin teklifi aynı iki noktayı ister: sonuç süreç içinde kısa süre
     # saklanır, ücretli API'ye tek çağrı gider. Anahtar ~1 m hassasiyetle yuvarlanmış koordinatlardır.
+    # MON-03: dolunca tamamen boşaltılmaz (saldırgan önbelleği sürekli silip meşru kullanıcıların
+    # maliyetini artıramasın); en uzun süredir kullanılmayan kayıt atılır (LRU).
     cache_seconds: int = 600
     cache_size: int = 512
-    _cache: dict = field(default_factory=dict, repr=False)
+    _cache: OrderedDict = field(default_factory=OrderedDict, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def route(self, origin: Point, destination: Point) -> Route:
@@ -75,12 +78,16 @@ class GoogleRouting:
         with self._lock:
             hit = self._cache.get(key)
             if hit and now - hit[0] < self.cache_seconds:
+                self._cache.move_to_end(key)
                 return hit[1]
+            if hit:
+                del self._cache[key]
         result = self._fetch(origin, destination)
         with self._lock:
-            if len(self._cache) >= self.cache_size:
-                self._cache.clear()
             self._cache[key] = (now, result)
+            self._cache.move_to_end(key)
+            while len(self._cache) > self.cache_size:
+                self._cache.popitem(last=False)
         return result
 
     def _fetch(self, origin: Point, destination: Point) -> Route:

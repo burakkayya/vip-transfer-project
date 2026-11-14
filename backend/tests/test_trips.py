@@ -1,12 +1,14 @@
 """Uber tarzı yolculuk akışı: iş havuzu (K-47), erken bitiş (K-48), bitirme yarıçapı (K-49),
 sohbet (K-50), müşteri bildirimleri ve ETA (K-51)."""
 
+import pytest
 from sqlalchemy import select
 
 from app.models import Booking, DriverLedger
 from app.services.route_line import trim_ends
 from tests.conftest import booking_body, otp_login, pay, random_phone
 from tests.test_api_driver_admin import onboard_driver, ops  # noqa: F401 - fikstür
+from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
 API = "/api/v1"
 
@@ -93,6 +95,7 @@ def _event(client, driver, leg_id, event, point=None):
     return client.post(f"{API}/driver/trips/{leg_id}/events", headers=driver, json=body)
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_eta_notifications_and_approach_route(client, db, ops):
     driver, customer, code, leg_id = _accepted(client, ops)
     ayt = _region(client, "ayt")
@@ -125,6 +128,7 @@ def test_eta_notifications_and_approach_route(client, db, ops):
     assert body["finish_distance_m"] > body["finish_radius_m"]
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_customer_can_finish_trip_any_time_after_pickup(client, db, ops):
     driver, customer, code, leg_id = _accepted(client, ops)
     r = client.post(f"{API}/me/bookings/{code}/finish", headers=customer)
@@ -141,6 +145,7 @@ def test_customer_can_finish_trip_any_time_after_pickup(client, db, ops):
     assert db.scalar(select(DriverLedger).where(DriverLedger.booking_leg_id == booking.legs[0].id)) is not None
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_chat_between_customer_and_driver(client, db, ops):
     customer, code = _paid_booking(client)
     r = client.get(f"{API}/me/bookings/{code}/messages", headers=customer)
@@ -194,6 +199,7 @@ def test_trim_ends_hides_exact_endpoints():
     assert len(trim_ends(short, 400)) >= 2
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_admin_reviews_chat_with_reason_and_customer_finished_list(client, db, ops):
     """K-55: personel sohbeti gerekçeyle açar (denetim kaydı, okundu değişmez), müşterinin bitirdiği yolculukları
     listeler; sürücünün bitirdiği listede yer almaz."""

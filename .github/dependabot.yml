@@ -1,0 +1,114 @@
+# Bağımlılık güncellemeleri (INF-07, INF-08). Haftalık; küçük/yama güncellemeleri ekosistem başına tek PR'da
+# toplanır, major sürümler ayrı PR olarak gelir (mobil hariç, aşağıya bakın).
+# Güvenlik güncellemeleri (Dependabot security updates) depo ayarından açılır ve bu takvimi beklemez.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 5
+    groups:
+      python-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 5
+    groups:
+      # Next ve eşlik eden paketler birlikte güncellenir (eslint-config-next sürümü next ile aynı kalmalı).
+      next:
+        patterns: ["next", "eslint-config-next", "@next/*"]
+        update-types: [minor, patch]
+      web-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /admin
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 5
+    groups:
+      next:
+        patterns: ["next", "eslint-config-next", "@next/*"]
+        update-types: [minor, patch]
+      admin-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 5
+    # Expo SDK sürümleri birbirine kilitlidir: major yükseltme `npx expo install --fix` / SDK geçişiyle elle yapılır.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      expo-sdk:
+        patterns: ["expo", "expo-*", "@expo/*", "react-native", "react-native-*", "@react-native/*", "react", "react-dom"]
+        update-types: [minor, patch]
+      mobile-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /scripts/ui-shots
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 2
+    groups:
+      ui-shots:
+        patterns: ["*"]
+
+  # Workflow'lardaki action'lar commit SHA ile sabit; Dependabot SHA'yı ve sürüm yorumunu birlikte günceller.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # INF-11: docker-compose.yml image'ları etiket + digest ile sabit; Dependabot ikisini birlikte günceller.
+  # Postgres/PostGIS ve Redis major geçişleri veri uyumluluğu gerektirir, elle yapılır. Aynı image'lar
+  # ci.yml ve android-emulator.yml `services:` altında da var; Dependabot oraları güncellemez, PR'da elle eşlenir.
+  # `docker` ekosistemi eklenmedi: depoda Dockerfile yok (prod Dockerfile yazıldığında eklenecek).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Istanbul
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      compose-images:
+        patterns: ["*"]

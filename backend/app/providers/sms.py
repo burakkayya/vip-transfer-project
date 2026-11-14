@@ -27,7 +27,14 @@ class ConsoleSms:
 
     def send(self, phone: str, text: str) -> None:
         self.outbox.append((phone, text))
-        log.warning("SMS (console) -> %s: %s", phone, text)
+        # PRIV-02: log toplama sistemine kod ve tam numara gitmez. Geliştirmede kod ekrana
+        # API yanıtındaki dev_code ile gelir, testler outbox'tan okur.
+        log.warning("SMS (console) -> %s: %d karakterlik mesaj (içerik loglanmaz)", _mask_phone_tail(phone), len(text))
+
+
+def _mask_phone_tail(phone: str) -> str:
+    """Yalnızca son 4 hane kalır: +905321234567 -> ***4567"""
+    return "***" + phone[-4:] if len(phone) >= 8 else "***"
 
 
 @dataclass

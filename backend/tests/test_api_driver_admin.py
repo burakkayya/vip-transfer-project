@@ -12,6 +12,7 @@ from app.models import AuditLog, Booking, Document, Driver, DriverLedger, Flight
 from app.localtime import local_date
 from app.services import jobs
 from tests.conftest import PDF, booking_body, otp_login, pay, random_phone, staff_headers
+from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
 DRIVER_DOCS = ["surucu_belgesi", "src_belgesi", "adli_sicil"]
 VEHICLE_DOCS = ["arac_ruhsati", "arac_sigortasi", "arac_muayene", "turizm_tasimacilik_yetki"]
@@ -26,6 +27,9 @@ def upload(client, headers, doc_type, vehicle_id=None):
                     files={"file": ("belge.pdf", PDF, "application/pdf")})
     assert r.status_code == 201, r.text
     return r.json()["id"]
+
+
+SHARED_TEST_PUSH_TOKEN = "fcm-test-device:shared-driver-token-0001"
 
 
 def onboard_driver(client, ops, *, vehicle_type="minivan", online=True):
@@ -59,7 +63,9 @@ def onboard_driver(client, ops, *, vehicle_type="minivan", online=True):
     assert client.post(f"/api/v1/admin/vehicles/{vehicle_id}/status", headers=ops,
                        json={"status": "aktif"}).status_code == 200
     if online:
-        r = client.post("/api/v1/driver/me/online", headers=headers, json={"is_online": True, "push_token": "tok-1"})
+        # RT-08: jeton biçimi doğrulanır; tüm test sürücüleri aynı cihaz jetonunu paylaşır (son bağlayan alır).
+        r = client.post("/api/v1/driver/me/online", headers=headers,
+                        json={"is_online": True, "push_token": SHARED_TEST_PUSH_TOKEN})
         assert r.status_code == 200, r.text
     return headers, driver_id
 
@@ -94,6 +100,7 @@ def test_staff_wrong_password_and_wrong_totp(client, db):
     assert db.scalar(select(AuditLog).where(AuditLog.action == "staff.login_failed")) is not None
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_instant_booking_offer_accept_trip_and_ledger(client, db, ops):
     from app.models import ExchangeRate
 

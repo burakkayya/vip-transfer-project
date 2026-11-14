@@ -6,25 +6,55 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy import select
 
-from app.api.deps import DbSession, Now
-from app.config import get_settings
-from app.errors import NotFound
+from app.api.deps import ClientIp, DbSession, Now
+from app.config import DEV_ENVS, get_settings
+from app.errors import DomainError, NotFound
 from app.models import Payment
 from app.models.enums import PaymentProviderCode
 from app.providers.payments import FakeProvider, get_payment_provider
 from app.services import payments
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+# Sahte ödeme sayfası (INF-01): main.py bu router'ı yalnızca env dev/test iken ekler; üretimde uç hiç yoktur.
+fake_router = APIRouter(prefix="/payments", tags=["payments"])
+
+
+# API-06: PayTR bildirimi birkaç kısa alandan oluşur; daha büyük gövde ve çok alanlı istek okunmaz.
+CALLBACK_MAX_BODY_BYTES = 16 * 1024
+CALLBACK_MAX_FIELDS = 50
+
+
+class PayloadTooLarge(DomainError):
+    status_code = 413
+    code = "payload_too_large"
+
+
+async def _read_callback_form(request: Request) -> dict[str, str]:
+    """Gövdeyi sınırla okur (Content-Length yalanına karşı akış sırasında da sayılır), sonra ayrıştırır."""
+    declared = request.headers.get("content-length")
+    if declared is not None and (not declared.isdigit() or int(declared) > CALLBACK_MAX_BODY_BYTES):
+        raise PayloadTooLarge("bildirim gövdesi çok büyük")
+    chunks, size = [], 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > CALLBACK_MAX_BODY_BYTES:
+            raise PayloadTooLarge("bildirim gövdesi çok büyük")
+        chunks.append(chunk)
+    request._body = b"".join(chunks)  # Starlette form ayrıştırıcısı önbellekteki gövdeyi kullanır
+    form = await request.form()
+    if len(form) > CALLBACK_MAX_FIELDS:
+        raise PayloadTooLarge("bildirimde çok fazla alan var")
+    return {k: str(v) for k, v in form.items()}
 
 
 @router.post("/paytr/callback", response_class=PlainTextResponse)
-async def paytr_callback(request: Request, db: DbSession, now: Now):
+async def paytr_callback(request: Request, db: DbSession, now: Now, ip: ClientIp):
     """PayTR bildirim URL'si. PayTR yanıt olarak düz metin "OK" bekler; aksi halde tekrar dener."""
-    form = {k: str(v) for k, v in (await request.form()).items()}
     provider = get_payment_provider()
     if provider.code is not PaymentProviderCode.PAYTR:
         raise NotFound("PayTR etkin değil")
-    payments.handle_callback(db, provider, form, now)
+    form = await _read_callback_form(request)
+    payments.handle_callback(db, provider, form, now, ip=ip)
     db.commit()
     return "OK"
 
@@ -60,13 +90,14 @@ def _frame_headers() -> dict[str, str]:
 
 
 def _fake_provider() -> FakeProvider:
+    # İkinci savunma hattı: router dev/test dışında eklenmez; yine de izin listesi ve sağlayıcı denetlenir.
     provider = get_payment_provider()
-    if get_settings().env == "prod" or not isinstance(provider, FakeProvider):
+    if get_settings().env not in DEV_ENVS or not isinstance(provider, FakeProvider):
         raise NotFound("bulunamadı")
     return provider
 
 
-@router.get("/fake/{oid}", response_class=HTMLResponse, include_in_schema=False)
+@fake_router.get("/fake/{oid}", response_class=HTMLResponse, include_in_schema=False)
 def fake_page(oid: str, db: DbSession):
     _fake_provider()
     payment = db.scalar(select(Payment).where(Payment.merchant_oid == oid))
@@ -78,7 +109,7 @@ def fake_page(oid: str, db: DbSession):
     )
 
 
-@router.post("/fake/{oid}/complete", response_class=HTMLResponse, include_in_schema=False)
+@fake_router.post("/fake/{oid}/complete", response_class=HTMLResponse, include_in_schema=False)
 async def fake_complete(oid: str, request: Request, db: DbSession, now: Now):
     provider = _fake_provider()
     payment = db.scalar(select(Payment).where(Payment.merchant_oid == oid))

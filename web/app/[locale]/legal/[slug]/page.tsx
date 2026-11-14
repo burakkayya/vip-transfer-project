@@ -22,7 +22,8 @@ const PAGES = {
 type Slug = keyof typeof PAGES;
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
-const isSlug = (s: string): s is Slug => s in PAGES;
+// `in` kalıtılan anahtarları da kabul eder (`constructor`, `toString` → 500); yalnızca kendi anahtarları geçerli.
+const isSlug = (s: string): s is Slug => Object.prototype.hasOwnProperty.call(PAGES, s);
 
 /** Ardışık `tier*` anahtarlarını tek listede toplar; diğer anahtarlar olduğu gibi kalır. */
 function blocks(keys: readonly string[]): (string | string[])[] {

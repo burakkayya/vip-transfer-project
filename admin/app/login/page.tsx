@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
 import { api, errorMessage } from "@/lib/api";
 
@@ -22,6 +22,13 @@ export default function LoginPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const codeInput = useRef<HTMLInputElement>(null);
+
+  // Parola adımı geçilince odak doğrulama koduna taşınır. `autoFocus` yerine adım değişimine bağlı odak:
+  // sayfa ilk açıldığında odak çalınmaz, yalnızca kullanıcının başlattığı geçişte taşınır (jsx-a11y/no-autofocus).
+  useEffect(() => {
+    if (step) codeInput.current?.focus();
+  }, [step]);
 
   useEffect(() => {
     // QR kod tarayıcıda üretilir; 2FA sırrı üçüncü taraf bir servise gönderilmez.
@@ -102,8 +109,8 @@ export default function LoginPage() {
           )}
           <label className="field">
             <span>Doğrulama kodu</span>
-            <input inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus
-              value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+            <input inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required
+              ref={codeInput} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
           </label>
           {error && <p className="alert error">{error}</p>}
           <div className="row">

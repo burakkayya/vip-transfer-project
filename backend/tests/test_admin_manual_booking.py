@@ -298,3 +298,16 @@ def test_override_scales_price_eur_for_try():
     o = override_quote(q, Decimal("2400.00"))
     assert o.total == Decimal("2400.00") and sum(x.price for x in o.legs) == Decimal("2400.00")
     assert o.price_eur == Decimal("64.00")
+
+
+def test_admin_quote_rejects_out_of_window_pickup_without_500(client, db):
+    """API-09 (admin): admin teklif ucu da alış zamanı aralığını doğrular; aralık dışı tarih 500 değil 422 döner."""
+    ops = staff_headers(client, db, ["operasyon"])
+    base = {
+        "pickup": {"region_id": region_id(client, "ayt")},
+        "dropoff": {"region_id": region_id(client, "kemer")},
+        "passenger_count": 2,
+    }
+    for hours in (24 * 400, -48):
+        r = client.post(f"{API}/admin/quotes", headers=ops, json={**base, "pickup_at": future(hours)})
+        assert r.status_code == 422, r.text

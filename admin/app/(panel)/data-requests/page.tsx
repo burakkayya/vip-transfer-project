@@ -19,7 +19,7 @@ interface Req {
 
 /**
  * Ekran 16: KVKK/GDPR veri talepleri. Yasal süre 30 gün.
- * Silme talebinde kişisel veriler Müşteriler ekranından admin tarafından silinir.
+ * Silme talebini yalnızca admin kapatır; "Tamamla" anonimleştirmeyi aynı işlemde çalıştırır (PRIV-01).
  */
 export default function DataRequestsPage() {
   const [status, setStatus] = useState("acik");
@@ -29,6 +29,10 @@ export default function DataRequestsPage() {
   const now = Date.now();
 
   async function update(r: Req, next: string) {
+    // Silme talebini tamamlamak müşterinin kişisel verilerini geri dönüşsüz siler (yalnızca admin; aktif
+    // rezervasyon varsa backend reddeder ve hata mesajı gösterilir).
+    if (r.request_type === "silme" && next === "tamamlandi"
+        && !confirm("Müşterinin kişisel verileri geri dönüşsüz silinecek. Devam edilsin mi?")) return;
     const ok = await action.run(
       () => api(`admin/data-requests/${r.id}`, { body: { status: next, note: notes[r.id]?.trim() || null } }),
       `Talep: ${DATA_REQUEST_STATUS[next]}`,

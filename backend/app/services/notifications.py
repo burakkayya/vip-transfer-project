@@ -6,6 +6,7 @@ Gönderim hatası işlemi bozmaz; bildirim 'basarisiz' olarak kaydedilir.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -13,10 +14,11 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.errors import DomainError
 from app.models import Booking, Customer, Driver, Notification, NotificationTemplate
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.providers.sms import get_sms_sender
-from app.services import push_outbox
+from app.services import audit, push_outbox
 
 log = logging.getLogger(__name__)
 LOCAL_TZ = ZoneInfo("Europe/Istanbul")
@@ -110,15 +112,37 @@ def notify_driver(db: Session, driver: Driver, code: str, params: dict, data: di
     push_outbox.enqueue(db, driver, code, subject or "getawaytransfers", body, data)
 
 
+# RT-08: FCM kayıt jetonu (Android, ~150+ karakter, [A-Za-z0-9_:-]) ve APNs cihaz jetonu (64 hex) bu kalıba uyar.
+# Sütun 255 karakter; boşluk, HTML ve denetim karakterleri reddedilir.
+PUSH_TOKEN_RE = re.compile(r"[A-Za-z0-9_:.\-]{32,255}")
+
+
+def validate_push_token(token: str) -> None:
+    if not PUSH_TOKEN_RE.fullmatch(token):
+        raise DomainError("cihaz bildirim jetonu geçersiz", code="invalid_push_token")
+
+
 def bind_push_token(db: Session, owner: Customer | Driver, token: str | None) -> None:
-    """Cihaz jetonunu hesaba bağlar. Bir jeton tek hesaba aittir: aynı cihazda önceki hesap çıkış yapmadan
-    başkası girdiyse önceki hesabın bildirimleri bu cihaza gitmez."""
+    """Cihaz jetonunu hesaba bağlar. Hesap başına tek cihaz jetonu tutulur (sütun tektir; yeni jeton eskisinin
+    yerine geçer). Bir jeton tek hesaba aittir: aynı cihazda önceki hesap (müşteri veya sürücü) çıkış yapmadan
+    başkası girdiyse jeton yeni hesaba devredilir, önceki hesabın bildirimleri bu cihaza gitmez (çift teslim
+    olmaz). Devir denetim kaydına yazılır (RT-08; jetonun kendisi yazılmaz)."""
     if token:
-        model = type(owner)
-        db.execute(
-            update(model).where(model.push_token == token, model.id != owner.id)
-            .values(push_token=None).execution_options(synchronize_session=False)
-        )
+        validate_push_token(token)
+        moved: list[str] = []
+        for model in (Customer, Driver):
+            cond = [model.push_token == token]
+            if model is type(owner):
+                cond.append(model.id != owner.id)
+            ids = list(db.scalars(
+                update(model).where(*cond).values(push_token=None)
+                .returning(model.id).execution_options(synchronize_session=False)
+            ))
+            moved += [f"{model.__tablename__}:{i}" for i in ids]
+        if moved:
+            audit.record(db, actor_id=owner.user_id, action="push_token.reassigned",
+                         entity_type=type(owner).__tablename__, entity_id=owner.id,
+                         changes={"previous_owners": moved})
     owner.push_token = token
 
 

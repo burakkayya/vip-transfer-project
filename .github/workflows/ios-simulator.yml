@@ -25,9 +25,10 @@ env:
   GETAWAY_PAYMENT_PROVIDER: fake
   # K-58: haritayla ilgili her şey Google (yedek yok). Anahtarlar depo gizli değişkenlerinden gelir
   # (Settings → Secrets and variables → Actions); günlükte GitHub tarafından maskelenir.
+  # INF-06: gizli değerler burada (iş akışı düzeyinde) TANIMLANMAZ; yalnızca ihtiyaç duyan adımın env'ine
+  # yazılır. Böylece brew/pip/npm kurulum betikleri, xcodebuild ve Maestro anahtarı görmez.
   GETAWAY_PLACES_PROVIDER: google
   GETAWAY_ROUTING_PROVIDER: google
-  GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
   GETAWAY_PUSH_PROVIDER: console
   # Simülatör Mac'in ağını kullanır: localhost backend'dir. Ödeme ve yasal sayfalar da backend'den.
   GETAWAY_API_URL: http://localhost:8000
@@ -41,9 +42,12 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 100
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Google anahtarları tanımlı mı
         env:
+          GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
           IOS_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_IOS_KEY }}
           ANDROID_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_ANDROID_KEY }}
         run: |
@@ -59,7 +63,7 @@ jobs:
           mkdir -p "$OUT"
 
       # ---------- Backend ----------
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
           cache: pip
@@ -82,15 +86,18 @@ jobs:
           alembic upgrade head
           python -m app.cli seed
           python -m app.cli seed-demo
+      # Harita anahtarı yalnızca çalışan backend sürecine verilir (arka planda kalan uvicorn bu env'i devralır).
       - name: Backend'i başlat
         working-directory: backend
+        env:
+          GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
         run: |
           nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > "$OUT/backend.log" 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:8000/docs > /dev/null && break; sleep 1; done
           curl -sf http://localhost:8000/docs > /dev/null && echo "API hazır"
 
       # ---------- iOS derlemeleri ----------
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -99,7 +106,7 @@ jobs:
       # Derlemeye gömülen adresler anahtarda; derleme adımı (xcodebuild bayrakları) değişirse "v3" elle artırılır.
       - name: Derleme önbelleği
         id: appcache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ios-apps
           key: ios-apps-v4-${{ runner.os }}-${{ hashFiles('mobile/app/**', 'mobile/components/**', 'mobile/lib/**', 'mobile/widgets/**', 'mobile/assets/**', 'mobile/app.config.ts', 'mobile/metro.config.js', 'mobile/package.json', 'mobile/package-lock.json') }}-${{ env.GETAWAY_API_URL }}-${{ env.GETAWAY_WEB_URL }}-${{ env.GETAWAY_PUBLIC_WEB_URL }}
@@ -137,7 +144,7 @@ jobs:
       # Sonraki adımlar başarısız olsa da (veya iş iptal edilse de) derleme saklansın.
       - name: Derlemeyi önbelleğe kaydet
         if: steps.appcache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ios-apps
           key: ${{ steps.appcache.outputs.cache-primary-key }}
@@ -164,9 +171,25 @@ jobs:
           xcrun simctl install "$UDID" ios-apps/driver.app
           xcrun simctl list devices | grep "$UDID"
 
-      - name: Maestro kur
+      # INF-06: `curl | bash` yerine sabit sürüm + SHA-256 doğrulaması. Değer yayıncının sürüm sayfasındaki
+      # checksums_sha256.txt dosyasından alınır (GitHub asset digest'i ile de aynı). Sürüm yükseltirken ikisi
+      # birlikte değişir; android-emulator.yml'deki aynı değerlerle eş tutulur. Kurulum yeri resmi betikle aynıdır.
+      # macOS'ta sha256sum her imajda garanti olmadığından shasum kullanılır.
+      - name: Maestro kur (sürüm sabit, SHA-256 doğrulamalı)
+        env:
+          MAESTRO_VERSION: "2.12.1"
+          # https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.12.1/checksums_sha256.txt
+          MAESTRO_SHA256: "54dbb0716425626604973cbb374c585ca30272375d9ce15177a1152765ddd9d7"
         run: |
-          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          cd "$RUNNER_TEMP"
+          curl -fsSLo maestro.zip \
+            "https://github.com/mobile-dev-inc/Maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip"
+          echo "${MAESTRO_SHA256}  maestro.zip" | shasum -a 256 -c -
+          rm -rf maestro-x && unzip -q maestro.zip -d maestro-x
+          mkdir -p "$HOME/.maestro"
+          rm -rf "$HOME/.maestro/bin" "$HOME/.maestro/lib"
+          cp -R maestro-x/maestro/. "$HOME/.maestro/"
+          rm -rf maestro.zip maestro-x
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
       - name: Akışları çalıştır
@@ -224,7 +247,7 @@ jobs:
 
       - name: Sonuçları yükle
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ios-simulator-sonuc
           path: |

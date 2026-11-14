@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.models import AuditLog, Booking, DriverLedger, DriverPayout
 from tests.conftest import booking_body, otp_login, pay, random_phone, staff_headers
 from tests.test_api_driver_admin import onboard_driver
+from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
 
 @pytest.fixture
@@ -41,6 +42,7 @@ def _complete(client, driver, leg_id):
     _event(client, driver, leg_id, "bitti", lat=float(kemer["latitude"]), lng=float(kemer["longitude"]))
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_admin_cancels_started_trip_with_full_refund(client, db, ops):
     driver, customer, code, booking_id, leg_id = _accepted_instant(client, ops)
     for e in ("yola_cikti", "vardi", "basladi"):
@@ -62,6 +64,7 @@ def test_admin_cancels_started_trip_with_full_refund(client, db, ops):
     assert r.status_code >= 400
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_completed_trip_refund_and_earning_cancel(client, db, ops):
     driver, customer, code, booking_id, leg_id = _accepted_instant(client, ops)
     _complete(client, driver, leg_id)
@@ -96,6 +99,7 @@ def test_completed_trip_refund_and_earning_cancel(client, db, ops):
                                             AuditLog.entity_id == earning["id"])) is not None
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_earning_in_payout_cannot_be_cancelled(client, db, ops):
     """Ödeme kaydı oluşturulduysa (banka dosyası dışa aktarılmış olabilir) hakediş iptal edilemez."""
     from datetime import datetime, timezone
@@ -120,6 +124,7 @@ def test_earning_in_payout_cannot_be_cancelled(client, db, ops):
     assert db.get(DriverPayout, payout.id).total_try == total
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_cancel_after_partial_refund_caps_refund(client, db, ops):
     """Elle kısmi iade yapılmış rezervasyon iptal edilebilir; iptal iadesi kalan tutarla sınırlanır."""
     customer = otp_login(client, random_phone())
@@ -136,6 +141,7 @@ def test_cancel_after_partial_refund_caps_refund(client, db, ops):
     assert sum(D(x["amount"]) for x in pay0["refunds"] if x["status"] == "tamamlandi") == D(pay0["amount"])
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_paid_earning_cannot_be_cancelled(client, db, ops):
     from app.models.enums import LedgerStatus
 
@@ -149,6 +155,7 @@ def test_paid_earning_cannot_be_cancelled(client, db, ops):
     assert r.json()["error"]["code"] == "ledger_paid"
 
 
+@pytest.mark.usefixtures("relaxed_trip_clock")  # BIZ-02 zaman kuralları bu testin konusu değil
 def test_support_role_cannot_refund(client, db, ops):
     support = staff_headers(client, db, ["destek"])
     driver, customer, code, booking_id, leg_id = _accepted_instant(client, ops)

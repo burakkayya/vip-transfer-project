@@ -8,17 +8,18 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
 from app.api.admin import manual_bookings
+from app.api.admin import common
 from app.api.admin.common import Page, page
 from app.api.deps import ClientIp, DbSession, Now, OpsOrFinance, OpsOrSupport, OpsStaff
 from app.api.schemas import BookingOut, MoneyStr
 from app.errors import NotFound
 from app.localtime import LOCAL_TZ
 from app.models import Booking, BookingLeg, DispatchOffer, Driver, DriverLedger, Payment, TripEvent
-from app.models.enums import BookingSource, BookingStatus, PaymentStatus, RoleCode, TripEventType
+from app.models.enums import BookingSource, BookingStatus, LegStatus, PaymentStatus, RoleCode, TripEventType
 from app.providers.routing import Point, haversine_km
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
@@ -255,7 +256,7 @@ def pending(staff: OpsStaff, db: DbSession, now: Now):
          "booking_type": leg.booking.booking_type.value, "pickup_at": leg.pickup_at,
          "pickup": leg.pickup_region.name, "dropoff": leg.dropoff_region.name,
          "vehicle_type": leg.booking.vehicle_type.code, "passengers": leg.booking.passenger_count}
-        for leg in dispatch.pending_legs(db, now)
+        for leg in dispatch.pending_legs(db, now)[:common.MAX_LIST]
     ]
 
 
@@ -296,7 +297,37 @@ def send_offers(leg_id: uuid.UUID, staff: OpsStaff, db: DbSession, now: Now):
     return {"sent": sent}
 
 
+class ForceAdvanceIn(BaseModel):
+    event: TripEventType
+    # Gerekçe zorunlu; denetim kaydına yazılır.
+    reason: str = Field(min_length=10, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 10:
+            raise ValueError("gerekçe en az 10 karakter olmalı")
+        return v
+
+
+@router.post("/dispatch/legs/{leg_id}/force-advance")
+def force_advance(leg_id: uuid.UUID, body: ForceAdvanceIn, staff: OpsStaff, db: DbSession, ip: ClientIp, now: Now):
+    """REV-B-5: sürücü zaman/konum kontrollerine takılıp kilitlendiğinde operasyonun çıkış yolu. Yalnızca admin ve
+    operasyon. Zaman/konum kontrollerini atlar, durum makinesi sırasını atlamaz; gerekçe denetim kaydına yazılır."""
+    leg = db.get(BookingLeg, leg_id, with_for_update={"of": BookingLeg})
+    if leg is None:
+        raise NotFound("bacak bulunamadı")
+    db.refresh(leg)
+    dispatch.force_advance(db, leg, body.event, actor_id=staff.id, reason=body.reason, now=now, ip=ip)
+    db.commit()
+    if leg.status is LegStatus.COMPLETED:
+        live_location.clear(leg)
+    return {"leg_id": str(leg.id), "status": leg.status.value}
+
+
 @router.get("/drivers/online")
 def online_drivers(staff: OpsStaff, db: DbSession):
-    rows = db.scalars(select(Driver).where(Driver.is_online.is_(True)))
+    rows = db.scalars(select(Driver).where(Driver.is_online.is_(True)).order_by(Driver.full_name)
+                      .limit(common.MAX_LIST))
     return [{"id": str(d.id), "full_name": d.full_name} for d in rows]

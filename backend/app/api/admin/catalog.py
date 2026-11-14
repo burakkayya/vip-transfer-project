@@ -15,6 +15,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 
+from app.api.admin import common
 from app.api.deps import AdminOnly, ClientIp, DbSession, FinanceStaff, Now, OpsStaff
 from app.errors import DomainError, NotFound
 from app.models import (
@@ -60,7 +61,8 @@ class RegionIn(BaseModel):
 
 @router.get("/regions")
 def list_regions(staff: OpsStaff, db: DbSession):
-    return [_row(r, *_REGION_FIELDS) for r in db.scalars(select(Region).order_by(Region.province, Region.name))]
+    return [_row(r, *_REGION_FIELDS) for r in db.scalars(select(Region).order_by(Region.province, Region.name)
+                                                                .limit(common.MAX_LIST))]
 
 
 @router.post("/regions", status_code=201)
@@ -105,7 +107,8 @@ class PricingRuleIn(BaseModel):
 
 @router.get("/pricing-rules")
 def list_pricing_rules(staff: OpsStaff, db: DbSession):
-    rows = db.scalars(select(PricingRule).order_by(PricingRule.vehicle_type_id, PricingRule.valid_from.desc()))
+    rows = db.scalars(select(PricingRule).order_by(PricingRule.vehicle_type_id, PricingRule.valid_from.desc())
+                      .limit(common.MAX_LIST))
     return [_row(r, *_PRICING_FIELDS) for r in rows]
 
 
@@ -158,7 +161,7 @@ class DiscountIn(BaseModel):
 
 @router.get("/round-trip-discounts")
 def list_discounts(staff: OpsStaff, db: DbSession):
-    rows = db.scalars(select(RoundTripDiscount).order_by(RoundTripDiscount.valid_from.desc()))
+    rows = db.scalars(select(RoundTripDiscount).order_by(RoundTripDiscount.valid_from.desc()).limit(common.MAX_LIST))
     return [_row(r, *_DISCOUNT_FIELDS) for r in rows]
 
 
@@ -209,7 +212,8 @@ def _policy_row(p: CancellationPolicy) -> dict:
 
 @router.get("/cancellation-policies")
 def list_policies(staff: OpsStaff, db: DbSession):
-    return [_policy_row(p) for p in db.scalars(select(CancellationPolicy).order_by(CancellationPolicy.valid_from.desc()))]
+    rows = db.scalars(select(CancellationPolicy).order_by(CancellationPolicy.valid_from.desc()).limit(common.MAX_LIST))
+    return [_policy_row(p) for p in rows]
 
 
 @router.post("/cancellation-policies", status_code=201)
@@ -245,7 +249,8 @@ class CommissionIn(BaseModel):
 
 @router.get("/commission-rules")
 def list_commission(staff: FinanceStaff, db: DbSession):
-    rows = db.scalars(select(CommissionRule).order_by(CommissionRule.scope, CommissionRule.valid_from.desc()))
+    rows = db.scalars(select(CommissionRule).order_by(CommissionRule.scope, CommissionRule.valid_from.desc())
+                      .limit(common.MAX_LIST))
     return [_row(r, *_COMMISSION_FIELDS) for r in rows]
 
 
@@ -309,7 +314,8 @@ class TemplateIn(BaseModel):
 
 @router.get("/notification-templates")
 def list_templates(staff: OpsStaff, db: DbSession):
-    rows = db.scalars(select(NotificationTemplate).order_by(NotificationTemplate.code, NotificationTemplate.locale))
+    rows = db.scalars(select(NotificationTemplate).order_by(NotificationTemplate.code, NotificationTemplate.locale)
+                      .limit(common.MAX_LIST))
     return [_row(t, "id", "code", "locale", "channel", "subject", "body") for t in rows]
 
 

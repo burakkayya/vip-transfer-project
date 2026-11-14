@@ -4,20 +4,26 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 
+import redis
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
+from app.config import DEV_ENVS, get_settings
 from app.errors import TooManyRequests, Unauthorized
 from app.models import OtpChallenge
 from app.models.enums import OtpPurpose
 from app.providers.sms import SmsSender
 from app.security.crypto import blind_index
+from app.services.auth import ip_bucket
+
+logger = logging.getLogger(__name__)
 
 OTP_TEXT = {
     "tr": "getawaytransfers.com dogrulama kodunuz: {code}. Kimseyle paylasmayin.",
@@ -38,6 +44,46 @@ class OtpIssued:
 def _code_hash(challenge_id: uuid.UUID, code: str) -> str:
     key = get_settings().blind_index_key.encode()
     return hmac.new(key, f"{challenge_id}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
+@lru_cache
+def _redis() -> redis.Redis:
+    s = get_settings()
+    return redis.Redis.from_url(s.redis_url, socket_timeout=s.redis_socket_timeout_seconds,
+                                socket_connect_timeout=s.redis_socket_timeout_seconds)
+
+
+# Redis yoksa alarm tekrarı süreç içinde bastırılır (çok süreçte süreç başına saatte bir).
+_local_alarm_hours: set[str] = set()
+
+
+def _alarm_slot_claimed(now: datetime) -> bool:
+    """Bu saat için küresel OTP alarmını yazma hakkı (saatte bir kez). Redis SET NX; yoksa süreç içi."""
+    hour = f"{now.astimezone(timezone.utc):%Y%m%d%H}"
+    try:
+        return bool(_redis().set(f"security:otp_global_alarm:{hour}", 1, ex=7200, nx=True))
+    except redis.RedisError:
+        if hour in _local_alarm_hours:
+            return False
+        _local_alarm_hours.clear()
+        _local_alarm_hours.add(hour)
+        return True
+
+
+def _ip_count(db: Session, ip: str, now: datetime) -> int:
+    """Son bir saatte aynı IP önekinden (ip_bucket) gelen istek sayısı."""
+    since = now - timedelta(hours=1)
+    bucket = ip_bucket(ip)
+    if bucket == ip:  # IPv4 ya da IP olmayan değer: tam eşleşme (indeksli sorgu)
+        return db.scalar(
+            select(func.count(OtpChallenge.id)).where(OtpChallenge.ip == ip, OtpChallenge.created_at > since)
+        )
+    # IPv6: sütun metin (String(45)); önek eşleşmesi Python'da yapılır. Satır sayısı küresel sert tavanla
+    # sınırlıdır; inet dönüşümü kullanılmaz (IP olmayan bir değer sorguyu hataya düşürmesin).
+    rows = db.scalars(
+        select(OtpChallenge.ip).where(OtpChallenge.ip.contains(":"), OtpChallenge.created_at > since)
+    )
+    return sum(1 for r in rows if ip_bucket(r) == bucket)
 
 
 def request_code(
@@ -61,6 +107,23 @@ def request_code(
     )
     if recent >= s.otp_max_per_hour:
         raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+    # AUTH-04: numara değiştirerek SMS pompalamaya karşı IP başına saatlik sınır.
+    # REV-A-1: IPv6 /64 önekine göre sayılır (ip_bucket); IPv4 tam adres.
+    if ip and _ip_count(db, ip, now) >= s.otp_max_per_ip_per_hour:
+        raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+    total = db.scalar(
+        select(func.count(OtpChallenge.id)).where(OtpChallenge.created_at > now - timedelta(hours=1))
+    )
+    # REV-A-1: küresel eşik sert ret değil alarmdır; tek bir saldırgan tüm müşteri ve sürücü girişini
+    # kapatamasın. Sert ret yalnızca çok daha yüksek maliyet tavanında.
+    if total >= s.otp_global_hard_limit_per_hour:
+        logger.error("otp küresel sert tavanı aşıldı (%s/saat): tüm OTP istekleri reddediliyor",
+                     s.otp_global_hard_limit_per_hour)
+        raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+    if total >= s.otp_global_max_per_hour and _alarm_slot_claimed(now):
+        # Saatte bir kez ERROR: log toplayıcıdaki alarm kuralı bu kaydı yakalar (ayrı Sentry yok).
+        logger.error("GÜVENLİK ALARMI otp küresel saatlik eşiği aşıldı: %s istek (eşik %s, sert tavan %s); "
+                     "SMS pompalama olabilir", total, s.otp_global_max_per_hour, s.otp_global_hard_limit_per_hour)
 
     code = f"{secrets.randbelow(10 ** s.otp_length):0{s.otp_length}d}"
     challenge = OtpChallenge(
@@ -75,7 +138,7 @@ def request_code(
     db.add(challenge)
     db.flush()
     sms.send(phone, OTP_TEXT.get(locale, OTP_TEXT["en"]).format(code=code))
-    dev_code = code if s.env != "prod" and s.sms_provider == "console" else None
+    dev_code = code if s.env in DEV_ENVS and s.sms_provider == "console" else None
     return OtpIssued(challenge_id=challenge.id, expires_at=challenge.expires_at, dev_code=dev_code)
 
 

@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.localtime import local_date
+from app.api.admin import common
 from app.api.admin.common import Page, page
 from app.api.deps import AdminOnly, ClientIp, DbSession, Now, OpsStaff
 from app.api.schemas import DocumentOut
@@ -79,8 +80,12 @@ class StatusIn(BaseModel):
 def set_driver_status(driver_id: uuid.UUID, body: StatusIn, staff: OpsStaff, db: DbSession, ip: ClientIp, now: Now):
     d = _get_driver(db, driver_id)
     documents.set_driver_status(db, d, body.status, actor_id=staff.id, reason=body.reason, ip=ip, today=local_date(now))
+    released = 0
+    if body.status is not DriverStatus.APPROVED:
+        # AUTH-06: yolcu alınmamış işler havuza döner, sürücünün oturumları iptal edilir.
+        released = dispatch.release_driver(db, d, actor_id=staff.id, ip=ip, now=now)
     db.commit()
-    return _driver_row(db, d, local_date(now))
+    return {**_driver_row(db, d, local_date(now)), "released_legs": released}
 
 
 def _vehicle_row(db, v: Vehicle, today: date) -> dict:
@@ -189,6 +194,7 @@ def expiring_documents(staff: OpsStaff, db: DbSession, now: Now):
                 Document.status.in_([DocumentStatus.APPROVED, DocumentStatus.EXPIRED]),
             )
             .order_by(Document.valid_until)
+            .limit(common.MAX_LIST)
         )
     )
 
