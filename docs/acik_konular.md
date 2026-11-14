@@ -129,7 +129,7 @@ Kaynak: `docs/security/findings.md` (durumlar) ve `docs/security/remediation-pla
 
 Karar bekleyenler:
 - [ ] Dal henüz gönderilmedi (push yok). Depo herkese açık göründüğü için güvenlik bulgularını içeren `docs/security/` dosyalarının açık depoya gidip gitmeyeceği kararı.
-- [ ] Yolculuk zaman eşikleri (K-63), giriş ve SMS sınırları (K-61) operasyon teyidi.
+- [ ] Yolculuk zaman eşikleri (K-66), giriş ve SMS sınırları (K-64) operasyon teyidi.
 - [ ] Reddedilen PayTR bildiriminde otomatik iade yapılıyor (K-74). Kalan: otomatik iadesi başarısız ya da belirsiz kalan rezervasyon incelemede bekler; admin panelinde ayrı bir inceleme görünümü yok, muhasebe iadeyi Finans > İadeler ekranından yeniden dener, admin PayTR panelinde yapılan iadeyi doğrulayıp "tamamlandı" işaretler. Eksik tahsilatta bildirilen tutarın PayTR test mağazasında iade edilebildiği doğrulanmalı. `currency` alanı hiç gelmezse bildirim şimdilik kabul ediliyor.
 - [ ] KVKK saklama süreleri ve periyodik imha görevleri (PRIV-05): tablo bazında süre matrisi hukukçu teyidi ister. Sürücü geçmiş yolculuklarında yolcu verisinin kırpılması (PRIV-06) ve admin rezervasyon detayında maskeleme (PRIV-07) ürün kararı ister.
 - [ ] Admin fiyat ezme üst sınırı ve "fiyatı ezen kişi elle tahsilat giremez" görev ayrılığı (BIZ-04).
@@ -143,7 +143,7 @@ Karar bekleyenler:
 Canlıya çıkmadan yapılacaklar (dış işlem):
 - [ ] GitHub ayarları: secret scanning ve push protection, Dependabot uyarıları, private vulnerability reporting, CodeQL, "Require review from Code Owners".
 - [ ] `SECURITY.md` içindeki iletişim e-postası yer tutucuları doldurulmalı.
-- [ ] Üretim ortam değişkenleri: web ve admin için `ALLOWED_ORIGINS` (tanımsızsa tüm yazma istekleri 403; yerelde `npm run start` için de `.env.local`'a yazılmalı); `GETAWAY_TRUSTED_PROXIES`, `BFF_CLIENT_IP_SOURCE`, `BFF_TRUSTED_HOPS` (K-62); Redis `rediss://` ve parola; veritabanı `sslmode`; PayTR test modu kapalı.
+- [ ] Üretim ortam değişkenleri: web ve admin için `ALLOWED_ORIGINS` (tanımsızsa tüm yazma istekleri 403; yerelde `npm run start` için de `.env.local`'a yazılmalı); `GETAWAY_TRUSTED_PROXIES`, `BFF_CLIENT_IP_SOURCE`, `BFF_TRUSTED_HOPS` (K-65); Redis `rediss://` ve parola; veritabanı `sslmode`; PayTR test modu kapalı.
 - [ ] Yerelde Docker konteynerleri yeniden oluşturulmalı (`docker compose up -d --force-recreate`); çalışan eski konteynerler hâlâ tüm arayüzlere bağlı olabilir.
 - [ ] Android ve iOS E2E iş akışları değişiklikten sonra bir kez elle tetiklenip doğrulanmalı (Maestro sabit sürüm, Android veritabanı PG16-3.4).
 - [ ] Mobil değişiklikler cihazda ya da emülatörde denenmedi: geçersiz derin bağlantı, soket kapanış kodları, çıkışta konum görevinin durması, iOS ATS.

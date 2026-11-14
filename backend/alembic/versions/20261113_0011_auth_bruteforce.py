@@ -1,8 +1,8 @@
 """Güvenlik F0-2 / F0-3 (AUTH-01, AUTH-04, AUTH-07): personel deneme sayacı, kilit, MFA jti,
 TOTP son adım; otp_challenges IP ve zaman indeksleri
 
-Revision ID: 0008
-Revises: 0007
+Revision ID: 0011
+Revises: 0010
 """
 from typing import Sequence, Union
 
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0008"
-down_revision: Union[str, None] = "0007"
+revision: str = "0011"
+down_revision: Union[str, None] = "0010"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

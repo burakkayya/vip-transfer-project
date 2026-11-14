@@ -4,16 +4,16 @@ Mevcut veride aynı sahip ve tür için birden fazla bekleyen belge varsa migrat
 açıklayıcı hatayla durur. Operasyon yinelenenleri inceleyip (biri dışındakileri onaylayarak/reddederek)
 migration'ı yeniden çalıştırmalıdır.
 
-Revision ID: 0010
-Revises: 0009
+Revision ID: 0013
+Revises: 0012
 """
 from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0010"
-down_revision: Union[str, None] = "0009"
+revision: str = "0013"
+down_revision: Union[str, None] = "0012"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

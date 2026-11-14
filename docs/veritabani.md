@@ -102,8 +102,8 @@ Kod (`backend/app/models/`) yukarıdaki şemayı izler. Aşağıdaki farklar uyg
 | `payments.checkout_url` | Sağlayıcı ödeme sayfası adresi (migration 0003). Açık ödeme yeniden kullanılırken aynı sayfa döner (K-46). |
 | `driver_ledger.net_amount_try` | EUR işlerde kur yoksa boş kalabilir. Hakediş ödemesi oluşturulurken o günün kuruyla doldurulur. |
 | `audit_logs` | Değiştirilemezlik PostgreSQL tetikleyicisiyle sağlanır (`0002` migration). |
-| `users.failed_login_count`, `failed_login_started_at`, `locked_until`, `mfa_jti`, `mfa_attempts`, `totp_last_step` | Personel giriş kilidi, tek kullanımlık MFA jetonu ve TOTP tekrar engeli (migration 0008, K-61). `otp_challenges` için `(ip, created_at)` ve `created_at` indeksleri. |
-| `sessions.previous_refresh_hash`, `rotated_at` | Yenileme jetonu yeniden kullanım tespiti; eski jeton 10 sn'lik tolerans dışında gelirse oturum kapanır (migration 0009). |
-| `documents` kısmi tekil indeks | Belge türü başına tek bekleyen kayıt (migration 0010, K-68). Yinelenen bekleyen kayıt varsa migration veriye dokunmadan durur. |
-| `refunds.status = belirsiz` | Sağlayıcı yanıtı alınamayan iade; yalnızca admin mutabakatla kapatır (K-65). |
+| `users.failed_login_count`, `failed_login_started_at`, `locked_until`, `mfa_jti`, `mfa_attempts`, `totp_last_step` | Personel giriş kilidi, tek kullanımlık MFA jetonu ve TOTP tekrar engeli (migration 0011, K-64). `otp_challenges` için `(ip, created_at)` ve `created_at` indeksleri. |
+| `sessions.previous_refresh_hash`, `rotated_at` | Yenileme jetonu yeniden kullanım tespiti; eski jeton 10 sn'lik tolerans dışında gelirse oturum kapanır (migration 0012). |
+| `documents` kısmi tekil indeks | Belge türü başına tek bekleyen kayıt (migration 0013, K-71). Yinelenen bekleyen kayıt varsa migration veriye dokunmadan durur. |
+| `refunds.status = belirsiz` | Sağlayıcı yanıtı alınamayan iade; yalnızca admin mutabakatla kapatır (K-68). |
 | Bölge konumu | `regions.location` alanı, enlem ve boylamdan türetilen PostGIS `geography` sütunudur. |
