@@ -40,5 +40,6 @@ describe("toWsBase", () => {
   test("https -> wss, http -> ws", () => {
     expect(toWsBase("https://api.getawaytransfers.com")).toBe("wss://api.getawaytransfers.com");
     expect(toWsBase("http://localhost:8000")).toBe("ws://localhost:8000");
+    expect(toWsBase("HTTPS://api.getawaytransfers.com")).toBe("wss://api.getawaytransfers.com");
   });
 });

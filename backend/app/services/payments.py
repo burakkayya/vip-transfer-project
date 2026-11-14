@@ -42,6 +42,28 @@ log = logging.getLogger(__name__)
 CHECKOUT_REUSE_WINDOW = timedelta(minutes=PAYTR_TIMEOUT_LIMIT_MINUTES + 1)
 
 
+# REV-C-1: imzası geçerli "başarılı" bildirim tutar ya da para birimi denetimine takılırsa PayTR tarafında kart
+# çekilmiş olabilir. Ödeme FAILED olur ama `failure_reason` bu değerlerden birini taşır; rezervasyon operasyon
+# mutabakatı bitene kadar "incelemede" sayılır: yeni ödeme sayfası açılmaz (ikinci tahsilat olmaz) ve ödeme
+# süresi dolsa da otomatik iptal edilmez (jobs.cancel_unpaid_bookings). Otomatik iade yapılmaz: çekilen tutar
+# bilinmiyor olabilir, karar operasyonundur (docs/acik_konular.md).
+REJECT_NO_TOTAL = "tahsilat tutarı bildirilmedi"
+REJECT_UNDERPAID = "eksik tahsilat"
+REJECT_CURRENCY = "para birimi uyuşmuyor"
+CALLBACK_REJECT_REASONS = (REJECT_NO_TOTAL, REJECT_UNDERPAID, REJECT_CURRENCY)
+
+
+def rejected_charge_filter():
+    """Reddedilmiş başarılı bildirimi olan ödeme satırları için SQL koşulu."""
+    return (Payment.status == PaymentStatus.FAILED) & Payment.failure_reason.in_(CALLBACK_REJECT_REASONS)
+
+
+def has_rejected_charge(db: Session, booking_id) -> bool:
+    return db.scalar(
+        select(Payment.id).where(Payment.booking_id == booking_id, rejected_charge_filter()).limit(1)
+    ) is not None
+
+
 def _open_payment(db: Session, booking: Booking, now: datetime) -> Payment | None:
     return db.scalar(
         select(Payment)
@@ -71,6 +93,8 @@ def start_payment(
     db.get(Booking, booking.id, with_for_update={"of": Booking}, populate_existing=True)
     if booking.status is not BookingStatus.PENDING_PAYMENT:
         raise Conflict("bu rezervasyon için ödeme beklenmiyor", code="payment_not_expected")
+    if has_rejected_charge(db, booking.id):
+        raise Conflict("ödemeniz inceleniyor, lütfen destekle iletişime geçin", code="payment_under_review")
     now = now or datetime.now(timezone.utc)
     existing = _open_payment(db, booking, now)
     if existing is not None:
@@ -179,15 +203,16 @@ def handle_callback(
     # kayıt operasyonun elle mutabakatı için loglanır (log satırında yalnızca bizim ürettiğimiz oid ve tutar var).
     reject = None
     if result.total_amount is None:
-        reject = "tahsilat tutarı bildirilmedi"
+        reject = REJECT_NO_TOTAL
     elif result.total_amount < payment.amount:
-        reject = "eksik tahsilat"
+        reject = REJECT_UNDERPAID
     elif result.currency is not None and not callback_currency_matches(result.currency, payment.currency):
-        reject = "para birimi uyuşmuyor"
+        reject = REJECT_CURRENCY
     if reject is not None:
         payment.status = PaymentStatus.FAILED
         payment.failure_reason = reject
-        log.error("ödeme bildirimi reddedildi (%s): oid=%s tutar=%s/%s para=%s/%s", reject,
+        log.error("GÜVENLİK ALARMI ödeme bildirimi reddedildi, kart çekilmiş olabilir; rezervasyon incelemede, "
+                  "elle mutabakat gerekli (%s): oid=%s tutar=%s/%s para=%s/%s", reject,
                   log_safe(payment.merchant_oid), result.total_amount, payment.amount,
                   log_safe(result.currency, 8), payment.currency.value)
         audit.record(db, actor_id=None, action="payment.callback_rejected", entity_type="payment",

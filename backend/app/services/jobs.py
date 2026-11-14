@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import and_, delete, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.errors import ServiceUnavailable
@@ -39,7 +39,7 @@ from app.models.enums import (
     RefundStatus,
     VehicleStatus,
 )
-from app.services import audit, dispatch, flight_tracking, system_settings
+from app.services import audit, dispatch, flight_tracking, payments, system_settings
 
 log = logging.getLogger(__name__)
 
@@ -129,6 +129,9 @@ def cancel_unpaid_bookings(db: Session, now: datetime) -> int:
                     and_(Booking.payment_due_at.is_(None), Booking.created_at < now - timedelta(minutes=minutes)),
                     Booking.payment_due_at < now,
                 ),
+                # REV-C-1: reddedilmiş başarılı bildirimi olan (kartı çekilmiş olabilecek) rezervasyon
+                # operasyon mutabakatı bitmeden otomatik iptal edilmez.
+                ~exists().where(Payment.booking_id == Booking.id, payments.rejected_charge_filter()),
             )
             # Aynı anda gelen elle tahsilat veya kart bildirimi rezervasyonu kilitliyorsa bu tur atlanır;
             # kilit bırakıldığında rezervasyon artık ödeme beklemiyorsa iptal edilmez.

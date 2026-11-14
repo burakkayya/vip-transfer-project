@@ -37,7 +37,8 @@ export function assertSecureApiUrl(url: string, opts: { dev: boolean; allowLocal
 
 /** http(s) tabanını WebSocket tabanına çevirir: https -> wss, http -> ws. */
 export function toWsBase(apiUrl: string): string {
-  if (apiUrl.startsWith("https://")) return `wss://${apiUrl.slice("https://".length)}`;
-  if (apiUrl.startsWith("http://")) return `ws://${apiUrl.slice("http://".length)}`;
-  throw new Error("API adresi http(s) olmalı");
+  // Şema büyük/küçük harfe duyarsızdır (assertSecureApiUrl `HTTPS://` adresini kabul eder).
+  const m = /^(https?):\/\//i.exec(apiUrl);
+  if (!m) throw new Error("API adresi http(s) olmalı");
+  return `${m[1].toLowerCase() === "https" ? "wss" : "ws"}://${apiUrl.slice(m[0].length)}`;
 }

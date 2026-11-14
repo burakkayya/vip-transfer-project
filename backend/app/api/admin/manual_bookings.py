@@ -159,7 +159,8 @@ class AdminQuoteIn(BaseModel):
     return_pickup_at: datetime | None = None
     passenger_count: int = Field(ge=1, le=50)
     luggage_count: int = Field(default=0, ge=0, le=50)
-    country_code: str | None = Field(default=None, min_length=2, max_length=2)
+    # REV-C-2: QuoteIn ile aynı desen; yoksa uç içindeki QuoteIn(...) kurulumu 500 üretir.
+    country_code: str | None = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")
 
     @field_validator("pickup_at", "return_pickup_at")
     @classmethod

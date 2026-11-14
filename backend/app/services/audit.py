@@ -41,9 +41,20 @@ SENSITIVE_KEYS = frozenset(
 # tamamen maskelenmez: uzunluğu kırpılır, e-posta / IBAN / telefon desenleri temizlenir. Ad gibi serbest kişisel
 # veri desenle yakalanamaz (kalan risk, docs/security/findings.md DB-07).
 REASON_KEYS = frozenset({"reason", "override_reason", "cancel_reason"})
-REASON_MAX_LENGTH = 200
+# REV-C-3: girdi sınırıyla (500) aynı; daha kısa kırpma değiştirilemez kayıtta gerekçeyi kalıcı olarak kaybettiriyordu.
+REASON_MAX_LENGTH = 500
 _EMAIL_RE = re.compile(r"[^\s@<>()]+@[^\s@<>()]+\.[A-Za-z]{2,}")
 _IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,4})?\b")
+
+
+def _iban_sub(m: re.Match) -> str:
+    """REV-C-3: yalnızca mod-97 denetiminden geçen dizi IBAN sayılır. Sistemin ürettiği kimlikler
+    (rezervasyon kodu, merchant_oid) aynı biçime uyabilir; onlar gerekçede okunur kalmalıdır."""
+    text = m.group(0)
+    compact = "".join(text.split())
+    digits = "".join(str(int(c, 36)) for c in compact[4:] + compact[:4])
+    return "[iban]" if int(digits) % 97 == 1 else text
+
 # Rakamla başlayıp biten, aralarında boşluk/nokta/tire/parantez olabilen dizi; en az 10 rakam telefon sayılır.
 _PHONE_RE = re.compile(r"\+?\(?\d[\d\s().\-/]{6,}\d")
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{2}[./]\d{2}[./]\d{4}")
@@ -59,8 +70,9 @@ def _phone_sub(m: re.Match) -> str:
 def scrub_reason(value: Any) -> Any:
     if not isinstance(value, str):
         return _clean(value)
-    text = _EMAIL_RE.sub("[e-posta]", value)
-    text = _IBAN_RE.sub("[iban]", text)
+    # REV-C-4: e-posta deseni uzun girdide karesel çalışır; desenlerden önce girdi kırpılır.
+    text = _EMAIL_RE.sub("[e-posta]", value[: REASON_MAX_LENGTH * 2])
+    text = _IBAN_RE.sub(_iban_sub, text)
     text = _PHONE_RE.sub(_phone_sub, text)
     if len(text) > REASON_MAX_LENGTH:
         text = text[:REASON_MAX_LENGTH] + "…"
