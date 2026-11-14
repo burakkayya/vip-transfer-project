@@ -102,9 +102,9 @@ def mark_refund_completed(refund_id: uuid.UUID, body: RefundMarkCompletedIn, sta
     if not body.confirmed:
         raise Conflict("iadenin PayTR panelinde gerçekleştiği doğrulanmadan tamamlandı işaretlenemez",
                        code="reconciliation_required")
-    refund = bookings.mark_unknown_refund_completed(db, refund_id, reference=body.reference)
+    refund, previous = bookings.mark_unknown_refund_completed(db, refund_id, reference=body.reference)
     audit.record(db, actor_id=staff.id, action="refund.mark_completed", entity_type="refund", entity_id=refund.id,
-                 changes={"previous": RefundStatus.UNKNOWN, "result": refund.status, "reconciled": True,
+                 changes={"previous": previous, "result": refund.status, "reconciled": True,
                           "reference": body.reference}, ip=ip)
     db.commit()
     return {"status": refund.status.value}

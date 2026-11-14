@@ -759,7 +759,7 @@ REV-C ayrıntısı:
 
 | ID | Önem | Bulgu | Durum |
 |---|---|---|---|
-| REV-C-1 | Orta | Reddedilen başarılı PayTR bildiriminde kart çekilmiş kalabiliyor; müşteri ikinci kez ödeyebiliyor ya da rezervasyon otomatik iptal oluyordu | KISMEN DÜZELTİLDİ: rezervasyon incelemeye alınır (yeni ödeme sayfası `payment_under_review` ile reddedilir, otomatik iptal edilmez, "GÜVENLİK ALARMI" logu düşer). Otomatik iade ve admin ekranında inceleme görünümü yok; mutabakat elle yapılır (K-66) |
+| REV-C-1 | Orta | Reddedilen başarılı PayTR bildiriminde kart çekilmiş kalabiliyor; müşteri ikinci kez ödeyebiliyor ya da rezervasyon otomatik iptal oluyordu | DÜZELTİLDİ: rezervasyon incelemeye alınır (yeni ödeme sayfası `payment_under_review` ile reddedilir, otomatik iptal edilmez, "GÜVENLİK ALARMI" logu düşer). Çekilen tutar aynı bildirimde otomatik iade edilir (K-74; eksik tahsilatta bildirilen tutar, diğerlerinde sipariş tutarı); iade tamamlanınca rezervasyon incelemeden çıkar. Başarısız otomatik iade muhasebece yeniden denenir ya da admin onayıyla kapatılır. |
 | REV-C-2 | Düşük | Admin teklif ucunda geçersiz `country_code` 500 döndürüyordu | DÜZELTİLDİ |
 | REV-C-3 | Düşük | Denetim gerekçesi temizliği rezervasyon kodu ve `merchant_oid` değerini IBAN sayıyor, gerekçeyi 200 karakterde kesiyordu | KISMEN DÜZELTİLDİ: IBAN mod-97 ile doğrulanır, sınır 500 karakter. 10 haneden uzun sayılar hâlâ telefon sayılır (gizlilik lehine bırakıldı) |
 | REV-C-4 | Bilgi | E-posta deseni uzun girdide karesel çalışıyor | DÜZELTİLDİ (desenlerden önce kırpma) |

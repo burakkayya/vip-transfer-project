@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import redis
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -21,6 +21,7 @@ from app.models.enums import (
     ManualPaymentMethod,
     PaymentProviderCode,
     PaymentStatus,
+    RefundStatus,
 )
 from app.providers.payments import (
     PAYTR_TIMEOUT_LIMIT_MINUTES,
@@ -43,10 +44,11 @@ CHECKOUT_REUSE_WINDOW = timedelta(minutes=PAYTR_TIMEOUT_LIMIT_MINUTES + 1)
 
 
 # REV-C-1: imzası geçerli "başarılı" bildirim tutar ya da para birimi denetimine takılırsa PayTR tarafında kart
-# çekilmiş olabilir. Ödeme FAILED olur ama `failure_reason` bu değerlerden birini taşır; rezervasyon operasyon
-# mutabakatı bitene kadar "incelemede" sayılır: yeni ödeme sayfası açılmaz (ikinci tahsilat olmaz) ve ödeme
-# süresi dolsa da otomatik iptal edilmez (jobs.cancel_unpaid_bookings). Otomatik iade yapılmaz: çekilen tutar
-# bilinmiyor olabilir, karar operasyonundur (docs/acik_konular.md).
+# çekilmiş olabilir. Ödeme FAILED olur ama `failure_reason` bu değerlerden birini taşır.
+# K-74: çekilen tutar aynı bildirimde otomatik iade edilir (`_refund_rejected_charge`). İade tamamlanana kadar
+# rezervasyon "incelemede" sayılır: yeni ödeme sayfası açılmaz (ikinci tahsilat olmaz) ve ödeme süresi dolsa da
+# otomatik iptal edilmez (jobs.cancel_unpaid_bookings). İade başarısız ya da belirsizse muhasebe yeniden dener;
+# admin PayTR panelinden yapılan iadeyi doğrulayıp `mark-completed` ile kapatır; rezervasyon normal akışa döner.
 REJECT_NO_TOTAL = "tahsilat tutarı bildirilmedi"
 REJECT_UNDERPAID = "eksik tahsilat"
 REJECT_CURRENCY = "para birimi uyuşmuyor"
@@ -54,8 +56,13 @@ CALLBACK_REJECT_REASONS = (REJECT_NO_TOTAL, REJECT_UNDERPAID, REJECT_CURRENCY)
 
 
 def rejected_charge_filter():
-    """Reddedilmiş başarılı bildirimi olan ödeme satırları için SQL koşulu."""
-    return (Payment.status == PaymentStatus.FAILED) & Payment.failure_reason.in_(CALLBACK_REJECT_REASONS)
+    """İadesi henüz tamamlanmamış, reddedilmiş başarılı bildirimi olan ödeme satırları için SQL koşulu."""
+    refunded = exists().where(Refund.payment_id == Payment.id, Refund.status == RefundStatus.COMPLETED)
+    return (
+        (Payment.status == PaymentStatus.FAILED)
+        & Payment.failure_reason.in_(CALLBACK_REJECT_REASONS)
+        & ~refunded
+    )
 
 
 def has_rejected_charge(db: Session, booking_id) -> bool:
@@ -211,14 +218,16 @@ def handle_callback(
     if reject is not None:
         payment.status = PaymentStatus.FAILED
         payment.failure_reason = reject
-        log.error("GÜVENLİK ALARMI ödeme bildirimi reddedildi, kart çekilmiş olabilir; rezervasyon incelemede, "
-                  "elle mutabakat gerekli (%s): oid=%s tutar=%s/%s para=%s/%s", reject,
+        log.error("GÜVENLİK ALARMI ödeme bildirimi reddedildi, kart çekilmiş olabilir; otomatik iade "
+                  "başlatılıyor (%s): oid=%s tutar=%s/%s para=%s/%s", reject,
                   log_safe(payment.merchant_oid), result.total_amount, payment.amount,
                   log_safe(result.currency, 8), payment.currency.value)
         audit.record(db, actor_id=None, action="payment.callback_rejected", entity_type="payment",
                      entity_id=payment.id,
                      changes={"reason": reject, "reported_total": result.total_amount, "amount": payment.amount,
                               "reported_currency": log_safe(result.currency, 8), "currency": payment.currency})
+        _refund_rejected_charge(db, payment, provider, reject=reject, reported_total=result.total_amount,
+                                reported_currency=result.currency)
         return
 
     payment.status = PaymentStatus.PAID
@@ -236,6 +245,42 @@ def handle_callback(
         return
 
     confirm_paid_booking(db, booking, now)
+
+
+def _refund_rejected_charge(
+    db: Session,
+    payment: Payment,
+    provider: PaymentProvider,
+    *,
+    reject: str,
+    reported_total: Decimal | None,
+    reported_currency: str | None,
+) -> Refund:
+    """K-74: reddedilen başarılı bildirimde çekilen tutar otomatik iade edilir.
+
+    Tutar ödemenin para biriminde (PayTR `return_amount` sipariş para biriminde yorumlanır):
+    - eksik tahsilat: bildirilen çekilen tutar (sipariş tutarından küçük);
+    - tutar bildirilmedi ya da para birimi uyuşmuyor: sipariş tutarı (`payment.amount`). Bildirilen tutar
+      başka para biriminde olabilir, karşılaştırılamaz; sipariş tutarından fazlası iade edilmez.
+    Ödeme FAILED kalır: hiç kabul edilmedi, ödenmiş sayılmaz. Sonuç başarısız ya da belirsizse rezervasyon
+    incelemede kalır; muhasebe yeniden dener ya da admin PayTR panelindeki iadeyi doğrulayıp kapatır."""
+    if reject == REJECT_UNDERPAID and reported_total is not None and 0 < reported_total < payment.amount:
+        amount = reported_total
+    else:
+        amount = payment.amount
+    amount = amount.quantize(Decimal("0.01"))
+    note = f"otomatik iade: reddedilen ödeme bildirimi ({reject})"
+    refund = Refund(payment_id=payment.id, amount=amount, reason=note[:255], refund_percent=100)
+    db.add(refund)
+    db.flush()
+    refund_id = refund.id
+    execute_refund(db, refund, payment, provider)
+    audit.record(db, actor_id=None, action="payment.auto_refund", entity_type="refund", entity_id=refund_id,
+                 changes={"payment_id": payment.id, "amount": amount, "currency": payment.currency,
+                          "reported_total": reported_total, "reported_currency": log_safe(reported_currency, 8),
+                          "status": refund.status.value, "reason": reject})
+    db.commit()
+    return refund
 
 
 def confirm_paid_booking(db: Session, booking: Booking, now: datetime) -> None:

@@ -590,24 +590,44 @@ def retry_refund(
     return refund, previous
 
 
-def mark_unknown_refund_completed(db: Session, refund_id: uuid.UUID, *, reference: str | None) -> Refund:
+def mark_unknown_refund_completed(
+    db: Session, refund_id: uuid.UUID, *, reference: str | None
+) -> tuple[Refund, RefundStatus]:
     """REV-A-6: belirsiz iade PayTR panelinde gerçekleşmiş görünüyorsa sağlayıcı yeniden çağrılmadan
-    tamamlandı işaretlenir (admin, mutabakat sonrası). Denetim kaydını çağıran yazar."""
+    tamamlandı işaretlenir (admin, mutabakat sonrası). Denetim kaydını çağıran yazar.
+
+    K-74: reddedilmiş tahsilatın (FAILED ödeme) başarısız otomatik iadesi de bu yolla kapatılır; muhasebe
+    parayı PayTR panelinden iade ettiyse rezervasyon incelemeden çıkar. Ödenmiş ödemenin başarısız iadesi
+    kapatılamaz (o yeniden denenir)."""
     refund, payment = _lock_refund(db, refund_id)
-    if refund.status is not RefundStatus.UNKNOWN:
+    previous = refund.status
+    rejected_charge_failed = previous is RefundStatus.FAILED and payment.status is PaymentStatus.FAILED
+    if previous is not RefundStatus.UNKNOWN and not rejected_charge_failed:
         raise Conflict("yalnızca belirsiz iade elle tamamlandı işaretlenir", code="refund_not_unknown")
     if payment.provider is PaymentProviderCode.MANUAL:
         raise Conflict("elle tahsilatın iadesi elle kapatılır", code="manual_payment")
+    if previous is RefundStatus.FAILED:
+        # Başarısız kayıt tutardan düşülmüyordu; kapatılmadan önce başka canlı iade olmadığı denetlenir.
+        others = db.scalar(
+            select(func.coalesce(func.sum(Refund.amount), 0)).where(
+                Refund.payment_id == payment.id, Refund.id != refund.id, Refund.status != RefundStatus.FAILED
+            )
+        )
+        if others + refund.amount > payment.amount:
+            raise Conflict("iade tutarı ödenen tutarı aşıyor", code="refund_exceeds_payment")
     refund.status = RefundStatus.COMPLETED
     if reference:
         refund.provider_ref = reference[:100]
     _settle_payment_status(db, payment)
-    return refund
+    return refund, previous
 
 
 def _settle_payment_status(db: Session, payment: Payment) -> None:
     db.flush()
     db.refresh(payment)
+    if payment.status is PaymentStatus.FAILED:
+        # K-74: reddedilmiş tahsilatın iadesi; ödeme hiç kabul edilmedi, FAILED kalır (ödenmiş sayılmaz).
+        return
     completed = sum(
         (r.amount for r in payment.refunds if r.status is RefundStatus.COMPLETED), Decimal("0")
     )
