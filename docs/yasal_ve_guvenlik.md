@@ -20,12 +20,13 @@ Bu dosya hukuki danışmanlık değildir. Maddeler bir hukukçuyla doğrulanmal�
 - Pasaport bilgisi sistemde tutulmaz, yalnızca yetkili kurumlara iletilir (K-17).
 - Uçuş verisi yolculuk tamamlanınca silinir (K-31). Kuruma bildirim gerekiyorsa bildirimden sonra silinir.
 - Kart verisi tutulmaz, ödeme sağlayıcının sayfası kullanılır.
-- Hassas alanlar (telefon, e-posta, belge yolu, 2FA sırrı) alan düzeyinde şifrelenir. Anahtarlar KMS ile yönetilir.
-- Her erişim (admin dahil) `audit_logs` tablosuna yazılır. Log kayıtları değiştirilemez.
+- Hassas alanlar (telefon, e-posta, belge yolu, 2FA sırrı) alan düzeyinde şifrelenir. Anahtarlar şu an ortam değişkeninden okunur; KMS ile yönetim hedeftir, henüz kurulmadı (`docs/security/findings.md` MON-10, DB-08, DB-09). Kesin alış ve bırakış koordinatları şifresizdir (DB-04).
+- Yazma işlemleri, girişler, belge ve sohbet görüntüleme ile güvenlik olayları `audit_logs` tablosuna yazılır. Admin rezervasyon detayı gibi okuma işlemlerinin tamamı kayda girmez (PRIV-07). Kayıtlar veritabanı tetikleyicisiyle değiştirilemez; veritabanı sahibi rolü tetikleyiciyi atlatabilir (DB-02).
 - Admin girişi 2FA ile korunur. Paylaşımlı admin hesabı yoktur.
 - Sürücüye yalnızca karşılama için gereken bilgiler gösterilir.
 - Google Routes ve FCM gibi servislere yalnızca koordinat ve rota veya bildirim tokenı gönderilir, kimlik bilgisi gönderilmez.
-- Yedekleme, şifreli ve Türkiye'de tutulur. Felaket kurtarma senaryosu yazılır.
+- Yedekleme hedefi: şifreli ve Türkiye'de. Yedekleme yapılandırması ve felaket kurtarma senaryosu henüz yok (DB-12, `acik_konular.md`).
+- Güvenlik denetimi (2026-11-14): tehdit modeli, bulgular ve düzeltme planı `docs/security/` altındadır. Açık bildirimi: kök `SECURITY.md`.
 
 ## Veri saklama süreleri (taslak, doğrulanacak)
 

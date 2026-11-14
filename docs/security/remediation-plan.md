@@ -6,6 +6,7 @@
 - Efor ölçeği: S = yarım gün ya da daha az, M = 1-3 gün, L = 3 günden fazla ya da birden çok katman.
 - Test kuralı: Her madde için önce açığı gösteren kırmızı test yazılır ve başarısız olduğu görülür, sonra düzeltme yapılıp test yeşile çevrilir. Aşağıdaki test adları önerilen adlardır, henüz yoktur. Backend testleri `backend/tests/` altında pytest, web ve admin testleri mevcut test aracıyla, mobil testler jest ile yazılır.
 - CLAUDE.md K-53'e göre bu maddelerin çoğu "Büyük / riskli" sınıfındadır (giriş ve kimlik, ödeme, kişisel veri, migration). Her maddeden sonra `code-reviewer` incelemesi yapılır, kullanıcıya görünen akış değiştiyse `qa-tester` da çalıştırılır.
+- İlerleme (2026-11-14): Faz 0 ve Faz 1 uygulandı; Faz 2'den kimlik/girdi/ödeme, dayanıklılık/gizlilik, mobil, web/admin ve tedarik zinciri maddeleri uygulandı. Migration, altyapı ya da iş kararı isteyen maddeler açık kaldı. Güncel durum `findings.md` içindeki `DURUM` satırlarında, açık kalanlar `docs/acik_konular.md` "Güvenlik denetimi" bölümündedir.
 - Madde sayıları: Faz 0'da 6, Faz 1'de 18, Faz 2'de 20 madde var. Ayrıca aksiyon gerektirmeyen 5 Bilgi kaydı listelendi.
 
 ---

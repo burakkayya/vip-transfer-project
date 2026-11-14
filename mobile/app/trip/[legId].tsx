@@ -167,9 +167,13 @@ function TripDetail({ legId }: { legId: string }) {
   const hasPosition = position !== null;
   useEffect(() => {
     if (!hasPosition || !open) return;
-    void refreshApproach();
+    // İlk istek etkinin gövdesinde değil bir sonraki turda atılır (etki içinde eşzamanlı setState olmaz).
+    const first = setTimeout(refreshApproach, 0);
     const id = setInterval(refreshApproach, APPROACH_REFRESH_MS);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, [hasPosition, open, status, refreshApproach]);
 
   useEffect(() => {

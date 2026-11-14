@@ -280,14 +280,30 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 4. Beklenen: "Yolcu yazdı" bildirimi tek kez gelir; dokununca sohbet açılır. Uygulama açıkken aynı mesaj ikinci bildirim olarak çıkmaz.
 5. Çıkış yapın, tekrar mesaj gönderin. Beklenen: bildirim gelmez.
 
+### 19. Güvenlik sertleştirmesi akışları (2026-11-14)
+
+1. **Silme talebi (senaryo 9'un devamı):** admin silme türündeki talebi **Tamamla** dediğinde anonimleştirme zorunlu çalışır; aktif rezervasyonu olan müşteride talep tamamlanamaz. Sonrasında müşteri adı, telefonu, yolcu adı, notlar ve iptal gerekçeleri anonimdir.
+2. **Personel girişi:** aynı hesapta 10 hatalı parola → 15 dk kilit (aynı IP önekinden). 2FA adımında 5 hatalı kod → MFA jetonu geçersiz, baştan giriş. Aynı TOTP kodu ikinci kez kabul edilmez.
+3. **2FA sıfırlama:** admin bir personelin 2FA'sını sıfırlayınca o personelin açık oturumları kapanır; yeniden girişte QR kurulumu ister.
+4. **Askıdaki sürücü:** admin sürücüyü askıya alınca üzerindeki başlamamış işler havuza döner; sürücü uygulamasında iş ve yolcu verisi 403 döner, yalnızca başlamış yolculuğunu tamamlayabilir.
+5. **Yolculuk zamanı:** sürücü alış saatinden 180 dk'dan erken **Yola çıktım**, 30 dk'dan erken **Yolcu alındı** diyemez; planlanan sürenin dörtte birinden kısa sürede bitiremez. Takılan işte operasyon **Zorla ilerlet** (en az 10 karakter gerekçe) kullanır; denetim kaydı `booking_leg.force_advance`.
+6. **Belirsiz iade:** sağlayıcı yanıt vermeyen iade "Belirsiz" görünür. Yalnızca admin, PayTR panelinden kontrol ettikten sonra **Gerçekleşmedi, yeniden dene** ya da **Gerçekleşmiş, tamamlandı işaretle** der; diğer roller "admin'e iletin" notunu görür.
+7. **Belge yükleme:** aynı türde ikinci bekleyen belge yüklenemez (409); sürücü bekleyen belgesini geri çekip yenisini yükler. 30 günde kota aşılırsa `document_quota_exceeded` hatası döner.
+8. **Mobil geçersiz bağlantı:** `getaway://booking/..%2Fx` gibi bir bağlantı "Bağlantı geçersiz" ekranını açar, API isteği gitmez. `?pay=1` içeren derin bağlantı ödeme sayfasını kendiliğinden açmaz.
+9. **Mobil çıkış:** sürücü yolculuk sürerken çıkış yaparsa "Yolculuk sürüyor" bildirimi kalkar ve konum paylaşımı durur.
+10. **Hız sınırları:** fiyat teklifi IP başına dakikada 60, SMS kodu IP başına saatte 10; aşılınca 429.
+11. **İncelemedeki ödeme:** PayTR bildirimi tutar ya da para birimi denetimine takılırsa rezervasyon "ödeme bekliyor" durumunda kalır; müşteri yeniden **Öde** dediğinde 409 `payment_under_review` alır ve rezervasyon süre dolsa da iptal olmaz. Operasyon PayTR panelinden tahsilatı kontrol eder.
+12. **Web ve admin BFF:** başka kökenden gelen POST 403 alır; üretimde `ALLOWED_ORIGINS` tanımsızsa giriş dahil tüm yazma istekleri 403 döner. Admin'de `/bookings/abc` ya da `/drivers/..%2Fx` "Sayfa bulunamadı" gösterir. Üretimde çerez adları `__Secure-ga_at`, `__Secure-ga_rt` (admin `__Secure-gaa_*`); eski çerezli oturum ilk istekte yeni ada taşınır.
+
 ## Otomatik testler
 
+- **Güvenlik testleri (2026-11-14):** backend tam süit 415 test (`tests/test_*phase1*.py`, `test_phase2_*.py`, `test_review_*.py`, `test_payments_hardening.py` dahil). Mobil 108 test (`routeParams`, `signout`, `tracking-task`, `urlPolicy`, `app-config`, `liveSocket`, `booking-deeplink`). Web `npx playwright test bff-hardening csp-fallback`, admin `npx playwright test e2e/security.spec.ts --project=desktop --no-deps` (giriş ve backend gerekmez). CI güvenlik taraması: `.github/workflows/security.yml` (gitleaks, bandit, pip-audit, npm audit, CodeQL). Kontrol listesi: `docs/security/checklist.md`.
 - **GitHub CI** (`.github/workflows/ci.yml`): her PR'da backend pytest, mobil tsc + jest + lint, web ve admin tsc + lint, kök betik testleri ve token uyumu otomatik koşar. Playwright testleri CI'da yoktur, yerelde çalıştırılır.
 - **Lint taban çizgisi**: `node scripts/lint-baseline.mjs <web|admin|mobile>`. İhlal sayısı `scripts/lint-baseline.json` değerini aşarsa başarısız olur; ihlal giderildiyse aynı dosyadaki sayı düşürülür.
 - **Getaway: Backend testleri**: iş kuralları, API, adres ve ilçe çözümleme, ödeme, eşleştirme ve WebSocket.
 - **Getaway: Tip denetimi (web, admin, mobil)**.
 - **Web ve admin Playwright + axe** (`web`: `npm run test:e2e` 3000'de; `admin`: `npm run test:e2e` 3001'de çalışan sunucuya karşı). Admin testleri için yerelde ayrı bir e2e admin hesabı kullanılır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (`ADMIN_E2E_EMAIL`, `ADMIN_E2E_PASSWORD`, `ADMIN_E2E_TOTP_SECRET`; sır ilk girişte otomatik yazılır). Değerler yoksa oturum isteyen testler atlanır. Admin manuel rezervasyon akışı: `cd admin && npx playwright test manual-booking --workers=1`; şikâyet incelemesi: `npx playwright test trip-review --workers=1`; web yolculuk araçları: `cd web && npx playwright test trip-tools --workers=1` (müşteri ekleme, fiyat, oluşturma, elle tahsilat, axe).
-- **Lint**: `npm run lint` (`web`, `admin`, `mobile`). Taban çizgisindeki bilinen ihlaller nedeniyle sıfırdan farklı çıkış beklenir (web 3 hata/1 uyarı, admin 1/2, mobil 7/2; `docs/ui-review/lint-taban.md`); sayılar artmamalıdır.
+- **Lint**: `npm run lint` (`web`, `admin`, `mobile`). Taban çizgisindeki bilinen ihlaller nedeniyle sıfırdan farklı çıkış beklenir (web 0/0, admin 0 hata/2 uyarı, mobil 5/1; `docs/ui-review/lint-taban.md`); sayılar artmamalıdır.
 - **Web ortak dosyalar** (`cd web && npx playwright test shared`, iki proje): üst bilgide axe ihlali yok, eşleşmeyen adres (`/tr/yok`) yerel 404 çizer (`html[lang=tr]`, `h1` "404", durum 404, üst bilgi ve "Ana sayfaya dön"), Tab ile odaklanan düğmede 2 px lake siyah halka, yer tutucunun gerçek zemine karşı WCAG kontrastı dinlenme ve üzerine gelme halinde ≥ 4,5 (ana sayfa adres alanı, rezervasyon kodu alanı), 390 px'te açık mobil menü Esc ile kapanır ve odak menü düğmesine döner, hareket azaltmada adım çizgisi dolu. Geliştirme sunucusunda kararlı sonuç için `--workers=1`.
 - **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).
 - **Kök betik testleri**: `node --test "scripts/*.test.mjs"` (renk tokenı üreticisi, 5 test). Token kaynağı ile üretilmiş dosyaların uyumu: `node scripts/sync-tokens.mjs --check`.

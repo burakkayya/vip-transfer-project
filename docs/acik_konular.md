@@ -122,3 +122,40 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 - ~~Admin panelinde müşteri–sürücü sohbetini görüntüleme ve müşterinin erken bitirdiği yolculukların listesi henüz yok~~ (2026-11-08, K-55 ile eklendi).
 - ~~Müşteri web sitesinde sohbet, kalan süre ve yolculuğu bitirme yok~~ (2026-11-08, K-55 ile eklendi). Web'de bildirim yok: sayfa açık değilken mesaj ve yaklaşma bildirimi yalnızca SMS/mobil uygulamada (web push ayrı iş). Müşteri haritasında sürücünün alışa giden rotası çizilmiyor, yalnızca sürücü işareti ve kalan süre görünüyor.
 - Güvenlik (2026-11-10): Firebase servis hesabı özel anahtarı ve API anahtarları sohbet ve mesajlaşma uygulaması üzerinden paylaşıldı. Canlıya çıkmadan servis hesabı anahtarı Firebase konsolunda yenilenmeli (eskisi silinmeli) ve API anahtarları kısıtlandıktan sonra gerekirse yenilenmeli.
+
+## Güvenlik denetimi (2026-11-14)
+
+Kaynak: `docs/security/findings.md` (durumlar) ve `docs/security/remediation-plan.md`. Aşağıdakiler karar ya da dış işlem bekler.
+
+Karar bekleyenler:
+- [ ] Dal henüz gönderilmedi (push yok). Depo herkese açık göründüğü için güvenlik bulgularını içeren `docs/security/` dosyalarının açık depoya gidip gitmeyeceği kararı.
+- [ ] Yolculuk zaman eşikleri (K-63), giriş ve SMS sınırları (K-61) operasyon teyidi.
+- [ ] PayTR bildirimi reddedildiğinde (tutar eksik, para birimi uyuşmuyor) para çekilmiş olabilir: elle mutabakat mı, otomatik iade mi (K-66). Rezervasyon şimdilik incelemede bekler (yeni ödeme ve otomatik iptal kapalı); admin panelinde inceleme görünümü ve çözme düğmesi yok, operasyon logdaki "GÜVENLİK ALARMI" satırından ve `payment.callback_rejected` denetim kaydından izler. `currency` alanı hiç gelmezse bildirim şimdilik kabul ediliyor.
+- [ ] KVKK saklama süreleri ve periyodik imha görevleri (PRIV-05): tablo bazında süre matrisi hukukçu teyidi ister. Sürücü geçmiş yolculuklarında yolcu verisinin kırpılması (PRIV-06) ve admin rezervasyon detayında maskeleme (PRIV-07) ürün kararı ister.
+- [ ] Admin fiyat ezme üst sınırı ve "fiyatı ezen kişi elle tahsilat giremez" görev ayrılığı (BIZ-04).
+- [ ] Hata izleme ve alarm servisi seçimi (MON-09; ücretli servis). Şu an güvenlik olayları yalnızca logda "GÜVENLİK ALARMI" satırıdır.
+- [ ] Mobil: başarısız çıkış isteği için kuyruk kurulmadı (yenileme jetonunu cihazda tutmak gerekir); çıkış başarısızlığı kullanıcıya gösterilmiyor (MOB-07). Sertifika sabitleme (MOB-03), App Links / Universal Links (MOB-06), ekran görüntüsü koruması (MOB-11) mağaza öncesi karar.
+- [ ] Para birimini istemcinin seçmesi (BIZ-06) ve bölge seçiminde ilçe merkezinden fiyat (BIZ-05) iş kuralı olarak mı kalacak.
+- [ ] Belge geçerlilik tarihini inceleyenin açıkça onaylaması (EXT-02).
+- [ ] Çerez listesi metni (`web/messages/*.json`) hâlâ `ga_at, ga_rt` yazıyor; üretimde adlar `__Secure-` önekli. Hukuk metniyle birlikte güncellenmeli.
+- [ ] Sohbette okundu işaretlemesi hâlâ `GET /bookings/{code}/messages` içinde (WEB-07 kalanı); ayrı bir POST ucuna taşınması web ve mobil istemciyi de değiştirir.
+
+Canlıya çıkmadan yapılacaklar (dış işlem):
+- [ ] GitHub ayarları: secret scanning ve push protection, Dependabot uyarıları, private vulnerability reporting, CodeQL, "Require review from Code Owners".
+- [ ] `SECURITY.md` içindeki iletişim e-postası yer tutucuları doldurulmalı.
+- [ ] Üretim ortam değişkenleri: web ve admin için `ALLOWED_ORIGINS` (tanımsızsa tüm yazma istekleri 403; yerelde `npm run start` için de `.env.local`'a yazılmalı); `GETAWAY_TRUSTED_PROXIES`, `BFF_CLIENT_IP_SOURCE`, `BFF_TRUSTED_HOPS` (K-62); Redis `rediss://` ve parola; veritabanı `sslmode`; PayTR test modu kapalı.
+- [ ] Yerelde Docker konteynerleri yeniden oluşturulmalı (`docker compose up -d --force-recreate`); çalışan eski konteynerler hâlâ tüm arayüzlere bağlı olabilir.
+- [ ] Android ve iOS E2E iş akışları değişiklikten sonra bir kez elle tetiklenip doğrulanmalı (Maestro sabit sürüm, Android veritabanı PG16-3.4).
+- [ ] Mobil değişiklikler cihazda ya da emülatörde denenmedi: geçersiz derin bağlantı, soket kapanış kodları, çıkışta konum görevinin durması, iOS ATS.
+
+Migration ya da altyapı gerektiren, yapılmayanlar:
+- [ ] En az yetkili veritabanı rolleri (DB-01), denetim kaydı hash zinciri (DB-02), koordinat şifreleme ya da kırpma (DB-04), şifreli metni satıra bağlama ve anahtar ayrımı (DB-08, DB-09), veri talebi notunun müşteri ve personel alanına ayrılması (PRIV-13), kalan şifresiz alanlar (DB-07).
+- [ ] Eski denetim kayıtlarındaki serbest metin gerekçeler maskelenemiyor (tetikleyici değişikliği ister); müşteri iptal gerekçesi denetim kaydına giriyor.
+- [ ] Olay müdahale runbook'u, anahtar rotasyonu ve `kid` (MON-10); yedekleme ve geri yükleme prosedürü (DB-12); `/ready` ucu (MON-15); staging ortamı (INF-13); Python bağımlılıklarının hash ile sabitlenmesi (INF-09).
+- [ ] Netgsm kimlik bilgisinin GET sorgusunda gitmesi (PRIV-08): sağlayıcının POST API'sine geçiş.
+- [ ] `accept_job` / `accept_offer` kilit sırası (BIZ-08), sohbet hız sınırı yarışı (RT-10), devredilen bacakta eski yazışma (RT-07): dinamik test ve küçük düzeltme.
+- [ ] Push jetonunun gerçekten o cihaza ait olduğu sunucuda doğrulanamıyor (RT-08 kalanı).
+- [ ] `__Secure-` çerez geçişi gerçek oturumla uçtan uca denenmedi; eski çerezli sayfa aynı anda birden çok istek atarsa kullanıcı bir kez yeniden giriş yapmak zorunda kalabilir.
+- [ ] Nokta içeren yollar (`/..` gibi) nonce'suz yedek CSP alır ve sayfa boş kalır; güvenli ama kullanıcı deneyimi ayrı ele alınmalı.
+- [ ] Faz 2 inceleme kalanları (REV-C-6..9): PayTR sayaç başlangıcı, admin listelerinde sessiz kesme, worker hata logunda traceback, EAS dışı yerel release derlemesinde yerel ağa http.
+- [ ] Mobil ve web istemcide yeni hata kodları (`payment_under_review`, `payment_provider_error`, `trip_not_active`, `invalid_push_token`) için özel metin yok; genel hata gösterilir.

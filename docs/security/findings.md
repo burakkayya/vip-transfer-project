@@ -20,7 +20,19 @@
 
 - 121 ham bulgu ile 2 yeni bulgu (EXT-01, EXT-02) toplam 123 kayıt ediyor. Bunların 29'u mükerrer olarak kanonik bir bulguya birleştirildi ya da bölündü.
 - Birleşenler: AUTH-03, BIZ-01, API-12, MOB-09 (INF-01'e). RT-02, DB-11 (INF-02'ye). API-02, API-05, MON-04 (AUTH-01'e). API-01, MON-02 (AUTH-04'e). API-03, MON-01, WEB-02, PRIV-09 (AUTH-05'e). DB-05 (PRIV-01'e). INF-10 (Redis kısmı RT-01'e, Postgres ve `0.0.0.0` kısmı DB-10'a). RT-06, DB-06 (PRIV-04'e). RT-09, MOB-08 (BIZ-02'ye). API-13 (WEB-01'e). MON-07 kaldırıldı ve RT-03, RT-04, RT-05'e bölündü. AUTH-09 RT-03'e birleşti. INF-14 (PRIV-02'ye). API-04 (MON-03'e). MON-05 (API-06'ya). MON-06 (API-07'ye). MON-11 (AUTH-08'e).
-- Tüm bulguların durumu: AÇIK.
+Durum özeti (2026-11-14, dal `claude/security-audit-hardening-5c0e1f`):
+
+| Durum | Yüksek | Orta | Düşük | Bilgi | Toplam |
+|---|---|---|---|---|---|
+| DÜZELTİLDİ | 5 | 15 | 26 | 4 | 50 |
+| KISMEN DÜZELTİLDİ | 0 | 2 | 7 | 1 | 10 |
+| AÇIK | 0 | 8 | 14 | 6 | 28 |
+| KABUL EDİLEN RİSK | 0 | 0 | 0 | 1 | 1 |
+| AKSİYON YOK (olumlu tespit) | 0 | 0 | 0 | 5 | 5 |
+
+- Her bulgunun güncel durumu kendi `DURUM` satırında (Bilgi kayıtlarında tablonun Durum sütununda) yazılıdır.
+- Açık kalanların çoğu iş kararı, migration ya da altyapı ister; liste `docs/acik_konular.md` "Güvenlik denetimi" bölümündedir.
+- Düzeltmelerin bağımsız incelemelerinde çıkan bulgular bu dosyanın sonundaki "Bağımsız inceleme bulguları" bölümündedir.
 
 Doğrulama durumu etiketleri:
 - **doğrulandı**: kod yolu bağımsız doğrulayıcı tarafından yeniden okundu.
@@ -46,7 +58,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: `env: Literal["dev", "test", "prod"]` tanımlanmalı, bilinmeyen değerle uygulama açılmamalı. İleride `stage` eklenirse prod ile aynı korumaları almalı. Koşullar "prod değilse" yerine izin listesine çevrilmeli (`env in {"dev","test"}`). Sahte ödeme router'ı yalnızca dev ve test ortamında `include_router` ile eklenmeli. `dev_code` yalnızca dev ve test ortamında dönmeli. Mobilde `__DEV__` false iken `dev_code` gösterilmemeli. FakeProvider ayrı bir anahtar kullanmalı.
 - Birleşen ID'ler: AUTH-03, BIZ-01, API-12, MOB-09.
 - Doğrulama: doğrulandı (A, B, C).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (20f93af)
 
 ### AUTH-01: Personel parola ve 2FA adımında deneme sınırı, hesap kilidi ve MFA jetonu tek kullanımı yok
 
@@ -62,7 +74,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Hesap ve IP başına Redis sayacı kullanılmalı. MFA jetonuna `jti` eklenmeli, jeton başına en fazla 5 deneme hakkı olmalı ve başarılı kullanımdan sonra jeton iptal edilmeli. Kullanıcı başına 15 dk içinde 10 hatada geçici kilit ve artan bekleme uygulanmalı. Kilit olayları denetim kaydına yazılmalı ve bildirim gönderilmeli. Argon2 doğrulaması eşzamanlılık sınırlı bir semafor arkasında çalışmalı. IP sayacı ancak AUTH-05 düzeltildikten sonra güvenilir olur.
 - Birleşen ID'ler: API-02, API-05, MON-04.
 - Doğrulama: doğrulandı (A).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (47694b6, 4b03b10)
 
 ### AUTH-04: OTP isteğinde IP, ülke ve küresel sınır yok (SMS pompalama / toll fraud)
 
@@ -77,7 +89,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: IP başına ve /24 (IPv6 için /64) blok başına dakikalık ve saatlik sınır, ayrıca küresel saatlik/günlük OTP bütçesi konmalı (Redis sayacı). Ülke kodu izin listesi ya da TR dışı numaralar için ayrı düşük bir kota tanımlanmalı. Anormal artışta devre kesici ve CAPTCHA (Turnstile) devreye girmeli. Netgsm tarafında günlük limit ve alarm kurulmalı. IP sınırının işe yaraması için AUTH-05 de düzeltilmeli.
 - Birleşen ID'ler: API-01, MON-02.
 - Doğrulama: doğrulandı (A). Netgsm tarafındaki uluslararası gönderim ayarı doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (47694b6, 4b03b10)
 
 ### PRIV-01: Silme talebi hiçbir veriyi silmiyor; anonimleştirme talepten bağımsız ve kapsamı eksik
 
@@ -93,7 +105,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: `silme` talebinin tamamlanması anonimleştirmeye bağlanmalı (ya anonimleştirme talep id'si istemeli ya da tamamlama yalnızca anonimleştirmeyle mümkün olmalı, AdminOnly). Kapsama yolcu adı ve not, bacak adres ve koordinatları (NULL ya da bölge merkezi), `push_token`, `sessions` IP/UA, `trip_messages` ve `trip_updates` eklenmeli. Yasal olarak saklanan alanlar (tutar, tarih, fatura) açıkça listelenmeli. Sürücü için eşdeğer akış ve erişim talebi için JSON dışa aktarım ucu eklenmeli. Saklanacak alanlar hukukçu teyidi gerektiriyor.
 - Birleşen ID'ler: DB-05.
 - Doğrulama: doğrulandı (B, satır satır).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (c33634c, 9059e07)
 
 ### RT-01: Redis parolasız ve tüm arayüzlere açık; ARQ varsayılan pickle ile worker'da kod çalıştırma zinciri
 
@@ -109,7 +121,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: ARQ'da `job_serializer/job_deserializer` için JSON kullanılmalı (worker ve `create_pool`). Compose'da `127.0.0.1:6379:6379` ve `--requirepass` kullanılmalı, parola `.env`'den gelmeli. Prod validator Redis parolası ya da ACL kullanıcısı ile `rediss://` şemasını zorunlu tutmalı. Üretimde Redis özel ağda, en az yetkili ACL ile (`-@dangerous`) çalışmalı. `live_location` istemcisine zaman aşımı eklenmeli (RT-04).
 - Birleşen ID'ler: INF-10 (Redis kısmı).
 - Doğrulama: doğrulandı (C; arq kaynağı okundu). LAN'dan erişilebilirlik (Docker Desktop ve Windows güvenlik duvarı) için dinamik test gerekli.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (20f93af; yerel konteynerler yeniden oluşturulmalı)
 
 ---
 
@@ -124,7 +136,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: İlk kurulum tek kullanımlık, kısa ömürlü bir davet bağlantısıyla yapılmalı. Her kurulum başlangıcında yeni sır üretilmeli. İlk girişte parola değişikliği zorunlu olmalı. `reset_2fa` ve rol değişikliğinde kullanıcının tüm oturumları iptal edilmeli.
 - Birleşen ID'ler: yok.
 - Doğrulama: doğrulandı (A).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (93e2e09)
 
 ### AUTH-05: İstemci IP'si doğrulanmamış `cf-connecting-ip` / `x-forwarded-for` başlığından alınıyor
 
@@ -135,7 +147,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Güvenilir vekil listesi tanımlanmalı (Cloudflare aralıkları ve BFF adresi). Başlık yalnızca `request.client.host` bu listedeyse okunmalı (uvicorn `--proxy-headers --forwarded-allow-ips` ya da middleware). Değer `ipaddress.ip_address` ile doğrulanmalı. BFF istemci başlığını aktarmamalı, BFF ile backend arasında paylaşılan sır ya da iç başlık kullanılmalı. Origin yalnızca Cloudflare ve BFF'den erişilebilir olmalı. Aydınlatma metnine IP işleme amacı eklenmeli (bkz. PRIV-05).
 - Birleşen ID'ler: API-03, MON-01, WEB-02, PRIV-09.
 - Doğrulama: kod doğrulandı (A, B, C). Prod topolojisi doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (93e2e09, 4b03b10; üretimde `GETAWAY_TRUSTED_PROXIES` ve BFF ayarları gerekir)
 
 ### AUTH-06: Askıya alınan sürücü atanmış işlere ve yolcu verisine erişmeye devam ediyor
 
@@ -146,7 +158,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: İş, yolculuk, konum ve sohbet uçları için `ApprovedDriver` bağımlılığı eklenmeli (APPROVED değilse 403). Askıya alma ve reddetmede ileri tarihli ve aktif bacaklar PENDING'e dönmeli ve operasyona uyarı gitmeli. Sürücü oturumları iptal edilmeli.
 - Birleşen ID'ler: yok. İlişkili: PRIV-06, RT-07, MON-10 alt maddesi.
 - Doğrulama: doğrulandı (A). Mobil ekranda görünürlük doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (93e2e09, 6811a5a, 9059e07)
 
 ### API-06: PayTR callback'i geçersiz imzalı her isteği gövdenin tamamıyla `payment_webhooks` tablosuna yazıyor
 
@@ -157,7 +169,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Saklanacak yük bilinen PayTR alanlarıyla sınırlanmalı ve her değer kırpılmalı. Geçersiz imzada tam satır yazmak yerine sayaç ve özet log (kaynak IP ile) tutulmalı. Uca hız sınırı ve gövde boyutu sınırı konmalı. PayTR çıkış IP'leri için izin listesi değerlendirilmeli. Geçersiz imza sayısı eşiği aşınca alarm üretilmeli.
 - Birleşen ID'ler: MON-05.
 - Doğrulama: doğrulandı (A).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (d1cbb19)
 
 ### API-07: Sürücü belge yüklemesinde boyut kontrolü gövde alındıktan sonra yapılıyor; adet ve kota yok
 
@@ -168,7 +180,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Vekil ya da ASGI katmanında gövde üst sınırı konmalı (yükleme ucu için ör. 11-12 MB, diğer uçlar için 1 MB). Sürücü ve araç başına adet ve toplam boyut kotası tanımlanmalı, `doc_type` başına tek bir bekleyen belge olmalı. Yükleme ucuna hız sınırı ve disk doluluk alarmı eklenmeli.
 - Birleşen ID'ler: MON-06.
 - Doğrulama: doğrulandı (A). Starlette'in dosyayı spool etmesi ölçülmedi.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (c289817, e3b3fc7)
 
 ### MON-03: Kimliksiz `POST /quotes` hız sınırı olmadan ücretli Google Routes API'yi çağırıyor
 
@@ -179,7 +191,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: `/quotes` (ve `me/bookings` içindeki teklif hesabı) için IP başına ve küresel sınır konmalı. `places` uçlarının sınırı korunmalı. Rota önbelleği paylaşımlı Redis LRU'ya taşınmalı. Google Cloud'da günlük kota ve bütçe alarmı tanımlanmalı.
 - Birleşen ID'ler: API-04.
 - Doğrulama: doğrulandı (A).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (c289817, e3b3fc7)
 
 ### MON-08: Denetim kaydı kapsamında güvenlik olayı boşlukları; politika ile uygulama uyuşmuyor
 
@@ -190,7 +202,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: `security.*` olay kategorisi eklenmeli: `otp.request`, `otp.verify_failed`, `auth.refresh_failed/reuse`, `auth.forbidden` (örneklenmiş), `webhook.invalid_signature`, `session.revoke`. Admin PII okuma uçları `*.view` kaydı yazmalı. Yüksek hacimli olaylar yapılandırılmış log ile merkezi toplamaya gitmeli (MON-09).
 - Birleşen ID'ler: yok. İlişkili: PRIV-07 (okuma denetimi), DB-02.
 - Doğrulama: doğrulandı (A).
-- DURUM: AÇIK
+- DURUM: KISMEN DÜZELTİLDİ (93e2e09; okuma işlemlerinin denetimi PRIV-07'de açık)
 
 ### MON-09: Merkezi log, hata izleme ve alarm mekanizması yok
 
@@ -200,7 +212,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Backend, worker ve Next.js için Sentry kurulmalı (AB bölgesi, PII temizliği; `docs/acik_konular.md:28`). JSON log, istek kimliği ve merkezi toplama eklenmeli. Alarmlar: personel başarısız girişi > N/5 dk, OTP istek oranı, geçersiz webhook imzası > 0, 5xx oranı, worker iş hatası, Google/Netgsm günlük bütçesi.
 - Birleşen ID'ler: yok.
 - Doğrulama: doğrulandı (A; negatif aramalar).
-- DURUM: AÇIK
+- DURUM: AÇIK (servis seçimi iş kararı; güvenlik olayları şimdilik yalnızca logda)
 
 ### DB-01: Uygulama, migration ve CI tek bir PostgreSQL superuser hesabıyla çalışıyor; en az yetki ilkesi uygulanmıyor
 
@@ -210,7 +222,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Üç rol tanımlanmalı. `getaway_owner` yalnızca migration için kullanılmalı (NOSUPERUSER). `getaway_app` gerekli tablolarda yalnızca CRUD yetkisi almalı, `audit_logs` üzerinde yalnızca SELECT ve INSERT. İsteğe bağlı olarak salt okunur raporlama rolü eklenmeli. `REVOKE ALL ... FROM PUBLIC` yapılmalı. Ayrı bir `GETAWAY_MIGRATION_DATABASE_URL` tanımlanmalı. Prod açılışında `rolsuper` kontrolü yapılmalı.
 - Birleşen ID'ler: yok.
 - Doğrulama: doğrulandı (B; repo, dev ve CI). Üretim doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: AÇIK (migration ve altyapı gerektirir)
 
 ### DB-02: `audit_logs` değiştirilemezliği yalnızca tetikleyiciye dayanıyor; sahip veya superuser atlatabilir
 
@@ -221,7 +233,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: DB-01'deki rol ayrımı yapılmalı, uygulama rolü tablo sahibi olmamalı. `created_at` INSERT tetikleyicisiyle `now()` değerine zorlanmalı. `prev_hash/row_hash` ile hash zinciri kurulmalı ve son özet periyodik olarak DB dışına yazılmalı. Prod'da pgaudit ya da append-only bir dış kopya kullanılmalı. Doküman ifadesi gerçek garantiye göre düzeltilmeli.
 - Birleşen ID'ler: yok.
 - Doğrulama: doğrulandı (B). Atlatma komutları çalıştırılmadı.
-- DURUM: AÇIK
+- DURUM: AÇIK (migration gerektirir)
 
 ### DB-04: Kesin alış ve bırakış koordinatları şifresiz; adres şifrelemesini fiilen anlamsızlaştırıyor
 
@@ -232,7 +244,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Koordinatlar `EncryptedString` (ya da şifreli JSON) olarak saklanmalı. Tamamlanmış bacaklarda N gün sonra koordinatlar bölge merkezine indirgenmeli. Anonimleştirmede koordinatlar silinmeli (PRIV-01).
 - Birleşen ID'ler: yok. İlişkili: PRIV-03, PRIV-05, PRIV-06.
 - Doğrulama: doğrulandı (B).
-- DURUM: AÇIK
+- DURUM: AÇIK (migration ve ürün kararı gerektirir)
 
 ### BIZ-02: Yolculuk bitirmede zaman kontrolü yok, konum yalnızca istemcinin beyanı (erken ve sahte bitiş)
 
@@ -244,7 +256,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: DEPARTED en erken `pickup_at - X`, STARTED en erken `pickup_at - tolerans` zamanında kabul edilmeli. FINISHED için STARTED'dan sonra asgari süre aranmalı (ör. `duration_minutes * 0.5`). Son N konum örneğinde hız ve sıçrama makullük kontrolü yapılmalı. Sürücü erken bitişleri de admin raporuna girmeli. Hakediş için itiraz bekleme süresi konmalı. Mobilde `mocked` bayrağı olaya eklenip işaretlenmeli. Play Integrity / App Attest için mağaza öncesi karar verilmeli.
 - Birleşen ID'ler: RT-09, MOB-08.
 - Doğrulama: doğrulandı (B, C).
-- DURUM: AÇIK
+- DURUM: KISMEN DÜZELTİLDİ (6811a5a, e3b3fc7; istemcinin `mocked` konum beyanı işlenmiyor)
 
 ### BIZ-03: İade sağlayıcı çağrısı DB işlemi içinde yapılıyor ve idempotent değil; çift iade riski
 
@@ -255,7 +267,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Outbox deseni kullanılmalı: Refund önce PENDING olarak commit edilmeli, sağlayıcı işlem dışında çağrılmalı, sonuç ayrı bir işlemle yazılmalı. Zaman aşımında UNKNOWN durumu ve mutabakat sorgusu kullanılmalı. `retry_refund` içinde `paid_payment(lock=True)` ile kalan tutar yeniden kontrol edilmeli. Benzersiz iade referansı gönderilmeli.
 - Birleşen ID'ler: yok. İlişkili: BIZ-09.
 - Doğrulama: kod yolu doğrulandı (B). (a) ve (b) için dinamik test gerekli: PayTR kümülatif iade tavanı ve iki eşzamanlı istekle entegrasyon testi.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (d1cbb19, 9059e07)
 
 ### BIZ-04: Admin fiyat ezme tutarı sınırsız; aynı rol elle "nakit alındı" kaydı da girebiliyor (görev ayrılığı yok)
 
@@ -266,7 +278,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Ezme oranına yapılandırılabilir bir sınır konmalı (ör. %50-%150). Sınır dışı ezmeler ve elle tahsilatlar için FinanceStaff'ın ikinci onayı aranmalı. `reference` zorunlu olmalı. Ezilmiş rezervasyonun hakedişi onaya düşmeli ya da `min(system_total, override)` üzerinden hesaplanmalı.
 - Birleşen ID'ler: yok.
 - Doğrulama: doğrulandı (B).
-- DURUM: AÇIK
+- DURUM: AÇIK (iş kararı gerekir)
 
 ### PRIV-02: Konsol SMS sağlayıcısı OTP kodunu ve tam telefon numarasını WARNING seviyesinde logluyor
 
@@ -277,7 +289,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Konsol sağlayıcıda telefon `mask_phone` ile maskelenmeli, OTP kodu loglanmamalı (testler `outbox` üzerinden okuyor). CI artefaktı yalnızca hata durumunda ve maskeli yüklenmeli. Validator reddi INF-02'de.
 - Birleşen ID'ler: INF-14.
 - Doğrulama: doğrulandı (B, C).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (20f93af)
 
 ### PRIV-03: Sürücü tekliflerinde adres gizleniyor ama kesin koordinatlar açık
 
@@ -288,7 +300,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Teklif yanıtında koordinatlar `None` olmalı ya da `job_preview_trim_m` ile kırpılmalı (bölge merkezi yeterli).
 - Birleşen ID'ler: yok.
 - Doğrulama: doğrulandı (B). Mobilde bu alanların gösterilip gösterilmediği doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (c289817)
 
 ### PRIV-04: Mesaj önizlemesi, ilk ad ve uçuş numarası şifresiz `trip_updates` tablosuna ve FCM yüküne kopyalanıyor
 
@@ -300,7 +312,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: `new_message` bildiriminde metin yerine sabit "Yeni mesaj" kullanılmalı ya da `body` `EncryptedString` yapılmalı. Push yükünde içerik olmamalı, istemci mesajı API'den çekmeli. Uçuş bildirimlerinde "uçuşunuz" denmeli ya da bu satırlar uçuş verisiyle birlikte silinmeli. Doküman koda göre düzeltilmeli.
 - Birleşen ID'ler: RT-06, DB-06.
 - Doğrulama: doğrulandı (B, C).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (c289817)
 
 ### PRIV-05: Saklama süresi tanımsız ve temizlik görevi olmayan tablolar ve dosyalar
 
@@ -310,7 +322,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Tablo bazında saklama matrisi (hukukçu teyidiyle) belirlenmeli ve `jobs.py`'ye görevler eklenmeli: süresi geçen oturumlar silinmeli, tamamlanmış bacaklar X gün sonra bölge merkezine indirgenmeli, belge dosyaları yasal süre sonunda silinmeli, `audit_logs.ip` için süre belirlenmeli (değiştirilemezlik tasarımıyla uyumlu). Worker canlılık kontrolü ve alarm eklenmeli (MON-14).
 - Birleşen ID'ler: yok.
 - Doğrulama: kod doğrulandı (B). Hukuki süreler doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: AÇIK (saklama süreleri hukukçu teyidi bekliyor)
 
 ### PRIV-06: Sürücü geçmiş yolculuklarında yolcu adı, tam adres ve koordinat süresiz erişilebilir
 
@@ -321,7 +333,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: COMPLETED ve CANCELLED bacaklarda ad baş harfe indirilmeli, adres ve koordinatlar `None` olmalı.
 - Birleşen ID'ler: yok. İlişkili: AUTH-06, DB-04.
 - Doğrulama: doğrulandı (B).
-- DURUM: AÇIK
+- DURUM: AÇIK (ürün kararı gerekir)
 
 ### PRIV-07: Admin rezervasyon detayında yolcu adı, not ve adresler tam dönüyor; okuma denetime yazılmıyor
 
@@ -331,7 +343,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: PII içeren detay uçlarına okuma denetimi eklenmeli. Destek rolü için yolcu adı maskelenmeli ya da tam gösterim bilinçli bir karar olarak dokümante edilmeli.
 - Birleşen ID'ler: yok. Okuma denetimi kısmı MON-08 ile ortak.
 - Doğrulama: doğrulandı (B).
-- DURUM: AÇIK
+- DURUM: AÇIK (ürün kararı gerekir)
 
 ### WEB-01: BFF yol izin listesi kodlanmış `..` ve `%2F` ile atlatılıyor (web ve admin)
 
@@ -343,7 +355,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Segmentler birleştirilmeden önce `.`, `..`, `/`, `\`, `?`, `#`, `%` ya da kontrol karakteri içeren segmentler 400 ile reddedilmeli. Segmentler `encodeURIComponent` ile yeniden kodlanmalı. Upstream URL `new URL()` ile kurulmalı ve kanonik `pathname` izin listesine göre yeniden kontrol edilmeli.
 - Birleşen ID'ler: API-13.
 - Doğrulama: dinamik test gerekli. Eşleyici simülasyonu ve Next kaynağı doğrulandı (A, C). `next start` ile `curl --path-as-is` denenmeli: 403 backend yanıtı atlatmayı, 404/400 BFF yanıtı korumayı gösterir.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (1f26be8)
 
 ### RT-03: WebSocket jetonu yalnızca bağlantı başında doğrulanıyor; oturum iptali ve jeton süresi akışı kesmiyor
 
@@ -354,7 +366,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Her ~30 sn'de `get_active_session` ve `exp` yeniden kontrol edilmeli, süre dolunca 4401 ile kapatılmalı. Tüm bacaklar terminal duruma geçince bağlantı kapatılmalı. Mutlak bağlantı ömrü konmalı ve istisnalar loglanmalı.
 - Birleşen ID'ler: AUTH-09, MON-07 (oturum ve sessiz hata kısımları).
 - Doğrulama: doğrulandı (A, C).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (6811a5a)
 
 ### RT-04: WebSocket döngüsü async içinde senkron DB ve Redis çağrıları yapıyor; Redis istemcisinde zaman aşımı yok
 
@@ -365,7 +377,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Çağrılar `asyncio.to_thread` ya da `run_in_threadpool` ile taşınmalı veya `redis.asyncio` kullanılmalı. `socket_connect_timeout` ve `socket_timeout` ayarlanmalı, `RedisError` yakalanmalı. Her tikte yalnızca önbellekteki `leg_id` ile Redis okunmalı.
 - Birleşen ID'ler: MON-07 (senkron DB kısmı).
 - Doğrulama: doğrulandı (A, C; kod). Yük altındaki etki ölçülmedi.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (6811a5a, e3b3fc7)
 
 ### INF-02: Prod validator kapsam boşlukları (SMS, PayTR test modu ve boş anahtar, DB/Redis kimlik bilgisi ve TLS, CORS, URL, anahtar uzunluğu)
 
@@ -383,7 +395,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Prod (ve ileride eklenecek stage) dalına şu redler eklenmeli: `sms_provider == "console"`, `paytr_test_mode`, PayTR seçiliyken boş merchant alanları, dev `database_url` ve `sslmode` eksikliği (`verify-full`, en az `require`), parolasız ya da `rediss://` olmayan `redis_url`, `https://` olmayan CORS ve `public_web_url`, 32 bayttan kısa anahtarlar. Her kural için açılmama testi yazılmalı.
 - Birleşen ID'ler: RT-02, DB-11.
 - Doğrulama: doğrulandı (B, C).
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (20f93af)
 
 ### EXT-01: Hakediş CSV dışa aktarımında formül enjeksiyonu
 
@@ -394,7 +406,7 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Bu karakterlerle (ayrıca sekme ve CR ile) başlayan hücrelerin başına `'` eklenmeli. İstenirse `full_name` girişinde karakter kısıtı uygulanmalı.
 - Birleşen ID'ler: yok (AUTH kapsam dışı gözleminden sahiplenildi).
 - Doğrulama: doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: DÜZELTİLDİ (d1cbb19)
 
 ---
 
@@ -405,216 +417,216 @@ Doğrulama durumu etiketleri:
 - Etkilenen yer: `backend/app/services/auth.py:265-288` (`verify(valid_window=1)` son adımı kaydetmiyor), `backend/app/security/tokens.py:44-53`.
 - İstismar / etki: Aynı jeton ve kodla yaklaşık 90 sn içinde ikinci bir oturum açılabiliyor.
 - Önerilen düzeltme: `users.totp_last_step` alanı eklenmeli. MFA jetonuna `jti` eklenip tek kullanımlık yapılmalı (AUTH-01 ile ortak).
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: DÜZELTİLDİ (47694b6)
 
 ### AUTH-08: Yenileme jetonunda yeniden kullanım tespiti yok; personel oturumu 30 gün ve boşta kalma süresi yok
 - Kategori: OWASP A07:2021; CWE-613, CWE-384, CWE-778. Önem: Düşük. Jetonu çalmak için ayrı bir açık gerekiyor.
 - Etkilenen yer: `backend/app/services/auth.py:60-77`, `backend/app/config.py:37`, `admin/app/bff/[...path]/route.ts:10-11` (çerez 12 saat).
 - İstismar / etki: Çalınan RT meşru kullanıcıdan önce kullanılırsa saldırgan oturumu sürdürüyor. Ne kayıt ne alarm oluşuyor.
 - Önerilen düzeltme: `previous_refresh_hash` saklanmalı. Eski jeton gelirse oturum ailesi iptal edilmeli, `security.refresh_reuse` kaydı ve alarm üretilmeli. Personel için 12 saatlik mutlak ömür ve boşta kalma süresi konmalı.
-- Birleşen ID'ler: MON-11. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: MON-11. Doğrulama: doğrulandı (A). DURUM: DÜZELTİLDİ (93e2e09)
 
 ### API-08: Sınırsız başlık değerleri sabit uzunluklu kolonlara yazılıyor ve 500 hatası üretiyor
 - Kategori: API8:2023; CWE-20, CWE-755. Önem: Düşük. Saldırgan yalnızca kendi isteğini bozuyor, ama IP alanı kirleniyor.
 - Etkilenen yer: `backend/app/api/auth.py:99,167` (UA sınırsız), `models/identity.py:69-70,90`, `models/ops.py:54`, `api/deps.py:30`, `alembic/versions/20261029_0001_initial_schema.py:98,183,266-267,356`.
 - Önerilen düzeltme: `device_info[:255]` ile kırpılmalı, IP `ipaddress.ip_address` ile doğrulanmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: DÜZELTİLDİ (76015c0)
 
 ### API-09: Bazı kimliksiz girdi alanları sınırsız ya da aralıksız
 - Kategori: API4/API8:2023; CWE-20, CWE-1284. Önem: Düşük. Doğrudan istismar yok, uç değerler 500 üretebiliyor.
 - Etkilenen yer: `backend/app/api/auth.py:23,36,47,62`, `backend/app/api/schemas.py:32,108-110,113,167,171`, `api/driver.py:158`, `services/quotes.py:180` (`OverflowError`), `admin/catalog.py:342`.
 - Önerilen düzeltme: Jeton alanlarına `max_length`, kod alanlarına desen konmalı. `pickup_at` şu an ile +2 yıl (ya da 365 gün) arasında olmalı. `expected_total` için `ge=0, max_digits=12` kullanılmalı. Ayarlar için anahtar başına aralık doğrulaması eklenmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: DÜZELTİLDİ (76015c0)
 
 ### API-10: PayTR hata ayrıntısı (`reason`) müşteriye aktarılıyor
 - Kategori: API8:2023; CWE-209. Önem: Düşük. Mağaza yapılandırması hakkında ipucu veriyor.
 - Etkilenen yer: `backend/app/providers/payments.py:137`, `backend/app/main.py:36-41`.
 - Önerilen düzeltme: İstemciye genel bir mesaj dönülmeli, `reason` loga ve `payments.failure_reason` alanına yazılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: DÜZELTİLDİ (76015c0)
 
 ### API-11: Saldırgan kontrolündeki `merchant_oid` doğrudan loga yazılıyor (log enjeksiyonu)
 - Kategori: A09:2021; CWE-117. Önem: Düşük.
 - Etkilenen yer: `backend/app/services/payments.py:110`.
 - Önerilen düzeltme: Değer `repr()` ile ya da CR/LF temizlenip kırpılarak loglanmalı. JSON log kullanılmalı (MON-09).
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: DÜZELTİLDİ (76015c0)
 
 ### MON-10: Olay müdahale hazırlığı eksik: runbook yok, toplu oturum düşürme yok, anahtar rotasyonu ve `kid` yok
 - Kategori: A09:2021; CWE-320, CWE-613. Önem: **Düşük** (Orta'dan düşürüldü). Doğrudan istismar yolu yok, süreç ve hazırlık eksikliği.
 - Etkilenen yer: `docs/` altında olay müdahale dokümanı yok (`docs/yasal_ve_guvenlik.md:28`), `backend/app/cli.py:20-27` (`revoke-sessions` yok), `backend/app/security/tokens.py:41,58` (tek anahtar, `kid` yok), `services/places.py:83,88` ve `providers/payments.py:224` (aynı `jwt_secret`), `security/crypto.py:47-49` (sürümsüz blind index, bkz. DB-09), Fernet yeniden şifreleme aracı yok.
 - Önerilen düzeltme: `docs/olay_mudahale.md` yazılmalı (roller, KVKK 72 saat bildirimi, secret başına rotasyon adımları). `revoke-sessions --all|--kind|--user` CLI'si eklenmeli. Amaca göre anahtar ayrımı yapılmalı (access, mfa, place, fake) ve `kid` ile çoklu doğrulama anahtarı desteklenmeli. Blind index sürüm alanı ve yeniden indeksleme komutu eklenmeli. Fernet yeniden şifreleme komutu yazılmalı.
-- Birleşen ID'ler: yok. Alt maddeleri AUTH-06, RT-03, INF-01 ve DB-09 ile örtüşüyor. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Alt maddeleri AUTH-06, RT-03, INF-01 ve DB-09 ile örtüşüyor. Doğrulama: doğrulandı (A). DURUM: AÇIK (runbook ve anahtar rotasyonu yazılmadı)
 
 ### MON-12: Sürücü `approach` ucu her çağrıda keyfi koordinatla ücretli Routes API'yi çağırıyor
 - Kategori: API4:2023; CWE-770. Önem: Düşük.
 - Düzeltme (doğrulayıcı A): "onaylı sürücü gerekir" ifadesi yanlış. `CurrentDriver` onay kontrolü yapmıyor (AUTH-06) ve bacak durumu da kontrol edilmiyor. Değişken koordinatlar paylaşılan rota önbelleğini de temizletebilir.
 - Etkilenen yer: `backend/app/api/trips.py:160-184`, `providers/routing.py:73`.
 - Önerilen düzeltme: Sürücü başına sınır konmalı (ör. 6/dk), aktif bacak şartı aranmalı, koordinat yuvarlanmalı ve kısa süreli Redis önbelleği kullanılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: DÜZELTİLDİ (cd6af29)
 
 ### MON-13: Sayfalamada offset üst sınırı yok, bazı liste uçları sınırsız
 - Kategori: API4:2023; CWE-400. Önem: Düşük. Uçlar kimlikli.
 - Etkilenen yer: `backend/app/api/admin/common.py:15-16`, `admin/operations.py:234-241,282-285` (doğrulandı), listenin geri kalanı (`fleet.py:178`, `trips.py:105-112` vb.) tek tek okunmadı. N+1 sorgular: `admin/fleet.py:100`, `trips.py:62-73`.
 - Önerilen düzeltme: `offset <= 10000` ya da cursor sayfalama kullanılmalı. Sınırsız uçlara sabit limit konmalı, N+1 için `selectinload` kullanılmalı.
-- Birleşen ID'ler: yok. Doğrulama: kısmen doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: kısmen doğrulandı (A). DURUM: DÜZELTİLDİ (cd6af29)
 
 ### MON-14: Worker cron grupları tek bir hatayla kesiliyor, iş hatası için alarm yok
 - Kategori: CWE-755, CWE-778. Önem: Düşük. KVKK temizlik işleri atlanabiliyor.
 - Düzeltme (doğrulayıcı A): `refresh_flights` örneği yanlış. Doğru örnek: `purge_flight_data` hata verirse OTP ve mesaj temizliği atlanıyor (`worker.py:34-36`).
 - Etkilenen yer: `backend/app/worker.py:18-41`, `services/jobs.py:63-65`.
 - Önerilen düzeltme: Her iş ayrı try/except içinde çalışmalı, hatalar Sentry'ye gitmeli, "son başarılı çalışma" metriği ve alarm eklenmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (A). DURUM: KISMEN DÜZELTİLDİ (cd6af29; iş yalıtımı ve son başarı kaydı var, alarm MON-09'a bağlı)
 
 ### DB-03: Test fikstürü ortamdan gelen herhangi bir veritabanında `alembic downgrade base` çalıştırıyor
 - Kategori: A05:2021; CWE-1188. Önem: **Düşük** (Orta'dan düşürüldü). Saldırgan senaryosu yok, kaza riski var: geri alınamaz veri kaybı.
 - Etkilenen yer: `backend/tests/conftest.py:14-16` (`setdefault`), `:54-61`.
 - Önerilen düzeltme: DB adı `_test` ile bitmiyorsa ya da host localhost değilse `pytest.exit` çağrılmalı. Yalnızca `GETAWAY_TEST_DATABASE_URL` okunmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: DÜZELTİLDİ (93e2e09)
 
 ### DB-07: Diğer şifresiz kişisel ve hassas alanlar; audit maskelemesinde `reason` ve `reference` eksik
 - Kategori: A02:2021; CWE-312. Önem: Düşük.
 - Etkilenen yer: IP alanları (`identity.py:70,90`, `customer.py:56`, `ops.py:54`), `sessions.device_info`, `push_token` (`customer.py:39`, `fleet.py:41`), `vehicles.plate` (`fleet.py:63`), serbest metinler (`customer.py:70`, `fleet.py:35,115`, `booking.py:77,90`, `finance.py:47,78`), `services/audit.py:15-33` (`SENSITIVE_KEYS` içinde `reason` ve `reference` yok; bunları yazan yerler: `bookings.py:459,482`, `trip_review.py:53`, `documents.py:114`, `payments.py:205`).
 - Önerilen düzeltme: Serbest metinler `EncryptedString` yapılmalı. `reason` ve `reference` maskelenmeli ya da yalnızca var/yok bilgisi yazılmalı. Plaka için `plate_hash` ile şifreli değer kullanılmalı. IP'ler 90 gün sonra /24'e maskelenmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: KISMEN DÜZELTİLDİ (cd6af29, 1896187; denetim maskelemesi yapıldı, kalan şifresiz alanlar migration ister)
 
 ### DB-08: Fernet şifreli metin satıra ve sütuna bağlı değil (ciphertext yer değiştirme)
 - Kategori: A02:2021; CWE-649, CWE-345. Önem: Düşük. DB yazma yetkisi gerekiyor.
 - Etkilenen yer: `backend/app/security/crypto.py:25-36,80-99`, `api/admin/finance.py:168-170` (IBAN dışa aktarımı).
 - İstismar / etki: Saldırgan kendi IBAN şifreli metnini başka bir sürücünün satırına kopyalıyor ve hakediş dosyası saldırganın IBAN'ını gösteriyor.
 - Önerilen düzeltme: IBAN, 2FA sırrı ve belge yolu için `table:column:row_id` AAD ile AES-GCM kullanılmalı. IBAN değişikliği denetlenmeli ve ödeme öncesi uyarı gösterilmeli.
-- Birleşen ID'ler: yok. Doğrulama: mekanizma doğrulandı (B). İstismar çalıştırılmadı. DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: mekanizma doğrulandı (B). İstismar çalıştırılmadı. DURUM: AÇIK (migration gerektirir)
 
 ### DB-09: Blind index anahtarı OTP HMAC ile paylaşılıyor; alan ayrımı ve rotasyon yok
 - Kategori: A02:2021; CWE-323, CWE-320. Önem: Düşük.
 - Etkilenen yer: `backend/app/security/crypto.py:47-49`, `services/otp.py:38-40`, `services/auth.py:108,174`.
 - Önerilen düzeltme: HKDF ile amaç başına alt anahtar ya da alan öneki kullanılmalı. `phone_hash_v` sürüm alanı ile rotasyon planı yapılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK (anahtar ayrımı ve yeniden indeksleme gerektirir)
 
 ### DB-10: Yerel geliştirmede PostgreSQL tüm arayüzlere superuser hesabıyla açık; backend `0.0.0.0` üzerinde dinliyor
 - Kategori: A05:2021; CWE-1327, CWE-798, CWE-521. Önem: Düşük (yalnızca geliştirme).
 - Etkilenen yer: `docker-compose.yml:6-10` (`"5432:5432"`, dev kimlik bilgisi; değer yazılmadı), `backend/app/config.py:15` (repodaki dev Fernet anahtarı), `.vscode/tasks.json:42-43` (`uvicorn --host 0.0.0.0`; LAN'daki biri dev modda `/docs` ve `dev_code` ile test hesaplarına girebilir).
 - Önerilen düzeltme: `"127.0.0.1:5432:5432"` ve `${POSTGRES_PASSWORD:?}` kullanılmalı. Uvicorn görevi `--host 127.0.0.1` ile çalışmalı, fiziksel cihaz testi için ayrı bir görev tanımlanmalı.
-- Birleşen ID'ler: INF-10 (Postgres ve `0.0.0.0` kısımları). Doğrulama: doğrulandı (B, C). İşletim sistemi güvenlik duvarı etkisi doğrulanmadı. DURUM: AÇIK
+- Birleşen ID'ler: INF-10 (Postgres ve `0.0.0.0` kısımları). Doğrulama: doğrulandı (B, C). İşletim sistemi güvenlik duvarı etkisi doğrulanmadı. DURUM: DÜZELTİLDİ (37a7036; yerel konteynerler yeniden oluşturulmalı)
 
 ### BIZ-05: Bölge seçiminde fiyat ilçe merkezinden hesaplanıyor, gerçek adres serbest metin
 - Kategori: A04:2021; CWE-840. Önem: Düşük. Bilinçli bir tasarım (`docs/fiyatlandirma.md:30`).
 - Etkilenen yer: `backend/app/api/public.py:56`, `services/quotes.py:126-129`, `services/dispatch.py:291-294`.
 - Önerilen düzeltme: Serbest adres girildiyse sürücüye "konum doğrulanmadı" uyarısı gösterilmeli ya da serbest adres yalnızca jetonlu seçimde kabul edilmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK (iş kuralı kararı)
 
 ### BIZ-06: Para birimini istemci seçiyor (`country_code`); kur arbitrajı mümkün
 - Kategori: A04:2021; CWE-840. Önem: Düşük (Bilgi'ye yakın).
 - Etkilenen yer: `backend/app/api/schemas.py:109,113`, `currency.py:19-23`, `services/quotes.py:200-205`, `api/customer.py:64-66`, `services/bookings.py:163-171`.
 - Önerilen düzeltme: Para birimi profil ülkesine bağlanmalı. `pickup_at` için azami ileri tarih konmalı (API-09 ile ortak).
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK (iş kuralı kararı)
 
 ### BIZ-07: Ödeme bildiriminde para birimi doğrulanmıyor; `total_amount` eksikse tutar kontrolü atlanıyor
 - Kategori: A08:2021; CWE-345. Önem: Düşük. Alanlar PayTR imzası kapsamında.
 - Etkilenen yer: `backend/app/services/payments.py:129`, `providers/payments.py:150`.
 - Önerilen düzeltme: `total_amount is None` ise ödeme reddedilmeli. `currency` alanı `payment.currency` ile karşılaştırılmalı.
-- Birleşen ID'ler: yok (API-15 notu ile örtüşüyor). Doğrulama: doğrulandı (A, B). DURUM: AÇIK
+- Birleşen ID'ler: yok (API-15 notu ile örtüşüyor). Doğrulama: doğrulandı (A, B). DURUM: DÜZELTİLDİ (76015c0, 1896187; `currency` alanı hiç gelmezse bildirim kabul edilir)
 
 ### BIZ-08: `accept_job` ile `accept_offer` kilit sırası ters; deadlock olasılığı
 - Kategori: A04:2021; CWE-833. Önem: Düşük. Veri bütünlüğü bozulmuyor, kullanıcı 500 alıyor.
 - Etkilenen yer: `backend/app/services/dispatch.py:198-205,226-236,432-451`.
 - Önerilen düzeltme: Tek bir kilit sırası (önce bacak, sonra teklifler) uygulanmalı. Deadlock hatası 409 olarak dönmeli.
-- Birleşen ID'ler: yok. Doğrulama: kilit sırası doğrulandı (B). Dinamik test gerekli (iki eşzamanlı istek). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: kilit sırası doğrulandı (B). Dinamik test gerekli (iki eşzamanlı istek). DURUM: AÇIK (dinamik test gerekir)
 
 ### BIZ-09: Ödeme sayfası yeniden kullanım penceresi (25 dk) PayTR sayfa ömründen (30 dk) kısa
 - Kategori: A04:2021; CWE-362. Önem: Düşük. İkinci ödeme otomatik iade ediliyor. İade başarısız olursa BIZ-03 ile birleşiyor.
 - Etkilenen yer: `backend/app/services/payments.py:31,34-47,140-147`, `providers/payments.py:126`.
 - Önerilen düzeltme: Pencere PayTR `timeout_limit` değerinden uzun tutulmalı (ör. 31 dk) ya da yeni sayfa açılırken eskisi geçersiz sayılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: DÜZELTİLDİ (76015c0)
 
 ### PRIV-08: Netgsm entegrasyonu kimlik bilgisini, telefonu ve OTP metnini GET sorgu dizgisinde gönderiyor
 - Kategori: CWE-598, CWE-532; KVKK m.12. Önem: **Düşük** (Orta'dan düşürüldü).
 - Çürütülen kısım (doğrulayıcı B): `notifications.py:99` traceback'inin URL içerdiği iddiası büyük olasılıkla yanlış. Kalan risk, httpx INFO loglarının açılması ve TLS sonlandıran bir çıkış vekili.
 - Etkilenen yer: `backend/app/providers/sms.py:43-55`, `services/notifications.py:98-99`.
 - Önerilen düzeltme: Netgsm'in POST/XML ya da Basic Auth REST API'sine geçilmeli. SMS hata logları URL'siz olmalı.
-- Birleşen ID'ler: yok. Doğrulama: GET kullanımı doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: GET kullanımı doğrulandı (B). DURUM: AÇIK (sağlayıcının POST API'sine geçiş gerekir)
 
 ### PRIV-10: Uçuş verisi silme (K-31) iptal edilen yolculuklarda 48 saat sürüyor; kopyalar kapsam dışı
 - Kategori: KVKK m.7, GDPR m.5/1-e. Önem: Düşük.
 - Etkilenen yer: `backend/app/services/dispatch.py:469-474`, `services/bookings.py:53,244`, docstring'ler hâlâ "24 saat" diyor (`models/booking.py:150`, `services/jobs.py:44`), kopyalar `trip_updates.title` ve `flight_tracking.py:177,180`.
 - Önerilen düzeltme: İptal anında `purge_at = now` atanmalı, docstring'ler düzeltilmeli, kopyalar PRIV-04 ile kapatılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: DÜZELTİLDİ (cd6af29)
 
 ### PRIV-12: Konsol push sağlayıcısı jeton önekini, ilk adı ve mesaj metnini logluyor
 - Kategori: CWE-532. Önem: Düşük. Yalnızca dev ve CI'da geçerli, çünkü prod'da `console` reddediliyor.
 - Etkilenen yer: `backend/app/providers/push.py:51`, CI artefaktları (PRIV-02 ile ilişkili).
 - Önerilen düzeltme: Gövde loglanmamalı ya da kısaltılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: DÜZELTİLDİ (cd6af29)
 
 ### PRIV-13: Veri talebi notu düz metin ve personel notu müşteri notunun üzerine yazılıyor; uçuş takip logları uçuş numarası içeriyor
 - Kategori: KVKK m.12; CWE-312. Önem: Düşük.
 - Etkilenen yer: `backend/app/models/customer.py:70`, `api/admin/people.py:84-85`, `services/flight_tracking.py:177,180`.
 - Önerilen düzeltme: Not alanı `EncryptedString` yapılmalı ve müşteri notu ile personel notu ayrı alanlarda tutulmalı. Loglarda uçuş numarası maskelenmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (B). DURUM: KISMEN DÜZELTİLDİ (cd6af29; uçuş no maskelendi, not alanlarının ayrılması migration ister)
 
 ### WEB-04: CSP `script-src 'unsafe-inline'` (web ve admin)
 - Kategori: A05:2021; CWE-1021, CWE-79 (savunma katmanı). Önem: Düşük. Doğrudan XSS bulunmadı.
 - Etkilenen yer: `web/next.config.ts:19`, `admin/next.config.ts:14`.
 - Önerilen düzeltme: Middleware'de istek başına nonce üretilmeli ve `'nonce-...' 'strict-dynamic'` kullanılmalı. Öncelik admin olmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (1f26be8, e3b3fc7)
 
 ### WEB-05: HSTS hiçbir katmanda yok
 - Kategori: A02/A05:2021; CWE-319, CWE-523. Önem: Düşük. CDN tarafında açık olup olmadığı bilinmiyor.
 - Etkilenen yer: `web/next.config.ts:9-32`, `admin/next.config.ts:3-24`, `backend/app/main.py:51-58`.
 - Önerilen düzeltme: Prod'da `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` eklenmeli ya da CDN'de açık olduğu belgelenmeli.
-- Birleşen ID'ler: yok. Doğrulama: repo tarafı doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: repo tarafı doğrulandı (C). DURUM: DÜZELTİLDİ (1f26be8)
 
 ### WEB-06: Admin `[id]` rota parametreleri doğrulanmadan BFF yoluna ekleniyor (CSPT)
 - Kategori: A01:2021; CWE-22 (istemci tarafı). Önem: Düşük. Personelin hazırlanmış bir bağlantıyı açıp işlem düğmesine basması gerekiyor.
 - Etkilenen yer: `admin/app/(panel)/bookings/[id]/page.tsx:108-110,132,147`, `admin/app/(panel)/drivers/[id]/page.tsx:28-29,37`.
 - Önerilen düzeltme: UUID regex'i uymazsa `notFound()` dönülmeli. Parçalar `encodeURIComponent` ile kodlanmalı (WEB-01 ikinci katman).
-- Birleşen ID'ler: yok (MOB-02 ile aynı sınıf). Doğrulama: dinamik test gerekli. DURUM: AÇIK
+- Birleşen ID'ler: yok (MOB-02 ile aynı sınıf). Doğrulama: dinamik test gerekli. DURUM: DÜZELTİLDİ (86b6134)
 
 ### MOB-01: Çıkış yapıldığında arka plan konum görevi durdurulmuyor
 - Kategori: MASVS-PRIVACY-1; CWE-359, CWE-672. Önem: **Düşük** (Orta'dan düşürüldü). Oturum olmadığı için konum cihazdan çıkmıyor (401). Mağaza öncesi kapatılmalı.
 - Etkilenen yer: `mobile/lib/session.tsx:38-47`, `mobile/app/(driver)/home.tsx:369-372`, `mobile/lib/tracking.ts:21-40,63`.
 - Önerilen düzeltme: `signOut` içinde `stopBackgroundTracking` ve `endLiveTrip` çağrılmalı. Görev 401/403 ya da oturum yokken durmalı. Yerel anahtarlar silinmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (53fa920; cihazda denenmedi)
 
 ### MOB-02: Derin bağlantıdan gelen rota parametreleri API yoluna kodlanmadan ekleniyor
 - Kategori: MASVS-PLATFORM-1, MASVS-CODE-4; CWE-20, CWE-22. Önem: **Düşük** (Orta'dan düşürüldü). Kullanıcı kendi yetkisinin dışına çıkamıyor.
 - Etkilenen yer: `mobile/app/booking/[code].tsx:52,62,66,78,88-94,118,140,150,160,179`, `mobile/app/chat/[id].tsx:36,42,72`, `mobile/app/trip/[legId].tsx:77,114,143,190,201,233`, `mobile/app/job/[legId].tsx:42,65,78`, `mobile/app.config.ts:108`.
 - Önerilen düzeltme: Biçim doğrulaması yapılmalı (kod regex'i, UUID). Parametreler `encodeURIComponent` ile kodlanmalı. Derin bağlantıdan gelen `pay=1` yok sayılmalı.
-- Birleşen ID'ler: yok. Doğrulama: dinamik test gerekli (expo-router `%2F` çözümü ve RN `fetch` normalizasyonu cihazda denenmeli). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: dinamik test gerekli (expo-router `%2F` çözümü ve RN `fetch` normalizasyonu cihazda denenmeli). DURUM: DÜZELTİLDİ (53fa920; cihazda denenmedi)
 
 ### MOB-03: Sertifika sabitleme (certificate pinning) yok
 - Kategori: MASVS-NETWORK-2; CWE-295. Önem: Düşük.
 - Etkilenen yer: `mobile/lib/api.ts:53,79,116-118`.
 - Önerilen düzeltme: Mağaza öncesi karar verilmeli (`network_security_config` pin-set, `NSPinnedDomains`). Pin rotasyon planı olmadan uygulanmamalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C; negatif arama). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C; negatif arama). DURUM: AÇIK (mağaza öncesi karar)
 
 ### MOB-04: API adresinin HTTPS olduğu derleme zamanında zorlanmıyor
 - Kategori: MASVS-NETWORK-1; CWE-319. Önem: Düşük.
 - Etkilenen yer: `mobile/app.config.ts:9,11,46-52,182`, `mobile/lib/config.ts:7`, `mobile/eas.json:10`.
 - Önerilen düzeltme: `production*` ve `preview*` profillerinde `https://` dışındaki adresler ve cleartext bayrağı `app.config.ts`'de hata vermeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (53fa920)
 
 ### MOB-05: Google Maps SDK anahtarları pakete gömülü; kısıtlamalar repodan doğrulanamıyor
 - Kategori: MASVS-STORAGE-1; CWE-798 (yalnızca kısıtlamasızsa). Önem: Düşük.
 - Etkilenen yer: `mobile/app.config.ts:16,22,59,81,142`, `mobile/.env.example:8`, CI `android-emulator.yml:109`, `ios-simulator.yml:112`.
 - Önerilen düzeltme: Konsolda uygulama kısıtlaması, API kısıtlaması ve bütçe uyarısı tanımlanmalı ve `docs/kararlar.md`'ye kaydedilmeli.
-- Birleşen ID'ler: yok. Doğrulama: gömülme doğrulandı (C). Kısıtlamalar doğrulanmadı (Google Cloud konsolunda kontrol gerekli). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: gömülme doğrulandı (C). Kısıtlamalar doğrulanmadı (Google Cloud konsolunda kontrol gerekli). DURUM: AÇIK (anahtar kısıtları Google Cloud konsolunda doğrulanmalı)
 
 ### MOB-06: Yalnızca özel URL şeması var; App Links ve Universal Links yok
 - Kategori: MASVS-PLATFORM-1; CWE-939. Önem: Düşük.
 - Etkilenen yer: `mobile/app.config.ts:108`, `mobile/app/booking/[code].tsx:105`.
 - Önerilen düzeltme: Mağaza öncesi `autoVerify` + `assetlinks.json` ve `associatedDomains` + AASA kurulmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK (mağaza öncesi)
 
 ### MOB-07: Çıkışta ağ hatası yutuluyor; sunucu oturumu ve push jetonu kalıyor
 - Kategori: MASVS-AUTH-1; CWE-613. Önem: Düşük. Backend yeni girişte jetonu aynı türdeki önceki hesaptan siliyor (`notifications.py:113-122`). Kalan pencere cihaz devri ile yeni giriş arasındaki süre ve müşteri/sürücü tabloları arası geçiş.
 - Etkilenen yer: `mobile/lib/session.tsx:41-43`, `mobile/lib/notify.ts:71-78`.
 - Önerilen düzeltme: Başarısız logout güvenli depoda kuyruklanmalı ve yeniden denenmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: KISMEN DÜZELTİLDİ (53fa920; bir kez yeniden deneme var, kalıcı kuyruk karar bekliyor)
 
 ### RT-05: WebSocket bağlantı sayısı, süresi ve kimlik öncesi bağlantı için sınır yok
 - Kategori: A04:2021; CWE-770. Önem: Düşük. Asıl yük RT-04 ile birleşince anlam kazanıyor.
 - Etkilenen yer: `backend/app/api/customer.py:267-286` (10 sn ön zaman aşımı `:272`; ilk mesaj boyutu için yalnızca uvicorn `ws_max_size` varsayılanı geçerli).
 - Önerilen düzeltme: Ön zaman aşımı 3-5 sn'ye indirilmeli. İlk mesaj için 4 KiB sınırı konmalı. Oturum başına eşzamanlı bağlantı sınırı ve IP başına bağlantı hız sınırı eklenmeli.
-- Birleşen ID'ler: MON-07 (bağlantı sınırı kısmı). Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: MON-07 (bağlantı sınırı kısmı). Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (6811a5a, e3b3fc7)
 
 ### RT-07: Bacak devredilince yeni sürücü önceki sürücüyle yapılan yazışmayı okuyabiliyor
 - Kategori: A01:2021; CWE-200, CWE-639. Önem: Düşük.
@@ -626,37 +638,37 @@ Doğrulama durumu etiketleri:
 - Kategori: A01/A04:2021; CWE-639, CWE-345. Önem: Düşük.
 - Etkilenen yer: `backend/app/api/trips.py:336-351`, `services/notifications.py:113-131`.
 - Önerilen düzeltme: FCM jeton biçimi doğrulanmalı. Başka bir hesaptan taşınan jeton denetim kaydına yazılmalı. Jeton oturuma bağlanmalı ve oturum iptalinde silinmeli.
-- Birleşen ID'ler: yok. Doğrulama: kod doğrulandı (C). İstismar (jetonun ele geçirilmesi) doğrulanmadı. DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: kod doğrulandı (C). İstismar (jetonun ele geçirilmesi) doğrulanmadı. DURUM: KISMEN DÜZELTİLDİ (cd6af29; biçim doğrulanıyor, cihaz sahipliği doğrulanamıyor)
 
 ### INF-03: `next-intl@4.3.12` açık yönlendirme advisory'si (GHSA-8f24-v5vv-gm5j)
 - Kategori: A06:2021; CWE-601. Önem: **Düşük** (Orta'dan düşürüldü). `localePrefix: always`, `sanitizePathname` ve matcher nedeniyle bu yapılandırmada statik olarak istismar yolu bulunamadı.
 - Etkilenen yer: `web/package.json:18`, `web/package-lock.json:4329-4330`, `web/middleware.ts:1-8`, `web/i18n/routing.ts:4-7`.
 - Önerilen düzeltme: 4.15.0 ya da üstüne yükseltilmeli ve yönlendirme regresyon testi yazılmalı.
-- Birleşen ID'ler: yok. Doğrulama: dinamik test gerekli (`/%09/evil`, `/%5C%5Cevil`, `//evil`, `/en/%09/evil` için `Location` başlığı kontrol edilmeli). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: dinamik test gerekli (`/%09/evil`, `/%5C%5Cevil`, `//evil`, `/en/%09/evil` için `Location` başlığı kontrol edilmeli). DURUM: DÜZELTİLDİ (1f26be8)
 
 ### INF-05: Geliştirme ve build araç zinciri açıkları (çalışma anında etkisi yok)
 - Kategori: A06:2021; CWE-1395. Önem: Düşük.
 - Etkilenen yer: `mobile/package-lock.json:17095-17096` (node-forge 1.4.2), `:20655-20656` (zod 3.25.76), minimatch, `@typescript-eslint`, glob, deepmerge.
 - Önerilen düzeltme: SDK 58 yaması uygulanmalı (`npx expo install --fix`) ve lock dosyası yenilenmeli. `npm audit fix --force` kullanılmamalı (sürüm düşürür).
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: KISMEN DÜZELTİLDİ (5f457cc; CI'da npm audit ve Dependabot izliyor, yukarı akış yamaları bekleniyor)
 
 ### INF-06: CI'da Google anahtarı workflow düzeyinde env'de; `curl | bash` kurulumu; üçüncü taraf action etiketle sabitli
 - Kategori: A08:2021; CWE-829, CWE-494. Önem: **Düşük** (Orta'dan düşürüldü). Yazma yetkisi ve tedarik zinciri ele geçirme gerekiyor, etki tek bir kota sınırlı anahtar.
 - Etkilenen yer: `.github/workflows/android-emulator.yml:30,57-58,109,140,143`, `.github/workflows/ios-simulator.yml:30,47-48,112,169`.
 - Önerilen düzeltme: Anahtar yalnızca ilgili adımın env'ine taşınmalı. Maestro sabit sürümle ve SHA-256 doğrulamasıyla kurulmalı. Action SHA ile sabitlenmeli. Test için ayrı ve kısıtlı bir anahtar kullanılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (5f457cc, 37a7036)
 
 ### INF-07: GitHub Actions SHA yerine etiketle sabitli
 - Kategori: A08:2021; CWE-1357, CWE-829. Önem: Düşük.
 - Etkilenen yer: `.github/workflows/ci.yml:45,46,64,65,90,91,107,108`, `android-emulator.yml:54,66,83,88,95,126,143,158`, `ios-simulator.yml:44,62,93,102,140,227`.
 - Önerilen düzeltme: SHA ile sabitlenmeli ve sürüm yorumla belirtilmeli. Dependabot `github-actions` ekosistemi eklenmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (5f457cc)
 
 ### INF-08: Dependabot/Renovate yok; CI'da bağımlılık açığı taraması yok; SECURITY.md ve CODEOWNERS yok
 - Kategori: A06:2021; CWE-1104. Önem: **Düşük** (Orta'dan düşürüldü). Süreç eksikliği.
 - Etkilenen yer: `.github/` (yalnızca `scripts`, `workflows` var), `.github/workflows/ci.yml`.
 - Önerilen düzeltme: `dependabot.yml` eklenmeli (npm x4, pip, github-actions, docker). CI'ya `npm audit --omit=dev --audit-level=high` ve `pip-audit` adımları eklenmeli (başlangıçta uyarı modunda).
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (5f457cc, 37a7036; GitHub depo ayarları elle açılmalı)
 
 ### INF-09: Python geçişli bağımlılıkları sabitsiz ve hash'siz; pytest çalışma bağımlılıklarıyla aynı dosyada
 - Kategori: A08:2021; CWE-1357, CWE-494. Önem: Düşük.
@@ -668,19 +680,19 @@ Doğrulama durumu etiketleri:
 - Kategori: A08/A06:2021; CWE-1357. Önem: Düşük.
 - Etkilenen yer: `docker-compose.yml:4,19`, `ci.yml:25,36`, `android-emulator.yml:41-52` (17-3.5 / 7, diğerleri 16-3.4 / 7-alpine).
 - Önerilen düzeltme: `@sha256` digest ile sabitlenmeli ve tek bir Postgres major sürümü kullanılmalı. Prod Dockerfile yazıldığında ayrıca incelenmeli.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: KISMEN DÜZELTİLDİ (37a7036; image'lar digest ile sabit, üretim container tanımı yok)
 
 ### INF-12: `.gitignore` Firebase/FCM kimlik dosyası desenlerini kapsamıyor
 - Kategori: A05/A02:2021; CWE-540, CWE-312. Önem: Düşük. Şu an izlenen böyle bir dosya yok.
 - Etkilenen yer: `.gitignore:26-32`, `backend/app/config.py:57`, `mobile/app.config.ts:25,140`.
 - Önerilen düzeltme: `google-services.json`, `GoogleService-Info.plist`, `*firebase-adminsdk*.json`, `*service-account*.json`, `*.p12`, `*.jks`, `*.keystore` desenleri eklenmeli. gitleaks pre-commit kurulmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (37a7036)
 
 ### INF-13: Staging ortamı yok; mobil "preview" profilleri canlı API'ye bağlanıyor
 - Kategori: A05:2021; CWE-1188. Önem: Düşük.
 - Etkilenen yer: `mobile/eas.json:12-28`, `backend/app/config.py:24`.
 - Önerilen düzeltme: `stage` ortamı ve ayrı bir API alan adı tanımlanmalı, preview profilleri staging'e yönlendirilmeli. Stage, INF-01/INF-02 korumalarının aynısını almalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: AÇIK (altyapı kararı)
 
 ### EXT-02: Sürücünün beyan ettiği belge geçerlilik tarihi inceleyen değiştirmezse onaylanıyor
 - Kategori: OWASP A04:2021; CWE-602, CWE-840. Önem: Düşük. Belgeyi inceleyen kişinin tarihi görmesi bekleniyor. Ama süresi geçmiş ehliyet ya da sigorta ile çalışma riski var ve `expire_documents` yanlış tarihe göre çalışıyor.
@@ -688,33 +700,33 @@ Doğrulama durumu etiketleri:
 - Önerilen düzeltme: Onay ekranında `valid_until` alanı zorunlu ve açık bir onay olarak gösterilmeli. İnceleyen kişi tarihi teyit etmeden onay verilememeli. Değişiklik denetim kaydına yazılmalı.
 - Birleşen ID'ler: yok (AUTH kapsam dışı gözleminden sahiplenildi).
 - Doğrulama: doğrulanmadı.
-- DURUM: AÇIK
+- DURUM: AÇIK (ürün kararı)
 
 ---
 
 ## Bilgi maddeleri
 
-Tümünün durumu AÇIK. Olumlu tespitlerde aksiyon gerekmiyor, yalnızca kayıt için tutuluyor.
+Durumlar tablonun son sütunundadır. Olumlu tespitlerde aksiyon gerekmiyor, yalnızca kayıt için tutuluyor.
 
-| ID | Başlık | Etkilenen yer | Not / öneri | Doğrulama |
-|---|---|---|---|---|
-| AUTH-10 | 2FA adımında `user.status` kontrol edilmiyor | `backend/app/services/auth.py:275-288` | Erişim başka yerde engelleniyor. Yalnızca yanıltıcı `staff.login` kaydı ve `last_login_at` güncellemesi oluşuyor. ACTIVE değilse `Unauthorized` dönülmeli. | doğrulandı |
-| API-14 | Belge indirmede stored XSS riski düşük (olumlu) | `services/documents.py:24-30,45-50`, `admin/fleet.py:196-206` | İzin listesi genişlerse risk geri gelir. `attachment` ve `CSP: sandbox` eklenebilir. | doğrulandı |
-| API-15 | PayTR imza formülü doğru, tekrar idempotent (olumlu) | `providers/payments.py:144-145`, `services/payments.py:113-121` | `total_amount` notu BIZ-07'de. | doğrulandı |
-| API-16 | Hata işleyicileri, versiyonlama ve mass assignment sorunsuz (olumlu) | `main.py:24-26,36-49` | `extra="forbid"` değerlendirilebilir. | doğrulandı |
-| MON-15 | `/health` yalnızca canlılık döndürüyor | `backend/app/main.py:60-62` | Yalnızca iç ağdan erişilen ayrı bir `/ready` (DB, Redis) eklenmeli. | doğrulandı |
-| DB-12 | Yedekleme yapılandırması yok, doküman iddiası karşılıksız | `docs/yasal_ve_guvenlik.md:28` | Yedekleme ve geri yükleme prosedürü belgelenmeli, `acik_konular.md`'ye eklenmeli. | doğrulandı |
-| DB-13 | Denetim kaydı `action` filtresi LIKE joker karakterlerini kaçırmıyor | `api/admin/people.py:180-209` | `autoescape=True` kullanılmalı. SUPPORT rolü için IP maskelemesi değerlendirilmeli. | doğrulandı |
-| BIZ-10 | Tam iade sürücü hakedişini etkilemiyor | `services/bookings.py:431-461`, `api/admin/operations.py:187` | Tasarım gereği (K-57). Arayüzde hakediş iptali sorulmalı. | doğrulandı |
-| BIZ-11 | Rezervasyon kodu tahmin edilebilirliği (sorun yok) | `services/bookings.py:51,90-91` | CSPRNG kullanılıyor. Kod tek başına yetki vermiyor. | doğrulandı |
-| PRIV-11 | Konum geçmişi kalıcı tabloya yazılmıyor (olumlu) | `services/live_location.py:20-35` | Redis notu RT-01'de. Admin canlı konum görüntülemesi MON-08'de. | doğrulandı |
-| WEB-03 | Origin denetimi `x-forwarded-host` değerine güveniyor | `admin/app/bff/[...path]/route.ts:39-48`, `web/.../route.ts:52-61` | Tarayıcıdan istismar yolu yok. Sabit `ALLOWED_ORIGINS` kullanılmalı. | doğrulandı |
-| WEB-07 | Origin denetimi GET'leri kapsamıyor; yan etkili GET var | `web/.../route.ts:107`, `backend/app/api/trips.py:246-249`, `services/messages.py:47-52` | Okundu işaretlemesi POST'a taşınmalı ya da `Sec-Fetch-Site` kontrol edilmeli. | doğrulandı |
-| WEB-08 | Çerezde `__Host-`/`__Secure-` öneki yok; `Secure` bayrağı `NODE_ENV`'e bağlı | `web/.../route.ts:28-36`, `admin/.../route.ts:19-27` | `__Secure-` öneki değerlendirilmeli. | doğrulandı |
-| MOB-10 | Web önizlemesinde jetonlar `localStorage`'da | `mobile/lib/storage.web.ts:1-8` | Yalnızca geliştirme ortamı. Yayınlanmayacağı karara bağlanmalı. | doğrulandı |
-| MOB-11 | Ekran görüntüsü koruması yok; `keychainAccessible` varsayılan; `allowBackup` belirsiz | `mobile/lib/storage.ts:5-6` | `expo-screen-capture` değerlendirilmeli. Prebuild çıktısı kontrol edilmeli. | dinamik test gerekli |
-| RT-10 | Sohbet hız sınırı say-sonra-ekle (yarış durumu) | `services/messages.py:79-91`, `api/trips.py:243` | Redis `INCR` ya da `FOR UPDATE` kullanılmalı. | dinamik test gerekli |
-| INF-04 | `next@15.5.28` içindeki `postcss@8.4.31` advisory'leri | `web/package-lock.json:4675-4676`, `admin/package-lock.json:4606-4607` | Yalnızca build zamanında ve güvenilir CSS üzerinde çalışıyor. Next yamaları izlenmeli. | doğrulandı |
+| ID | Başlık | Etkilenen yer | Not / öneri | Doğrulama | Durum |
+|---|---|---|---|---|---|
+| AUTH-10 | 2FA adımında `user.status` kontrol edilmiyor | `backend/app/services/auth.py:275-288` | Erişim başka yerde engelleniyor. Yalnızca yanıltıcı `staff.login` kaydı ve `last_login_at` güncellemesi oluşuyor. ACTIVE değilse `Unauthorized` dönülmeli. | doğrulandı | DÜZELTİLDİ (76015c0) |
+| API-14 | Belge indirmede stored XSS riski düşük (olumlu) | `services/documents.py:24-30,45-50`, `admin/fleet.py:196-206` | İzin listesi genişlerse risk geri gelir. `attachment` ve `CSP: sandbox` eklenebilir. | doğrulandı | AKSİYON YOK (olumlu tespit) |
+| API-15 | PayTR imza formülü doğru, tekrar idempotent (olumlu) | `providers/payments.py:144-145`, `services/payments.py:113-121` | `total_amount` notu BIZ-07'de. | doğrulandı | AKSİYON YOK (olumlu tespit) |
+| API-16 | Hata işleyicileri, versiyonlama ve mass assignment sorunsuz (olumlu) | `main.py:24-26,36-49` | `extra="forbid"` değerlendirilebilir. | doğrulandı | AKSİYON YOK (olumlu tespit) |
+| MON-15 | `/health` yalnızca canlılık döndürüyor | `backend/app/main.py:60-62` | Yalnızca iç ağdan erişilen ayrı bir `/ready` (DB, Redis) eklenmeli. | doğrulandı | AÇIK |
+| DB-12 | Yedekleme yapılandırması yok, doküman iddiası karşılıksız | `docs/yasal_ve_guvenlik.md:28` | Yedekleme ve geri yükleme prosedürü belgelenmeli, `acik_konular.md`'ye eklenmeli. | doğrulandı | AÇIK (doküman iddiası düzeltildi, yedekleme prosedürü yok) |
+| DB-13 | Denetim kaydı `action` filtresi LIKE joker karakterlerini kaçırmıyor | `api/admin/people.py:180-209` | `autoescape=True` kullanılmalı. SUPPORT rolü için IP maskelemesi değerlendirilmeli. | doğrulandı | DÜZELTİLDİ (cd6af29) |
+| BIZ-10 | Tam iade sürücü hakedişini etkilemiyor | `services/bookings.py:431-461`, `api/admin/operations.py:187` | Tasarım gereği (K-57). Arayüzde hakediş iptali sorulmalı. | doğrulandı | KABUL EDİLEN RİSK (tasarım gereği, K-57) |
+| BIZ-11 | Rezervasyon kodu tahmin edilebilirliği (sorun yok) | `services/bookings.py:51,90-91` | CSPRNG kullanılıyor. Kod tek başına yetki vermiyor. | doğrulandı | AKSİYON YOK (olumlu tespit) |
+| PRIV-11 | Konum geçmişi kalıcı tabloya yazılmıyor (olumlu) | `services/live_location.py:20-35` | Redis notu RT-01'de. Admin canlı konum görüntülemesi MON-08'de. | doğrulandı | AKSİYON YOK (olumlu tespit) |
+| WEB-03 | Origin denetimi `x-forwarded-host` değerine güveniyor | `admin/app/bff/[...path]/route.ts:39-48`, `web/.../route.ts:52-61` | Tarayıcıdan istismar yolu yok. Sabit `ALLOWED_ORIGINS` kullanılmalı. | doğrulandı | DÜZELTİLDİ (86b6134; üretimde `ALLOWED_ORIGINS` zorunlu) |
+| WEB-07 | Origin denetimi GET'leri kapsamıyor; yan etkili GET var | `web/.../route.ts:107`, `backend/app/api/trips.py:246-249`, `services/messages.py:47-52` | Okundu işaretlemesi POST'a taşınmalı ya da `Sec-Fetch-Site` kontrol edilmeli. | doğrulandı | KISMEN DÜZELTİLDİ (86b6134; BFF `Sec-Fetch-Site` denetimi var, okundu işaretlemesi hâlâ GET içinde) |
+| WEB-08 | Çerezde `__Host-`/`__Secure-` öneki yok; `Secure` bayrağı `NODE_ENV`'e bağlı | `web/.../route.ts:28-36`, `admin/.../route.ts:19-27` | `__Secure-` öneki değerlendirilmeli. | doğrulandı | DÜZELTİLDİ (86b6134; eski çerezden geçiş uçtan uca denenmedi) |
+| MOB-10 | Web önizlemesinde jetonlar `localStorage`'da | `mobile/lib/storage.web.ts:1-8` | Yalnızca geliştirme ortamı. Yayınlanmayacağı karara bağlanmalı. | doğrulandı | AÇIK (web önizlemesinin yayınlanmayacağı karara bağlanmalı) |
+| MOB-11 | Ekran görüntüsü koruması yok; `keychainAccessible` varsayılan; `allowBackup` belirsiz | `mobile/lib/storage.ts:5-6` | `expo-screen-capture` değerlendirilmeli. Prebuild çıktısı kontrol edilmeli. | dinamik test gerekli | AÇIK (mağaza öncesi) |
+| RT-10 | Sohbet hız sınırı say-sonra-ekle (yarış durumu) | `services/messages.py:79-91`, `api/trips.py:243` | Redis `INCR` ya da `FOR UPDATE` kullanılmalı. | dinamik test gerekli | AÇIK (dinamik test gerekir) |
+| INF-04 | `next@15.5.28` içindeki `postcss@8.4.31` advisory'leri | `web/package-lock.json:4675-4676`, `admin/package-lock.json:4606-4607` | Yalnızca build zamanında ve güvenilir CSS üzerinde çalışıyor. Next yamaları izlenmeli. | doğrulandı | AÇIK (Next yamaları Dependabot ile izleniyor) |
 
 ---
 
@@ -730,3 +742,31 @@ Tümünün durumu AÇIK. Olumlu tespitlerde aksiyon gerekmiyor, yalnızca kayıt
 | MOB-11 | Kütüphane varsayılanları | `npx expo prebuild` sonrası AndroidManifest `allowBackup`/`dataExtractionRules` ve `expo-secure-store` kaynağı |
 | BIZ-03 | PayTR iade tavanı ve eşzamanlılık | PayTR test ortamında zaman aşımı simülasyonu. İki eşzamanlı retry ve elle iade isteğiyle entegrasyon testi |
 | BIZ-08 | Deadlock zamanlamaya bağlı | `accept_job` ve `accept_offer` aynı bacak için eşzamanlı çalıştırılmalı |
+
+---
+
+## Bağımsız inceleme bulguları
+
+Her fazdan sonra ayrı bir `security-auditor` ajanı düzeltmelerin yeni açık açıp açmadığını inceledi. Bu bulgular 94 kanonik bulguya dahil değildir.
+
+| Tur | Kapsam | Sonuç | Düzeltme |
+|---|---|---|---|
+| REV-A | Faz 0 ve Faz 1 düzeltmeleri | Bulgular düzeltildi | `4b03b10`, `9059e07` |
+| REV-B | Faz 1 ve kalıcı önlemler (REV-B-2..9) | Bulgular düzeltildi | `e3b3fc7` |
+| REV-C | Faz 2 backend ve mobil (`e3b3fc7..53fa920`) | Kritik ve Yüksek yok; 1 Orta, 2 Düşük, 6 Bilgi | `1896187` |
+
+REV-C ayrıntısı:
+
+| ID | Önem | Bulgu | Durum |
+|---|---|---|---|
+| REV-C-1 | Orta | Reddedilen başarılı PayTR bildiriminde kart çekilmiş kalabiliyor; müşteri ikinci kez ödeyebiliyor ya da rezervasyon otomatik iptal oluyordu | KISMEN DÜZELTİLDİ: rezervasyon incelemeye alınır (yeni ödeme sayfası `payment_under_review` ile reddedilir, otomatik iptal edilmez, "GÜVENLİK ALARMI" logu düşer). Otomatik iade ve admin ekranında inceleme görünümü yok; mutabakat elle yapılır (K-66) |
+| REV-C-2 | Düşük | Admin teklif ucunda geçersiz `country_code` 500 döndürüyordu | DÜZELTİLDİ |
+| REV-C-3 | Düşük | Denetim gerekçesi temizliği rezervasyon kodu ve `merchant_oid` değerini IBAN sayıyor, gerekçeyi 200 karakterde kesiyordu | KISMEN DÜZELTİLDİ: IBAN mod-97 ile doğrulanır, sınır 500 karakter. 10 haneden uzun sayılar hâlâ telefon sayılır (gizlilik lehine bırakıldı) |
+| REV-C-4 | Bilgi | E-posta deseni uzun girdide karesel çalışıyor | DÜZELTİLDİ (desenlerden önce kırpma) |
+| REV-C-5 | Bilgi | PayTR `currency` alanı imzanın parçası değil | AKSİYON YOK (tutar imzalı; para birimi denetimi ek savunma) |
+| REV-C-6 | Bilgi | Ödeme sayfası yeniden kullanım penceresi PayTR sayacının başlangıcına bağlı | AÇIK (PayTR test mağazasında doğrulanmalı; çakışmada ikinci ödeme otomatik iade yoluna düşer) |
+| REV-C-7 | Bilgi | Admin liste sınırları sessizce kesiyor; `pending_legs` yine tüm satırları çekiyor | AÇIK |
+| REV-C-8 | Bilgi | Worker hata logunda yalnızca istisna tipi var | AÇIK (hata izleme servisi kararına bağlı, MON-09) |
+| REV-C-9 | Bilgi | Mobil `toWsBase` büyük harfli şemada hata veriyordu; EAS dışı yerel release derlemesinde yerel ağa http serbest | Şema düzeltildi; yerel derleme davranışı AÇIK (mağaza akışını etkilemez) |
+
+Faz 2 web ve admin değişiklikleri (`86b6134`) ile REV-C düzeltmeleri (`1896187`) ayrı bir bağımsız incelemeden geçmedi; otomatik testleri, tip denetimi, lint ve build geçti.
