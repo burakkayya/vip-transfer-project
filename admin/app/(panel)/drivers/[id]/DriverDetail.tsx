@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { useState } from "react";
 import DocumentReview, { Doc } from "@/components/DocumentReview";
 import { Badge, ErrorBox, Field, Msg, PageHead, Table, useAction, useData } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -23,9 +23,11 @@ interface Vehicle {
 
 type Detail = DriverRow & { vehicles: Vehicle[]; documents: Doc[] };
 
-/** Ekran 5: sürücü detayı, belge inceleme, onay/red, askıya alma. */
-export default function DriverDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+/**
+ * Ekran 5: sürücü detayı, belge inceleme, onay/red, askıya alma.
+ * `id` sayfa (sunucu) bileşeninde UUID olarak doğrulanmış ve kodlanmış gelir (WEB-06).
+ */
+export default function DriverDetail({ id }: { id: string }) {
   const { data, error, reload } = useData<Detail>(`admin/drivers/${id}`);
   const action = useAction();
   const [reason, setReason] = useState("");

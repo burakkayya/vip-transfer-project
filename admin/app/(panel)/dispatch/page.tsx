@@ -7,6 +7,7 @@ import { Badge, ErrorBox, Msg, PageHead, Table, useAction, useData } from "@/com
 import { api } from "@/lib/api";
 import { dt } from "@/lib/format";
 import { BOOKING_TYPE } from "@/lib/labels";
+import { parseUuid } from "@/lib/routeParams";
 
 interface Pending {
   leg_id: string;
@@ -33,7 +34,8 @@ function Dispatch() {
   const search = useSearchParams();
   const pending = useData<Pending[]>("admin/dispatch/pending");
   const online = useData<{ id: string; full_name: string }[]>("admin/drivers/online");
-  const [legId, setLegId] = useState<string | null>(search.get("leg"));
+  // WEB-06: `?leg=` değeri BFF yoluna eklenmeden önce UUID olarak doğrulanır; geçersizse seçim yapılmaz.
+  const [legId, setLegId] = useState<string | null>(parseUuid(search.get("leg")));
   const candidates = useData<Candidate[]>(legId ? `admin/dispatch/legs/${legId}/candidates` : null);
   const action = useAction();
   const leg = pending.data?.find((p) => p.leg_id === legId);

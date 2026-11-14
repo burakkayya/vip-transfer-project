@@ -1,8 +1,11 @@
 /**
  * Admin backend vekili. Jetonlar httpOnly çerezde tutulur; yalnızca personel giriş uçları ve /admin/* iletilir.
- * Durum değiştiren isteklerde Origin kontrol edilir (CSRF).
+ * Durum değiştiren isteklerde Origin sabit listeyle (ALLOWED_ORIGINS) denetlenir (CSRF, WEB-03);
+ * çapraz siteden gelen her istek Sec-Fetch-Site ile reddedilir (WEB-07).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { bffCookieNames, cookieSecure } from "@/lib/bffCookies";
+import { fetchSiteAllowed, isAllowedOrigin, originConfig, type OriginConfig } from "@/lib/bffGuard";
 import { resolveBffPath } from "@/lib/bffPath";
 import { clientIpConfig, upstreamIpHeaders } from "@/lib/clientIp";
 
@@ -10,8 +13,23 @@ const API_URL = (process.env.GETAWAY_API_URL ?? "http://localhost:8000").replace
 // REV-A-3 / REV-B-1: istemci IP kaynağı açıkça seçilir (BFF_CLIENT_IP_SOURCE, BFF_TRUSTED_HOPS);
 // istemcinin yazdığı IP başlıkları aynen aktarılmaz. docs/security/client-ip.md
 const IP_CONFIG = clientIpConfig();
-const AT = "gaa_at";
-const RT = "gaa_rt";
+// WEB-08: üretimde `__Secure-` önekli adlar; eski öneksiz adlar bir kez okunup taşınır (lib/bffCookies.ts).
+const COOKIES = bffCookieNames("gaa");
+const SECURE_COOKIES = cookieSecure();
+const AT = COOKIES.at;
+const RT = COOKIES.rt;
+// WEB-03: durum değiştiren isteklerde Origin sabit listeyle (ALLOWED_ORIGINS) tam eşleşir; Host başlıklarına bakılmaz.
+// İlk istekte okunur (build sırasında modül değerlendirilirken değil).
+let originsCache: OriginConfig | null = null;
+function origins(): OriginConfig {
+  if (!originsCache) {
+    originsCache = originConfig();
+    if (originsCache.mode === "deny") {
+      console.error("[bff] ALLOWED_ORIGINS tanımsız: üretimde durum değiştiren tüm istekler 403 ile reddedilir.");
+    }
+  }
+  return originsCache;
+}
 // Personel oturumu en çok 12 saat yenilenebilir; backend süresinden kısa tutulur.
 const REFRESH_SECONDS = 12 * 3600;
 
@@ -24,32 +42,42 @@ type Params = { params: Promise<{ path: string[] }> };
 function cookieOptions(maxAge: number) {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: SECURE_COOKIES,
     sameSite: "strict" as const,
     path: "/bff",
     maxAge,
   };
 }
 
-function setTokens(res: NextResponse, t: Tokens) {
-  res.cookies.set(AT, t.access_token, cookieOptions(t.expires_in));
-  res.cookies.set(RT, t.refresh_token, cookieOptions(REFRESH_SECONDS));
+/** Önek öncesi adlarla yazılmış çerezleri siler (WEB-08 geçişi). Geliştirmede eski ad yoktur. */
+function clearLegacy(req: NextRequest, res: NextResponse) {
+  for (const name of [COOKIES.legacyAt, COOKIES.legacyRt]) {
+    if (name && req.cookies.has(name)) res.cookies.set(name, "", cookieOptions(0));
+  }
 }
 
-function clearTokens(res: NextResponse) {
+function setTokens(req: NextRequest, res: NextResponse, t: Tokens) {
+  res.cookies.set(AT, t.access_token, cookieOptions(t.expires_in));
+  res.cookies.set(RT, t.refresh_token, cookieOptions(REFRESH_SECONDS));
+  clearLegacy(req, res);
+}
+
+function clearTokens(req: NextRequest, res: NextResponse) {
   res.cookies.set(AT, "", cookieOptions(0));
   res.cookies.set(RT, "", cookieOptions(0));
+  clearLegacy(req, res);
+}
+
+/**
+ * Yenileme jetonu: önce yeni (önekli) ad, yoksa önceki sürümün öneksiz adı. Eski erişim jetonu bilerek okunmaz:
+ * böylece eski çerezli ilk istekte yenileme yapılır, jetonlar yeni adla yazılır, eski çerezler silinir.
+ */
+function readRefreshToken(req: NextRequest): string | undefined {
+  return req.cookies.get(RT)?.value ?? (COOKIES.legacyRt ? req.cookies.get(COOKIES.legacyRt)?.value : undefined);
 }
 
 function sameOrigin(req: NextRequest): boolean {
-  const origin = req.headers.get("origin");
-  if (!origin) return false;
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  try {
-    return new URL(origin).host === host;
-  } catch {
-    return false;
-  }
+  return isAllowedOrigin(req.headers.get("origin"), origins());
 }
 
 async function callApi(req: NextRequest, upstream: URL, body: string | undefined, token?: string) {
@@ -97,6 +125,10 @@ async function handle(req: NextRequest, { params }: Params) {
       : NextResponse.json({ error: { code: "not_found", message: "bulunamadı" } }, { status: 404 });
   }
   const { path, upstream: target } = resolved;
+  // WEB-07: çapraz siteden gelen istek her yöntemde reddedilir (admin çerezi Strict; ek katman).
+  if (!fetchSiteAllowed(req.headers.get("sec-fetch-site"))) {
+    return NextResponse.json({ error: { code: "forbidden", message: "çapraz site isteği" } }, { status: 403 });
+  }
   if (req.method !== "GET" && !sameOrigin(req)) {
     return NextResponse.json({ error: { code: "forbidden", message: "köken reddedildi" } }, { status: 403 });
   }
@@ -106,13 +138,13 @@ async function handle(req: NextRequest, { params }: Params) {
     const upstream = await callApi(req, target, body);
     if (!upstream.ok) return relay(upstream);
     const res = NextResponse.json({ ok: true });
-    setTokens(res, (await upstream.json()) as Tokens);
+    setTokens(req, res, (await upstream.json()) as Tokens);
     return res;
   }
   if (path === "auth/staff/login") return relay(await callApi(req, target, body));
 
   let access = req.cookies.get(AT)?.value;
-  const refreshToken = req.cookies.get(RT)?.value;
+  const refreshToken = readRefreshToken(req);
   let renewed: Tokens | null = null;
   if (!access && refreshToken) {
     renewed = await refresh(req, refreshToken);
@@ -125,8 +157,8 @@ async function handle(req: NextRequest, { params }: Params) {
   }
 
   const res = await relay(upstream);
-  if (path === "auth/logout" || (upstream.status === 401 && refreshToken)) clearTokens(res);
-  else if (renewed) setTokens(res, renewed);
+  if (path === "auth/logout" || (upstream.status === 401 && refreshToken)) clearTokens(req, res);
+  else if (renewed) setTokens(req, res, renewed);
   return res;
 }
 

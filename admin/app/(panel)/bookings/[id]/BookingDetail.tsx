@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { useState } from "react";
 import { useCan } from "@/components/Shell";
 import { Badge, ErrorBox, Field, Msg, PageHead, Table, useAction, useData } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -103,9 +103,11 @@ interface Detail {
 const CANCELLABLE = ["odeme_bekliyor", "onaylandi", "atandi", "yolculukta"];
 const num = (v: string) => Number(v.replace(",", "."));
 
-/** Ekran 3: rezervasyon detayı, iptal (iade oranı ezilebilir), para iadesi, hakediş iptali, atamaya geçiş. */
-export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+/**
+ * Ekran 3: rezervasyon detayı, iptal (iade oranı ezilebilir), para iadesi, hakediş iptali, atamaya geçiş.
+ * `id` sayfa (sunucu) bileşeninde UUID olarak doğrulanmış ve kodlanmış gelir (WEB-06).
+ */
+export default function BookingDetail({ id }: { id: string }) {
   const can = useCan();
   const { data, error, reload } = useData<Detail>(`admin/bookings/${id}`);
   const action = useAction();
