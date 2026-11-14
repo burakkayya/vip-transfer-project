@@ -83,6 +83,8 @@ export default function Book() {
   const [quotes, setQuotes] = useState<Record<string, Quote | ApiError>>({});
   const [vehicle, setVehicle] = useState<string | null>(null);
   const [d, setD] = useState({ name: "", pickupNote: "", dropoffNote: "", flight: "", note: "", guarantee: false });
+  const [childSeats, setChildSeats] = useState(0);
+  const [marketStop, setMarketStop] = useState(false);
   const [consent, setConsent] = useState({ disclosure: false, distance: false, marketing: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,6 +177,8 @@ export default function Book() {
             expected_total: q.total,
             passenger_name: d.name.trim(),
             note: d.note.trim() || null,
+            child_seat_count: Math.min(childSeats, pax),
+            market_stop: marketStop,
             flights: d.flight.trim() ? [{ leg_order: 1, flight_no: d.flight.trim().toUpperCase() }] : [],
             locale: LOCALE,
             accept_disclosure: consent.disclosure,
@@ -293,8 +297,8 @@ export default function Book() {
         </Row>
         {instant ? (
           <View style={{ flexDirection: "row", gap: 10, alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: 14, padding: 12 }}>
-            <Ionicons name="flash" size={18} color="#8A6A37" />
-            <T style={{ flex: 1, color: "#6B5228", fontSize: 13.5 }}>{t("book.instant")}</T>
+            <Ionicons name="flash" size={18} color={colors.accentInk} />
+            <T style={{ flex: 1, color: colors.accentInk, fontSize: 13.5 }}>{t("book.instant")}</T>
           </View>
         ) : (
           <DateTimeField label="" value={at} onChange={setAt} minimumDate={new Date()} />
@@ -419,6 +423,11 @@ export default function Book() {
       <Input label={t("book.flightNo")} icon="airplane-outline" value={d.flight} onChangeText={(v) => setD({ ...d, flight: v.toUpperCase() })} autoCapitalize="characters" maxLength={10} placeholder="TK1234" />
       <Input label={t("book.pickupNote")} icon="location-outline" value={d.pickupNote} onChangeText={(v) => setD({ ...d, pickupNote: v })} maxLength={120} />
       <Input label={t("book.dropoffNote")} icon="flag-outline" value={d.dropoffNote} onChangeText={(v) => setD({ ...d, dropoffNote: v })} maxLength={120} />
+      <T style={{ fontWeight: "700" }}>{t("meet.extrasTitle")}</T>
+      <Counter label={t("meet.childSeats")} icon="happy-outline" value={childSeats} min={0}
+        onChange={(n) => setChildSeats(Math.max(0, Math.min(n, 4, pax)))} />
+      <P muted small>{t("meet.childSeatHint")}</P>
+      <Toggle label={t("meet.marketStop")} hint={t("meet.marketStopHint")} icon="basket-outline" value={marketStop} onChange={setMarketStop} />
       <Input label={t("book.note")} icon="chatbubble-ellipses-outline" value={d.note} onChangeText={(v) => setD({ ...d, note: v })} multiline maxLength={500} />
       {selectedQuote?.guarantee_available && (
         <Card flat>

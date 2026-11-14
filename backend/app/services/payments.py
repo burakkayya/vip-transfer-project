@@ -31,7 +31,7 @@ from app.providers.payments import (
     callback_currency_matches,
     log_safe,
 )
-from app.services import audit, dispatch, notifications
+from app.services import audit, dispatch, notifications, ratings
 from app.services.bookings import execute_refund
 
 log = logging.getLogger(__name__)
@@ -59,7 +59,8 @@ def rejected_charge_filter():
     """İadesi henüz tamamlanmamış, reddedilmiş başarılı bildirimi olan ödeme satırları için SQL koşulu."""
     refunded = exists().where(Refund.payment_id == Payment.id, Refund.status == RefundStatus.COMPLETED)
     return (
-        (Payment.status == PaymentStatus.FAILED)
+        (Payment.purpose == "booking")  # K-62 bahşiş reddi rezervasyonu incelemeye almaz (iadesi yine yapılır)
+        & (Payment.status == PaymentStatus.FAILED)
         & Payment.failure_reason.in_(CALLBACK_REJECT_REASONS)
         & ~refunded
     )
@@ -76,6 +77,7 @@ def _open_payment(db: Session, booking: Booking, now: datetime) -> Payment | Non
         select(Payment)
         .where(
             Payment.booking_id == booking.id,
+            Payment.purpose == "booking",
             Payment.status == PaymentStatus.PENDING,
             Payment.checkout_url.is_not(None),
             Payment.amount == booking.total_amount,
@@ -199,6 +201,10 @@ def handle_callback(
     if payment.status is not PaymentStatus.PENDING:
         return  # zaten işlendi
 
+    if payment.purpose == "tip":
+        _tip_callback(db, payment, provider, result, now)
+        return
+
     booking = db.get(Booking, payment.booking_id, with_for_update={"of": Booking})
     if not result.success:
         payment.status = PaymentStatus.FAILED
@@ -207,27 +213,10 @@ def handle_callback(
 
     # BIZ-07: imza geçerli olsa da tutar ve para birimi rezervasyonla doğrulanmadan ödeme onaylanmaz.
     # Reddedilen bildirim yine işlenmiş sayılır (PayTR'ye "OK" döner, tekrar göndermez); ödeme FAILED olur ve
-    # kayıt operasyonun elle mutabakatı için loglanır (log satırında yalnızca bizim ürettiğimiz oid ve tutar var).
-    reject = None
-    if result.total_amount is None:
-        reject = REJECT_NO_TOTAL
-    elif result.total_amount < payment.amount:
-        reject = REJECT_UNDERPAID
-    elif result.currency is not None and not callback_currency_matches(result.currency, payment.currency):
-        reject = REJECT_CURRENCY
+    # çekilen tutar otomatik iade edilir (K-74).
+    reject = _reject_reason(result, payment)
     if reject is not None:
-        payment.status = PaymentStatus.FAILED
-        payment.failure_reason = reject
-        log.error("GÜVENLİK ALARMI ödeme bildirimi reddedildi, kart çekilmiş olabilir; otomatik iade "
-                  "başlatılıyor (%s): oid=%s tutar=%s/%s para=%s/%s", reject,
-                  log_safe(payment.merchant_oid), result.total_amount, payment.amount,
-                  log_safe(result.currency, 8), payment.currency.value)
-        audit.record(db, actor_id=None, action="payment.callback_rejected", entity_type="payment",
-                     entity_id=payment.id,
-                     changes={"reason": reject, "reported_total": result.total_amount, "amount": payment.amount,
-                              "reported_currency": log_safe(result.currency, 8), "currency": payment.currency})
-        _refund_rejected_charge(db, payment, provider, reject=reject, reported_total=result.total_amount,
-                                reported_currency=result.currency)
+        _reject_charge(db, payment, provider, result, reject)
         return
 
     payment.status = PaymentStatus.PAID
@@ -245,6 +234,35 @@ def handle_callback(
         return
 
     confirm_paid_booking(db, booking, now)
+
+
+def _reject_reason(result, payment: Payment) -> str | None:
+    """BIZ-07: imzası geçerli başarılı bildirimin tutar ve para birimi denetimi; uygunsa None."""
+    if result.total_amount is None:
+        return REJECT_NO_TOTAL
+    if result.total_amount < payment.amount:
+        return REJECT_UNDERPAID
+    if result.currency is not None and not callback_currency_matches(result.currency, payment.currency):
+        return REJECT_CURRENCY
+    return None
+
+
+def _reject_charge(db: Session, payment: Payment, provider: PaymentProvider, result, reject: str) -> None:
+    """Reddedilen başarılı bildirim: ödeme FAILED, alarm logu, denetim kaydı ve otomatik iade (K-74).
+    Log satırında yalnızca bizim ürettiğimiz oid ve tutar var."""
+    payment.status = PaymentStatus.FAILED
+    payment.failure_reason = reject
+    log.error("GÜVENLİK ALARMI ödeme bildirimi reddedildi, kart çekilmiş olabilir; otomatik iade "
+              "başlatılıyor (%s): oid=%s amaç=%s tutar=%s/%s para=%s/%s", reject,
+              log_safe(payment.merchant_oid), payment.purpose, result.total_amount, payment.amount,
+              log_safe(result.currency, 8), payment.currency.value)
+    audit.record(db, actor_id=None, action="payment.callback_rejected", entity_type="payment",
+                 entity_id=payment.id,
+                 changes={"reason": reject, "reported_total": result.total_amount, "amount": payment.amount,
+                          "reported_currency": log_safe(result.currency, 8), "currency": payment.currency,
+                          "purpose": payment.purpose})
+    _refund_rejected_charge(db, payment, provider, reject=reject, reported_total=result.total_amount,
+                            reported_currency=result.currency)
 
 
 def _refund_rejected_charge(
@@ -281,6 +299,27 @@ def _refund_rejected_charge(
                           "status": refund.status.value, "reason": reject})
     db.commit()
     return refund
+
+
+def _tip_callback(db: Session, payment: Payment, provider: PaymentProvider, result, now: datetime) -> None:
+    """K-62 bahşiş: rezervasyon durumundan bağımsızdır; ödendiyse sürücü hakedişine eklenir.
+    BIZ-07 ve K-74 bahşişte de geçerli: tutar ya da para birimi uymayan başarılı bildirim reddedilir ve
+    çekilen tutar otomatik iade edilir; bahşiş ödenmemiş sayılır."""
+    if not result.success:
+        payment.status = PaymentStatus.FAILED
+        payment.failure_reason = (result.failure_reason or "")[:255]
+        ratings.on_tip_result(db, payment, provider, paid=False, now=now)
+        return
+    reject = _reject_reason(result, payment)
+    if reject is not None:
+        _reject_charge(db, payment, provider, result, reject)
+        ratings.on_tip_result(db, payment, provider, paid=False, now=now)
+        return
+    payment.status = PaymentStatus.PAID
+    payment.paid_at = now
+    audit.record(db, actor_id=None, action="payment.paid", entity_type="payment", entity_id=payment.id,
+                 changes={"amount": payment.amount, "currency": payment.currency, "purpose": "tip"})
+    ratings.on_tip_result(db, payment, provider, paid=True, now=now)
 
 
 def confirm_paid_booking(db: Session, booking: Booking, now: datetime) -> None:

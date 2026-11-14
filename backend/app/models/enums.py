@@ -145,6 +145,7 @@ class TripEventType(str, Enum):
     ARRIVED = "vardi"
     STARTED = "basladi"
     FINISHED = "bitti"
+    NO_SHOW = "gelmedi"  # K-63: ücretsiz bekleme sonunda yolcu gelmedi
 
 
 class Currency(str, Enum):

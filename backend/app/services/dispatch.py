@@ -45,7 +45,7 @@ from app.models.enums import (
 )
 from app.config import get_settings
 from app.providers.routing import Point, haversine_km
-from app.services import audit, eta, notifications, system_settings, trip_updates
+from app.services import audit, eta, meeting, notifications, system_settings, trip_updates
 from app.services.quotes import latest_exchange_rate
 
 log = logging.getLogger(__name__)
@@ -219,6 +219,7 @@ def assign(
         offer.status = OfferStatus.WITHDRAWN
     _refresh_booking_status(leg.booking)
     trip_updates.to_customer(db, leg, "driver_assigned")
+    meeting.on_assigned(leg, now)
     audit.record(
         db,
         actor_id=actor_id,
@@ -524,11 +525,17 @@ def _apply_transition(
     now: datetime, at: Point | None,
 ) -> None:
     leg.status = target
-    db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=actor_id))
+    # K-63: konum yalnızca kanıt gereken olaylarda saklanır (varış, bitiş); yola çıkış konumu sürücünün evi
+    # olabileceği için tutulmaz.
+    keep = at is not None and event in (TripEventType.ARRIVED, TripEventType.FINISHED)
+    db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=actor_id,
+                     latitude=at.lat if keep else None, longitude=at.lng if keep else None))
     if event is TripEventType.DEPARTED:
         eta.on_departed(db, leg, at)
     elif event is TripEventType.ARRIVED:
+        leg.arrived_at = now  # K-63: ücretsiz bekleme buradan sayılır
         trip_updates.to_customer(db, leg, "driver_arrived")
+        meeting.maybe_send_guide(db, leg, now)
     elif event is TripEventType.STARTED:
         trip_updates.to_customer(db, leg, "trip_started", eta=leg.duration_minutes or "—")
     elif event is TripEventType.FINISHED:

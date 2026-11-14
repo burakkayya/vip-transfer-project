@@ -2,6 +2,7 @@
 // EXPO_PUBLIC_GOOGLE_MAPS_BROWSER_KEY). Haritayla ilgili her şey Google'dır, yedek harita yoktur
 // (2026-11-10 kullanıcı kararı, K-58): anahtar yoksa veya Google reddederse sahte harita yerine açık uyarı
 // gösterilir. iOS/Android'de Metro MapCanvas.tsx'i seçer.
+import { palette } from "@/lib/tokens";
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import GoogleMapWeb, { MAPS_BROWSER_KEY } from "./GoogleMapWeb";
@@ -26,7 +27,7 @@ export default function MapCanvas(props: MapCanvasProps) {
 }
 
 const st = StyleSheet.create({
-  box: { backgroundColor: "#ECE9E2", alignItems: "center", justifyContent: "center", padding: 24, paddingBottom: 120 },
-  title: { fontSize: 15, fontWeight: "700", color: "#0B0B0C", marginBottom: 6, textAlign: "center" },
-  text: { fontSize: 13, color: "#55555A", textAlign: "center" },
+  box: { backgroundColor: palette.limestoneDeep, alignItems: "center", justifyContent: "center", padding: 24, paddingBottom: 120 },
+  title: { fontSize: 15, fontWeight: "700", color: palette.lacquerBlack, marginBottom: 6, textAlign: "center" },
+  text: { fontSize: 13, color: palette.slateText, textAlign: "center" },
 });

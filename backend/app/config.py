@@ -117,6 +117,18 @@ class Settings(BaseSettings):
     # MON-12: sürücü `approach` rotası; sürücü başına dakikalık Routes API çağrısı ve yakın konum önbelleği.
     approach_rate_limit_per_minute: int = 10
     approach_cache_seconds: int = 60
+    # K-61: ücretli yanıtların Redis önbelleği (saniye). 0 önbelleği kapatır.
+    routes_cache_seconds: int = 24 * 3600
+    places_autocomplete_cache_seconds: int = 3600
+    # Adres ayrıntısı varsayılan olarak önbelleğe alınmaz: Google'da arama oturumu ayrıntı çağrısıyla kapanır
+    # ve o oturumdaki arama istekleri ücretsiz sayılır; ayrıntıyı önbellekten vermek oturumu açık bırakıp
+    # aramaları tek tek ücretlendirebilir. Admin'deki kullanım sayılarıyla ölçülmeden açılmaz.
+    places_details_cache_seconds: int = 0
+    # Kendi popüler yer listemizden bu kadar sonuç çıktıysa ve sorgu kısaysa Google'a gidilmez.
+    popular_places_enough: int = 3
+    popular_places_short_query: int = 4
+    # Bir adres ancak bu kadar farklı kişi (IP) seçtiyse admin'de aday olarak görünür.
+    popular_candidate_min_picks: int = 2
     # Adres jetonunun geçerliliği (adres seçiminden rezervasyona kadar).
     place_token_hours: int = 6
     # API-09: teklif ve rezervasyonda alış zamanı en fazla bu kadar gün ileri olabilir.
@@ -136,11 +148,28 @@ class Settings(BaseSettings):
     flight_poll_near_minutes: int = 15
     # Ücretli API için günlük üst sınır (ücretsiz plan ayda ~200 sorgu).
     flight_daily_call_limit: int = 60
+    # K-61: aynı uçuş (numara, gün, havalimanı) bu süre içinde yeniden sorulmaz; aynı uçuştaki
+    # rezervasyonlar tek sorguyu paylaşır. 0 paylaşımı kapatır.
+    flight_cache_minutes: int = 10
     # Uçuş başına en fazla sorgu; art arda bu kadar "bulunamadı" gelirse sorgu durur (yanlış numara).
     flight_max_checks: int = 14
     flight_max_misses: int = 3
     # Tahmini iniş bu kadar dakika değişince sürücüye bildirim gider.
     flight_notify_shift_minutes: int = 15
+
+    # K-62 sohbet çevirisi: "google" (Cloud Translation Basic), "fake" (yalnızca testler), "off" (kapalı).
+    translation_provider: Literal["google", "fake", "off"] = "off"
+    translation_api_key: str = ""
+    # Günlük çeviri karakter sınırı (maliyet tavanı; dolunca mesajlar çevrilmeden gider).
+    translation_daily_char_limit: int = 200_000
+    # K-62 bahşiş üst sınırı (rezervasyon para birimine göre).
+    tip_max_eur: Decimal = Decimal("100")
+    tip_max_try: Decimal = Decimal("4000")
+    # K-62 girişsiz takip bağlantısı son alıştan bu kadar saat sonra kapanır; IP başına dakikalık sınır.
+    share_link_hours_after: int = 12
+    track_rate_limit_per_minute: int = 60
+    # K-62 sürücü kartı alıştan bu kadar saat önce gönderilir (daha geç atanırsa atanınca).
+    driver_card_hours_before: int = 24
 
     payment_provider: str = "fake"
     paytr_merchant_id: str = ""
@@ -172,6 +201,14 @@ class Settings(BaseSettings):
     # biliniyorsa (adres koordinatı yok) ilçe merkezine daha geniş yarıçap uygulanır.
     trip_finish_radius_m: int = 500
     trip_finish_region_radius_m: int = 3000
+    # K-63 kanıtlı bekleme: ücretsiz bekleme (havalimanı uçuş inişinden/alış saatinden, diğer alış saatinden
+    # ya da varıştan, hangisi geçse), "yolcu gelmedi" için alışa en çok uzaklık, uçuştan çıkış süresi,
+    # çıkış önerisinde pay.
+    no_show_wait_airport_minutes: int = 60
+    no_show_wait_minutes: int = 15
+    no_show_radius_m: int = 300
+    airport_exit_minutes: int = 30
+    departure_buffer_minutes: int = 10
     # Sürücü havuzunda ve teklifte alış/varış noktası bu kadar metre kırpılarak gösterilir (adres gizliliği).
     job_preview_trim_m: int = 400
 

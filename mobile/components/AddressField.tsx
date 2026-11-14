@@ -187,7 +187,7 @@ export function RouteBox(props: {
         <View style={{ width: 10, height: 10, backgroundColor: colors.ink }} />
       </View>
       {row("from")}
-      <View style={{ height: 1, backgroundColor: "#DEDCD5", marginRight: 0 }} />
+      <View style={{ height: 1, backgroundColor: colors.lineStrong, marginRight: 0 }} />
       {row("to")}
       <Pressable
         onPress={() => {

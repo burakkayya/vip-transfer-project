@@ -19,6 +19,7 @@ from app.models import (
     CommissionRule,
     NotificationTemplate,
     PricingRule,
+    MeetingGuide,
     Region,
     RoundTripDiscount,
     VehicleType,
@@ -107,6 +108,26 @@ TEMPLATES = [
 ]
 
 
+GUIDE_STEPS = [
+    {"tr": "Pasaport kontrolünden sonra bagajınızı alın. Uygulamada \"İndim\" ve \"Bagajdayım\"a dokunun; sürücünüz görür.",
+     "en": "After passport control, collect your luggage. Tap \"Landed\" and \"At baggage\" in the app; your driver sees it.",
+     "de": "Holen Sie nach der Passkontrolle Ihr Gepäck. Tippen Sie in der App auf \"Gelandet\" und \"Am Gepäckband\"; Ihr Fahrer sieht es.",
+     "ru": "После паспортного контроля получите багаж. Нажмите в приложении \"Приземлился\" и \"У багажа\" — водитель увидит."},
+    {"tr": "Gümrükten geçip çıkış kapısından karşılama salonuna çıkın. Çıkarken \"Çıkıyorum\"a dokunun.",
+     "en": "Pass customs and walk through the exit doors to the arrivals hall. Tap \"Heading out\" as you leave.",
+     "de": "Gehen Sie durch den Zoll und die Ausgangstür in die Ankunftshalle. Tippen Sie dabei auf \"Ich komme raus\".",
+     "ru": "Пройдите таможню и выйдите в зал прилёта. Выходя, нажмите \"Выхожу\"."},
+    {"tr": "Sürücünüz karşılama alanında adınızın yazılı olduğu tabelayla bekler. Fotoğrafı ve plakası uygulamada.",
+     "en": "Your driver waits in the arrivals area holding a sign with your name. Their photo and plate are in the app.",
+     "de": "Ihr Fahrer wartet im Ankunftsbereich mit einem Schild mit Ihrem Namen. Foto und Kennzeichen finden Sie in der App.",
+     "ru": "Водитель ждёт в зоне встречи с табличкой с вашим именем. Фото и номер машины — в приложении."},
+    {"tr": "Göremezseniz uygulamadan sürücünüze yazın; mesajınız onun diline çevrilir.",
+     "en": "Can't spot them? Message your driver in the app; your message is translated into their language.",
+     "de": "Sie sehen ihn nicht? Schreiben Sie Ihrem Fahrer in der App; Ihre Nachricht wird übersetzt.",
+     "ru": "Не видите водителя? Напишите ему в приложении — сообщение будет переведено."},
+]
+
+
 def run(db: Session) -> None:
     ensure_roles(db)
 
@@ -149,6 +170,13 @@ def run(db: Session) -> None:
     # K-30: gidiş-dönüş indirimi %5
     if db.scalar(select(RoundTripDiscount.id).limit(1)) is None:
         db.add(RoundTripDiscount(type=DiscountType.PERCENT, value=D("5"), valid_from=EPOCH))
+
+    # K-62: havalimanı buluşma rehberi (genel adımlar; admin fotoğraf ve terminal ayrıntısı ekler).
+    db.flush()
+    for region in db.scalars(select(Region).where(Region.type == RegionType.AIRPORT)):
+        if db.scalar(select(MeetingGuide.id).where(MeetingGuide.region_id == region.id).limit(1)) is None:
+            db.add(MeetingGuide(region_id=region.id, terminal="", steps=[{"texts": t, "photo_key": None}
+                                                                        for t in GUIDE_STEPS]))
 
     have = set(db.execute(select(NotificationTemplate.code, NotificationTemplate.locale,
                                  NotificationTemplate.channel)).all())

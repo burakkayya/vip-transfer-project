@@ -7,7 +7,10 @@ import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, wit
 import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
 import {
-  Alert, Avatar, Badge, Button, Card, H2, IconButton, Info, Loading, P, ProgressSegments, RouteStops, Row, Screen, T,
+  DriverAvatar, DriverLanguages, MeetingGuideCard, PassengerStatus, RatingCard, ShareTrip, driverSubline, showPassengerStatus,
+} from "@/components/MeetingTools";
+import {
+  Alert, Badge, Button, Card, H2, IconButton, Info, Loading, P, ProgressSegments, RouteStops, Row, Screen, T,
   Timeline, colors, s, statusTone,
 } from "@/components/ui";
 import { api, expireSession } from "@/lib/api";
@@ -284,10 +287,11 @@ function BookingDetail({ code }: { code: string }) {
         leg.driver ? (
           <Card elevated delay={80}>
             <Row style={{ flexWrap: "nowrap" }} gap={14}>
-              <Avatar name={leg.driver.first_name} size={54} />
+              <DriverAvatar code={booking.booking_code} driver={leg.driver} size={54} />
               <View style={{ flex: 1, gap: 2 }}>
                 <T style={{ fontWeight: "700", fontSize: 17 }}>{leg.driver.first_name}</T>
-                <T style={s.hint} numberOfLines={1}>{leg.driver.vehicle}</T>
+                <T style={s.hint} numberOfLines={1}>{driverSubline(leg.driver)}</T>
+                <DriverLanguages driver={leg.driver} />
               </View>
               <View style={{ borderWidth: 1.5, borderColor: colors.ink, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: "#fff" }}>
                 <T style={{ fontWeight: "800", letterSpacing: 1, fontSize: 13 }}>{leg.driver.plate}</T>
@@ -317,6 +321,10 @@ function BookingDetail({ code }: { code: string }) {
                 ) : null}
               </Pressable>
             ) : null}
+            {showPassengerStatus(leg) ? (
+              <PassengerStatus code={booking.booking_code} leg={leg}
+                onChange={(st) => setBooking((b) => b && { ...b, legs: b.legs.map((x) => (x.id === leg.id ? { ...x, passenger_status: st } : x)) })} />
+            ) : null}
             {tracking ? (
               <View style={{ backgroundColor: colors.okSoft, borderRadius: 14, padding: 12, gap: 4 }}>
                 <Row gap={8}>
@@ -325,14 +333,14 @@ function BookingDetail({ code }: { code: string }) {
                 </Row>
                 {location ? (
                   <>
-                    <T style={[s.hint, { color: "#2D5A43" }]}>{t("bookings.liveUpdated", { time: dateTime(location.at, LOCALE) })}</T>
+                    <T style={[s.hint, { color: colors.ok }]}>{t("bookings.liveUpdated", { time: dateTime(location.at, LOCALE) })}</T>
                     <T style={{ color: colors.ink, fontWeight: "600", textDecorationLine: "underline" }}
                       onPress={() => Linking.openURL(`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=16/${location.lat}/${location.lng}`)}>
                       {t("bookings.openMap")} ›
                     </T>
                   </>
                 ) : (
-                  <T style={[s.hint, { color: "#2D5A43" }]}>{t("bookings.liveNone")}</T>
+                  <T style={[s.hint, { color: colors.ok }]}>{t("bookings.liveNone")}</T>
                 )}
               </View>
             ) : null}
@@ -350,6 +358,14 @@ function BookingDetail({ code }: { code: string }) {
         )
       )}
 
+      {leg.pickup_region.type === "havalimani" && !["bitti", "iptal"].includes(leg.status) && booking.status !== "odeme_bekliyor" ? (
+        <MeetingGuideCard code={booking.booking_code} />
+      ) : null}
+      {["onaylandi", "atandi", "yolculukta"].includes(booking.status) ? <ShareTrip code={booking.booking_code} /> : null}
+      {booking.status === "tamamlandi" ? (
+        <RatingCard code={booking.booking_code} driverName={[...booking.legs].reverse().find((l) => l.driver)?.driver?.first_name ?? ""} />
+      ) : null}
+
       <Card delay={140}>
         <H2>{t("bookings.details")}</H2>
         {booking.legs.map((l, i) => (
@@ -365,6 +381,8 @@ function BookingDetail({ code }: { code: string }) {
             <T style={s.hint}>{t("bookings.vehicle")}</T>
             <T style={{ fontWeight: "700" }}>{booking.vehicle_type.name}</T>
             <T style={s.hint}>{booking.passenger_name} · {booking.passenger_count} · {booking.luggage_count}</T>
+            {booking.child_seat_count ? <T style={s.hint}>{t("meet.childSeatCount", { count: booking.child_seat_count })}</T> : null}
+            {booking.market_stop ? <T style={s.hint}>{t("meet.marketStop")}</T> : null}
           </View>
           {VEHICLE_IMAGE[booking.vehicle_type.code] ? (
             <Image source={VEHICLE_IMAGE[booking.vehicle_type.code]} style={{ width: 110, height: 70, mixBlendMode: "multiply" } as object} resizeMode="contain" />

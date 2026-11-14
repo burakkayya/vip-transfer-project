@@ -1,5 +1,6 @@
 // iOS Canlı Etkinlik (K-59): kilit ekranı afişi ve Dynamic Island. Yalnızca iOS 16.2+; diğer
 // platformlarda `lib/liveTrip.ts` bu fabrikayı çağırmaz.
+// Renkler kök DESIGN.md tokenlarıyla aynıdır (widget ayrı derlendiği için tokens.ts içe aktarılmaz; __tests__/tokens.test.ts denetler).
 import { HStack, Image, ProgressView, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import { font, foregroundStyle, monospacedDigit, padding, tint } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity, type LiveActivityEnvironment } from "expo-widgets";
@@ -8,8 +9,8 @@ import type { LiveTripProps } from "./types";
 const TripActivity = (props: LiveTripProps, environment: LiveActivityEnvironment) => {
   "widget";
   // Renkler fonksiyon içinde: widget çalışma zamanı modül düzeyi sabitleri görmez.
-  const gold = environment.isLuminanceReduced ? "#FFFFFF" : "#B8955A";
-  const green = "#1F8A5B";
+  const gold = environment.isLuminanceReduced ? "#FFFFFF" : "#a8875a";
+  const green = "#18794e";
   const icon = props.role === "driver" ? "steeringwheel" : "car.fill";
   return {
     banner: (

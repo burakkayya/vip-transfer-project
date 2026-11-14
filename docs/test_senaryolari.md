@@ -280,7 +280,25 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 4. Beklenen: "Yolcu yazdı" bildirimi tek kez gelir; dokununca sohbet açılır. Uygulama açıkken aynı mesaj ikinci bildirim olarak çıkmaz.
 5. Çıkış yapın, tekrar mesaj gönderin. Beklenen: bildirim gelmez.
 
-### 19. Güvenlik sertleştirmesi akışları (2026-11-14)
+### 19. Buluşma deneyimi (K-62)
+
+1. Web'de ya da mobilde rezervasyon bilgileri adımında "Ekstralar" altından çocuk koltuğu seçin ve "Yolda market molası"nı işaretleyin. Sürücü iş havuzunda ve yolculuk ekranında bunları görür.
+2. Sürücü uygulamasında Belgeler sekmesindeki "Sürücü kartım" kartından fotoğraf yükleyin ve dilleri seçin; araç eklerken renk girin. Müşteri rezervasyon detayında sürücünün fotoğrafını, aracın rengini ve konuştuğu dilleri görür.
+3. Havalimanı alışında, alışa 12 saatten az kala müşteri "İndim", "Bagajdayım", "Çıkıyorum"a dokunur; sürücü her birini bildirim olarak ve yolculuk ekranında görür. Durum geri alınamaz.
+4. "Buluşma noktasına yol tarifi" açılır: adımlar müşterinin dilindedir. Uçuş inince ya da "İndim" ya da sürücü "Vardım" deyince müşteriye rehber bildirimi bir kez gelir.
+5. "Karşılayan yakınınızla paylaşın" bağlantısı oluşturulur; bağlantı gizli pencerede giriş olmadan açılır, adres, telefon ve yolcu adı görünmez. "Paylaşımı kapat" sonrası bağlantı "artık geçerli değil" der.
+6. Çeviri açıkken (`GETAWAY_TRANSLATION_PROVIDER=google` ve anahtar) Almanca rezervasyonda müşterinin mesajı sürücüye Türkçe, sürücününki müşteriye Almanca gelir; altında aslı görünür. Sürücü Almanca konuşuyorsa çeviri yapılmaz.
+7. Yolculuk bitince rezervasyon detayında yıldız ve bahşiş kartı çıkar. Bahşiş seçilirse ödeme sayfası açılır; ödenince sürücü "Bahşiş" bildirimi alır, Kazanç'ta komisyonsuz ayrı satır görünür.
+
+### 20. Sürücü araçları (K-63; sürücü uygulaması)
+
+1. Atanmış işi açın: "En geç HH:MM'de yola çıkın" kartı konumunuza göre görünür; geç kaldıysanız "Hemen yola çıkın" yazar.
+2. Yolcu kartında yolcu, bagaj, çocuk koltuğu, dil ve müşteri notu tek kartta görünür.
+3. "Yola çıktım" ve "Vardım" deyin: bekleme sayacı başlar, ücretsiz beklemenin bittiği saat yazar. Süre dolmadan "Yolcu gelmedi" kapalıdır.
+4. Yolcu bu sırada durum bildirir ya da yazarsa bekleme 15 dk uzar. Uçuş takibi kapalıyken uçuşlu havalimanı alışında "Yolcu gelmedi" "operasyonla iletişime geçin" der. Süre dolunca, alış noktasındayken "Yolcu gelmedi" → onay: yolculuk tamamlanır, Kazanç'a hakediş eklenir, müşteriye "Sizi bulamadık" bildirimi gider. Admin rezervasyon detayında "vardi" ve "gelmedi" olaylarının konumu görünür.
+5. Ana sayfadaki "Günlük plan": bugün/yarın işleri, tahmini kazanç ve varış bölgesinden dönüş işi önerileri. Akşam 20:00'de ertesi gün işi olan sürücüye özet bildirimi gelir; bildirime dokununca plan açılır.
+
+### 21. Güvenlik sertleştirmesi akışları (2026-11-14)
 
 1. **Silme talebi (senaryo 9'un devamı):** admin silme türündeki talebi **Tamamla** dediğinde anonimleştirme zorunlu çalışır; aktif rezervasyonu olan müşteride talep tamamlanamaz. Sonrasında müşteri adı, telefonu, yolcu adı, notlar ve iptal gerekçeleri anonimdir.
 2. **Personel girişi:** aynı hesapta 10 hatalı parola → 15 dk kilit (aynı IP önekinden). 2FA adımında 5 hatalı kod → MFA jetonu geçersiz, baştan giriş. Aynı TOTP kodu ikinci kez kabul edilmez.
@@ -292,7 +310,7 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 8. **Mobil geçersiz bağlantı:** `getaway://booking/..%2Fx` gibi bir bağlantı "Bağlantı geçersiz" ekranını açar, API isteği gitmez. `?pay=1` içeren derin bağlantı ödeme sayfasını kendiliğinden açmaz.
 9. **Mobil çıkış:** sürücü yolculuk sürerken çıkış yaparsa "Yolculuk sürüyor" bildirimi kalkar ve konum paylaşımı durur.
 10. **Hız sınırları:** fiyat teklifi IP başına dakikada 60, SMS kodu IP başına saatte 10; aşılınca 429.
-11. **İncelemedeki ödeme:** PayTR bildirimi tutar ya da para birimi denetimine takılırsa rezervasyon "ödeme bekliyor" durumunda kalır; müşteri yeniden **Öde** dediğinde 409 `payment_under_review` alır ve rezervasyon süre dolsa da iptal olmaz. Operasyon PayTR panelinden tahsilatı kontrol eder.
+11. **Reddedilen ödeme ve otomatik iade (K-74):** PayTR bildirimi tutar ya da para birimi denetimine takılırsa çekilen tutar otomatik iade edilir; admin Finans > İadeler'de "otomatik iade: reddedilen ödeme bildirimi" satırını görür. İade tamamlandıysa müşteri yeniden **Öde** diyebilir. İade başarısızsa rezervasyon "ödeme bekliyor" durumunda kalır, müşteri 409 `payment_under_review` alır ve süre dolsa da iptal olmaz; muhasebe **Yeniden dene** der ya da admin PayTR panelinde iadeyi doğrulayıp **Tamamlandı işaretle** der. Bahşiş ödemesinde de aynı denetim ve iade uygulanır.
 12. **Web ve admin BFF:** başka kökenden gelen POST 403 alır; üretimde `ALLOWED_ORIGINS` tanımsızsa giriş dahil tüm yazma istekleri 403 döner. Admin'de `/bookings/abc` ya da `/drivers/..%2Fx` "Sayfa bulunamadı" gösterir. Üretimde çerez adları `__Secure-ga_at`, `__Secure-ga_rt` (admin `__Secure-gaa_*`); eski çerezli oturum ilk istekte yeni ada taşınır.
 
 ## Otomatik testler
@@ -308,6 +326,15 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 - **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).
 - **Kök betik testleri**: `node --test "scripts/*.test.mjs"` (renk tokenı üreticisi, 5 test). Token kaynağı ile üretilmiş dosyaların uyumu: `node scripts/sync-tokens.mjs --check`.
 - **Ekran görüntüsü ve axe betikleri**: `scripts/ui-shots` (`npm ci`, sonra `node web.js --out after` vb.; ayrıntı `scripts/ui-shots/README.md`). Geliştirme veritabanında rezervasyon ve sahte ödeme oluşturur.
+
+## Popüler yerler ve API kullanımı (K-61)
+
+1. Admin'de (operasyon rolü) **Katalog → Popüler yerler** açılır. "Yeni yer" ile ad, açıklama, bölge ve konum girilip kaydedilir (ör. üç otel: "Rixos ...").
+2. Web ya da mobil rezervasyonda adres alanına adın ilk 3 harfi yazılır: kayıtlı yerler ilk sırada görünür. Yazmaya devam edilince (4+ karakter) tam arama sonuçları da eklenir.
+3. Listeden kayıtlı yer seçilir; fiyat teklifi normal akışla gelir.
+4. Bir oteli ya da mekânı en az iki farklı müşteri ücretli aramadan seçince aynı sayfadaki "Adaylar" tablosunda görünür (ev ve sokak adresleri sayılmaz). "Listeye al" ad, açıklama ve isteğe bağlı konumu sorar ve yeri listeye ekler; "Gizle" adayı kaldırır.
+5. Yer "Kapat" ile pasifleştirilince aramada görünmez. Konumu başka ilçede olan ya da havalimanı bölgesine bağlanan yer kaydedilmez, hata mesajı en yakın ilçeyi söyler.
+6. Sayfanın altındaki "Ücretli servis kullanımı" tablosunda gün gün rota, adres arama, adres seçimi ve uçuş için ücretli ve ücretsiz (önbellek + liste) istek sayıları görünür. Aynı rota için ikinci fiyat teklifinde "ücretsiz" sayısı artar.
 
 ## Uçuş takibi (K-60)
 

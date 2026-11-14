@@ -100,6 +100,8 @@ export interface BookingCreate extends QuoteRequest {
   note?: string | null;
   flights: { leg_order: number; flight_no: string }[];
   locale: string;
+  child_seat_count?: number;
+  market_stop?: boolean;
   accept_disclosure: boolean;
   accept_distance_sales: boolean;
 }
@@ -122,7 +124,18 @@ export interface BookingLeg {
     estimated_at: string | null;
     status?: string | null;
   } | null;
-  driver: { first_name: string; vehicle: string; plate: string } | null;
+  driver: DriverBrief | null;
+  passenger_status?: string | null;
+}
+
+/** Müşteriye gösterilen sürücü kartı (K-62). */
+export interface DriverBrief {
+  first_name: string;
+  vehicle: string;
+  plate: string;
+  color?: string | null;
+  languages: string[];
+  has_photo: boolean;
 }
 
 export interface Booking {
@@ -134,6 +147,9 @@ export interface Booking {
   passenger_name: string;
   passenger_count: number;
   luggage_count: number;
+  child_seat_count?: number;
+  market_stop?: boolean;
+  share_active?: boolean;
   is_round_trip: boolean;
   note: string | null;
   quoted_price: string;
@@ -192,6 +208,9 @@ export interface ChatMessage {
   body: string;
   created_at: string;
   read_at: string | null;
+  /** K-62: alıcının diline çeviri (karşı tarafın mesajında). */
+  translated_body?: string | null;
+  translated_lang?: string | null;
 }
 
 export interface Chat {
@@ -206,4 +225,43 @@ export interface TripEta {
   leg_id: string | null;
   status: LegStatus | null;
   eta_minutes: number | null;
+}
+
+/** K-62 buluşma rehberi. */
+export interface MeetingGuide {
+  airport: string | null;
+  guides: { id: number; terminal: string; steps: { text: string; photo_path: string | null }[] }[];
+}
+
+export interface ShareLink {
+  token: string;
+  url: string;
+}
+
+export interface Rating {
+  leg_id: string | null;
+  rated: boolean;
+  stars: number | null;
+  tip_amount: string | null;
+  tip_status: string | null;
+  currency: Currency;
+  tip_max: string;
+  tip_suggestions: string[];
+  iframe_url: string | null;
+}
+
+/** Girişsiz takip sayfası (K-62). */
+export interface TrackInfo {
+  status: LegStatus;
+  pickup_region: string;
+  dropoff_region: string;
+  pickup_at: string;
+  flight_no: string | null;
+  flight_status: string | null;
+  flight_estimated_at: string | null;
+  passenger_status: string | null;
+  driver: DriverBrief | null;
+  eta_minutes: number | null;
+  location: { lat: number; lng: number; heading: number | null; at: string } | null;
+  locale: string;
 }

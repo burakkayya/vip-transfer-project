@@ -18,6 +18,9 @@ export const palette = {
   pineGreenSoft: "#e6f4ec",
   amberInk: "#8a6100",
   amberSoft: "#fbf7ee",
+  champagneSoft: "#f5eee2",
+  pineGreenOnDark: "#7fd3a4",
+  signalRedOnDark: "#ff6b5e",
 } as const;
 
 export type PaletteKey = keyof typeof palette;

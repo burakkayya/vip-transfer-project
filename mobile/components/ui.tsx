@@ -1,4 +1,5 @@
 // Getaway tasarım sistemi (mobil): siyah-beyaz zemin, sıcak altın vurgu, Inter yazı tipi.
+import { palette } from "@/lib/tokens";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
@@ -24,27 +25,33 @@ import {
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
+/** K-38: anlamsal renkler ortak token kaynağından (kök DESIGN.md → lib/tokens.ts) gelir; burada sabit renk yazılmaz. */
 export const colors = {
-  ink: "#0A0A0B",
-  ink2: "#1C1C1F",
-  bg: "#FFFFFF",
-  canvas: "#F6F5F1",
-  surface: "#FFFFFF",
-  text: "#0A0A0B",
-  muted: "#6E6E73",
-  faint: "#A1A1A6",
-  line: "#ECEAE4",
-  brand: "#0A0A0B",
-  brandSoft: "#F3F2EE",
-  accent: "#B8935A",
-  accentSoft: "#F5EEE2",
-  accentInk: "#FFFFFF",
-  danger: "#D23B2F",
-  dangerSoft: "#FCEBEA",
-  ok: "#1F8A5B",
-  okSoft: "#E6F4EC",
-  warn: "#A86B00",
-  warnSoft: "#FBF1DC",
+  ink: palette.lacquerBlack,
+  ink2: palette.lacquerBlackRaised,
+  bg: palette.paper,
+  canvas: palette.harborCanvas,
+  surface: palette.paper,
+  text: palette.lacquerBlack,
+  muted: palette.slateText,
+  // Metin olabilecek en açık gri (The Text Floor Rule); süs çizgileri için `line`.
+  faint: palette.slateFaint,
+  line: palette.hairline,
+  lineStrong: palette.hairlineStrong,
+  brand: palette.lacquerBlack,
+  brandSoft: palette.limestone,
+  accent: palette.champagneBrass,
+  accentInk: palette.champagneBrassInk,
+  accentSoft: palette.champagneSoft,
+  onAccent: palette.paper,
+  danger: palette.signalRed,
+  dangerSoft: palette.signalRedSoft,
+  dangerOnDark: palette.signalRedOnDark,
+  ok: palette.pineGreen,
+  okSoft: palette.pineGreenSoft,
+  okOnDark: palette.pineGreenOnDark,
+  warn: palette.amberInk,
+  warnSoft: palette.amberSoft,
 };
 
 export const radius = { sm: 12, md: 16, lg: 22, xl: 28 };
@@ -254,9 +261,9 @@ export function Button(props: {
           <ActivityIndicator color={fg} />
         ) : (
           <View style={s.btnInner}>
-            {props.icon ? <Ionicons name={props.icon} size={props.small ? 16 : 19} color={off ? "#A3A3A3" : fg} /> : null}
-            <T style={[s.btnText, props.small && { fontSize: 14 }, { color: off ? "#A3A3A3" : fg }]}>{props.title}</T>
-            {props.iconRight ? <Ionicons name={props.iconRight} size={props.small ? 16 : 19} color={off ? "#A3A3A3" : fg} /> : null}
+            {props.icon ? <Ionicons name={props.icon} size={props.small ? 16 : 19} color={off ? colors.faint : fg} /> : null}
+            <T style={[s.btnText, props.small && { fontSize: 14 }, { color: off ? colors.faint : fg }]}>{props.title}</T>
+            {props.iconRight ? <Ionicons name={props.iconRight} size={props.small ? 16 : 19} color={off ? colors.faint : fg} /> : null}
           </View>
         )}
       </Pressable>
@@ -319,7 +326,7 @@ export function Toggle(props: { label: string; value: boolean; onChange: (v: boo
         <T style={[s.p, { fontWeight: "600" }]}>{props.label}</T>
         {props.hint ? <T style={s.hint}>{props.hint}</T> : null}
       </View>
-      <Switch value={props.value} onValueChange={props.onChange} trackColor={{ true: colors.ink, false: "#D9D9D6" }} thumbColor="#fff" />
+      <Switch value={props.value} onValueChange={props.onChange} trackColor={{ true: colors.ink, false: colors.lineStrong }} thumbColor="#fff" />
     </Pressable>
   );
 }
@@ -381,7 +388,7 @@ export function Badge(props: { text: string; tone?: "ok" | "warn" | "danger" | "
     warn: [colors.warnSoft, colors.warn],
     danger: [colors.dangerSoft, colors.danger],
     dark: [colors.ink, "#fff"],
-    accent: [colors.accentSoft, "#8A6A37"],
+    accent: [colors.accentSoft, colors.accentInk],
   } as const;
   const [bg, fg] = props.tone ? map[props.tone] : [colors.brandSoft, colors.muted];
   return (
@@ -491,7 +498,7 @@ export function Avatar(props: { name: string; size?: number; dark?: boolean }) {
   const initials = props.name.trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase() ?? "").join("") || "G";
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: props.dark === false ? colors.accentSoft : colors.ink, alignItems: "center", justifyContent: "center" }}>
-      <T style={{ color: props.dark === false ? "#8A6A37" : "#fff", fontWeight: "700", fontSize: size * 0.38 }}>{initials}</T>
+      <T style={{ color: props.dark === false ? colors.accentInk : "#fff", fontWeight: "700", fontSize: size * 0.38 }}>{initials}</T>
     </View>
   );
 }
@@ -619,7 +626,7 @@ export const s = StyleSheet.create({
   btnGhost: { backgroundColor: "transparent" },
   btnOnDark: { backgroundColor: "transparent", borderWidth: 1, borderColor: "rgba(255,255,255,0.28)" },
   btnText: { fontWeight: "700", fontSize: 16, letterSpacing: -0.2 },
-  btnDisabled: { backgroundColor: "#EDEDEA" },
+  btnDisabled: { backgroundColor: palette.limestoneDeep },
   bottomBar: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: colors.line, gap: 8 },
   field: { gap: 7 },
   label: { fontWeight: "600", fontSize: 13, color: colors.text },
@@ -644,7 +651,7 @@ export const s = StyleSheet.create({
   option: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.line, backgroundColor: colors.surface },
   price: { fontSize: 22, fontWeight: "800", color: colors.ink, letterSpacing: -0.5 },
   tlRow: { flexDirection: "row", gap: 10 },
-  tlDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: "#D6D6D2", backgroundColor: "#fff", marginTop: 2, alignItems: "center", justifyContent: "center" },
+  tlDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: colors.lineStrong, backgroundColor: "#fff", marginTop: 2, alignItems: "center", justifyContent: "center" },
   tlDotOn: { borderColor: colors.ink, backgroundColor: colors.ink },
   tlDotCurrent: { borderColor: colors.accent, backgroundColor: colors.accent },
   tlLine: { width: 2, flex: 1, backgroundColor: colors.line, marginVertical: 2 },

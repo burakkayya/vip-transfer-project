@@ -39,9 +39,17 @@ class Driver(Base):
     )
     is_online: Mapped[bool] = mapped_column(default=False)
     push_token: Mapped[str | None] = mapped_column(String(255))
+    # K-62 sürücü kartı: profil fotoğrafı (şifreli depoda) ve konuştuğu diller (virgülle, ör. "tr,en").
+    photo_key: Mapped[str | None] = mapped_column(EncryptedString)
+    photo_content_type: Mapped[str | None] = mapped_column(String(20))
+    languages: Mapped[str] = mapped_column(String(40), default="tr", server_default="tr")
     created_at: Mapped[datetime] = created_at()
 
     user: Mapped[User] = relationship(lazy="joined")
+
+    @property
+    def language_list(self) -> list[str]:
+        return [x for x in (self.languages or "").split(",") if x]
 
 
 class VehicleType(Base):
@@ -66,6 +74,8 @@ class Vehicle(Base):
     model: Mapped[str] = mapped_column(String(50))
     year: Mapped[int | None]
     capacity: Mapped[int]
+    # K-62 müşterinin aracı kalabalıkta tanıması için renk.
+    color: Mapped[str | None] = mapped_column(String(30))
     status: Mapped[VehicleStatus] = mapped_column(
         str_enum(VehicleStatus), default=VehicleStatus.PENDING
     )

@@ -7,6 +7,7 @@
  * Uygulama tamamen kapalıyken güncelleme için APNs/FCM ile uzaktan güncelleme gerekir (açık konu).
  * Expo Go'da ve web'de yerel modül yoktur: tüm çağrılar sessizce hiçbir şey yapmaz.
  */
+import { palette } from "./tokens";
 import { Platform } from "react-native";
 import { t } from "@/lib/i18n";
 import { storage } from "@/lib/storage";
@@ -94,7 +95,7 @@ export async function showLiveTrip(key: string, props: LiveTripProps, url?: stri
         title: props.title,
         text: [props.eta, props.detail].filter(Boolean).join(" · "),
         url,
-        color: "#B8955A",
+        color: palette.champagneBrass,
       });
       current = { key, activity: null };
     } else {
@@ -135,7 +136,7 @@ export async function endLiveTrip(key: string, final?: LiveTripProps): Promise<v
       if (final) {
         await factory.post(final, {
           id: ANDROID_ID, ongoing: false, autoCancel: true, timeoutAfter: DONE_LINGER_MS,
-          title: final.title, text: final.detail, color: "#B8955A",
+          title: final.title, text: final.detail, color: palette.champagneBrass,
         });
       } else {
         await factory.cancelAll();

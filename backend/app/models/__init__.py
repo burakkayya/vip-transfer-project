@@ -1,7 +1,17 @@
 """Tüm modeller burada içe aktarılır ki Alembic metadata'yı eksiksiz görsün."""
 
 from app.models.base import Base
-from app.models.booking import Booking, BookingLeg, DispatchOffer, FlightInfo, TripEvent, TripMessage, TripUpdate
+from app.models.booking import (
+    Booking,
+    BookingLeg,
+    DispatchOffer,
+    FlightInfo,
+    MeetingGuide,
+    TripEvent,
+    TripMessage,
+    TripRating,
+    TripUpdate,
+)
 from app.models.customer import Consent, Customer, DataRequest
 from app.models.finance import (
     DriverLedger,
@@ -26,6 +36,7 @@ from app.models.pricing import (
     CancellationPolicyTier,
     CommissionRule,
     ExchangeRate,
+    PopularPlace,
     PricingRule,
     Region,
     RoundTripDiscount,
@@ -53,11 +64,13 @@ __all__ = [
     "ExchangeRate",
     "FlightInfo",
     "Invoice",
+    "MeetingGuide",
     "Notification",
     "NotificationTemplate",
     "OtpChallenge",
     "Payment",
     "PaymentWebhook",
+    "PopularPlace",
     "PricingRule",
     "Refund",
     "Region",
@@ -66,6 +79,7 @@ __all__ = [
     "SystemSetting",
     "TripEvent",
     "TripMessage",
+    "TripRating",
     "TripUpdate",
     "User",
     "Vehicle",

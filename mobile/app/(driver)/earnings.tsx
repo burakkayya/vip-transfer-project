@@ -89,7 +89,7 @@ export default function EarningsScreen() {
             <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
             <Row spread>
               <Row gap={8}>
-                <Ionicons name="checkmark-circle" size={18} color="#7FD3A4" />
+                <Ionicons name="checkmark-circle" size={18} color={colors.okOnDark} />
                 <T style={{ color: "rgba(255,255,255,0.7)" }}>Ödenen</T>
               </Row>
               <T style={{ color: "#fff", fontWeight: "700", fontSize: 17 }}>{money(data.paid_try, "TRY")}</T>

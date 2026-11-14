@@ -45,6 +45,8 @@ class Payment(Base):
     manual_method: Mapped[ManualPaymentMethod | None] = mapped_column(str_enum(ManualPaymentMethod, 16))
     recorded_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     note: Mapped[str | None] = mapped_column(String(500))
+    # K-62: "booking" rezervasyon tahsilatı, "tip" yolculuk sonrası bahşiş (iade/iptal hesabına girmez).
+    purpose: Mapped[str] = mapped_column(String(10), default="booking", server_default="booking")
 
     refunds: Mapped[list[Refund]] = relationship(back_populates="payment", lazy="selectin")
 
@@ -92,7 +94,8 @@ class DriverLedger(Base):
     """Sürücü hakedişi. Sürücüye TL ödenir (odeme.md)."""
 
     __tablename__ = "driver_ledger"
-    __table_args__ = (UniqueConstraint("booking_leg_id"),)
+    # K-62: bacak başına bir yolculuk hakedişi ve bir bahşiş kaydı.
+    __table_args__ = (UniqueConstraint("booking_leg_id", "kind", name="uq_driver_ledger_leg_kind"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     driver_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("drivers.id"), index=True)
@@ -106,6 +109,7 @@ class DriverLedger(Base):
         str_enum(LedgerStatus), default=LedgerStatus.PENDING
     )
     payout_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("driver_payouts.id"))
+    kind: Mapped[str] = mapped_column(String(10), default="trip", server_default="trip")
     created_at: Mapped[datetime] = created_at()
 
 

@@ -25,6 +25,23 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 ## Teknik
 
+### Kıyı Yolu (K-39)
+
+- [ ] Mobilde koyu zemin üstündeki yarı saydam beyazlar (`rgba(255,255,255,…)`) ve Google harita stili token kapsamı dışında kaldı; mobil ekranlar gerçek cihazda yeni renklerle (özellikle `faint` artık daha koyu) gözden geçirilecek.
+
+### Sürücü araçları (K-63)
+
+- [ ] "Yolcu gelmedi" kaydında müşteri itiraz ederse süreç: admin olay konumlarını ve mesajlaşmayı inceler; gerekirse elle iade (K-57) ve hakediş iptali. Ücretsiz bekleme süreleri (60/15 dk) ve sonrasında ücretli bekleme operasyonla teyit edilecek.
+- [ ] Olay konumları (`trip_events`) kişisel veri: saklama süresi K-18/K-31 ile birlikte belirlenecek (öneri: yolculuktan 1 yıl sonra konum alanlarını boşaltan görev).
+
+### Buluşma deneyimi (K-62)
+
+- [ ] Sohbet çevirisi Google Cloud Translation'a (yurt dışı) mesaj metni gönderir. Telefon ve e-posta maskeleniyor ama serbest metinde ad, otel, oda numarası olabilir: KVKK m.9 yurt dışı aktarım için aydınlatma metni ve gerekirse açık rıza hukukçuyla teyit edilecek. Teyit gelene kadar `GETAWAY_TRANSLATION_PROVIDER=off` (varsayılan) kalır; anahtar `GETAWAY_TRANSLATION_API_KEY` ile verilir.
+- [ ] Bahşiş şirketin ödeme hesabına gelir olarak düşer, sürücüye hakedişle ödenir: e-Arşiv fatura ve muhasebe kaydı muhasebeciyle teyit edilecek. Bahşişin elle iadesi admin panelinde yok (yalnızca mükerrer ödeme otomatik iade edilir).
+- [ ] Sürücü fotoğrafı onaydan geçmeden müşteriye görünür; admin moderasyonu ve sürücü aydınlatma metnine "fotoğrafınız takip bağlantısıyla üçüncü kişilere gösterilir" maddesi eklenecek.
+- [ ] Buluşma rehberi seed metni geneldir ("isminizin yazılı tabelayla bekler"); her havalimanı ve terminal için gerçek fotoğraflı adımlar admin'den girilecek. Admin panelinde rehber sayfası henüz yok (uçlar hazır).
+- [ ] Bahşiş ödeme sonucu sayfası rezervasyon ödeme sonucuna yönlenir (sahte sağlayıcı); PayTR'de bahşiş için ayrı dönüş adresi düşünülecek.
+
 - [ ] Yurt dışı servislerde veri bölgesi (Sentry, e-posta).
 - [x] Uçuş takip API'sinin seçimi ve maliyeti (2026-11-11, K-60): AeroDataBox (RapidAPI). Ücretsiz plan ayda ~200 sorgu, ticari kullanıma kapalı; canlıda Pro plan ~7,5–8 $/ay.
 - [ ] Uçuş takibi log'larında uçuş numarası yazılıyor (2026-11-11 kullanıcı kararı, şimdilik). Uçuş verisi K-31 gereği yolculuk bitince silinse de log kopyası silinmez; KVKK kapsamında değerlendirilirse log'dan çıkarılmalı veya log saklama süresi bağlanmalı.
@@ -34,7 +51,10 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 - [ ] CI kapsamı (`.github/workflows/ci.yml`, 2026-11-08): web ve admin Playwright + axe testleri ile `next build` henüz CI'da yok (çalışan backend, seed ve sunucu ister). İlk CI koşusu GitHub'da henüz görülmedi; Linux'ta `pip install` çözümü yerelde denenemedi.
 - [ ] Manuel rezervasyon (K-54): sürücüye nakit ödeme (yolcunun parayı sürücüye vermesi) desteklenmiyor; gerekirse sürücü hakedişinden mahsup modeli tasarlanmalı. WhatsApp Business API ile otomatik mesaj gönderimi yok (metin elle kopyalanır). Havale/EFT ile alınan tahsilatın fatura ve muhasebe akışı (e-Arşiv) ile mutabakatı doğrulanmalı. Ödeme bağlantılı SMS metni (`booking_created_admin`) hukuk ve ileti izni (İYS) açısından kontrol edilmeli.
 - [ ] Sohbet ve yeniden atama (K-50): atanmış iş başka sürücüye devredilirse yeni sürücü önceki sürücünün müşteriyle yazışmasını görür. Devirde eski yazışmanın yeni sürücüden gizlenmesi değerlendirilmeli (admin incelemesinde mesajı yazan sürücü doğru görünür, 0006).
-- [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı.
+- [ ] Google Routes maliyet tahmini ve gerekirse OSRM ile self-host kararı. 2026-11-12 (K-61): rota, adres ve uçuş yanıtları önbelleğe alındı, admin "Popüler yerler" sayfasında günlük ücretli/ücretsiz istek sayıları görünüyor; karar canlıda birkaç haftalık sayılara göre verilecek.
+- [ ] Google Haritalar koşulları ve önbellek (K-61): Places içeriğinin saklanması kısıtlıdır (place_id süresiz, enlem/boylam en çok 30 gün, diğer içerik yalnızca geçici). Arama önbelleği 1 saat, rota önbelleği 24 saat, ayrıntı önbelleği varsayılan kapalı; süreler `GETAWAY_*_CACHE_SECONDS` ile kısaltılır ya da 0 ile kapatılır. Adaydan "Listeye al" ile eklenen popüler yerin konumu Google'dan bir kez alınıp kalıcı saklanıyor; canlıya çıkmadan önce koşullar hukuken gözden geçirilmeli, gerekirse bu yerlerin konumu admin tarafından elle girilmeli ("Listeye al" formunda isteğe bağlı konum alanı var) ya da 30 günde bir yenilenmeli.
+- [ ] Adres ayrıntısı önbelleği (`GETAWAY_PLACES_DETAILS_CACHE_SECONDS`) kapalı: Google arama oturumu ayrıntı çağrısıyla kapanmazsa aramalar tek tek ücretlenebilir. Güncel fiyat tablosu ve admin'deki kullanım sayılarıyla karşılaştırılıp açılıp açılmayacağına karar verilecek. Aynı soru popüler yer seçiminde de geçerli (uzun sorgudan sonra yerel yer seçilirse oturum kapanmaz); kısa sorguda zaten ücretli arama yapılmıyor.
+- [ ] Popüler yer adayları Redis'te sayılıyor (`place_picks`); Redis sıfırlanırsa aday sayıları kaybolur (liste etkilenmez).
 
 ## Geliştirme sırasında ortaya çıkanlar
 

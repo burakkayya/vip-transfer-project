@@ -16,11 +16,14 @@ import { LEG_STATUS, NEXT_STEP } from "@/lib/driverLabels";
 import { clock, dateTime, money } from "@/lib/format";
 import { errorTextTr, t } from "@/lib/i18n";
 import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
+import { CustomerNoteCard, DepartureCard, WaitCard } from "@/components/DriverTripTools";
 import { apiPath, parseLegId } from "@/lib/routeParams";
 import { backgroundSupported, distanceM, navigationUrls, startBackgroundTracking, stopBackgroundTracking } from "@/lib/tracking";
 import type { Approach, Trip } from "@/lib/types";
 
 const SHARING = ["yolda", "vardi", "basladi"];
+const PASSENGER_STATUS: Record<string, string> = { indi: "Yolcu indi", bagajda: "Yolcu bagajda", cikiyor: "Yolcu çıkıyor" };
+const LANG_TR: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", ru: "Rusça", fr: "Fransızca", ar: "Arapça" };
 const OPEN = ["atandi", "yolda", "vardi", "basladi"];
 const FLOW = ["atandi", "yolda", "vardi", "basladi", "bitti"];
 const LOCATION_INTERVAL_MS = 10_000;
@@ -346,7 +349,11 @@ function TripDetail({ legId }: { legId: string }) {
               ? "Konumunuz paylaşılıyor. Arka planda da sürmesi için konum iznini \"Her zaman\" yapın."
               : "Konumunuz paylaşılıyor. Bu önizlemede uygulama açıkken paylaşılır."} />
         ) : null}
-        {status === "bitti" && <Alert tone="ok" text="Yolculuk tamamlandı. Hakedişiniz Kazanç sekmesine eklendi." />}
+        {status === "bitti" && <Alert tone="ok" text={trip.no_show
+          ? "Yolcu gelmedi olarak kaydedildi. Bekleme kanıtınız saklandı, hakedişiniz Kazanç sekmesine eklendi."
+          : "Yolculuk tamamlandı. Hakedişiniz Kazanç sekmesine eklendi."} />}
+        {status === "atandi" ? <DepartureCard trip={trip} position={position} /> : null}
+        {status === "vardi" ? <WaitCard trip={trip} position={position} onDone={setTrip} /> : null}
 
         {/* Navigasyon: aşamaya göre hedef */}
         {open && (
@@ -371,9 +378,22 @@ function TripDetail({ legId }: { legId: string }) {
             <Avatar name={trip.passenger_name} size={52} dark={false} />
             <View style={{ flex: 1, gap: 2 }}>
               <T style={{ fontWeight: "700", fontSize: 17 }}>{trip.passenger_name}</T>
-              <T style={s.hint}>{trip.passenger_count} yolcu · {trip.luggage_count} bagaj{trip.flight_no ? ` · ${trip.flight_no}` : ""}</T>
+              {trip.flight_no ? <T style={s.hint}>{trip.flight_no}</T> : null}
+              {trip.customer_locale && trip.customer_locale !== "tr" ? (
+                <T style={s.hint}>Yolcunun dili: {LANG_TR[trip.customer_locale] ?? trip.customer_locale.toUpperCase()} · mesajlar çevrilir</T>
+              ) : null}
             </View>
           </Row>
+          <CustomerNoteCard trip={trip} />
+          {trip.passenger_status ? (
+            <View style={{ backgroundColor: colors.okSoft, borderRadius: 14, padding: 12, flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <Ionicons name="walk" size={18} color={colors.ok} />
+              <T style={{ fontWeight: "700", color: colors.ok }}>
+                {PASSENGER_STATUS[trip.passenger_status] ?? trip.passenger_status}
+                {trip.passenger_status_at ? ` · ${clock(trip.passenger_status_at)}` : ""}
+              </T>
+            </View>
+          ) : null}
           <View style={{ flexDirection: "row", gap: 10 }}>
             <Pressable accessibilityRole="button" accessibilityLabel={unread ? `Yolcuya yaz, ${unread} okunmamış mesaj` : "Yolcuya yaz"}
               onPress={() => router.push(`/chat/${legId}`)}

@@ -23,6 +23,10 @@ const FIRST_RUN_WINDOW_MS = 3 * 60_000;
 export function openFor(data: TripUpdate["data"] | null | undefined) {
   if (!data) return;
   if (VARIANT === "driver") {
+    if (data.type === "daily_plan") {
+      router.push("/plan");
+      return;
+    }
     const legId = parseLegId(data.leg_id);
     if (!legId) return;
     if (data.type === "new_message") router.push({ pathname: "/chat/[id]", params: { id: legId } });

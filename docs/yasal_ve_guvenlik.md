@@ -25,6 +25,7 @@ Bu dosya hukuki danışmanlık değildir. Maddeler bir hukukçuyla doğrulanmal�
 - Admin girişi 2FA ile korunur. Paylaşımlı admin hesabı yoktur.
 - Sürücüye yalnızca karşılama için gereken bilgiler gösterilir.
 - Google Routes ve FCM gibi servislere yalnızca koordinat ve rota veya bildirim tokenı gönderilir, kimlik bilgisi gönderilmez.
+- İstisna (K-62, hukuki teyit bekliyor, varsayılan kapalı): sohbet çevirisi açıksa mesaj metni Google Cloud Translation'a gider; telefon ve e-posta gönderilmeden maskelenir.
 - Yedekleme hedefi: şifreli ve Türkiye'de. Yedekleme yapılandırması ve felaket kurtarma senaryosu henüz yok (DB-12, `acik_konular.md`).
 - Güvenlik denetimi (2026-11-14): tehdit modeli, bulgular ve düzeltme planı `docs/security/` altındadır. Açık bildirimi: kök `SECURITY.md`.
 
