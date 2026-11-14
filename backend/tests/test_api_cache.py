@@ -261,7 +261,9 @@ def test_cache_outage_does_not_break_requests(monkeypatch):
 
 def test_driver_position_routes_bypass_the_shared_cache(monkeypatch):
     """Sürücünün canlı konumundan başlayan rota (yaklaşma, ETA) Redis'e yazılmaz."""
-    from app.api import trips
+    import inspect
+
+    from app.api import driver, trips
     from app.services import eta
 
     s = get_settings()
@@ -272,8 +274,11 @@ def test_driver_position_routes_bypass_the_shared_cache(monkeypatch):
     try:
         assert isinstance(routing.get_routing(), CachedRouting)
         assert isinstance(routing.get_live_routing(), GoogleRouting)
-        assert trips.get_live_routing is routing.get_live_routing is eta.get_live_routing
+        assert eta.get_live_routing is routing.get_live_routing
         assert not hasattr(trips, "get_routing") and not hasattr(eta, "get_routing")
+        # Yaklaşma rotası (MON-12) sürücü modülünde: canlı sağlayıcı + kendi kısa önbelleği, paylaşılan önbellek yok.
+        src = inspect.getsource(driver.approach_route)
+        assert "get_live_routing()" in src and "get_routing()" not in src
     finally:
         routing.get_routing.cache_clear()
         routing.get_live_routing.cache_clear()

@@ -105,6 +105,19 @@ def client(db_app):
 
 
 @pytest.fixture(autouse=True)
+def _generous_rate_limits(monkeypatch):
+    """Süit aynı test istemcisi IP'sinden dakikada yüzlerce teklif ve yer araması yapar; dakikalık kötüye kullanım
+    sınırları (MON-03) bu testlerin konusu değildir. Sınırı sınayan testler değeri kendi içinde düşürür."""
+    from app.config import get_settings
+
+    s = get_settings()
+    for name in ("quotes_rate_limit_per_minute", "quotes_global_rate_limit_per_minute",
+                 "places_rate_limit_per_minute", "track_rate_limit_per_minute"):
+        if hasattr(s, name):
+            monkeypatch.setattr(s, name, 1_000_000)
+
+
+@pytest.fixture(autouse=True)
 def _drain_push():
     """Commit sonrası arka planda giden push'lar test bitmeden tamamlanır (push_outbox)."""
     yield

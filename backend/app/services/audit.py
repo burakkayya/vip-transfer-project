@@ -43,7 +43,14 @@ SENSITIVE_KEYS = frozenset(
 REASON_KEYS = frozenset({"reason", "override_reason", "cancel_reason"})
 # REV-C-3: girdi sınırıyla (500) aynı; daha kısa kırpma değiştirilemez kayıtta gerekçeyi kalıcı olarak kaybettiriyordu.
 REASON_MAX_LENGTH = 500
-_EMAIL_RE = re.compile(r"[^\s@<>()]+@[^\s@<>()]+\.[A-Za-z]{2,}")
+# CodeQL py/polynomial-redos: eşleşme yalnızca bir sözcüğün başında başlar (geriye bakış) ve alan adı etiketleri
+# noktayla kesin ayrılır; böylece desen girdide doğrusal çalışır. Son etiketin harf olması `_email_sub`'da denetlenir.
+_EMAIL_RE = re.compile(r"(?<![^\s<>()])[^\s@<>()]+@[^\s@<>().]+(?:\.[^\s@<>().]+)+")
+
+
+def _email_sub(m: re.Match) -> str:
+    tld = m.group(0).rsplit(".", 1)[1]
+    return "[e-posta]" if len(tld) >= 2 and tld.isascii() and tld.isalpha() else m.group(0)
 _IBAN_RE = re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,4})?\b")
 
 
@@ -71,7 +78,7 @@ def scrub_reason(value: Any) -> Any:
     if not isinstance(value, str):
         return _clean(value)
     # REV-C-4: e-posta deseni uzun girdide karesel çalışır; desenlerden önce girdi kırpılır.
-    text = _EMAIL_RE.sub("[e-posta]", value[: REASON_MAX_LENGTH * 2])
+    text = _EMAIL_RE.sub(_email_sub, value[: REASON_MAX_LENGTH * 2])
     text = _IBAN_RE.sub(_iban_sub, text)
     text = _PHONE_RE.sub(_phone_sub, text)
     if len(text) > REASON_MAX_LENGTH:

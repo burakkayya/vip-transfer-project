@@ -54,7 +54,7 @@ def test_approach_rate_limited_per_driver(client, db, ops, monkeypatch, fixed_mi
     driver, _, _, leg_id = _accepted(client, ops)
     other, _, _, other_leg = _accepted(client, ops)
     router = _CountingRouter()
-    monkeypatch.setattr(routing, "get_routing", lambda: router)
+    monkeypatch.setattr(routing, "get_live_routing", lambda: router)
     monkeypatch.setattr(get_settings(), "approach_rate_limit_per_minute", 2, raising=False)
     ayt = _region(client, "ayt")
     base = (float(ayt["latitude"]), float(ayt["longitude"]))
@@ -75,7 +75,7 @@ def test_approach_rate_limited_per_driver(client, db, ops, monkeypatch, fixed_mi
 def test_approach_cached_for_nearby_position(client, db, ops, monkeypatch, fixed_minute):
     driver, _, _, leg_id = _accepted(client, ops)
     router = _CountingRouter()
-    monkeypatch.setattr(routing, "get_routing", lambda: router)
+    monkeypatch.setattr(routing, "get_live_routing", lambda: router)
     ayt = _region(client, "ayt")
     lat, lng = float(ayt["latitude"]) + 0.05, float(ayt["longitude"])
     first = client.get(f"{API}/driver/trips/{leg_id}/approach", headers=driver, params={"lat": lat, "lng": lng})
@@ -90,7 +90,7 @@ def test_approach_cached_for_nearby_position(client, db, ops, monkeypatch, fixed
 def test_approach_requires_active_leg(client, db, ops, monkeypatch, fixed_minute):
     driver, customer, code, leg_id = _accepted(client, ops)
     router = _CountingRouter()
-    monkeypatch.setattr(routing, "get_routing", lambda: router)
+    monkeypatch.setattr(routing, "get_live_routing", lambda: router)
     assert client.post(f"{API}/me/bookings/{code}/cancel", headers=customer,
                        json={"reason": "plan değişti"}).status_code == 200
     r = client.get(f"{API}/driver/trips/{leg_id}/approach", headers=driver, params={"lat": 36.9, "lng": 30.8})
