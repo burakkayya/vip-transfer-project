@@ -9,6 +9,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { Link } from "@/i18n/navigation";
 import { dirOf } from "@/i18n/locales";
 import { routing } from "@/i18n/routing";
+import { airportName } from "@/lib/airports";
 import { company } from "@/lib/site";
 import "../tokens.css";
 import "../globals.css";
@@ -71,6 +72,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/** Alt bilgi rotası: havalimanı adı ziyaretçinin dilinde (K-77), varış ilçesi özel addır. */
+function routeLabel(r: (typeof ROUTES)[number], locale: string) {
+  const [from, to] = r.label.split(" → ");
+  return `${airportName(r.from.toUpperCase(), locale) ?? from} → ${to}`;
+}
+
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
@@ -111,7 +118,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                     <h4>{f("routes")}</h4>
                     <ul>
                       {ROUTES.map((r) => (
-                        <li key={r.label}><Link href={`/book?from=${r.from}&to=${r.to}`}><span dir="ltr">{r.label}</span></Link></li>
+                        <li key={r.label}><Link href={`/book?from=${r.from}&to=${r.to}`}><span dir="ltr">{routeLabel(r, locale)}</span></Link></li>
                       ))}
                     </ul>
                   </div>
