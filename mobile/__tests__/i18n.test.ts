@@ -67,3 +67,13 @@ test("dil desteklenmiyorsa ülkenin dili, o da yoksa İngilizce", () => {
 test("ülke eşlemesi web ile aynı ana ülkeleri kapsar", () => {
   expect(COUNTRY_LOCALE).toMatchObject({ TR: "tr", DE: "de", SA: "ar", CN: "zh", JP: "ja", KR: "ko", IT: "it", PT: "pt", MX: "es", FR: "fr", RU: "ru" });
 });
+
+test("havalimanı adları uygulama dilinde (Türkçede veritabanındaki ad)", () => {
+  const { airportName, regionName } = require("@/lib/airports") as typeof import("@/lib/airports");
+  expect(airportName("AYT", "en")).toBe("Antalya Airport");
+  expect(airportName("NAV", "fr")).toBe("Aéroport de Cappadoce");
+  expect(airportName("IST", "ja")).toBe("イスタンブール空港");
+  expect(airportName("AYT", "tr")).toBeNull();
+  expect(regionName({ name: "Kemer", iata_code: null }, "en")).toBe("Kemer");
+  expect(regionName({ name: "Antalya Havalimanı", iata_code: "AYT" }, "tr")).toBe("Antalya Havalimanı");
+});

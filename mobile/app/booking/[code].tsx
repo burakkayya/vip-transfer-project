@@ -1,4 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,12 +16,13 @@ import {
 import { api, expireSession } from "@/lib/api";
 import { reachable } from "@/lib/config";
 import { clock, dateTime, money } from "@/lib/format";
+import { regionName } from "@/lib/airports";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
 import { useLiveLocation } from "@/lib/liveSocket";
 import { customerLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
 import { apiPath, consumeAutoPay, parseBookingCode } from "@/lib/routeParams";
 import type { Booking, DriverLocation, Eta, RefundQuote } from "@/lib/types";
-import { VEHICLE_IMAGE } from "@/lib/vehicles";
+import { VEHICLE_IMAGE, vehicleName } from "@/lib/vehicles";
 
 const TRACKABLE = ["yolda", "vardi", "basladi"];
 const CANCELLABLE = ["odeme_bekliyor", "onaylandi", "atandi"];
@@ -164,8 +165,8 @@ function BookingDetail({ code }: { code: string }) {
     const live = customerLiveProps({
       bookingStatus: booking.status,
       legStatus: l.status,
-      from: l.pickup_region.name,
-      to: l.dropoff_region.name,
+      from: regionName(l.pickup_region, LOCALE),
+      to: regionName(l.dropoff_region, LOCALE),
       driver: l.driver,
       etaMinutes: eta?.eta_minutes ?? null,
       bookingType: booking.booking_type,
@@ -252,7 +253,7 @@ function BookingDetail({ code }: { code: string }) {
   const mapMode = tracking ? "driver" : booking.status === "iptal" ? "idle" : "route";
   const progress = leg.status === "vardi" ? 0 : undefined;
   const driverPos = tracking && location ? { latitude: location.lat, longitude: location.lng } : null;
-  const mapSummary = t(driverPos ? "map.summaryDriver" : "map.summaryRoute", { from: leg.pickup_region.name, to: leg.dropoff_region.name });
+  const mapSummary = t(driverPos ? "map.summaryDriver" : "map.summaryRoute", { from: regionName(leg.pickup_region, LOCALE), to: regionName(leg.dropoff_region, LOCALE) });
 
   return (
     <MapSheet
@@ -380,7 +381,7 @@ function BookingDetail({ code }: { code: string }) {
         {booking.legs.map((l, i) => (
           <View key={l.id} style={{ gap: 10 }}>
             {booking.legs.length > 1 ? <T style={[s.hint, { fontWeight: "700" }]}>{i === 0 ? "1 · " : "2 · "}{dateTime(l.pickup_at, LOCALE)}</T> : null}
-            <RouteStops from={l.pickup_region.name} to={l.dropoff_region.name} fromHint={l.pickup_address ?? undefined} toHint={l.dropoff_address ?? undefined} />
+            <RouteStops from={regionName(l.pickup_region, LOCALE)} to={regionName(l.dropoff_region, LOCALE)} fromHint={l.pickup_address ?? undefined} toHint={l.dropoff_address ?? undefined} />
             {l.flight ? <Info icon="airplane-outline" label={t("bookings.flight")}>{flightText(l.flight)}</Info> : null}
           </View>
         ))}
@@ -388,7 +389,7 @@ function BookingDetail({ code }: { code: string }) {
         <Row spread style={{ flexWrap: "nowrap" }}>
           <View style={{ gap: 2, flex: 1 }}>
             <T style={s.hint}>{t("bookings.vehicle")}</T>
-            <T style={{ fontWeight: "700" }}>{booking.vehicle_type.name}</T>
+            <T style={{ fontWeight: "700" }}>{vehicleName(booking.vehicle_type, LOCALE)}</T>
             <T style={s.hint}>{booking.passenger_name} · {booking.passenger_count} · {booking.luggage_count}</T>
             {booking.child_seat_count ? <T style={s.hint}>{t("meet.childSeatCount", { count: booking.child_seat_count })}</T> : null}
             {booking.market_stop ? <T style={s.hint}>{t("meet.marketStop")}</T> : null}

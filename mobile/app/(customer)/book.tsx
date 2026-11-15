@@ -1,4 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useMemo, useState } from "react";
@@ -15,10 +15,11 @@ import {
 import { ApiError, api } from "@/lib/api";
 import { WEB_URL } from "@/lib/config";
 import { money, wallClockIso, wallClockLabel } from "@/lib/format";
+import { regionName } from "@/lib/airports";
 import { LOCALE, errorText, t } from "@/lib/i18n";
 import { requestAutoPay } from "@/lib/routeParams";
 import type { Booking, Endpoint, Profile, Quote, Region, VehicleType } from "@/lib/types";
-import { VEHICLE_ICON, VEHICLE_IMAGE } from "@/lib/vehicles";
+import { VEHICLE_ICON, VEHICLE_IMAGE, vehicleName } from "@/lib/vehicles";
 
 type Step = "home" | "trip" | "vehicle" | "details";
 const FLOW: Step[] = ["trip", "vehicle", "details"];
@@ -238,7 +239,7 @@ export default function Book() {
         <Pressable onPress={() => { tap(); setStep("trip"); }}
           style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.brandSoft, borderRadius: 18, paddingLeft: 18, paddingRight: 8, height: 62 }, pressed && { opacity: 0.85 }]}>
           <Ionicons name="search" size={22} color={colors.ink} />
-          <T style={{ flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink }}>{t("book.to")}?</T>
+          <T style={{ flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink }}>{t("home.searchTo")}</T>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9 }}>
             <Ionicons name="time" size={16} color={colors.ink} />
             <T style={{ fontWeight: "600", fontSize: 13 }}>{t("home.later")}</T>
@@ -255,7 +256,7 @@ export default function Book() {
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 10 }, pressed && { opacity: 0.6 }]}>
                 <IconBubble name="airplane" size={42} />
                 <View style={{ flex: 1, borderBottomWidth: i < airports.length - 1 ? 1 : 0, borderBottomColor: colors.line, paddingBottom: 12, marginBottom: -12 }}>
-                  <T style={{ fontWeight: "600", fontSize: 15.5 }} numberOfLines={1}>{a.name}</T>
+                  <T style={{ fontWeight: "600", fontSize: 15.5 }} numberOfLines={1}>{regionName(a, LOCALE)}</T>
                   <T style={s.hint}>{a.iata_code} · {PROVINCE[a.province] ?? a.province}</T>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.faint} style={rtlFlip("chevron-forward")} />
@@ -320,7 +321,7 @@ export default function Book() {
       <MapSheet map={<MapCanvas seed={seed} mode="route" focusTop={0.62} endpoints={endpoints} route={mapRoute} />} mapRatio={0.36} overlay={overlay}
         bottom={
           <Button
-            title={selectedType && selectedQuote ? `${t("book.select", { name: selectedType.name })} · ${money(selectedQuote.price, selectedQuote.currency, LOCALE)}` : t("book.chooseVehicle")}
+            title={selectedType && selectedQuote ? `${t("book.select", { name: vehicleName(selectedType, LOCALE) })} · ${money(selectedQuote.price, selectedQuote.currency, LOCALE)}` : t("book.chooseVehicle")}
             onPress={() => setStep("details")}
             disabled={!selectedQuote}
             busy={busy}
@@ -336,7 +337,7 @@ export default function Book() {
           </Pressable>
         </Row>
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-          <Badge text={instant ? t("home.now") : wallClockLabel(at)} />
+          <Badge text={instant ? t("home.now") : wallClockLabel(at, LOCALE)} />
           <Badge text={`${pax} · ${lug}`} />
           {roundTrip ? <Badge text={t("book.roundTrip")} tone="accent" /> : null}
         </View>
@@ -360,7 +361,7 @@ export default function Book() {
                   </View>
                   <View style={{ flex: 1, gap: 3 }}>
                     <Row gap={8}>
-                      <T style={{ fontWeight: "700", fontSize: 16.5 }}>{vt.name}</T>
+                      <T style={{ fontWeight: "700", fontSize: 16.5 }}>{vehicleName(vt, LOCALE)}</T>
                       {vt.code.startsWith("vip_") ? <Badge text="VIP" tone="dark" /> : null}
                     </Row>
                     <Row gap={10}>
@@ -412,7 +413,7 @@ export default function Book() {
           </Row>
           <Row gap={8}>
             <Badge text={selectedType?.name ?? ""} tone="dark" />
-            <Badge text={instant ? t("home.now") : wallClockLabel(at)} />
+            <Badge text={instant ? t("home.now") : wallClockLabel(at, LOCALE)} />
             <Badge text={`${pax} · ${lug}`} />
           </Row>
         </Card>

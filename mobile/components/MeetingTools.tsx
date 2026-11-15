@@ -2,7 +2,7 @@
  * Buluşma deneyimi (K-62), müşteri uygulaması: sürücü kartı (fotoğraf, diller, renk), yolcu durumu
  * ("İndim / Bagajdayım / Çıkıyorum"), havalimanı buluşma rehberi, takip bağlantısı paylaşımı, puan ve bahşiş.
  */
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Image, Pressable, Share, TextInput, View } from "react-native";
@@ -10,13 +10,11 @@ import { Alert, Avatar, Button, Card, H2, Row, T, colors, s } from "@/components
 import { API_URL, reachable } from "@/lib/config";
 import { accessToken, api } from "@/lib/api";
 import { money } from "@/lib/format";
+import { regionName } from "@/lib/airports";
+import { languageName } from "@/lib/languageNames";
 import { LOCALE, errorText, t, type Key } from "@/lib/i18n";
 import type { BookingLeg, DriverBrief, MeetingGuide, Rating } from "@/lib/types";
 
-const LANG_NAMES: Record<string, string> = {
-  tr: "Türkçe", en: "English", de: "Deutsch", es: "Español", ru: "Русский", fr: "Français", ar: "العربية",
-  zh: "简体中文", ja: "日本語", it: "Italiano", pt: "Português", ko: "한국어",
-};
 const STEPS = ["indi", "bagajda", "cikiyor"] as const;
 const STEP_ICON = { indi: "airplane", bagajda: "briefcase", cikiyor: "walk" } as const;
 
@@ -44,7 +42,7 @@ export function DriverLanguages(props: { driver: DriverBrief }) {
   return (
     <Row gap={6}>
       <Ionicons name="language-outline" size={14} color={colors.muted} />
-      <T style={s.hint}>{t("meet.speaks", { languages: props.driver.languages.map((x) => LANG_NAMES[x] ?? x).join(", ") })}</T>
+      <T style={s.hint}>{t("meet.speaks", { languages: props.driver.languages.map((x) => languageName(x, LOCALE)).join(", ") })}</T>
     </Row>
   );
 }
@@ -116,7 +114,7 @@ export function MeetingGuideCard(props: { code: string }) {
         <Row spread style={{ flexWrap: "nowrap" }}>
           <Row gap={10} style={{ flexWrap: "nowrap", flex: 1 }}>
             <Ionicons name="map-outline" size={20} color={colors.ink} />
-            <T style={{ fontWeight: "700", flexShrink: 1 }}>{data?.airport ? t("meet.guideTitle", { airport: data.airport }) : t("meet.guideButton")}</T>
+            <T style={{ fontWeight: "700", flexShrink: 1 }}>{data?.airport ? t("meet.guideTitle", { airport: regionName({ name: data.airport, iata_code: data.airport_iata }, LOCALE) }) : t("meet.guideButton")}</T>
           </Row>
           <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.muted} />
         </Row>

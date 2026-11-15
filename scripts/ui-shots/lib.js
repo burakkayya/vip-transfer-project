@@ -72,10 +72,10 @@ function chromiumPath() {
 // iOS Safari'deki çizim, yazı tipi ve dokunma davranışını yaklaşık gösterir (docs/test_senaryolari.md).
 const IPHONE = devices["iPhone 15"];
 
-function launch({ ios = false } = {}) {
+function launch({ ios = false, args } = {}) {
   if (ios) return webkit.launch();
   const executablePath = chromiumPath();
-  return chromium.launch(executablePath ? { executablePath } : {});
+  return chromium.launch({ ...(executablePath ? { executablePath } : {}), ...(args ? { args } : {}) });
 }
 
 function outDir(out, surface) {

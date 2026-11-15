@@ -2,7 +2,7 @@
  * Sürücü kartı ayarları (K-62): müşteriye gösterilen profil fotoğrafı ve konuşulan diller.
  * Fotoğraf sunucuda meta verisi (konum, cihaz) silinerek yeniden kodlanır.
  */
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import * as DocumentPicker from "expo-document-picker";
 import { useState } from "react";
 import { Image, Pressable, View } from "react-native";

@@ -278,6 +278,7 @@ export interface DriverBrief {
 
 export interface MeetingGuide {
   airport: string | null;
+  airport_iata?: string | null;
   guides: { id: number; terminal: string; steps: { text: string; photo_path: string | null }[] }[];
 }
 

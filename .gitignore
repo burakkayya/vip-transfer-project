@@ -90,3 +90,6 @@ web/playwright-report/
 admin/test-results/
 admin/playwright-report/
 admin/e2e/.auth/
+
+# Reklam ekran görüntüleri (scripts/ui-shots/promo-web.js, iOS yapıtı); büyük PNG, repoya girmez
+reklam-gorselleri/

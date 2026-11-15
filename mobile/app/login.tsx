@@ -1,4 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -186,7 +186,7 @@ export default function Login() {
               <Button title={t("continue")} iconRight="arrow-forward" onPress={send} busy={busy} disabled={national.replace(/\D/g, "").length < 6} />
               <View style={{ flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", marginTop: 4 }}>
                 <Ionicons name="lock-closed" size={13} color={colors.muted} />
-                <T style={[s.hint, { textAlign: "center" }]}>{DRIVER ? "Hesap yoksa kayıt adımına yönlendirilirsiniz." : "Şifre yok · Kodla güvenli giriş"}</T>
+                <T style={[s.hint, { textAlign: "center" }]}>{DRIVER ? "Hesap yoksa kayıt adımına yönlendirilirsiniz." : t("login.noPassword")}</T>
               </View>
             </Animated.View>
           ) : (

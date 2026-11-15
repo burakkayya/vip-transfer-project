@@ -5,7 +5,7 @@ appId: com.getawaytransfers.driver
     stopApp: false
 # iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
 - tapOn:
-    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver|Allow|Allow While Using App"
     optional: true
 # Anlık iş "İş havuzu"nda kart olarak düşer (yoklama 8 sn). Kartın erişilebilirlik etiketi "rota, tutar"dır;
 # alt yarısı sekme çubuğunun altında kaldığı için dokunmadan önce ortalanır.
@@ -35,19 +35,30 @@ appId: com.getawaytransfers.driver
     timeout: 20000
 - takeScreenshot: s05-teklif
 - tapOn: "Kabul et"
+# İş atandı ekranı. "Karşılama tabelası" düğmesi geç kalma uyarısı kartı yüzünden ekranın altında
+# kalabilir: atanma "Yola çıktım" ile beklenir, düğmeye kaydırılır.
 - extendedWaitUntil:
-    visible: ".*Karşılama tabelası.*"
+    visible: "Yola çıktım"
     timeout: 20000
 - takeScreenshot: s06-is-atandi
-# Düğmenin alt yarısı sabit "Yola çıktım" çubuğunun altında: önce panel kaydırılır.
-- swipe:
-    start: "50%,70%"
-    end: "50%,40%"
-    duration: 600
+- scrollUntilVisible:
+    element: ".*Karşılama tabelası.*"
+    direction: DOWN
+    centerElement: true
+# Kaydırma ivmesi bitmeden dokunulursa dokunuş boşa gider (yavaş Mac makinesi).
+- waitForAnimationToEnd:
+    timeout: 5000
 - tapOn: ".*Karşılama tabelası.*"
+- runFlow:
+    when:
+      notVisible: ".*Kapatmak için dokunun.*"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - tapOn: ".*Karşılama tabelası.*"
 - extendedWaitUntil:
     visible: ".*Kapatmak için dokunun.*"
-    timeout: 10000
+    timeout: 20000
 - takeScreenshot: s07-karsilama-tabelasi
 - tapOn: ".*Kapatmak için dokunun.*"
 - tapOn: "Yola çıktım"

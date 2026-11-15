@@ -19,7 +19,7 @@ export default async function BookPage({ params, searchParams }: Props) {
   return (
     <div className="container page">
       <h1 className="page-title">{t("title")}</h1>
-      <BookingWizard regions={regions} vehicleTypes={vehicleTypes} initial={tripFromParams(query, regions)} />
+      <BookingWizard regions={regions} vehicleTypes={vehicleTypes} initial={tripFromParams(query, regions, locale)} />
     </div>
   );
 }

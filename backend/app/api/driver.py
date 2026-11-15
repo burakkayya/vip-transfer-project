@@ -287,7 +287,7 @@ def update_vehicle_color(vehicle_id: uuid.UUID, body: VehicleColorIn, driver: Cu
 
 
 class ProfileIn(BaseModel):
-    languages: list[str] = Field(min_length=1, max_length=6)
+    languages: list[str] = Field(min_length=1, max_length=12)  # K-77: on iki dil
 
 
 @router.put("/me/profile", response_model=DriverOut)

@@ -1,0 +1,118 @@
+# K-77 İngilizce (reklam görüntüleri): simülatör en_US, müşteri arayüzü İngilizce. Yeni müşteri giriş yapar, Antalya Havalimanı → Kemer Marina (ilçe değil, serbest adres; K-58) anlık
+# rezervasyon oluşturur ve sahte ödemeyi onaylar. Adres Google Places ile aranır, fiyat gerçek
+# noktalar arası karayolu mesafesinden (Google Routes) hesaplanır.
+appId: com.getawaytransfers.app
+---
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "Allow|Allow While Using App|İzin Ver"
+    optional: true
+# iOS'ta clearState anahtar zincirini silmez: bağlantı kopması sonrası yeniden denemede oturum açık
+# kalabilir. Giriş adımları yalnızca giriş ekranı çıkarsa çalışır.
+- extendedWaitUntil:
+    visible: 'Enter your phone number|Where to\?'
+    timeout: 90000
+- runFlow:
+    when:
+      visible: "Enter your phone number"
+    commands:
+      - takeScreenshot: m01-giris
+      - tapOn: "Phone number.*"
+      - inputText: "5559011234"
+      - tapOn: "Continue"
+      - extendedWaitUntil:
+          visible: ".*Development: code.*"
+          timeout: 60000
+      - takeScreenshot: m02-sms-kodu
+      - tapOn: ".*Development: code.*"
+      - extendedWaitUntil:
+          visible: 'Where to\?|Allow'
+          timeout: 30000
+# iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
+- tapOn:
+    text: "Allow|Allow While Using App|İzin Ver"
+    optional: true
+- extendedWaitUntil:
+    visible: 'Where to\?'
+    timeout: 30000
+- takeScreenshot: m03-ana-sayfa
+- tapOn: ".*My bookings.*"
+- takeScreenshot: m04-rezervasyonlar-bos
+- tapOn: ".*Profile.*"
+- takeScreenshot: m05-profil
+- tapOn: ".*Home.*"
+- tapOn: ".*Antalya Airport.*"
+- extendedWaitUntil:
+    visible: ".*Your route.*"
+    timeout: 15000
+- takeScreenshot: m06-rota
+- tapOn: "To"
+- inputText: "Kemer Marina"
+# Sonuç satırının etiketi "başlık, alt başlık": "Kemer Marina, 152 Sokak, Merkez, Kemer, Antalya".
+# (Maestro eşleşmesi büyük/küçük harf duyarsız; arama kutusundaki metin virgül içermez.)
+- extendedWaitUntil:
+    visible: "Kemer Marina, .*"
+    timeout: 20000
+- takeScreenshot: m07-adres-arama
+- tapOn: "Kemer Marina, .*"
+- tapOn: "Now"
+- takeScreenshot: m08-rota-dolu
+- tapOn: "Show prices.*"
+- extendedWaitUntil:
+    visible: "Choose .* · .*"
+    timeout: 30000
+- takeScreenshot: m09-arac-secimi
+- tapOn: "Choose .* · .*"
+- extendedWaitUntil:
+    visible: "Passenger full name"
+    timeout: 15000
+- takeScreenshot: m10-bilgiler
+- tapOn:
+    below: "Passenger full name"
+- inputText: "Emma Wilson"
+# iOS'ta Maestro hideKeyboard React Native girişinde çalışmıyor; Return klavyeyi kapatır.
+- pressKey: Enter
+# Onay kutuları alttaki sabit "Toplam" çubuğunun arkasında kalmasın diye ortaya kaydırılır.
+- scrollUntilVisible:
+    element: '.*I have read the privacy notice\..*'
+    direction: DOWN
+    centerElement: true
+- tapOn: '.*I have read the privacy notice\..*'
+- scrollUntilVisible:
+    element: ".*pre-contract information.*"
+    direction: DOWN
+    centerElement: true
+- tapOn: ".*pre-contract information.*"
+# İki kutu işaretlenince düğme açılır; açılmadıysa akış burada düşer (rezervasyonsuz devam etmez).
+- assertVisible:
+    text: "Create booking and pay"
+    enabled: true
+- takeScreenshot: m11-bilgiler-dolu
+- tapOn: "Create booking and pay"
+# Sahte ödeme sayfası uygulama içi Safari'de (SFSafariViewController) açılır. Ayrı süreç olduğu için içeriği
+# uygulamaya bağlı akıştan görünmez; dokunuşlar ekran ağacındaki konumlarla yapılır (iPhone 17 Pro, 402x874 pt).
+- waitForAnimationToEnd:
+    timeout: 10000
+# Sayfanın yüklenmesi için bekleme (boş alana uzun basış; Maestro'da düz bekleme komutu yok).
+- swipe:
+    start: "50%,50%"
+    end: "50%,50%"
+    duration: 12000
+- takeScreenshot: m12-odeme-sayfasi
+# "Ödemeyi onayla" [20,329][382,379]
+- tapOn:
+    point: "50%,40%"
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: m13-odeme-sonucu
+# Safari "Bitti" [16,62][60,106]: tarayıcı kapanır, uygulama rezervasyonu yeniden yükler.
+- tapOn:
+    point: "9%,10%"
+- extendedWaitUntil:
+    visible: "Confirmed|Driver assigned"
+    timeout: 40000
+- takeScreenshot: m14-rezervasyon-onaylandi

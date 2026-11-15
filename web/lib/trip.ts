@@ -1,6 +1,7 @@
 // Rota formu durumu. Adres jetonları uzun olduğu için ana sayfadan rezervasyona
 // sessionStorage ile taşınır; paylaşılabilir linkler bölge koduyla çalışır (/book?from=ayt&to=kemer).
 import { inputFromNow } from "./format";
+import { regionName } from "./regions";
 import type { Endpoint, Place, Region } from "./types";
 
 export interface Trip {
@@ -27,8 +28,9 @@ function int(v: string | undefined, fallback: number, min: number, max: number):
   return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
 }
 
-export function regionEndpoint(r: Region): Endpoint {
-  return { label: r.iata_code ? `${r.name} (${r.iata_code})` : r.name, region: r };
+export function regionEndpoint(r: Region, locale: string): Endpoint {
+  const name = regionName(r, locale);
+  return { label: r.iata_code ? `${name} (${r.iata_code})` : name, region: r };
 }
 
 export function emptyTrip(): Trip {
@@ -36,7 +38,7 @@ export function emptyTrip(): Trip {
 }
 
 /** Sorgu parametresinden (bölge kodu veya kimliği) başlangıç rotası. */
-export function tripFromParams(p: Params, regions: Region[]): Trip {
+export function tripFromParams(p: Params, regions: Region[], locale: string): Trip {
   const find = (v?: string) => regions.find((r) => r.code === v || String(r.id) === v);
   const from = find(one(p, "from"));
   const to = find(one(p, "to"));
@@ -44,8 +46,8 @@ export function tripFromParams(p: Params, regions: Region[]): Trip {
   const ret = one(p, "ret");
   const base = emptyTrip();
   return {
-    from: from ? regionEndpoint(from) : null,
-    to: to ? regionEndpoint(to) : null,
+    from: from ? regionEndpoint(from, locale) : null,
+    to: to ? regionEndpoint(to, locale) : null,
     at: at && DT.test(at) ? at : base.at,
     roundTrip: Boolean(ret && DT.test(ret)),
     returnAt: ret && DT.test(ret) ? ret : base.returnAt,

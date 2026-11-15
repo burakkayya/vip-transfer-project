@@ -230,6 +230,7 @@ export interface TripEta {
 /** K-62 buluşma rehberi. */
 export interface MeetingGuide {
   airport: string | null;
+  airport_iata?: string | null;
   guides: { id: number; terminal: string; steps: { text: string; photo_path: string | null }[] }[];
 }
 

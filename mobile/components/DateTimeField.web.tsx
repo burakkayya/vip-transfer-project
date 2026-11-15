@@ -1,5 +1,5 @@
 // Web önizlemesi: yerel seçici yok, tarayıcının datetime-local alanı kullanılır.
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { createElement } from "react";
 import { View } from "react-native";
 import { T, colors, fonts, s } from "./ui";

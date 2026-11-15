@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { provinceName, regionLabel } from "@/lib/regions";
 import type { Region } from "@/lib/types";
 
@@ -12,6 +12,7 @@ export default function RegionSelect(props: {
   onChange: (id: number | "") => void;
 }) {
   const t = useTranslations("trip");
+  const locale = useLocale();
   const airports = props.regions.filter((r) => r.type === "havalimani");
   const provinces = [...new Set(props.regions.filter((r) => r.type === "ilce").map((r) => r.province))];
   return (
@@ -27,7 +28,7 @@ export default function RegionSelect(props: {
         <optgroup label={t("airports")}>
           {airports.map((r) => (
             <option key={r.id} value={r.id}>
-              {regionLabel(r)}
+              {regionLabel(r, locale)}
             </option>
           ))}
         </optgroup>

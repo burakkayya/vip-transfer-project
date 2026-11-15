@@ -3,6 +3,9 @@
 # olarak simülatör için derlenir, Maestro akışları (.maestro/ios) ekranlarda gezinir.
 # Çıktı: ekran görüntüleri, video ve backend günlüğü "ios-simulator-sonuc" yapıtında.
 # Mac dakikası pahalı olduğu için her PR'da değil, elle veya ci/ios-* dalına gönderimde çalışır.
+# K-77: iki dil paralel koşar. "tr" uçtan uca testtir; "en" simülatörü İngilizce açar, müşteri akışlarını
+# .maestro/ios/en altındaki İngilizce kopyalarıyla çalıştırır ve temiz durum çubuğuyla (9:41, tam pil)
+# reklamda kullanılabilecek tam çözünürlüklü (1206x2622) İngilizce ekran görüntüleri üretir.
 name: iOS simülatör
 
 on:
@@ -38,7 +41,13 @@ env:
 
 jobs:
   ios:
-    name: iOS simülatör (Maestro)
+    name: iOS simülatör (Maestro, ${{ matrix.lang }})
+    strategy:
+      fail-fast: false
+      matrix:
+        lang: [tr, en]
+    env:
+      LANG_CODE: ${{ matrix.lang }}
     runs-on: macos-26
     timeout-minutes: 100
     steps:
@@ -79,10 +88,15 @@ jobs:
           for i in $(seq 1 30); do "$PGBIN/pg_isready" -h localhost && break; sleep 1; done
           "$PGBIN/psql" -h localhost -d postgres -c "CREATE ROLE getaway LOGIN SUPERUSER PASSWORD 'getaway';"
           "$PGBIN/createdb" -h localhost -O getaway getaway
-      - name: Backend kurulum ve tohum veri
+      - name: Backend kurulum
         working-directory: backend
+        run: pip install -r requirements.txt
+      # Ayar doğrulaması (K-58) Google anahtarını ister; anahtar pip kurulumuna değil yalnız bu adıma verilir (INF-06).
+      - name: Veritabanı ve tohum veri
+        working-directory: backend
+        env:
+          GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
         run: |
-          pip install -r requirements.txt
           alembic upgrade head
           python -m app.cli seed
           python -m app.cli seed-demo
@@ -150,7 +164,7 @@ jobs:
           key: ${{ steps.appcache.outputs.cache-primary-key }}
 
       # ---------- Simülatör ----------
-      - name: Simülatörü hazırla (Türkçe, Antalya konumu)
+      - name: Simülatörü hazırla (dil matristen, Antalya konumu)
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "
           import json,re,sys
@@ -161,12 +175,19 @@ jobs:
           print(ph[-1]['udid'])")
           echo "UDID=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID"
-          xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR
-          xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string tr_TR
+          if [ "$LANG_CODE" = en ]; then
+            xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array en-US
+            xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string en_US
+          else
+            xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR
+            xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string tr_TR
+          fi
           xcrun simctl shutdown "$UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl location "$UDID" set 36.9002,30.8015
+          # Reklam görüntüleri için temiz durum çubuğu (iki dilde de).
+          xcrun simctl status_bar "$UDID" override --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3             --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 || true
           xcrun simctl install "$UDID" ios-apps/customer.app
           xcrun simctl install "$UDID" ios-apps/driver.app
           xcrun simctl list devices | grep "$UDID"
@@ -212,15 +233,30 @@ jobs:
           sleep 2
           FAIL=0
           cd "$OUT/screens"
-          for F in "$GITHUB_WORKSPACE"/.maestro/ios/[0-9]*.yaml; do
+          FLOWS=$(ls "$GITHUB_WORKSPACE"/.maestro/ios/[0-9]*.yaml)
+          # İngilizce koşuda yalnızca en/ altında olan akışlar (reklam görüntüleri) sona eklenir.
+          if [ "$LANG_CODE" = en ]; then
+            for E in "$GITHUB_WORKSPACE"/.maestro/ios/en/[0-9]*.yaml; do
+              [ -f "$GITHUB_WORKSPACE/.maestro/ios/$(basename "$E")" ] || FLOWS="$FLOWS $E"
+            done
+          fi
+          for F in $FLOWS; do
             N=$(basename "$F" .yaml)
+            # Reklam akışından önce sürücü uygulaması kaldırılır: canlı etkinliği ve geri dönüş etiketi kalmaz.
+            if [ "$N" = 06-reklam-goruntuleri ]; then
+              xcrun simctl uninstall "$UDID" com.getawaytransfers.driver || true
+            fi
+            # İngilizce koşuda müşteri akışlarının İngilizce kopyası kullanılır (sürücü uygulaması Türkçedir).
+            if [ "$LANG_CODE" = en ] && [ -f "$GITHUB_WORKSPACE/.maestro/ios/en/$N.yaml" ]; then
+              F="$GITHUB_WORKSPACE/.maestro/ios/en/$N.yaml"
+            fi
             echo "::group::$N"
             run_flow() {
               maestro --device "$UDID" test "$F" --format junit --output "$OUT/$N.xml" --debug-output "$OUT/debug/$N"
             }
             # Maestro'nun XCUITest sürücüsü ara sıra bağlanamıyor (akış hiç başlamaz, sonuç dosyası yazılmaz):
             # yalnızca bu durumda bir kez yeniden denenir. Akış içindeki gerçek hata yeniden denenmez.
-            if run_flow || { { [ ! -s "$OUT/$N.xml" ] || grep -q DeviceUnreachable "$OUT/$N.xml"; } && echo "Sürücü bağlanamadı ya da bağlantı koptu, $N yeniden deneniyor" && sleep 10 && run_flow; }; then
+            if run_flow || { { [ ! -s "$OUT/$N.xml" ] || grep -qE "DeviceUnreachable|DeviceServerDied" "$OUT/$N.xml"; } && echo "Sürücü bağlanamadı ya da bağlantı koptu, $N yeniden deneniyor" && sleep 10 && run_flow; }; then
               echo "OK $N" | tee -a "$OUT/ozet.txt"
             else
               echo "HATA $N" | tee -a "$OUT/ozet.txt"; FAIL=1
@@ -231,8 +267,8 @@ jobs:
             echo "::endgroup::"
           done
           # Maestro takeScreenshot dosyaları akış dosyasının klasörüne de yazılabiliyor: tek yerde toplanır.
-          cp "$GITHUB_WORKSPACE"/.maestro/ios/*.png "$OUT/screens/" 2>/dev/null || true
-          find "$GITHUB_WORKSPACE" "$HOME/.maestro" -name "[ms][0-9][0-9]-*.png" -not -path "$OUT/screens/*" \
+          cp "$GITHUB_WORKSPACE"/.maestro/ios/*.png "$GITHUB_WORKSPACE"/.maestro/ios/en/*.png "$OUT/screens/" 2>/dev/null || true
+          find "$GITHUB_WORKSPACE" "$HOME/.maestro" -name "[msr][0-9][0-9]*-*.png" -not -path "$OUT/screens/*" \
             -exec cp {} "$OUT/screens/" \; 2>/dev/null || true
           ls "$OUT/screens"
           kill -INT $REC || true
@@ -249,7 +285,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ios-simulator-sonuc
+          name: ios-simulator-sonuc-${{ matrix.lang }}
           path: |
             ios-out
             ~/.maestro/tests

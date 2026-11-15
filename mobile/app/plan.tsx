@@ -1,7 +1,7 @@
 /**
  * Sürücünün günlük planı (K-63): seçilen günün işleri, tahmini kazanç ve varış bölgesinden dönüş işi önerileri.
  */
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";

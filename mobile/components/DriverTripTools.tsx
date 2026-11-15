@@ -1,7 +1,7 @@
 /**
  * Sürücü araçları (K-63): kanıtlı bekleme sayacı ve "Yolcu gelmedi", çıkış önerisi, müşteri not kartı.
  */
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { useEffect, useState } from "react";
 import { Alert as NativeAlert, View } from "react-native";
 import { Alert, Button, Card, Row, T, colors, s } from "@/components/ui";
