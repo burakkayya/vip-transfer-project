@@ -76,11 +76,21 @@ appId: com.getawaytransfers.app
 - inputText: "Test Yolcu"
 # iOS'ta Maestro hideKeyboard React Native girişinde çalışmıyor; Return klavyeyi kapatır.
 - pressKey: Enter
+# Onay kutuları alttaki sabit "Toplam" çubuğunun arkasında kalmasın diye ortaya kaydırılır.
 - scrollUntilVisible:
     element: '.*KVKK aydınlatma metnini okudum\..*'
     direction: DOWN
+    centerElement: true
 - tapOn: '.*KVKK aydınlatma metnini okudum\..*'
+- scrollUntilVisible:
+    element: ".*Mesafeli satış.*"
+    direction: DOWN
+    centerElement: true
 - tapOn: ".*Mesafeli satış.*"
+# İki kutu işaretlenince düğme açılır; açılmadıysa akış burada düşer (rezervasyonsuz devam etmez).
+- assertVisible:
+    text: "Rezervasyonu oluştur ve öde"
+    enabled: true
 - takeScreenshot: m11-bilgiler-dolu
 - tapOn: "Rezervasyonu oluştur ve öde"
 # Sahte ödeme sayfası uygulama içi Safari'de (SFSafariViewController) açılır. Ayrı süreç olduğu için içeriği
@@ -103,6 +113,6 @@ appId: com.getawaytransfers.app
 - tapOn:
     point: "9%,10%"
 - extendedWaitUntil:
-    visible: "Onaylandı|Atandı|Sürücü.*"
+    visible: "Onaylandı|Sürücü atandı|Atandı"
     timeout: 40000
 - takeScreenshot: m14-rezervasyon-onaylandi
