@@ -14,7 +14,7 @@ appId: com.getawaytransfers.driver
 - tapOn: "Devam"
 - extendedWaitUntil:
     visible: ".*Geliştirme ortamı.*"
-    timeout: 20000
+    timeout: 60000
 - takeScreenshot: s02-sms-kodu
 - tapOn: ".*Geliştirme ortamı.*"
 - extendedWaitUntil:

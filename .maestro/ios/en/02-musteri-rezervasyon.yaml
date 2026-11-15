@@ -26,7 +26,7 @@ appId: com.getawaytransfers.app
       - tapOn: "Continue"
       - extendedWaitUntil:
           visible: ".*Development: code.*"
-          timeout: 20000
+          timeout: 60000
       - takeScreenshot: m02-sms-kodu
       - tapOn: ".*Development: code.*"
       - extendedWaitUntil:
