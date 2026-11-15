@@ -1,4 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Image, Pressable, View } from "react-native";
@@ -9,7 +9,7 @@ import { dateTime, money } from "@/lib/format";
 import { regionName } from "@/lib/airports";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
 import type { Booking } from "@/lib/types";
-import { VEHICLE_IMAGE } from "@/lib/vehicles";
+import { VEHICLE_IMAGE, vehicleName } from "@/lib/vehicles";
 
 const DONE = ["tamamlandi", "iptal", "odeme_basarisiz"];
 
@@ -75,7 +75,7 @@ export default function Bookings() {
                   <View style={{ width: 58, height: 36, borderRadius: 8, backgroundColor: colors.canvas, overflow: "hidden" }}>
                     {VEHICLE_IMAGE[b.vehicle_type.code] ? <Image source={VEHICLE_IMAGE[b.vehicle_type.code]} style={{ width: 58, height: 36, mixBlendMode: "multiply" } as object} resizeMode="contain" /> : null}
                   </View>
-                  <T style={{ fontWeight: "600" }} numberOfLines={1}>{b.vehicle_type.name}</T>
+                  <T style={{ fontWeight: "600" }} numberOfLines={1}>{vehicleName(b.vehicle_type, LOCALE)}</T>
                 </Row>
                 <Row gap={6} style={{ flexWrap: "nowrap" }}>
                   <T style={{ fontWeight: "800", fontSize: 17, letterSpacing: -0.3 }}>{money(b.total_amount, b.currency, LOCALE)}</T>

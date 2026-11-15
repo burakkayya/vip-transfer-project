@@ -35,6 +35,11 @@ export function wallClockIso(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00+03:00`;
 }
 
-export function wallClockLabel(d: Date): string {
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+/** Seçicideki duvar saati, uygulama dilinde (K-77; ör. en "16 Nov 2026, 10:45", tr "16 Kas 2026 10:45"). */
+export function wallClockLabel(d: Date, locale = "tr"): string {
+  try {
+    return new Intl.DateTimeFormat(tag(locale), { dateStyle: "medium", timeStyle: "short" }).format(d);
+  } catch {
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
 }

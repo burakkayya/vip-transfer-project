@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { Alert, Badge, Button, Card, H2, Hero, IconBubble, Input, P, Picker, Row, Screen, T, colors, onDark, s, statusTone } from "@/components/ui";

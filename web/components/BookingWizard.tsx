@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { vehicleName } from "@/lib/vehicleNames";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, CREATE_TIMEOUT_MS, api, isAbort } from "@/lib/api";
@@ -434,7 +435,7 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
                           )}
                         </span>
                         <span className="vehicle-info">
-                          <strong>{vt.name}</strong>
+                          <strong>{vehicleName(vt, locale)}</strong>
                           <span className="specs">
                             <span>
                               <Icon name="users" size={16} /> <span aria-hidden="true">{vt.capacity}</span>
@@ -678,7 +679,7 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
             {selectedType && (
               <>
                 <dt><Icon name={vehicleIcon(selectedType.code)} size={16} /> {t("vehicle")}</dt>
-                <dd>{selectedType.name}</dd>
+                <dd>{vehicleName(selectedType, locale)}</dd>
               </>
             )}
           </dl>

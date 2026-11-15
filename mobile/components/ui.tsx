@@ -1,6 +1,6 @@
 // Getaway tasarım sistemi (mobil): siyah-beyaz zemin, sıcak altın vurgu, Inter yazı tipi.
 import { palette } from "@/lib/tokens";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import {
@@ -590,7 +590,9 @@ export function Picker<T2 extends string | number>(props: {
   return (
     <View style={s.field}>
       {props.label ? <T style={s.label}>{props.label}</T> : null}
-      <Pressable style={s.inputWrap} onPress={() => setOpen(true)}>
+      {/* Etiket açıkça verilir: iOS/Android aksi halde ikon glifini de okur. */}
+      <Pressable style={s.inputWrap} onPress={() => setOpen(true)} accessibilityRole="button"
+        accessibilityLabel={[props.label, current?.label ?? props.placeholder].filter(Boolean).join(", ")}>
         {props.icon ? <Ionicons name={props.icon} size={18} color={colors.muted} style={{ marginRight: 10 }} /> : null}
         <T style={[s.inputText, { color: current ? colors.text : colors.faint }]} numberOfLines={1}>{current?.label ?? props.placeholder}</T>
         <Ionicons name="chevron-down" size={18} color={colors.muted} />

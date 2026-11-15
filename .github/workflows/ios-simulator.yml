@@ -88,10 +88,15 @@ jobs:
           for i in $(seq 1 30); do "$PGBIN/pg_isready" -h localhost && break; sleep 1; done
           "$PGBIN/psql" -h localhost -d postgres -c "CREATE ROLE getaway LOGIN SUPERUSER PASSWORD 'getaway';"
           "$PGBIN/createdb" -h localhost -O getaway getaway
-      - name: Backend kurulum ve tohum veri
+      - name: Backend kurulum
         working-directory: backend
+        run: pip install -r requirements.txt
+      # Ayar doğrulaması (K-58) Google anahtarını ister; anahtar pip kurulumuna değil yalnız bu adıma verilir (INF-06).
+      - name: Veritabanı ve tohum veri
+        working-directory: backend
+        env:
+          GETAWAY_GOOGLE_MAPS_API_KEY: ${{ secrets.GETAWAY_GOOGLE_MAPS_API_KEY }}
         run: |
-          pip install -r requirements.txt
           alembic upgrade head
           python -m app.cli seed
           python -m app.cli seed-demo

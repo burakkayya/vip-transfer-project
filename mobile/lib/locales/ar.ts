@@ -224,6 +224,7 @@ const ar: Dict = {
   "profile.personal": "البيانات الشخصية",
   "profile.support": "الدعم",
   "profile.privacy": "الخصوصية والبيانات",
+  "login.noPassword": "دون كلمة مرور · دخول آمن برمز",
   "login.welcome": "أدخل رقم هاتفك",
   "login.resend": "أعد إرسال الرمز",
   "login.resendIn": "يمكنك إعادة الإرسال بعد {s} ثانية",

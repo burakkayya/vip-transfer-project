@@ -1,4 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,7 +22,7 @@ import { useLiveLocation } from "@/lib/liveSocket";
 import { customerLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
 import { apiPath, consumeAutoPay, parseBookingCode } from "@/lib/routeParams";
 import type { Booking, DriverLocation, Eta, RefundQuote } from "@/lib/types";
-import { VEHICLE_IMAGE } from "@/lib/vehicles";
+import { VEHICLE_IMAGE, vehicleName } from "@/lib/vehicles";
 
 const TRACKABLE = ["yolda", "vardi", "basladi"];
 const CANCELLABLE = ["odeme_bekliyor", "onaylandi", "atandi"];
@@ -389,7 +389,7 @@ function BookingDetail({ code }: { code: string }) {
         <Row spread style={{ flexWrap: "nowrap" }}>
           <View style={{ gap: 2, flex: 1 }}>
             <T style={s.hint}>{t("bookings.vehicle")}</T>
-            <T style={{ fontWeight: "700" }}>{booking.vehicle_type.name}</T>
+            <T style={{ fontWeight: "700" }}>{vehicleName(booking.vehicle_type, LOCALE)}</T>
             <T style={s.hint}>{booking.passenger_name} · {booking.passenger_count} · {booking.luggage_count}</T>
             {booking.child_seat_count ? <T style={s.hint}>{t("meet.childSeatCount", { count: booking.child_seat_count })}</T> : null}
             {booking.market_stop ? <T style={s.hint}>{t("meet.marketStop")}</T> : null}

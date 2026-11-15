@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { vehicleName } from "@/lib/vehicleNames";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { PAID, isFinal, isUnauthorized, statusClass } from "@/lib/booking";
@@ -295,7 +296,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
             {booking.booking_code}
           </h1>
           <p className="muted booking-meta">
-            {booking.vehicle_type.name} · {t("people", { passengers: booking.passenger_count, luggage: booking.luggage_count })}
+            {vehicleName(booking.vehicle_type, locale)} · {t("people", { passengers: booking.passenger_count, luggage: booking.luggage_count })}
             {(booking.child_seat_count ?? 0) > 0 && <> · {tm("childSeats", { count: booking.child_seat_count ?? 0 })}</>}
             {booking.market_stop && <> · {tm("marketStop")}</>}
           </p>

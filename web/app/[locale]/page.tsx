@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Image from "next/image";
+import { vehicleName } from "@/lib/vehicleNames";
 import FleetCard from "@/components/FleetCard";
 import Icon from "@/components/Icon";
 import { CountUp, HeroMedia, InView, ParallaxBg, Reveal, SmoothScroll } from "@/components/Motion";
@@ -127,7 +128,7 @@ export default async function Home({ params }: Props) {
                 <Reveal key={vt.code} delay={n * 0.08}>
                   <FleetCard
                     code={vt.code}
-                    name={vt.name}
+                    name={vehicleName(vt, locale)}
                     capacity={vt.capacity}
                     luggage={vt.luggage_capacity}
                     tag={vt.code.startsWith("vip_") ? "VIP" : undefined}

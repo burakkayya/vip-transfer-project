@@ -1,4 +1,4 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Modal, Pressable, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";

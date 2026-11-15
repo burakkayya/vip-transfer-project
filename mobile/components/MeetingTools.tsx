@@ -2,7 +2,7 @@
  * Buluşma deneyimi (K-62), müşteri uygulaması: sürücü kartı (fotoğraf, diller, renk), yolcu durumu
  * ("İndim / Bagajdayım / Çıkıyorum"), havalimanı buluşma rehberi, takip bağlantısı paylaşımı, puan ve bahşiş.
  */
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "@/components/Icon";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Image, Pressable, Share, TextInput, View } from "react-native";

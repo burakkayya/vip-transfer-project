@@ -224,6 +224,7 @@ const ko: Dict = {
   "profile.personal": "개인 정보",
   "profile.support": "고객 지원",
   "profile.privacy": "개인정보 및 데이터",
+  "login.noPassword": "비밀번호 없이 · 코드로 안전하게 로그인",
   "login.welcome": "휴대폰 번호를 입력하세요",
   "login.resend": "코드 다시 보내기",
   "login.resendIn": "{s}초 후 다시 보낼 수 있습니다",

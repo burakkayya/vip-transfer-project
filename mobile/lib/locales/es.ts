@@ -224,6 +224,7 @@ const es: Dict = {
   "profile.personal": "Datos personales",
   "profile.support": "Ayuda",
   "profile.privacy": "Privacidad y datos",
+  "login.noPassword": "Sin contraseña · Acceso seguro con código",
   "login.welcome": "Introduzca su número de teléfono",
   "login.resend": "Reenviar código",
   "login.resendIn": "Puede reenviarlo en {s} s",
