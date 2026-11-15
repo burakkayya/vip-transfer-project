@@ -233,8 +233,19 @@ jobs:
           sleep 2
           FAIL=0
           cd "$OUT/screens"
-          for F in "$GITHUB_WORKSPACE"/.maestro/ios/[0-9]*.yaml; do
+          FLOWS=$(ls "$GITHUB_WORKSPACE"/.maestro/ios/[0-9]*.yaml)
+          # İngilizce koşuda yalnızca en/ altında olan akışlar (reklam görüntüleri) sona eklenir.
+          if [ "$LANG_CODE" = en ]; then
+            for E in "$GITHUB_WORKSPACE"/.maestro/ios/en/[0-9]*.yaml; do
+              [ -f "$GITHUB_WORKSPACE/.maestro/ios/$(basename "$E")" ] || FLOWS="$FLOWS $E"
+            done
+          fi
+          for F in $FLOWS; do
             N=$(basename "$F" .yaml)
+            # Reklam akışından önce sürücü uygulaması kaldırılır: canlı etkinliği ve geri dönüş etiketi kalmaz.
+            if [ "$N" = 06-reklam-goruntuleri ]; then
+              xcrun simctl uninstall "$UDID" com.getawaytransfers.driver || true
+            fi
             # İngilizce koşuda müşteri akışlarının İngilizce kopyası kullanılır (sürücü uygulaması Türkçedir).
             if [ "$LANG_CODE" = en ] && [ -f "$GITHUB_WORKSPACE/.maestro/ios/en/$N.yaml" ]; then
               F="$GITHUB_WORKSPACE/.maestro/ios/en/$N.yaml"
