@@ -1647,3 +1647,15 @@
     transform: none !important;
   }
 }
+
+/* K-77: hover kaydırmaları okuma yönünde. */
+[dir="rtl"] .service:hover .text-link svg,
+[dir="rtl"] .fleet-card:hover .fleet-cta svg {
+  transform: translateX(-4px);
+}
+[dir="rtl"] .fleet-card:hover .media img {
+  transform: translateX(-10px) scale(1.04);
+}
+[dir="rtl"] .vehicle-card:hover:not(:disabled) .vehicle-media img {
+  transform: translateX(-6px) scale(1.04);
+}

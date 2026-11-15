@@ -23,7 +23,7 @@ import type { Approach, Trip } from "@/lib/types";
 
 const SHARING = ["yolda", "vardi", "basladi"];
 const PASSENGER_STATUS: Record<string, string> = { indi: "Yolcu indi", bagajda: "Yolcu bagajda", cikiyor: "Yolcu çıkıyor" };
-const LANG_TR: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", ru: "Rusça", fr: "Fransızca", ar: "Arapça" };
+const LANG_TR: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", es: "İspanyolca", ru: "Rusça", fr: "Fransızca", ar: "Arapça", zh: "Çince", ja: "Japonca", it: "İtalyanca", pt: "Portekizce", ko: "Korece" };
 const OPEN = ["atandi", "yolda", "vardi", "basladi"];
 const FLOW = ["atandi", "yolda", "vardi", "basladi", "bitti"];
 const LOCATION_INTERVAL_MS = 10_000;

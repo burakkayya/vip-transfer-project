@@ -34,7 +34,7 @@
     "fleetTitle": "Our vehicles",
     "faqTitle": "Frequently asked questions",
     "faq1q": "How is the price calculated?",
-    "faq1a": "From the road distance between the districts of your pick-up and drop-off addresses and the vehicle type. The price is fixed when you book.",
+    "faq1a": "From the road distance between the districts of your pick-up and drop-off addresses and the vehicle type. The price is fixed when you book. Short trips have a minimum fare of €30 (or the lira equivalent).",
     "faq2q": "What if my flight is delayed?",
     "faq2a": "Add your flight number and your driver will follow your landing time and wait for you at no extra cost.",
     "faq3q": "How do I pay?",
@@ -404,6 +404,7 @@
   },
   "legal": {
     "draft": "This text is a draft awaiting legal review.",
+    "translationNotice": "This is a translation that has not yet been verified. The Turkish version is binding.",
     "updated": "Version {version}",
     "cancellation": {
       "title": "Cancellation and refund policy",

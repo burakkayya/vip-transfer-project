@@ -13,7 +13,8 @@ import { errorTextTr } from "@/lib/i18n";
 import type { DriverMe } from "@/lib/types";
 
 const LANGS: [string, string][] = [
-  ["tr", "Türkçe"], ["en", "İngilizce"], ["de", "Almanca"], ["ru", "Rusça"], ["fr", "Fransızca"], ["ar", "Arapça"],
+  ["tr", "Türkçe"], ["en", "İngilizce"], ["de", "Almanca"], ["es", "İspanyolca"], ["ru", "Rusça"], ["fr", "Fransızca"],
+  ["ar", "Arapça"], ["zh", "Çince"], ["ja", "Japonca"], ["it", "İtalyanca"], ["pt", "Portekizce"], ["ko", "Korece"],
 ];
 
 export default function DriverProfileCard(props: { me: DriverMe; onSaved: (me: DriverMe) => void }) {

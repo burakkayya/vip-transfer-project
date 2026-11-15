@@ -187,7 +187,7 @@ export default function BookingsHome() {
                       </span>
                       {leg && (
                         <span className="muted booking-row-route">
-                          {regionLabel(leg.pickup_region)} → {regionLabel(leg.dropoff_region)} ·{" "}
+                          <span dir="ltr">{regionLabel(leg.pickup_region)} → {regionLabel(leg.dropoff_region)}</span> ·{" "}
                           {dateTime(leg.pickup_at, locale)}
                         </span>
                       )}

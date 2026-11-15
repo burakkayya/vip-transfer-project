@@ -2886,3 +2886,47 @@ input.readonly:focus {
 .track-card .label { color: var(--color-champagne-brass-ink); }
 .guide-num { font-variant-numeric: tabular-nums; }
 .status-step.done { box-shadow: inset 0 -3px 0 var(--accent); }
+
+/* K-77: on iki dil. Yazı tipi yığınları dile göre; Inter Latin ve Kiril harfleri çizer, kalan glifler sırayla
+   aşağıdaki yazı tiplerinden gelir. Arapça Noto Sans Arabic (next/font), CJK sistem yazı tipleri. */
+html:lang(ar),
+html:lang(ar) body {
+  font-family: var(--font-sans), var(--font-arabic), "Segoe UI", Tahoma, Arial, sans-serif;
+  line-height: 1.7;
+}
+html:lang(zh),
+html:lang(zh) body {
+  font-family: var(--font-sans), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+}
+html:lang(ja),
+html:lang(ja) body {
+  font-family: var(--font-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", "Noto Sans JP", sans-serif;
+}
+html:lang(ko),
+html:lang(ko) body {
+  font-family: var(--font-sans), "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  word-break: keep-all;
+}
+/* Japonca başlıklar kelime öbeği sınırında kırılır (destekleyen tarayıcıda; diğerlerinde varsayılan). */
+html:lang(ja) :is(h1, h2, h3, .btn, button) {
+  word-break: auto-phrase;
+}
+/* Arapça harfler birbirine bağlanır, harf aralığı bu bağı koparır; CJK'da negatif aralık glifleri üst üste bindirir. */
+html:lang(ar) *,
+html:lang(zh) *,
+html:lang(ja) *,
+html:lang(ko) * {
+  letter-spacing: 0 !important;
+}
+/* Yön bildiren ikon sağdan sola dilde aynalanır. Dönüşüm yola uygulanır; svg'nin kendi hover kaydırması korunur. */
+[dir="rtl"] .icon-dir path {
+  transform: scaleX(-1);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Telefon numarası, kod ve plaka sağdan sola sayfada da soldan sağa okunur. */
+[dir="rtl"] input[type="tel"],
+[dir="rtl"] input[inputmode="numeric"] {
+  direction: ltr;
+  text-align: end;
+}

@@ -5,6 +5,7 @@ Formül (fiyatlandirma.md, K-03 / K-04):
     ham_fiyat  = mesafe_km x birim_fiyat x araç_tipi_çarpanı
     ham_fiyat  = max(ham_fiyat, minimum_ücret)
     indirimli  = ham_fiyat - gidiş_dönüş_indirimi (varsa)
+    indirimli  = max(indirimli, minimum_ücret x bacak_sayısı)   # K-76: hiçbir yolculuk 30 €'nun altına inmez
     fiyat      = rounding_step'in katına yukarı yuvarlama(indirimli)
 
 Tüm parasal hesaplar Decimal ile yapılır; float kullanılmaz.
@@ -93,7 +94,7 @@ def quote_price(
     """Müşteriye gösterilecek nihai fiyatı hesaplar."""
     price = raw_price(distance_km, rule)
     price = apply_minimum(price, rule)
-    price = apply_round_trip_discount(price, discount)
+    price = apply_minimum(apply_round_trip_discount(price, discount), rule)
     return round_up_to_step(price, rule.rounding_step)
 
 
@@ -111,7 +112,8 @@ def quote_legs(
     """Tek yön (1 bacak) veya gidiş-dönüş (2 bacak) fiyatı.
 
     Her bacağa minimum ücret ayrı uygulanır, gidiş-dönüş indirimi toplam üzerinden
-    düşülür, sonuç yuvarlanır. Toplam, sürücü hakedişi için bacaklara ham
+    düşülür, sonuç yuvarlanır. K-76: indirim toplamı bacak başına minimumun altına
+    indiremez; kısa yolculuk reddedilmez, minimuma yükseltilir. Toplam, sürücü hakedişi için bacaklara ham
     fiyatları oranında dağıtılır; kuruş farkı son bacağa yazılır.
     """
     if not 1 <= len(distances_km) <= 2:
@@ -120,7 +122,15 @@ def quote_legs(
         raise ValueError("tek yönde gidiş-dönüş indirimi uygulanamaz")
     raws = [apply_minimum(raw_price(d, rule), rule) for d in distances_km]
     raw_total = sum(raws, Decimal("0"))
-    total = round_up_to_step(apply_round_trip_discount(raw_total, discount), rule.rounding_step)
+    floor = rule.minimum_price * len(distances_km)
+    total = round_up_to_step(max(apply_round_trip_discount(raw_total, discount), floor), rule.rounding_step)
     leg_prices = [_money(total * r / raw_total) for r in raws[:-1]]
     leg_prices.append(total - sum(leg_prices, Decimal("0")))
+    if len(leg_prices) == 2:
+        # K-76: oransal dağıtımda kısa bacak 30 €'nun altına düşmesin (sürücü hakedişi bacak payından hesaplanır).
+        # Toplam en az 2 x minimum olduğundan fark diğer bacaktan karşılanır.
+        low = min(range(2), key=lambda i: leg_prices[i])
+        if leg_prices[low] < rule.minimum_price:
+            leg_prices[low] = rule.minimum_price
+            leg_prices[1 - low] = total - rule.minimum_price
     return LegQuote(total=total, leg_prices=tuple(leg_prices))

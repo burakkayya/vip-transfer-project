@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 import { LOCALE, errorText, t } from "@/lib/i18n";
 import type { Endpoint, PlaceSuggestion, PlaceDetails, Region } from "@/lib/types";
-import { Alert, IconBubble, T, colors, s, tap } from "./ui";
+import { Alert, IconBubble, T, colors, rtlFlip, s, tap } from "./ui";
 
 type Option =
   | { kind: "region"; key: string; region: Region; title: string; subtitle: string }
@@ -115,7 +115,7 @@ export function AddressSearch(props: {
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 12 }}>
           <Pressable onPress={props.onClose} hitSlop={10} accessibilityLabel={t("back")}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} style={rtlFlip("arrow-back")} />
           </Pressable>
           <T style={{ fontSize: 18, fontWeight: "700" }}>{props.title}</T>
         </View>

@@ -14,8 +14,8 @@ import { LOCALE, errorText, t, type Key } from "@/lib/i18n";
 import type { BookingLeg, DriverBrief, MeetingGuide, Rating } from "@/lib/types";
 
 const LANG_NAMES: Record<string, string> = {
-  tr: "Türkçe", en: "English", de: "Deutsch", ru: "Русский", fr: "Français", es: "Español", it: "Italiano",
-  zh: "中文", ja: "日本語", ar: "العربية",
+  tr: "Türkçe", en: "English", de: "Deutsch", es: "Español", ru: "Русский", fr: "Français", ar: "العربية",
+  zh: "简体中文", ja: "日本語", it: "Italiano", pt: "Português", ko: "한국어",
 };
 const STEPS = ["indi", "bagajda", "cikiyor"] as const;
 const STEP_ICON = { indi: "airplane", bagajda: "briefcase", cikiyor: "walk" } as const;

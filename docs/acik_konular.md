@@ -21,6 +21,10 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 ## Ürün
 
+- [ ] (K-77) Sekiz yeni dilin (es, fr, ar, zh, ja, it, pt, ko) çevirileri anadili konuşan biri tarafından gözden geçirilecek; özellikle yasal metinler (şimdilik "Türkçe sürüm bağlayıcı" notuyla yayında) ve Arapça arayüz.
+- [ ] (K-77) Canlıda ülkeye göre dil seçimi için CDN/vekil ülke başlığı gerekir (Cloudflare `cf-ipcountry`; Cloudflare kurulumu bekliyor). Başlık yokken site tarayıcı diline düşer. Kendi vekilimiz kullanılırsa `x-country-code` başlığını istemciden gelen değeri silerek yazmalı.
+- [ ] (K-77) Mobilde dil telefonun dilinden seçilir; cihaz dili Arapça değilken bölgeden Arapça seçilirse sağdan sola düzen bir sonraki açılışta uygulanır. Gerçek cihazda Arapça düzen gözden geçirilecek.
+
 - [ ] Araç tipleri ve çarpanları (minivan, VIP van, minibüs, VIP minibüs).
 
 ## Teknik

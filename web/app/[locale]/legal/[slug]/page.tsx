@@ -69,6 +69,7 @@ export default async function LegalPage({ params }: Props) {
       <div className="legal-head">
         <h1 id="legal-title" className="page-title">{t("title")}</h1>
         <p className="alert info legal-draft">{common("draft")}</p>
+        {locale !== "tr" ? <p className="hint legal-translation" lang={locale}>{common("translationNotice")}</p> : null}
         <p className="hint">{common("updated", { version: page.version })}</p>
       </div>
       {sections.length >= 3 && (

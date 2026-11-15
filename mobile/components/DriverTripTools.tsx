@@ -11,7 +11,7 @@ import { clock } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
 import type { Trip } from "@/lib/types";
 
-const LANG_TR: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", ru: "Rusça", fr: "Fransızca", ar: "Arapça" };
+const LANG_TR: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", es: "İspanyolca", ru: "Rusça", fr: "Fransızca", ar: "Arapça", zh: "Çince", ja: "Japonca", it: "İtalyanca", pt: "Portekizce", ko: "Korece" };
 
 function mmss(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));

@@ -7,6 +7,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { LOCALE_NAMES } from "@/i18n/locales";
 import { api } from "@/lib/api";
 import { TIP_KEY, isUnauthorized, session } from "@/lib/booking";
 import { money } from "@/lib/format";
@@ -15,10 +16,7 @@ import type { Booking, BookingLeg, DriverBrief, MeetingGuide, Rating, ShareLink 
 import Icon from "./Icon";
 import { useSessionExpired } from "./RequireLogin";
 
-const LANG_NAMES: Record<string, string> = {
-  tr: "Türkçe", en: "English", de: "Deutsch", ru: "Русский", fr: "Français", es: "Español", it: "Italiano",
-  zh: "中文", ja: "日本語", ar: "العربية",
-};
+const LANG_NAMES: Record<string, string> = LOCALE_NAMES;
 const PRE_PICKUP = new Set(["atandi", "yolda", "vardi"]);
 const PASSENGER_STEPS = ["indi", "bagajda", "cikiyor"] as const;
 

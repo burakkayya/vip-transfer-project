@@ -22,6 +22,7 @@ from app.api.public import autocomplete as public_autocomplete
 from app.api.public import place_details as public_place_details
 from app.api.public import quote_out, to_quote_input
 from app.api.schemas import (
+    SUPPORTED_LOCALES,
     BookingCreateIn,
     BookingOut,
     PlaceIn,
@@ -50,7 +51,7 @@ MIN_PAYMENT_HOURS = 2
 MAX_PAYMENT_HOURS = 72
 # Ödeme, ilk alıştan en geç bu kadar önce alınmış olmalı; sonra rezervasyon kendiliğinden iptal olur.
 PAYMENT_BEFORE_PICKUP = timedelta(hours=1)
-SHARE_LOCALES = ("tr", "en", "de", "ru")
+SHARE_LOCALES = SUPPORTED_LOCALES
 
 
 # --- Müşteri -----------------------------------------------------------------
@@ -236,6 +237,14 @@ _SHARE = {
            "{legs}\nFahrzeug: {vehicle}, {pax} Personen, {lug} Gepäck\nBetrag: {total} {currency}\n{pay}"),
     "ru": ("Здравствуйте, {name}! Ваше бронирование Getaway Transfers создано.\nКод: {code}\n"
            "{legs}\nАвтомобиль: {vehicle}, пассажиров: {pax}, багаж: {lug}\nСумма: {total} {currency}\n{pay}"),
+    "es": 'Hola {name}, se ha creado su reserva de Getaway Transfers.\nCódigo: {code}\n{legs}\nVehículo: {vehicle}, {pax} pasajeros, {lug} maletas\nTotal: {total} {currency}\n{pay}',
+    "fr": 'Bonjour {name}, votre réservation Getaway Transfers a été créée.\nCode : {code}\n{legs}\nVéhicule : {vehicle}, {pax} passagers, {lug} bagages\nMontant : {total} {currency}\n{pay}',
+    "it": 'Salve {name}, la sua prenotazione Getaway Transfers è stata creata.\nCodice: {code}\n{legs}\nVeicolo: {vehicle}, {pax} passeggeri, {lug} bagagli\nTotale: {total} {currency}\n{pay}',
+    "pt": 'Olá {name}, sua reserva Getaway Transfers foi criada.\nCódigo: {code}\n{legs}\nVeículo: {vehicle}, {pax} passageiros, {lug} malas\nTotal: {total} {currency}\n{pay}',
+    "ar": 'مرحبًا {name}، تم إنشاء حجزك لدى Getaway Transfers.\nالرمز: {code}\n{legs}\nالمركبة: {vehicle}، الركاب: {pax}، الحقائب: {lug}\nالمبلغ: {total} {currency}\n{pay}',
+    "zh": '{name}，您好！您的 Getaway Transfers 预订已创建。\n预订码：{code}\n{legs}\n车辆：{vehicle}，{pax} 位乘客，{lug} 件行李\n金额：{total} {currency}\n{pay}',
+    "ja": '{name} 様、Getaway Transfers のご予約を作成しました。\n予約コード：{code}\n{legs}\n車両：{vehicle}、乗客 {pax} 名、荷物 {lug} 個\n料金：{total} {currency}\n{pay}',
+    "ko": '{name}님, 안녕하세요. Getaway Transfers 예약이 생성되었습니다.\n예약 코드: {code}\n{legs}\n차량: {vehicle}, 승객 {pax}명, 수하물 {lug}개\n금액: {total} {currency}\n{pay}',
 }
 _PAY = {
     "tr": ("Ödeme için (telefonunuza gelen SMS koduyla giriş yapın): {url}\nSon ödeme: {due}",
@@ -246,6 +255,14 @@ _PAY = {
            "Zahlung erhalten, Ihre Buchung ist bestätigt. Details: {url}"),
     "ru": ("Для оплаты (войдите по SMS-коду на ваш телефон): {url}\nОплатить до: {due}",
            "Оплата получена, бронирование подтверждено. Подробности: {url}"),
+    "es": ('Para pagar (inicie sesión con el código SMS enviado a su teléfono): {url}\nPagar antes de: {due}', 'Pago recibido, su reserva está confirmada. Detalles: {url}'),
+    "fr": ('Pour payer (connectez-vous avec le code SMS envoyé sur votre téléphone) : {url}\nÀ régler avant : {due}', 'Paiement reçu, votre réservation est confirmée. Détails : {url}'),
+    "it": ('Per pagare (acceda con il codice SMS inviato al suo telefono): {url}\nPagare entro: {due}', 'Pagamento ricevuto, la sua prenotazione è confermata. Dettagli: {url}'),
+    "pt": ('Para pagar (entre com o código SMS enviado ao seu telefone): {url}\nPagar até: {due}', 'Pagamento recebido, sua reserva está confirmada. Detalhes: {url}'),
+    "ar": ('للدفع (سجّل الدخول برمز SMS المرسل إلى هاتفك): {url}\nآخر موعد للدفع: {due}', 'تم استلام الدفع وتأكيد حجزك. التفاصيل: {url}'),
+    "zh": ('付款（请使用发送到您手机的短信验证码登录）：{url}\n付款截止：{due}', '已收到付款，您的预订已确认。详情：{url}'),
+    "ja": ('お支払い（お使いの電話に届くSMSコードでログインしてください）：{url}\nお支払い期限：{due}', 'お支払いを確認しました。ご予約が確定しました。詳細：{url}'),
+    "ko": ('결제하기(휴대폰으로 받은 SMS 코드로 로그인하세요): {url}\n결제 기한: {due}', '결제가 완료되어 예약이 확정되었습니다. 상세: {url}'),
 }
 
 

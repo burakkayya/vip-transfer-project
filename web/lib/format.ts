@@ -1,27 +1,34 @@
+import { INTL_TAG } from "@/i18n/locales";
+
 // Saatler Türkiye saatiyle gösterilir ve gönderilir (UTC+3, yaz saati uygulaması yok).
 export const TZ = "Europe/Istanbul";
 const TR_OFFSET = "+03:00";
 
+/** Uygulama dilini Intl etiketine çevirir (Arapçada Batı rakamları, K-77). */
+export function intlTag(locale: string): string {
+  return (INTL_TAG as Record<string, string>)[locale] ?? locale;
+}
+
 export function money(amount: string, currency: string, locale: string): string {
-  return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 2 }).format(
+  return new Intl.NumberFormat(intlTag(locale), { style: "currency", currency, maximumFractionDigits: 2 }).format(
     Number(amount),
   );
 }
 
 export function dateTime(iso: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: TZ }).format(
+  return new Intl.DateTimeFormat(intlTag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: TZ }).format(
     new Date(iso),
   );
 }
 
 /** Yalnızca saat ve dakika, Türkiye saatiyle (uçuşun tahmini inişi). */
 export function shortTime(iso: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { timeStyle: "short", timeZone: TZ }).format(new Date(iso));
+  return new Intl.DateTimeFormat(intlTag(locale), { timeStyle: "short", timeZone: TZ }).format(new Date(iso));
 }
 
 /** Saniyeli saat, Türkiye saatiyle (canlı konumun son güncelleme zamanı). */
 export function clockTime(iso: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { timeStyle: "medium", timeZone: TZ }).format(new Date(iso));
+  return new Intl.DateTimeFormat(intlTag(locale), { timeStyle: "medium", timeZone: TZ }).format(new Date(iso));
 }
 
 /** `<input type="datetime-local">` değerini Türkiye saatiyle ISO-8601'e çevirir. */

@@ -2,10 +2,10 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { LOCALE_NAMES } from "@/i18n/locales";
 import { routing } from "@/i18n/routing";
 import { usePathname, useRouter } from "@/i18n/navigation";
 
-const NAMES: Record<string, string> = { tr: "Türkçe", en: "English", de: "Deutsch", ru: "Русский" };
 
 export default function LocaleSwitcher() {
   const t = useTranslations("nav");
@@ -23,8 +23,8 @@ export default function LocaleSwitcher() {
       }}
     >
       {routing.locales.map((l) => (
-        <option key={l} value={l}>
-          {NAMES[l]}
+        <option key={l} value={l} lang={l}>
+          {LOCALE_NAMES[l]}
         </option>
       ))}
     </select>

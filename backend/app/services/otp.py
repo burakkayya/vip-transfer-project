@@ -30,6 +30,14 @@ OTP_TEXT = {
     "en": "Your getawaytransfers.com verification code: {code}. Do not share it.",
     "de": "Ihr getawaytransfers.com Bestaetigungscode: {code}. Nicht weitergeben.",
     "ru": "Vash kod getawaytransfers.com: {code}. Nikomu ne soobshchayte.",
+    "es": 'Su codigo de verificacion de getawaytransfers.com: {code}. No lo comparta.',
+    "fr": 'Votre code de verification getawaytransfers.com : {code}. Ne le partagez pas.',
+    "it": 'Il suo codice di verifica getawaytransfers.com: {code}. Non condividerlo.',
+    "pt": 'Seu codigo de verificacao getawaytransfers.com: {code}. Nao compartilhe.',
+    "ar": 'رمز التحقق من getawaytransfers.com: {code}. لا تشاركه مع أحد.',
+    "zh": '您的 getawaytransfers.com 验证码：{code}。请勿告诉他人。',
+    "ja": 'getawaytransfers.com の認証コード：{code}。他人に教えないでください。',
+    "ko": 'getawaytransfers.com 인증 코드: {code}. 타인에게 알려주지 마세요.',
 }
 
 
