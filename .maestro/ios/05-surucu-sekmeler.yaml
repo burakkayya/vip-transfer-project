@@ -7,7 +7,7 @@ appId: com.getawaytransfers.driver
     stopApp: true
 # iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
 - tapOn:
-    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver|Allow|Allow While Using App"
     optional: true
 - tapOn: ".*Kazanç.*"
 - extendedWaitUntil:

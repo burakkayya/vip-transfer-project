@@ -15,6 +15,7 @@ import {
 import { ApiError, api } from "@/lib/api";
 import { WEB_URL } from "@/lib/config";
 import { money, wallClockIso, wallClockLabel } from "@/lib/format";
+import { regionName } from "@/lib/airports";
 import { LOCALE, errorText, t } from "@/lib/i18n";
 import { requestAutoPay } from "@/lib/routeParams";
 import type { Booking, Endpoint, Profile, Quote, Region, VehicleType } from "@/lib/types";
@@ -255,7 +256,7 @@ export default function Book() {
                 style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 10 }, pressed && { opacity: 0.6 }]}>
                 <IconBubble name="airplane" size={42} />
                 <View style={{ flex: 1, borderBottomWidth: i < airports.length - 1 ? 1 : 0, borderBottomColor: colors.line, paddingBottom: 12, marginBottom: -12 }}>
-                  <T style={{ fontWeight: "600", fontSize: 15.5 }} numberOfLines={1}>{a.name}</T>
+                  <T style={{ fontWeight: "600", fontSize: 15.5 }} numberOfLines={1}>{regionName(a, LOCALE)}</T>
                   <T style={s.hint}>{a.iata_code} · {PROVINCE[a.province] ?? a.province}</T>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.faint} style={rtlFlip("chevron-forward")} />

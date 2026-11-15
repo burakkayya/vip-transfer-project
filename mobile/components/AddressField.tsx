@@ -4,6 +4,7 @@ import { FlatList, Modal, Pressable, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
+import { regionName } from "@/lib/airports";
 import { LOCALE, errorText, t } from "@/lib/i18n";
 import type { Endpoint, PlaceSuggestion, PlaceDetails, Region } from "@/lib/types";
 import { Alert, IconBubble, T, colors, rtlFlip, s, tap } from "./ui";
@@ -27,7 +28,8 @@ const fold = (v: string) =>
 const uuid = () => "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
 
 export function regionEndpoint(r: Region): Endpoint {
-  return { label: r.iata_code ? `${r.name} (${r.iata_code})` : r.name, region: r };
+  const name = regionName(r, LOCALE);
+  return { label: r.iata_code ? `${name} (${r.iata_code})` : name, region: r };
 }
 
 /** Arama ekranı: havalimanı ve ilçeler anında, otel ve adresler backend üzerinden aranır. */
@@ -49,7 +51,7 @@ export function AddressSearch(props: {
   const options: Option[] = useMemo(() => {
     const q = fold(query.trim());
     const regionHits = (q
-      ? props.regions.filter((r) => fold(`${r.name} ${r.iata_code ?? ""}`).includes(q))
+      ? props.regions.filter((r) => fold(`${r.name} ${regionName(r, LOCALE)} ${r.iata_code ?? ""}`).includes(q))
       : props.regions.filter((r) => r.type === "havalimani")
     )
       .slice(0, 8)
@@ -57,7 +59,7 @@ export function AddressSearch(props: {
         kind: "region",
         key: `r${r.id}`,
         region: r,
-        title: r.iata_code ? `${r.name} (${r.iata_code})` : r.name,
+        title: r.iata_code ? `${regionName(r, LOCALE)} (${r.iata_code})` : r.name,
         subtitle: r.type === "havalimani" ? `${t("book.airports")} · ${PROVINCE[r.province] ?? r.province}` : `${t("addr.districts")} · ${PROVINCE[r.province] ?? r.province}`,
       }));
     const shown = new Set(regionHits.map((o) => fold(o.title)));
@@ -179,7 +181,7 @@ export function RouteBox(props: {
         {v ? (
           <>
             <T style={[s.p, { fontWeight: "600" }]} numberOfLines={1}>{v.label}</T>
-            <T style={s.hint} numberOfLines={1}>{t("addr.region", { region: v.region.name })}</T>
+            <T style={s.hint} numberOfLines={1}>{t("addr.region", { region: regionName(v.region, LOCALE) })}</T>
           </>
         ) : (
           <T style={[s.p, { color: colors.faint, fontWeight: "500", fontSize: 16 }]}>{which === "from" ? t("book.from") : t("book.to")}</T>

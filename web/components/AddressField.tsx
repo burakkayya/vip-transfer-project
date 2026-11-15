@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useApiError } from "@/lib/hooks";
 import { provinceName } from "@/lib/regions";
+import { regionName } from "@/lib/regions";
 import { regionEndpoint } from "@/lib/trip";
 import type { Endpoint, PlaceDetails, PlaceSuggestion, Region } from "@/lib/types";
 import Icon from "./Icon";
@@ -56,13 +57,13 @@ export default function AddressField(props: {
 
   const options: Option[] = useMemo(() => {
     const q = fold(query.trim());
-    const regionHits = (q ? props.regions.filter((r) => fold(`${r.name} ${r.iata_code ?? ""}`).includes(q)) : airports)
+    const regionHits = (q ? props.regions.filter((r) => fold(`${r.name} ${regionName(r, locale)} ${r.iata_code ?? ""}`).includes(q)) : airports)
       .slice(0, 6)
       .map<Option>((r) => ({
         kind: "region",
         key: `r${r.id}`,
         region: r,
-        title: r.iata_code ? `${r.name} (${r.iata_code})` : r.name,
+        title: r.iata_code ? `${regionName(r, locale)} (${r.iata_code})` : r.name,
         subtitle: r.type === "havalimani" ? t("quickAirports") : `${t("districtsGroup")} · ${provinceName(r.province)}`,
       }));
     // Bölge listesinde zaten olan yerleri (ör. havalimanı) adres sonuçlarında tekrar gösterme.
@@ -71,7 +72,7 @@ export default function AddressField(props: {
       .filter((p) => !shown.has(fold(p.title)))
       .map<Option>((p) => ({ kind: "place", key: p.place_id, place: p, title: p.title, subtitle: p.subtitle }));
     return [...regionHits, ...placeHits];
-  }, [query, props.regions, airports, places, t]);
+  }, [query, props.regions, airports, places, t, locale]);
 
   // Yazma durunca adres araması (ücretli API: en az 3 karakter, 300 ms gecikme).
   useEffect(() => {
@@ -111,7 +112,7 @@ export default function AddressField(props: {
     setError(null);
     setSearchFailed(false);
     if (o.kind === "region") {
-      props.onChange(regionEndpoint(o.region));
+      props.onChange(regionEndpoint(o.region, locale));
     } else {
       try {
         const qs = new URLSearchParams({ session: session.current, lang: locale });
@@ -165,7 +166,7 @@ export default function AddressField(props: {
           <span className={`marker ${props.icon === "plane" ? "origin" : "destination"}`} aria-hidden />
           <div>
             <strong>{props.value.label}</strong>
-            <span className="hint">{t("regionHint", { region: props.value.region.name })}</span>
+            <span className="hint">{t("regionHint", { region: regionName(props.value.region, locale) })}</span>
           </div>
           <button type="button" className="icon-btn" aria-label={t("clear")} onClick={() => props.onChange(null)}>
             <Icon name="close" size={18} />

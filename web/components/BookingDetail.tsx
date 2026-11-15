@@ -317,7 +317,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
             <div className="leg-head">
               <h2 className="leg-title" id={titleId}>
                 {multi && <span className="leg-order">{leg.leg_order}. </span>}
-                <span dir="ltr">{regionLabel(leg.pickup_region)} → {regionLabel(leg.dropoff_region)}</span>
+                <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span>
               </h2>
               <p className="leg-when">
                 <Icon name="calendar" size={16} />

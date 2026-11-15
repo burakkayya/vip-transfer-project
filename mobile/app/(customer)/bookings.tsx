@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { Alert, Badge, Button, Hero, RouteStops, Row, Screen, Segmented, Skeleton, T, colors, rtlFlip, s, shadow, statusTone, tap } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dateTime, money } from "@/lib/format";
+import { regionName } from "@/lib/airports";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
 import type { Booking } from "@/lib/types";
 import { VEHICLE_IMAGE } from "@/lib/vehicles";
@@ -67,7 +68,7 @@ export default function Bookings() {
                 </View>
                 <Badge text={statusLabel("status", b.status)} tone={statusTone(b.status)} />
               </Row>
-              <RouteStops from={leg.pickup_region.name} to={leg.dropoff_region.name} fromHint={leg.pickup_address ?? undefined} toHint={leg.dropoff_address ?? undefined} compact />
+              <RouteStops from={regionName(leg.pickup_region, LOCALE)} to={regionName(leg.dropoff_region, LOCALE)} fromHint={leg.pickup_address ?? undefined} toHint={leg.dropoff_address ?? undefined} compact />
               <View style={{ height: 1, backgroundColor: colors.line }} />
               <Row spread style={{ flexWrap: "nowrap" }}>
                 <Row gap={10} style={{ flex: 1, flexWrap: "nowrap" }}>

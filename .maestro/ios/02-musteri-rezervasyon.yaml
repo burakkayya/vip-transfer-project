@@ -9,7 +9,7 @@ appId: com.getawaytransfers.app
       all: allow
 # iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
 - tapOn:
-    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver|Allow|Allow While Using App"
     optional: true
 # iOS'ta clearState anahtar zincirini silmez: bağlantı kopması sonrası yeniden denemede oturum açık
 # kalabilir. Giriş adımları yalnızca giriş ekranı çıkarsa çalışır.
@@ -30,11 +30,11 @@ appId: com.getawaytransfers.app
       - takeScreenshot: m02-sms-kodu
       - tapOn: ".*Geliştirme ortamı.*"
       - extendedWaitUntil:
-          visible: 'Nereye gidiyorsunuz\?|İzin Ver'
+          visible: 'Nereye gidiyorsunuz\?|İzin Ver|Allow'
           timeout: 30000
 # iOS sistem izin uyarısı (bildirim/konum) uygulamanın üstünde kalırsa kapatılır.
 - tapOn:
-    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver"
+    text: "İzin Ver|Uygulamayı Kullanırken İzin Ver|Allow|Allow While Using App"
     optional: true
 - extendedWaitUntil:
     visible: 'Nereye gidiyorsunuz\?'
