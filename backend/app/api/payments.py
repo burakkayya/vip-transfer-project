@@ -11,7 +11,7 @@ from app.config import DEV_ENVS, get_settings
 from app.errors import DomainError, NotFound
 from app.models import Payment
 from app.models.enums import PaymentProviderCode
-from app.providers.payments import FakeProvider, get_payment_provider
+from app.providers.payments import FakeProvider, get_payment_provider, result_path
 from app.services import payments
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -122,6 +122,6 @@ async def fake_complete(oid: str, request: Request, db: DbSession, now: Now):
     payments.handle_callback(db, provider, form, now)
     db.commit()
     result = "ok" if status == "success" else "fail"
-    url = f"{get_settings().public_web_url}/booking/payment-result?status={result}"
+    url = f"{get_settings().public_web_url}{result_path(payment.purpose)}?status={result}"
     title = "Ödeme tamamlandı" if result == "ok" else "Ödeme reddedildi"
     return HTMLResponse(_FAKE_DONE.format(url=url, title=title), headers=_frame_headers())

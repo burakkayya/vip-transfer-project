@@ -16,7 +16,16 @@ interface Region {
   is_active: boolean;
 }
 
-const PROVINCES = { antalya: "Antalya", mugla: "Muğla" };
+/** Hizmet verilen iller (K-75); backend `app/provinces.py` ile aynı. */
+const PROVINCES: Record<string, string> = {
+  antalya: "Antalya",
+  mugla: "Muğla",
+  istanbul: "İstanbul",
+  ankara: "Ankara",
+  izmir: "İzmir",
+  nevsehir: "Nevşehir",
+  kayseri: "Kayseri",
+};
 const TYPES = { ilce: "İlçe", havalimani: "Havalimanı" };
 const EMPTY = { code: "", province: "antalya", name: "", type: "ilce", iata_code: "", latitude: "", longitude: "", is_active: true };
 
@@ -64,8 +73,8 @@ export default function RegionsPage() {
           <Field label="Ad"><input required maxLength={100} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <Field label="Tür"><Select value={form.type} onChange={(v) => setForm({ ...form, type: v })} options={TYPES} /></Field>
           <Field label="IATA"><input maxLength={3} pattern="[A-Z]{3}" value={form.iata_code ?? ""} onChange={(e) => setForm({ ...form, iata_code: e.target.value.toUpperCase() })} /></Field>
-          <Field label="Enlem"><input required type="number" step="0.000001" min={35} max={39} value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} /></Field>
-          <Field label="Boylam"><input required type="number" step="0.000001" min={26} max={34} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} /></Field>
+          <Field label="Enlem"><input required type="number" step="0.000001" min={35} max={42} value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} /></Field>
+          <Field label="Boylam"><input required type="number" step="0.000001" min={25} max={37} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} /></Field>
           <label className="row"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Aktif</label>
           <button className="btn" type="submit" disabled={action.busy}>Kaydet</button>
           <button className="btn link" type="button" onClick={() => setForm(null)}>Vazgeç</button>

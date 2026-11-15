@@ -109,13 +109,22 @@ function BookingDetail({ code }: { code: string }) {
   }, [code, load]);
 
   useEffect(() => {
-    load().then((b) => {
-      if (b && autoPay.current && b.status === "odeme_bekliyor") {
-        autoPay.current = false;
-        void startPayment();
-      }
-    });
-  }, [load, startPayment]);
+    let live = true;
+    api<Booking>(apiPath`me/bookings/${code}`).then(
+      (b) => {
+        if (!live) return;
+        setBooking(b);
+        if (autoPay.current && b.status === "odeme_bekliyor") {
+          autoPay.current = false;
+          void startPayment();
+        }
+      },
+      (e) => live && setError(errorText(e)),
+    );
+    return () => {
+      live = false;
+    };
+  }, [code, startPayment]);
 
   // Ödeme bildirimi gelene kadar durum yoklanır.
   useEffect(() => {

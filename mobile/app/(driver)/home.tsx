@@ -7,7 +7,7 @@ import Animated, { FadeInDown, ZoomIn, useAnimatedProps, useAnimatedStyle, useSh
 import Svg, { Circle } from "react-native-svg";
 import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
-import { Alert, Avatar, Badge, Button, Card, H2, Loading, P, RouteStops, Row, Screen, T, colors, s, shadow, statusTone, tap } from "@/components/ui";
+import { Alert, Avatar, Badge, Button, Card, H2, Loading, P, RouteStops, Row, Screen, T, colors, onDark, s, shadow, statusTone, tap } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { DOC_LABEL, DRIVER_STATUS, LEG_STATUS } from "@/lib/driverLabels";
 import { dateTime, money } from "@/lib/format";
@@ -31,7 +31,7 @@ function CountdownRing(props: { left: number; total: number }) {
   return (
     <View style={{ width: 72, height: 72, alignItems: "center", justifyContent: "center" }}>
       <Svg width={72} height={72} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
-        <Circle cx={36} cy={36} r={R} stroke="rgba(255,255,255,0.15)" strokeWidth={6} fill="none" />
+        <Circle cx={36} cy={36} r={R} stroke={onDark.line} strokeWidth={6} fill="none" />
         <AnimatedCircle cx={36} cy={36} r={R} stroke={urgent ? colors.dangerOnDark : colors.accent} strokeWidth={6} fill="none" strokeLinecap="round"
           strokeDasharray={C} animatedProps={anim} />
       </Svg>
@@ -265,15 +265,15 @@ export default function DriverHome() {
                   <View style={{ gap: 4, flex: 1 }}>
                     <T style={{ color: colors.accent, fontWeight: "700", letterSpacing: 1.5, fontSize: 11 }}>YENİ İŞ TEKLİFİ</T>
                     <T style={{ color: "#fff", fontSize: 32, fontWeight: "800", letterSpacing: -1 }}>{money(offer.driver_amount, offer.currency)}</T>
-                    <T style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>{dateTime(offer.pickup_at)}</T>
+                    <T style={{ color: onDark.muted, fontSize: 13 }}>{dateTime(offer.pickup_at)}</T>
                   </View>
                   <CountdownRing left={left} total={Math.max(left, OFFER_SECONDS)} />
                 </Row>
-                <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14 }}>
+                <View style={{ backgroundColor: onDark.wash, borderRadius: 16, padding: 14 }}>
                   <View style={{ flexDirection: "row", gap: 14 }}>
                     <View style={{ alignItems: "center", paddingVertical: 6 }}>
                       <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#fff" }} />
-                      <View style={{ flex: 1, width: 2, backgroundColor: "rgba(255,255,255,0.5)", marginVertical: 3, minHeight: 14 }} />
+                      <View style={{ flex: 1, width: 2, backgroundColor: onDark.faint, marginVertical: 3, minHeight: 14 }} />
                       <View style={{ width: 10, height: 10, backgroundColor: "#fff" }} />
                     </View>
                     <View style={{ flex: 1, gap: 14 }}>
@@ -283,7 +283,7 @@ export default function DriverHome() {
                   </View>
                 </View>
                 <Row spread>
-                  <T style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
+                  <T style={{ color: onDark.muted, fontSize: 13 }}>
                     {Number(offer.distance_km).toFixed(0)} km · {offer.passenger_count} yolcu · {offer.luggage_count} bagaj
                   </T>
                   <Row gap={6}>

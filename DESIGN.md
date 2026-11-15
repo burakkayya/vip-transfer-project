@@ -1,6 +1,6 @@
 ---
 name: Getaway Transfers
-description: Antalya ve Muğla'da sabit fiyatlı, önceden ödenen VIP transfer. Müşteri web sitesi ve admin paneli.
+description: İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya'da sabit fiyatlı, önceden ödenen VIP transfer. Müşteri web sitesi ve admin paneli.
 colors:
   lacquer-black: "#0b0b0c"
   lacquer-black-raised: "#1c1c1f"

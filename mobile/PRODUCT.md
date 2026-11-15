@@ -12,7 +12,7 @@ adaptive
 
 ## Users
 
-- **Müşteri (`com.getawaytransfers.app`):** Antalya ve Muğla'ya gelen, çoğunlukla Avrupa ve Rusya'dan turistler. Uygulamayı havalimanında, yorgun ve çoğu zaman yavaş bağlantıyla açar: rezervasyon yapar, sürücüsünü canlı izler, gerekirse iptal eder. Arayüz cihaz diline göre açılır (tr, en, de, ru; hedef on dil, K-34).
+- **Müşteri (`com.getawaytransfers.app`):** İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya'ya gelen, çoğunlukla Avrupa ve Rusya'dan turistler. Uygulamayı havalimanında, yorgun ve çoğu zaman yavaş bağlantıyla açar: rezervasyon yapar, sürücüsünü canlı izler, gerekirse iptal eder. Arayüz cihaz diline göre açılır (tr, en, de, ru; hedef on dil, K-34).
 - **Sürücü (`com.getawaytransfers.driver`):** belgeleri onaylı bağımsız ortak (K-01). Uygulamayı araç içinde, telefon tutucuda, tek elle, kısa dikkat süresiyle ve güneş altında kullanır: çevrimiçi olur, teklifi kabul eder, yolculuk adımlarını işaretler, yolcuyu tabelayla karşılar, kazancını ve belgelerini izler. Arayüz Türkçedir.
 
 ## Product Purpose
@@ -21,7 +21,7 @@ Müşteri tarafında web ile aynı sabit fiyatlı, önceden ödenen rezervasyonu
 
 ## Positioning
 
-Kök `PRODUCT.md` ile aynı: sabit ve önceden ödenen fiyat, yalnızca Antalya ve Muğla, belgeli onaylı sürücü, VIP konfor. Sürücü için ek olarak: teklifte kazanç ve rota açıkça görünür, yolcu kişisel bilgisi yalnızca kabulden sonra açılır.
+Kök `PRODUCT.md` ile aynı: sabit ve önceden ödenen fiyat, yedi ilde hizmet (K-75), belgeli onaylı sürücü, VIP konfor. Sürücü için ek olarak: teklifte kazanç ve rota açıkça görünür, yolcu kişisel bilgisi yalnızca kabulden sonra açılır.
 
 ## Operating Context
 

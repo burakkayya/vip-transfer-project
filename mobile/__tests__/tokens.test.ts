@@ -39,6 +39,17 @@ test("ekran ve bileşenlerde 6 haneli sabit renk yok", () => {
   expect(offenders).toEqual([]);
 });
 
+test("koyu zeminde beyaz saydamlık yalnızca onDark ölçeğinden", () => {
+  const offenders: string[] = [];
+  for (const f of ["app", "components", "lib"].flatMap(files)) {
+    if (ALLOWED.has(f) || f === "components/ui.tsx") continue;
+    fs.readFileSync(path.join(ROOT, f), "utf8").split("\n").forEach((line: string, i: number) => {
+      if (/rgba\(\s*255\s*,\s*255\s*,\s*255/.test(line)) offenders.push(`${f}:${i + 1}`);
+    });
+  }
+  expect(offenders).toEqual([]);
+});
+
 test("anlamsal renkler token paletinden gelir", () => {
   const values = new Set<string>(Object.values(palette));
   for (const [name, value] of Object.entries(colors)) {

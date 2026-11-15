@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Getaway Transfers | VIP-Transfers in Antalya & Muğla",
-    "description": "Private Transfers zum Festpreis und mit Vorauszahlung von den Flughäfen Antalya, Dalaman, Bodrum und Gazipaşa zu Ihrem Hotel."
+    "title": "Getaway Transfers | VIP-Transfers in Istanbul, Antalya & Kappadokien",
+    "description": "Private Transfers zum Festpreis und mit Vorauszahlung von den Flughäfen in Istanbul, Ankara, Izmir, Antalya, Muğla und Kappadokien zu Ihrem Hotel."
   },
   "nav": {
     "book": "Buchen",
@@ -16,7 +16,7 @@
   },
   "home": {
     "heroTitle": "Ihr Fahrer wartet. Ihr Preis steht fest.",
-    "heroText": "Private Flughafen-, Hotel- und Überlandtransfers in Antalya und Muğla. Preis sofort sehen, per Karte zahlen, mit Namensschild empfangen werden.",
+    "heroText": "Private Flughafen-, Hotel- und Überlandtransfers in Istanbul, Ankara, Izmir, Antalya, Muğla und Kappadokien. Preis sofort sehen, per Karte zahlen, mit Namensschild empfangen werden.",
     "why1Title": "Festpreis",
     "why1Text": "Der Preis wird bei der Buchung nach Entfernung berechnet und im Voraus bezahlt. Keine Überraschungen unterwegs.",
     "why2Title": "Lizenzierte Fahrer",
@@ -51,7 +51,7 @@
     "s2Title": "Business und VIP",
     "s2Text": "Ruhige, komfortable und pünktliche Fahrten zwischen Terminen, Hotels und Veranstaltungen.",
     "s3Title": "Überlandtransfer",
-    "s3Text": "Private Fahrten von Tür zu Tür zwischen allen Orten in Antalya und Muğla.",
+    "s3Text": "Private Fahrten von Tür zu Tür zwischen allen Orten unserer sieben Provinzen.",
     "s4Title": "Besondere Anlässe",
     "s4Text": "Fahrzeuge mit Chauffeur für Hochzeiten und private Feiern, Zeit und Route vorab geplant.",
     "bookThis": "Jetzt buchen",
@@ -398,7 +398,7 @@
     "contact": "Kontakt",
     "tursab": "TÜRSAB-Lizenznr.: {no}",
     "rights": "Alle Rechte vorbehalten.",
-    "about": "Private Transfers mit Fahrer in Antalya und Muğla.",
+    "about": "Private Transfers mit Fahrer in Istanbul, Ankara, Izmir, Antalya, Muğla und Kappadokien.",
     "airports": "Flughäfen",
     "routes": "Beliebte Strecken"
   },
@@ -509,14 +509,15 @@
     "comment": "Kommentar (optional, nur unser Team sieht ihn)",
     "tipLegend": "Trinkgeld für Ihren Fahrer",
     "noTip": "Kein Trinkgeld",
-    "tipHint": "Das gesamte Trinkgeld geht an Ihren Fahrer.",
+    "tipHint": "Das Trinkgeld wird zu Ihrem Buchungsbetrag addiert und an Ihren Fahrer weitergegeben.",
     "tipTitle": "Trinkgeld für Ihren Fahrer",
     "tipPay": "Trinkgeld zahlen",
     "rateSend": "Bewertung senden",
     "rateAndTip": "Bewerten und Trinkgeld zahlen",
     "sending": "Wird gesendet…",
-    "tipPaid": "Ihr Trinkgeld von {amount} wurde an Ihren Fahrer weitergegeben.",
+    "tipPaid": "Ihr Trinkgeld von {amount} wurde zum Gesamtbetrag addiert und an Ihren Fahrer weitergegeben. Neuer Gesamtbetrag: {total}.",
     "tipPending": "Trinkgeldzahlung ausstehend.",
+    "tipFailed": "Die Trinkgeldzahlung wurde nicht abgeschlossen. Falls Ihre Karte belastet wurde, wird der Betrag automatisch erstattet; Sie können es erneut versuchen.",
     "extrasTitle": "Extras",
     "childSeatLabel": "Kindersitz",
     "childSeatNone": "Nicht nötig",

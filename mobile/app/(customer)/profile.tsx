@@ -3,7 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Linking, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Alert, Avatar, Button, Card, Divider, Eyebrow, Hero, Input, ListRow, P, Picker, Screen, Skeleton, T, Toggle, colors, s } from "@/components/ui";
+import { Alert, Avatar, Button, Card, Divider, Eyebrow, Hero, Input, ListRow, P, Picker, Screen, Skeleton, T, Toggle, colors, onDark, s } from "@/components/ui";
 import { api } from "@/lib/api";
 import { WEB_URL } from "@/lib/config";
 import { LOCALE, errorText, t } from "@/lib/i18n";
@@ -69,8 +69,8 @@ export default function ProfileScreen() {
         {profile ? <Avatar name={name} size={60} dark={false} /> : <Skeleton width={60} height={60} radius={30} />}
         <View style={{ flex: 1, gap: 3 }}>
           <T style={{ color: "#fff", fontSize: 20, fontWeight: "800", letterSpacing: -0.4 }} numberOfLines={1}>{profile ? profile.full_name || t("profile.noName") : ""}</T>
-          <T style={{ color: "rgba(255,255,255,0.7)" }}>{profile?.phone ?? ""}</T>
-          {profile?.email ? <T style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }} numberOfLines={1}>{profile.email}</T> : null}
+          <T style={{ color: onDark.muted }}>{profile?.phone ?? ""}</T>
+          {profile?.email ? <T style={{ color: onDark.faint, fontSize: 13 }} numberOfLines={1}>{profile.email}</T> : null}
         </View>
       </Animated.View>
 

@@ -247,6 +247,8 @@ export interface Rating {
   currency: Currency;
   tip_max: string;
   tip_suggestions: string[];
+  /** K-75: bahşiş dahil rezervasyon toplamı. */
+  total_amount: string;
   iframe_url: string | null;
 }
 

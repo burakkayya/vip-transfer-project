@@ -22,10 +22,12 @@ from app.config import get_settings
 from app.errors import DomainError, NotFound, TooManyRequests
 from app.models import Region
 from app.models.enums import RegionType
+from app.provinces import PROVINCES as PROVINCE_NAMES
 from app.providers.places import PlaceDetails, normalize
 from app.providers.routing import Point, haversine_km
 
-PROVINCES = {"antalya": "antalya", "mugla": "mugla"}
+# K-75: il adı (normalize edilmiş) -> il kodu; ikisi aynıdır.
+PROVINCES = {code: code for code in PROVINCE_NAMES}
 # Havalimanı olarak işaretlenen yerin havalimanı bölgesine en fazla uzaklığı.
 AIRPORT_MATCH_KM = Decimal("8")
 TOKEN_TYPE = "place"
@@ -57,8 +59,14 @@ def resolve_region(db: Session, place: PlaceDetails) -> Region:
 
     districts = [r for r in regions if r.type is RegionType.DISTRICT and (province is None or r.province == province)]
     if place.district:
-        wanted = normalize(place.district).removesuffix(" merkez")
-        match = next((r for r in districts if normalize(r.name) == wanted), None)
+        # "Kaş Merkez" -> "kas"; merkez ilçe yalnızca "Merkez" diye gelirse ilin adıyla eşleşir ("Nevşehir Merkez").
+        def key(name: str) -> str:
+            return normalize(name).removesuffix(" merkez")
+
+        wanted = key(place.district)
+        if wanted == "merkez" and province:
+            wanted = province
+        match = next((r for r in districts if key(r.name) == wanted), None)
         if match:
             return match
 

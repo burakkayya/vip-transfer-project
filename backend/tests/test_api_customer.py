@@ -14,7 +14,10 @@ def test_regions_and_vehicle_types_are_public(client):
     regions = client.get("/api/v1/regions").json()
     codes = {r["code"] for r in regions}
     assert {"ayt", "dlm", "bjv", "kemer", "bodrum", "fethiye"} <= codes
-    assert len([r for r in regions if r["type"] == "havalimani"]) == 4
+    # K-75: İstanbul, Ankara, İzmir ve Kapadokya (Nevşehir, Kayseri)
+    assert {"ist", "saw", "esb", "adb", "nav", "asr", "besiktas", "cankaya", "konak", "urgup", "melikgazi"} <= codes
+    assert len([r for r in regions if r["type"] == "havalimani"]) == 10
+    assert {r["province"] for r in regions} == {"antalya", "mugla", "istanbul", "ankara", "izmir", "nevsehir", "kayseri"}
     codes = {v["code"] for v in client.get("/api/v1/vehicle-types").json()}
     assert codes >= {"minivan", "vip_van", "minibus", "vip_minibus"}
     assert "sedan" not in codes  # sedan hizmetten kaldırıldı

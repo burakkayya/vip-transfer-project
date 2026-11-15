@@ -25,7 +25,7 @@ fiyat = 5'in katına yukarı yuvarlama(indirimli)
 
 - Müşteri alış ve bırakış adresini serbestçe arar: otel, cadde ve kapı numarası, mahalle, marina, havalimanı (yalnızca ilçe değil). Sağlayıcı yalnızca Google Places API (New); koordinat imzalı adres jetonundan gelir, istemcinin gönderdiği ham koordinat yok sayılır.
 - Backend, seçilen adresin ilçesini (`administrative_area_level_2`) bulur ve hizmet bölgesine eşler. Havalimanı olarak işaretli yerler 8 km içindeki havalimanı bölgesine eşlenir. İlçe adı gelmezse en yakın ilçe merkezi seçilir.
-- Antalya ve Muğla dışındaki adresler reddedilir (`region_not_served`).
+- Hizmet verilen yedi il (İstanbul, Ankara, İzmir, Antalya, Muğla, Nevşehir, Kayseri; K-75) dışındaki adresler reddedilir (`region_not_served`).
 - Backend çözdüğü bölge ve koordinatı imzalı bir **adres jetonu** ile döner. Fiyat teklifi bu jetonla istenir, böylece istemci ilçeyi değiştirip fiyatı düşüremez.
 - Havalimanı veya ilçe doğrudan da seçilebilir (adres araması olmadan, bölge merkezi kullanılır).
 

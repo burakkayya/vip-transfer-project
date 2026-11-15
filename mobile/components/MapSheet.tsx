@@ -3,7 +3,7 @@
 import { RefreshControl, StyleSheet, View } from "react-native";
 import Animated, { FadeInUp, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomBar, colors, shadow, useScreenHeight } from "./ui";
+import { BottomBar, colors, onDark, shadow, useScreenHeight } from "./ui";
 
 export default function MapSheet(props: {
   map: React.ReactNode;
@@ -42,7 +42,7 @@ export default function MapSheet(props: {
         refreshControl={props.onRefresh ? <RefreshControl refreshing={props.refreshing ?? false} onRefresh={props.onRefresh} progressViewOffset={mapH - 26} /> : undefined}
       >
         <Animated.View entering={FadeInUp.duration(500)} style={[st.sheet, { backgroundColor: bg, paddingBottom: (props.bottom ? 130 : 40) + insets.bottom }, shadow.float]}>
-          <View style={[st.handle, props.dark && { backgroundColor: "rgba(255,255,255,0.2)" }]} />
+          <View style={[st.handle, props.dark && { backgroundColor: onDark.line }]} />
           {props.children}
         </Animated.View>
       </Animated.ScrollView>

@@ -29,6 +29,7 @@ from app.models import (
     RoundTripDiscount,
     VehicleType,
 )
+from app.provinces import PROVINCE_PATTERN
 from app.models.enums import CommissionScope, DiscountType, NotificationChannel, RegionType
 from app.services import audit, system_settings
 
@@ -50,12 +51,12 @@ _REGION_FIELDS = ("id", "code", "province", "name", "type", "iata_code", "latitu
 
 class RegionIn(BaseModel):
     code: str = Field(pattern=r"^[a-z0-9_]{2,50}$")
-    province: str = Field(pattern=r"^(antalya|mugla)$")
+    province: str = Field(pattern=PROVINCE_PATTERN)
     name: str = Field(max_length=100)
     type: RegionType
     iata_code: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
-    latitude: Decimal = Field(ge=35, le=39)
-    longitude: Decimal = Field(ge=26, le=34)
+    latitude: Decimal = Field(ge=35, le=42)
+    longitude: Decimal = Field(ge=25, le=37)
     is_active: bool = True
 
 

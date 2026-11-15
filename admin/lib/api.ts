@@ -40,6 +40,20 @@ async function request(path: string, init: { method?: string; body?: unknown }):
   return res;
 }
 
+/** Dosya yükler (multipart). Tarayıcı sınır değerli content-type başlığını kendisi yazar. */
+export async function upload<T>(path: string, file: File, field = "file"): Promise<T> {
+  const form = new FormData();
+  form.append(field, file);
+  const res = await fetch(`/bff/${path}`, { method: "POST", body: form, credentials: "same-origin", cache: "no-store" });
+  if (res.status === 401) window.location.href = "/login";
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const err = data?.error;
+    throw new ApiError(res.status, err?.code ?? "unknown", err?.message ?? res.statusText, err?.details);
+  }
+  return (await res.json()) as T;
+}
+
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await request(path, init);
   return (res.status === 204 ? undefined : await res.json()) as T;

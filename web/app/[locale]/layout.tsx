@@ -25,6 +25,12 @@ const ROUTES = [
   { from: "ayt", to: "alanya", label: "Antalya Havalimanı → Alanya" },
   { from: "dlm", to: "fethiye", label: "Dalaman Havalimanı → Fethiye" },
   { from: "bjv", to: "bodrum", label: "Bodrum Havalimanı → Bodrum" },
+  { from: "ist", to: "fatih", label: "İstanbul Havalimanı → Sultanahmet" },
+  { from: "saw", to: "kadikoy", label: "Sabiha Gökçen → Kadıköy" },
+  { from: "adb", to: "cesme", label: "İzmir Havalimanı → Çeşme" },
+  { from: "esb", to: "cankaya", label: "Esenboğa → Çankaya" },
+  { from: "asr", to: "urgup", label: "Kayseri Havalimanı → Ürgüp" },
+  { from: "nav", to: "nevsehir_merkez", label: "Kapadokya Havalimanı → Göreme" },
 ];
 
 const AIRPORTS = [
@@ -32,6 +38,12 @@ const AIRPORTS = [
   { code: "gzp", label: "Gazipaşa-Alanya (GZP)" },
   { code: "dlm", label: "Dalaman (DLM)" },
   { code: "bjv", label: "Milas-Bodrum (BJV)" },
+  { code: "ist", label: "İstanbul (IST)" },
+  { code: "saw", label: "Sabiha Gökçen (SAW)" },
+  { code: "esb", label: "Ankara Esenboğa (ESB)" },
+  { code: "adb", label: "İzmir Adnan Menderes (ADB)" },
+  { code: "nav", label: "Nevşehir Kapadokya (NAV)" },
+  { code: "asr", label: "Kayseri Erkilet (ASR)" },
 ];
 
 // CSP nonce'ı (WEB-04) istek başına üretilir; önceden derlenmiş HTML nonce taşımadığı için sayfalar her istekte

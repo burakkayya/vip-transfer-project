@@ -172,7 +172,7 @@ def test_instant_booking_offer_accept_trip_and_ledger(client, db, ops):
 
     b = db.scalar(select(Booking).where(Booking.booking_code == code))
     entry = db.scalar(select(DriverLedger).where(DriverLedger.booking_leg_id == b.legs[0].id))
-    assert entry.commission_amount == (b.quoted_price * D("0.25")).quantize(D("0.01"))
+    assert entry.commission_amount == (b.quoted_price * D("0.20")).quantize(D("0.01"))
     assert entry.net_amount == b.quoted_price - entry.commission_amount
     assert entry.net_amount_try == (entry.net_amount * D("40")).quantize(D("0.01"))
     flight = db.scalar(select(FlightInfo).where(FlightInfo.booking_leg_id == b.legs[0].id))
