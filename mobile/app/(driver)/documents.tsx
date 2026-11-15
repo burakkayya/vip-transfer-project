@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { Alert, Badge, Button, Card, H2, Hero, IconBubble, Input, P, Picker, Row, Screen, T, colors, s, statusTone } from "@/components/ui";
+import { Alert, Badge, Button, Card, H2, Hero, IconBubble, Input, P, Picker, Row, Screen, T, colors, onDark, s, statusTone } from "@/components/ui";
 import { api, upload } from "@/lib/api";
 import { DOC_LABEL, DOC_STATUS, DOC_TYPES_DRIVER, DOC_TYPES_VEHICLE, DRIVER_STATUS } from "@/lib/driverLabels";
 import { date } from "@/lib/format";
@@ -24,7 +24,7 @@ function Ring(props: { done: number; total: number }) {
   return (
     <View style={{ width: 84, height: 84, alignItems: "center", justifyContent: "center" }}>
       <Svg width={84} height={84} style={{ position: "absolute", transform: [{ rotate: "-90deg" }] }}>
-        <Circle cx={42} cy={42} r={R} stroke="rgba(255,255,255,0.15)" strokeWidth={7} fill="none" />
+        <Circle cx={42} cy={42} r={R} stroke={onDark.line} strokeWidth={7} fill="none" />
         <Circle cx={42} cy={42} r={R} stroke={p >= 1 ? colors.okOnDark : colors.accent} strokeWidth={7} fill="none" strokeLinecap="round"
           strokeDasharray={C} strokeDashoffset={C * (1 - p)} />
       </Svg>
@@ -139,10 +139,10 @@ export default function DocumentsScreen() {
           <Ring done={Object.keys(DOC_TYPES_DRIVER).length - me.missing_documents.length} total={Object.keys(DOC_TYPES_DRIVER).length} />
           <View style={{ flex: 1, gap: 4 }}>
             <T style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>{me.full_name}</T>
-            <T style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
+            <T style={{ color: onDark.muted, fontSize: 13 }}>
               {me.missing_documents.length === 0 ? "Sürücü belgeleriniz tamam." : `${me.missing_documents.length} sürücü belgesi eksik.`}
             </T>
-            <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <View style={{ alignSelf: "flex-start", backgroundColor: onDark.fill, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
               <T style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{DRIVER_STATUS[me.status] ?? me.status}</T>
             </View>
           </View>

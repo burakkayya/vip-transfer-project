@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Response, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -50,7 +50,8 @@ def _out(g: MeetingGuide) -> dict:
         "id": g.id, "region_id": g.region_id, "region": g.region.name, "terminal": g.terminal, "is_active": g.is_active,
         "updated_at": g.updated_at,
         "steps": [{"texts": s.get("texts") or {}, "has_photo": bool(s.get("photo_key")),
-                   "photo_path": f"/api/v1/meeting-guides/{g.id}/photos/{i}" if s.get("photo_key") else None}
+                   "photo_path": f"/api/v1/meeting-guides/{g.id}/photos/{i}" if s.get("photo_key") else None,
+                   "admin_photo_path": f"admin/meeting-guides/{g.id}/steps/{i}/photo" if s.get("photo_key") else None}
                   for i, s in enumerate(g.steps or [])],
     }
 
@@ -141,3 +142,15 @@ async def upload_step_photo(guide_id: int, index: int, staff: OpsStaff, db: DbSe
     if old:
         storage.delete(old)
     return _out(guide)
+
+
+@router.get("/meeting-guides/{guide_id}/steps/{index}/photo")
+def step_photo(guide_id: int, index: int, staff: OpsStaff, db: DbSession):
+    """Admin önizlemesi: pasif rehberin fotoğrafı da görünür (herkese açık uç yalnızca aktif rehberi verir)."""
+    guide = db.get(MeetingGuide, guide_id)
+    steps = guide.steps if guide is not None else []
+    if not 0 <= index < len(steps or []) or not steps[index].get("photo_key"):
+        raise NotFound("fotoğraf yok")
+    step = steps[index]
+    return Response(get_storage().get(step["photo_key"]), media_type=step.get("photo_type") or "image/jpeg",
+                    headers={"Cache-Control": "private, max-age=300"})

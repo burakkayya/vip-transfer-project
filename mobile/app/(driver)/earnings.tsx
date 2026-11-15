@@ -3,7 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { View } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { Alert, Badge, Card, H2, Hero, IconBubble, Loading, Row, Screen, Skeleton, T, colors, s, statusTone } from "@/components/ui";
+import { Alert, Badge, Card, H2, Hero, IconBubble, Loading, Row, Screen, Skeleton, T, colors, onDark, s, statusTone } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dateTime, money } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
@@ -86,11 +86,11 @@ export default function EarningsScreen() {
               <T style={{ color: colors.accent, fontWeight: "700", letterSpacing: 1.5, fontSize: 11 }}>ÖDEME BEKLEYEN</T>
               <T style={{ color: "#fff", fontSize: 36, fontWeight: "800", letterSpacing: -1.2 }}>{money(data.pending_try, "TRY")}</T>
             </View>
-            <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.12)" }} />
+            <View style={{ height: 1, backgroundColor: onDark.line }} />
             <Row spread>
               <Row gap={8}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.okOnDark} />
-                <T style={{ color: "rgba(255,255,255,0.7)" }}>Ödenen</T>
+                <T style={{ color: onDark.muted }}>Ödenen</T>
               </Row>
               <T style={{ color: "#fff", fontWeight: "700", fontSize: 17 }}>{money(data.paid_try, "TRY")}</T>
             </Row>

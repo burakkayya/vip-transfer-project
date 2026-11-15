@@ -4,7 +4,7 @@
 |---|---|---|
 | Araç | 1 araç, 1 sürücü ile başlangıç, sistem çoklu araç destekli kurulur | Çoklu araç ve sürücü ağı |
 | Rezervasyon | Planlı transfer, tek yön ve gidiş-dönüş (%5 indirim), anlık eşleştirme, günlük araç kiralama (K-29) | Rezervasyon türü çeşitlendirme |
-| Bölge | Antalya ve Muğla ilçeleri, havalimanları, şehirlerarası transfer | Ek bölgeler, optimizasyon |
+| Bölge | İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya ilçeleri, havalimanları, şehirlerarası transfer (K-75) | Ek bölgeler, optimizasyon |
 | Ödeme | Kart ile ön ödeme, PayTR, iyzico yedek | Otomatik sürücü ödemesi (split), hakediş dosyaları |
 | Garanti ürünü | Hukuki teyit sonrası | Ürün çeşitlendirme |
 | Diller | On dilin tamamı: tr, en, de, ru, fr, es, it, zh, ja, ar (K-34) | Ek diller |

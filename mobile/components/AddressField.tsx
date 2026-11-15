@@ -12,7 +12,16 @@ type Option =
   | { kind: "region"; key: string; region: Region; title: string; subtitle: string }
   | { kind: "place"; key: string; place: PlaceSuggestion; title: string; subtitle: string };
 
-const PROVINCE: Record<string, string> = { antalya: "Antalya", mugla: "Muğla" };
+/** Hizmet verilen iller (K-75); backend `app/provinces.py` ile aynı. */
+export const PROVINCE: Record<string, string> = {
+  antalya: "Antalya",
+  mugla: "Muğla",
+  istanbul: "İstanbul",
+  ankara: "Ankara",
+  izmir: "İzmir",
+  nevsehir: "Nevşehir",
+  kayseri: "Kayseri",
+};
 const fold = (v: string) =>
   v.replace(/ı/g, "i").replace(/İ/g, "i").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const uuid = () => "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
@@ -30,7 +39,9 @@ export function AddressSearch(props: {
   onPick: (e: Endpoint) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [places, setPlaces] = useState<PlaceSuggestion[]>([]);
+  // Öneriler hangi sorgu için geldiyse onunla tutulur; sorgu değişince eski öneri gösterilmez.
+  const [found, setFound] = useState<{ q: string; places: PlaceSuggestion[] }>({ q: "", places: [] });
+  const places = useMemo(() => (found.q === query.trim() ? found.places : []), [found, query]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const session = useRef(uuid());
@@ -58,15 +69,12 @@ export function AddressSearch(props: {
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 3) {
-      setPlaces([]);
-      return;
-    }
+    if (q.length < 3) return;
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
         const qs = `q=${encodeURIComponent(q)}&session=${session.current}&lang=${LOCALE}`;
-        setPlaces(await api<PlaceSuggestion[]>(`places/autocomplete?${qs}`));
+        setFound({ q, places: await api<PlaceSuggestion[]>(`places/autocomplete?${qs}`) });
         setError(null);
       } catch (e) {
         setError(errorText(e));
@@ -98,7 +106,7 @@ export function AddressSearch(props: {
     }
     props.onClose();
     setQuery("");
-    setPlaces([]);
+    setFound({ q: "", places: [] });
     session.current = uuid();
   }
 

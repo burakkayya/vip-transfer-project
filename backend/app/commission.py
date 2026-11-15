@@ -1,6 +1,6 @@
 """Komisyon ve sürücü payı (K-02, is_modeli.md).
 
-Örnek: 60 € fiyat, %25 komisyon -> 15 € komisyon, 45 € sürücü payı.
+Örnek: 60 € fiyat, %20 komisyon -> 12 € komisyon, 48 € sürücü payı (K-75). Bahşiş de aynı oranla bölünür.
 Kural önceliği: araç tipi > bölge > genel (en özel kural kazanır).
 """
 

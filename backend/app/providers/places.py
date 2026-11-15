@@ -1,7 +1,7 @@
 """Adres arama ve adres ayrıntısı (Google Places API New).
 
 Arama istekleri backend üzerinden gider: API anahtarı istemciye verilmez, sorgu
-yalnızca Antalya ve Muğla ile sınırlanır, IP başına hız sınırı uygulanır.
+hizmet verilen illeri kapsayan dikdörtgenle sınırlanır (il kontrolü `services/places.py`), IP başına hız sınırı uygulanır.
 Google'a yalnızca kullanıcının yazdığı adres metni gider; kimlik bilgisi gönderilmez.
 """
 
@@ -18,8 +18,9 @@ import httpx
 from app.config import get_settings
 from app.errors import NotFound, ServiceUnavailable
 
-# Antalya ve Muğla'yı kapsayan dikdörtgen (aramayı hizmet alanıyla sınırlar).
-SERVICE_BOUNDS = {"low": {"latitude": 36.0, "longitude": 27.2}, "high": {"latitude": 37.65, "longitude": 32.75}}
+# K-75: Antalya, Muğla, İzmir, İstanbul, Ankara, Nevşehir ve Kayseri'yi kapsayan dikdörtgen. Google tek
+# dikdörtgen kabul eder; aradaki illerden gelen adresler il kontrolünde reddedilir (region_not_served).
+SERVICE_BOUNDS = {"low": {"latitude": 36.0, "longitude": 26.0}, "high": {"latitude": 41.65, "longitude": 36.75}}
 
 
 @dataclass(frozen=True)
@@ -142,7 +143,22 @@ _FAKE_PLACES: list[tuple[str, str, str, str, str, str, str, bool]] = [
     ("fake-marmaris", "Marmaris Netsel Marina", "Marmaris, Muğla", "36.8530", "28.2740", "Marmaris", "Muğla", False),
     ("fake-dalyan", "Dalyan", "Ortaca, Muğla", "36.8340", "28.6420", "Ortaca", "Muğla", False),
     ("fake-gocek", "Göcek", "Fethiye, Muğla", "36.7530", "28.9400", "Fethiye", "Muğla", False),
-    ("fake-istanbul", "Taksim Meydanı", "Beyoğlu, İstanbul", "41.0370", "28.9850", "Beyoğlu", "İstanbul", False),
+    ("fake-ist", "İstanbul Havalimanı (IST)", "Arnavutköy, İstanbul", "41.2753", "28.7519", "Arnavutköy", "İstanbul", True),
+    ("fake-saw", "Sabiha Gökçen Havalimanı (SAW)", "Pendik, İstanbul", "40.8986", "29.3092", "Pendik", "İstanbul", True),
+    ("fake-esb", "Ankara Esenboğa Havalimanı (ESB)", "Çubuk, Ankara", "40.1281", "32.9951", "Çubuk", "Ankara", True),
+    ("fake-adb", "İzmir Adnan Menderes Havalimanı (ADB)", "Gaziemir, İzmir", "38.2924", "27.1570", "Gaziemir", "İzmir", True),
+    ("fake-nav", "Nevşehir Kapadokya Havalimanı (NAV)", "Gülşehir, Nevşehir", "38.7719", "34.5345", "Gülşehir", "Nevşehir", True),
+    ("fake-asr", "Kayseri Erkilet Havalimanı (ASR)", "Kocasinan, Kayseri", "38.7704", "35.4954", "Kocasinan", "Kayseri", True),
+    ("fake-sultanahmet", "Sultanahmet", "Fatih, İstanbul", "41.0054", "28.9768", "Fatih", "İstanbul", False),
+    ("fake-taksim", "Taksim Meydanı", "Beyoğlu, İstanbul", "41.0370", "28.9850", "Beyoğlu", "İstanbul", False),
+    ("fake-kizilay", "Kızılay Meydanı", "Çankaya, Ankara", "39.9208", "32.8541", "Çankaya", "Ankara", False),
+    ("fake-alsancak", "Alsancak", "Konak, İzmir", "38.4370", "27.1440", "Konak", "İzmir", False),
+    ("fake-alacati", "Alaçatı", "Çeşme, İzmir", "38.2820", "26.3740", "Çeşme", "İzmir", False),
+    ("fake-goreme", "Göreme", "Nevşehir Merkez, Nevşehir", "38.6431", "34.8289", "Merkez", "Nevşehir", False),
+    ("fake-urgup", "Ürgüp Merkez", "Ürgüp, Nevşehir", "38.6310", "34.9120", "Ürgüp", "Nevşehir", False),
+    ("fake-erciyes", "Erciyes Kayak Merkezi", "Develi, Kayseri", "38.5330", "35.4560", "Develi", "Kayseri", False),
+    # Hizmet alanı dışı örnek (K-75 sonrası İstanbul hizmette).
+    ("fake-trabzon", "Trabzon Meydan Parkı", "Ortahisar, Trabzon", "41.0050", "39.7300", "Ortahisar", "Trabzon", False),
 ]
 
 

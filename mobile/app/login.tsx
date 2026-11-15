@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Button, Logo, Picker, T, colors, fonts, s, shadow, useScreenHeight } from "@/components/ui";
+import { Alert, Button, Logo, Picker, T, colors, onDark, fonts, s, shadow, useScreenHeight } from "@/components/ui";
 import { api } from "@/lib/api";
 import { VARIANT } from "@/lib/config";
 import { countries, defaultCountry } from "@/lib/countries";
@@ -138,7 +138,7 @@ export default function Login() {
             <T style={{ color: "#fff", fontSize: 34, fontWeight: "800", letterSpacing: -1.2, lineHeight: 38 }}>
               {DRIVER ? "Yola çıkmaya\nhazır mısınız?" : t("home.where")}
             </T>
-            <T style={{ color: "rgba(255,255,255,0.82)", fontSize: 15, lineHeight: 21 }}>
+            <T style={{ color: onDark.soft, fontSize: 15, lineHeight: 21 }}>
               {DRIVER ? "İş teklifleri, yolculuk akışı ve kazançlarınız tek yerde." : t("book.heroText")}
             </T>
           </Animated.View>

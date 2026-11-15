@@ -8,7 +8,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { isUnauthorized } from "@/lib/booking";
+import { TIP_KEY, isUnauthorized, session } from "@/lib/booking";
 import { money } from "@/lib/format";
 import { useApiError } from "@/lib/hooks";
 import type { Booking, BookingLeg, DriverBrief, MeetingGuide, Rating, ShareLink } from "@/lib/types";
@@ -262,6 +262,27 @@ export function RatingPanel(props: { code: string; booking: Booking }) {
     api<Rating>(`me/bookings/${props.code}/rating`).then(setState).catch(() => setState(null));
   }, [props.code]);
 
+  // Bahşiş dönüşünde (`#rate-title`) bölüm API yanıtından sonra çizilir; tarayıcının çapa kaydırması için geç kalır.
+  const loaded = !!state?.leg_id;
+  useEffect(() => {
+    if (!loaded || window.location.hash !== "#rate-title") return;
+    headingRef.current?.scrollIntoView({ block: "start" });
+    headingRef.current?.focus({ preventScroll: true });
+  }, [loaded]);
+
+  // Ödeme sağlayıcısının bildirimi dönüşten sonra gelebilir: bahşiş beklemedeyken kısa süre yoklanır.
+  const pending = state?.tip_status === "beklemede" && !frame;
+  useEffect(() => {
+    if (!pending) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      api<Rating>(`me/bookings/${props.code}/rating`).then(setState).catch(() => undefined);
+      if (tries >= 15) clearInterval(timer);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [pending, props.code]);
+
   if (!state || !state.leg_id) return null;
   const fmt = (a: string) => money(a, state.currency, locale);
 
@@ -276,7 +297,10 @@ export function RatingPanel(props: { code: string; booking: Booking }) {
             body: { stars, comment: comment.trim() || null, tip_amount: tip || null },
           });
       setState(r);
-      if (r.iframe_url) setFrame(r.iframe_url);
+      if (r.iframe_url) {
+        session.set(TIP_KEY, props.code);
+        setFrame(r.iframe_url);
+      }
       headingRef.current?.focus();
     } catch (e) {
       setError(errorText(e));
@@ -293,7 +317,7 @@ export function RatingPanel(props: { code: string; booking: Booking }) {
           <Icon name="star" size={18} /> {t("ratedTitle", { stars: state.stars ?? 0 })}
         </h2>
         <p className="muted">
-          {state.tip_status === "odendi" ? t("tipPaid", { amount: fmt(state.tip_amount ?? "0") }) : t("tipPending")}
+          {state.tip_status === "odendi" ? t("tipPaid", { amount: fmt(state.tip_amount ?? "0"), total: fmt(state.total_amount) }) : t("tipPending")}
         </p>
       </section>
     );
@@ -341,9 +365,9 @@ export function RatingPanel(props: { code: string; booking: Booking }) {
         </div>
         <p className="hint">{t("tipHint")}</p>
       </fieldset>
-      {error && (
+      {(error || (state.tip_status === "basarisiz" && !frame)) && (
         <p className="alert error" role="alert">
-          {error}
+          {error ?? t("tipFailed")}
         </p>
       )}
       {frame ? (

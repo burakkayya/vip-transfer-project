@@ -116,8 +116,8 @@ export default function PopularPlacesPage() {
           <Field label="Ad"><input required minLength={2} maxLength={150} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
           <Field label="Açıklama" hint="Örn. Lara, Muratpaşa, Antalya"><input maxLength={200} value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} /></Field>
           <Field label="Bölge"><Select value={form.region_id} onChange={(v) => setForm({ ...form, region_id: v })} options={regionOptions} empty="Seçin" /></Field>
-          <Field label="Enlem"><input required type="number" step="0.000001" min={35} max={39} value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} /></Field>
-          <Field label="Boylam"><input required type="number" step="0.000001" min={26} max={34} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} /></Field>
+          <Field label="Enlem"><input required type="number" step="0.000001" min={35} max={42} value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} /></Field>
+          <Field label="Boylam"><input required type="number" step="0.000001" min={25} max={37} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} /></Field>
           <label className="row"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Aktif</label>
           <button className="btn" type="submit" disabled={action.busy || !form.region_id}>Kaydet</button>
           <button className="btn link" type="button" onClick={() => setForm(null)}>Vazgeç</button>
@@ -152,8 +152,8 @@ export default function PopularPlacesPage() {
         <form className="card row end" onSubmit={doPromote}>
           <Field label="Ad"><input required minLength={2} maxLength={150} value={promote.name} onChange={(e) => setPromote({ ...promote, name: e.target.value })} /></Field>
           <Field label="Açıklama"><input maxLength={200} value={promote.subtitle} onChange={(e) => setPromote({ ...promote, subtitle: e.target.value })} /></Field>
-          <Field label="Enlem" hint="İsteğe bağlı. Boşsa adres servisinden alınır."><input type="number" step="0.000001" min={35} max={39} value={promote.latitude} onChange={(e) => setPromote({ ...promote, latitude: e.target.value })} /></Field>
-          <Field label="Boylam" hint="İkisi birlikte girilir."><input type="number" step="0.000001" min={26} max={34} value={promote.longitude} onChange={(e) => setPromote({ ...promote, longitude: e.target.value })} /></Field>
+          <Field label="Enlem" hint="İsteğe bağlı. Boşsa adres servisinden alınır."><input type="number" step="0.000001" min={35} max={42} value={promote.latitude} onChange={(e) => setPromote({ ...promote, latitude: e.target.value })} /></Field>
+          <Field label="Boylam" hint="İkisi birlikte girilir."><input type="number" step="0.000001" min={25} max={37} value={promote.longitude} onChange={(e) => setPromote({ ...promote, longitude: e.target.value })} /></Field>
           <button className="btn" type="submit" disabled={action.busy || !promote.latitude !== !promote.longitude}>Listeye al</button>
           <button className="btn link" type="button" onClick={() => setPromote(null)}>Vazgeç</button>
         </form>

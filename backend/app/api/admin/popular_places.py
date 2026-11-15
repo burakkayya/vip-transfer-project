@@ -34,8 +34,8 @@ class PopularPlaceIn(BaseModel):
     name: str = Field(min_length=2, max_length=150)
     subtitle: str = Field(default="", max_length=200)
     region_id: int
-    latitude: Decimal = Field(ge=35, le=39)
-    longitude: Decimal = Field(ge=26, le=34)
+    latitude: Decimal = Field(ge=35, le=42)
+    longitude: Decimal = Field(ge=25, le=37)
     google_place_id: str | None = Field(default=None, max_length=300)
     is_active: bool = True
 
@@ -45,8 +45,8 @@ class PromoteIn(BaseModel):
     name: str = Field(min_length=2, max_length=150)
     subtitle: str = Field(default="", max_length=200)
     # Admin konumu kendisi girerse o kullanılır; boşsa adres servisinden bir kez alınır.
-    latitude: Decimal | None = Field(default=None, ge=35, le=39)
-    longitude: Decimal | None = Field(default=None, ge=26, le=34)
+    latitude: Decimal | None = Field(default=None, ge=35, le=42)
+    longitude: Decimal | None = Field(default=None, ge=25, le=37)
 
 
 class DismissIn(BaseModel):

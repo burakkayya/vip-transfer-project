@@ -5,7 +5,7 @@ from decimal import Decimal as D
 import jwt
 import pytest
 
-from app import demo
+from app import demo, pricing
 from app.config import get_settings
 from app.providers.places import PlaceDetails, normalize
 from app.services import places
@@ -65,10 +65,19 @@ def test_same_district_uses_real_points(client):
 
 
 def test_outside_service_area_rejected(client):
-    hits = client.get("/api/v1/places/autocomplete", params={"q": "Taksim"}).json()
+    hits = client.get("/api/v1/places/autocomplete", params={"q": "Trabzon"}).json()
     r = client.get(f"/api/v1/places/{hits[0]['place_id']}")
     assert r.status_code == 404
     assert r.json()["error"]["code"] == "region_not_served"
+
+
+@pytest.mark.parametrize("query,region", [
+    ("Taksim", "beyoglu"), ("Kızılay", "cankaya"), ("Alaçatı", "cesme"), ("Göreme", "nevsehir_merkez"),
+    ("Erciyes", "develi"), ("Sabiha", "saw"), ("Esenboğa", "esb"), ("Kapadokya Havalimanı", "nav"),
+])
+def test_new_provinces_resolve(client, query, region):
+    """K-75: İstanbul, Ankara, İzmir, Nevşehir ve Kayseri adresleri doğru bölgeye çözülür."""
+    assert place(client, query)["region"]["code"] == region
 
 
 def test_tampered_place_token_rejected(client):
@@ -138,3 +147,14 @@ def test_demo_seed_creates_bookable_drivers(client, db):
     me = client.get("/api/v1/driver/me", headers=driver).json()
     assert me["status"] == "onayli" and me["missing_documents"] == []
     assert client.post("/api/v1/driver/me/online", headers=driver, json={"is_online": True}).status_code == 200
+
+
+def test_new_province_quote_uses_km_price(client):
+    """K-75: yeni illerde de fiyat km başına 1,10 € (en az 30 €, 5'in katı); komisyon %20 dondurulur."""
+    taksim = {"place_token": place(client, "Taksim")["place_token"]}
+    saw = {"place_token": place(client, "Sabiha")["place_token"]}
+    q = quote(client, saw, taksim)
+    km = D(q["legs"][0]["distance_km"])
+    assert km > 20
+    # Minivan çarpanı 1,30 (seed); fiyat 5'in katına yuvarlanır.
+    assert D(q["total"]) == pricing.quote_price(km, pricing.PricingRule(vehicle_multiplier=D("1.30")))

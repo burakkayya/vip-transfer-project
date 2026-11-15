@@ -78,7 +78,7 @@ Not: İnternette önerilen `npx expo export:snack` diye bir Expo komutu yoktur. 
 
 **Onaylı sürücü:** `seed-demo` iki sürücüyü onaylı (durum Onaylı, araç Aktif) yükler; yukarıdaki iki demo sürücü ile mobil sürücü uygulamasında (8082) doğrudan giriş yapılır, SMS kodu ekranda görünür. Yeni sürücü başvurusu onayı için senaryo 7.
 
-- **Adres araması:** Google anahtarı yokken örnek yerler kullanılır: Antalya Havalimanı, Kaleiçi, Lara, Rixos Downtown, Belek, Side, Kleopatra Plajı (Alanya), Kemer Marina, Kaş, Kalkan, Bodrum Marina, Turgutreis, Ölüdeniz, Fethiye, Göcek, Marmaris, Dalyan, Taksim (hizmet dışı).
+- **Adres araması:** Google anahtarı yokken örnek yerler kullanılır: Antalya Havalimanı, Kaleiçi, Lara, Rixos Downtown, Belek, Side, Kleopatra Plajı (Alanya), Kemer Marina, Kaş, Kalkan, Bodrum Marina, Turgutreis, Ölüdeniz, Fethiye, Göcek, Marmaris, Dalyan; K-75 yeni iller: İstanbul Havalimanı, Sabiha Gökçen, Esenboğa, İzmir Adnan Menderes, Kapadokya Havalimanı, Kayseri Havalimanı, Sultanahmet, Taksim, Kızılay, Alsancak, Alaçatı, Göreme, Ürgüp, Erciyes; Trabzon (hizmet dışı).
 - **Ödeme:** iFrame içinde sahte ödeme sayfası açılır, **Ödemeyi onayla** veya **Reddet** seçilir.
 - **Önizlemeleri `CI=1` ile başlatmayın:** Metro bu modda dosya değişikliklerini izlemez, önizleme eski kodla çalışır (ör. sürücü planlı işleri havuzda görmez). Kod değiştiyse `npm run web` / `npm run web:driver` süreçlerini `CI` olmadan yeniden başlatın.
 - **Planlı iş sürücüye teklif olarak düşmez:** ödeme sonrası teklif yalnızca anlık işte gönderilir; planlı iş uygun sürücülerin **İş havuzu**nda görünür (K-47). İş kuyruğu işçisi (`arq app.worker.WorkerSettings`) çökerse teklif süresi dolumu ve ödenmeyen iptali durur; `backend` altında yeniden başlatın.
@@ -288,7 +288,7 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 4. "Buluşma noktasına yol tarifi" açılır: adımlar müşterinin dilindedir. Uçuş inince ya da "İndim" ya da sürücü "Vardım" deyince müşteriye rehber bildirimi bir kez gelir.
 5. "Karşılayan yakınınızla paylaşın" bağlantısı oluşturulur; bağlantı gizli pencerede giriş olmadan açılır, adres, telefon ve yolcu adı görünmez. "Paylaşımı kapat" sonrası bağlantı "artık geçerli değil" der.
 6. Çeviri açıkken (`GETAWAY_TRANSLATION_PROVIDER=google` ve anahtar) Almanca rezervasyonda müşterinin mesajı sürücüye Türkçe, sürücününki müşteriye Almanca gelir; altında aslı görünür. Sürücü Almanca konuşuyorsa çeviri yapılmaz.
-7. Yolculuk bitince rezervasyon detayında yıldız ve bahşiş kartı çıkar. Bahşiş seçilirse ödeme sayfası açılır; ödenince sürücü "Bahşiş" bildirimi alır, Kazanç'ta komisyonsuz ayrı satır görünür.
+7. Yolculuk bitince rezervasyon detayında yıldız ve bahşiş kartı çıkar. Bahşiş seçilirse ödeme sayfası açılır; ödenince sürücü "Bahşiş" bildirimi alır, Kazanç'ta komisyonu (%20) düşülmüş ayrı satır görünür (K-75).
 
 ### 20. Sürücü araçları (K-63; sürücü uygulaması)
 
@@ -326,6 +326,15 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 - **Mobil birim testleri**: `cd mobile && npm test` (jest-expo + React Native Testing Library; şimdilik `ui.tsx` için 2 test).
 - **Kök betik testleri**: `node --test "scripts/*.test.mjs"` (renk tokenı üreticisi, 5 test). Token kaynağı ile üretilmiş dosyaların uyumu: `node scripts/sync-tokens.mjs --check`.
 - **Ekran görüntüsü ve axe betikleri**: `scripts/ui-shots` (`npm ci`, sonra `node web.js --out after` vb.; ayrıntı `scripts/ui-shots/README.md`). Geliştirme veritabanında rezervasyon ve sahte ödeme oluşturur.
+
+## Yeni iller, %20 komisyon ve bahşiş (K-75)
+
+1. Web ana sayfasında "Hizmet verdiğimiz havalimanları" listesinde 10 havalimanı (IST, SAW, ESB, ADB, NAV, ASR dahil) görünür; alt bilgide yeni havalimanları ve rotalar (ör. İstanbul Havalimanı → Sultanahmet) vardır. Mobil ana ekranda üstteki hap "7 ilde hizmet" der, havalimanı satırlarında il adı doğrudur.
+2. Rezervasyonda "Sabiha" → "Taksim" seçilir: fiyat gelir (km başına 1,10 €, minivan çarpanı, 5'in katı). "Göreme" Nevşehir Merkez, "Erciyes" Develi, "Alaçatı" Çeşme ilçesine bağlanır. "Trabzon" "hizmet alanımızın dışında" hatası verir.
+3. Ödeme ve tamamlama sonrası admin Finans > Hakedişler'de komisyon tutarın %20'sidir (60 € işte 12 € komisyon, 48 € sürücü). Eski rezervasyonlar kendi oranıyla (%25) kalır.
+4. Yolculuk bitince puan kartında bahşiş seçilir (ör. 10 €), sahte ödeme sayfasında **Ödemeyi onayla**: sayfa "Sürücünüze bahşiş" başlıklı dönüş ekranından rezervasyon detayının puan bölümüne döner, "10 € bahşiş toplamınıza eklendi … Yeni toplam: …" yazar. Sürücüye "Bahşiş: 8,00 EUR … Komisyon düşülerek Kazanç'a eklendi" bildirimi gider; hakedişte bahşiş satırı 10 € brüt, 2 € komisyon, 8 € net.
+5. Bahşiş sayfasında **Reddet** seçilirse puan bölümünde "Bahşiş ödemesi tamamlanmadı…" uyarısı ve yeniden **Bahşişi öde** düğmesi çıkar.
+6. Admin (operasyon) **Katalog → Buluşma rehberi**: listede her havalimanı (yeni altı dahil) için rehber, adım sayısı, fotoğraf sayısı ve eksik diller görünür. **Düzenle** ile adım metni (tr, en, de, ru) değiştirilir, adım taşınır/silinir, **Kaydet**. Kayıtlı adımda **Fotoğraf ekle** ile JPEG/PNG/WebP yüklenir, önizleme çıkar; **Fotoğrafı kaldır** + Kaydet fotoğrafı siler. **Gizle** rehberi müşteriden gizler (önizleme admin'de görünmeye devam eder).
 
 ## Popüler yerler ve API kullanımı (K-61)
 

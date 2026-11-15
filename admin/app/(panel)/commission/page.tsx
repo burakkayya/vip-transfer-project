@@ -49,7 +49,7 @@ export default function CommissionPage() {
   return (
     <div className="stack">
       <PageHead title="Komisyon kuralları" />
-      <p className="hint">Örnek: %25 komisyonla 60 € işte sürücüye 45 € kalır. Oran rezervasyonda dondurulur.</p>
+      <p className="hint">Örnek: %20 komisyonla 60 € işte sürücüye 48 € kalır (bahşiş dahil toplam fiyattan, K-75). Oran rezervasyonda dondurulur.</p>
       <Msg message={action.message} />
       <ErrorBox error={rules.error} />
       <Table

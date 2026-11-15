@@ -244,8 +244,13 @@ def test_rating_and_tip_go_to_driver(client, db, ops):
     db.expire_all()
     ledgers = list(db.scalars(select(DriverLedger).where(DriverLedger.booking_leg_id == trip["leg_id"])))
     tip = next(x for x in ledgers if x.kind == "tip")
-    assert tip.net_amount == Decimal("10.00") and tip.commission_amount == 0 and len(ledgers) == 2
-    assert client.get(f"{API}/me/bookings/{code}/rating", headers=customer).json()["tip_status"] == "odendi"
+    # K-75: bahşiş toplam fiyata eklenir, komisyon (%20) bahşişten de alınır.
+    assert tip.gross_amount == Decimal("10.00") and tip.commission_amount == Decimal("2.00")
+    assert tip.net_amount == Decimal("8.00") and len(ledgers) == 2
+    paid = client.get(f"{API}/me/bookings/{code}/rating", headers=customer).json()
+    booking_total = client.get(f"{API}/me/bookings/{code}", headers=customer).json()["total_amount"]
+    assert paid["tip_status"] == "odendi"
+    assert Decimal(paid["total_amount"]) == Decimal(booking_total) + Decimal("10.00")
     assert "tip_received" in _codes(client, driver, "driver")
     assert client.post(f"{API}/me/bookings/{code}/tip", headers=customer,
                        json={"amount": "5"}).json()["error"]["code"] == "tip_already_paid"
@@ -293,6 +298,14 @@ def test_admin_manages_meeting_guides(client, db, ops):
     assert r.status_code == 200 and r.json()["steps"][1]["has_photo"] is True, r.text
     photo = client.get(f"{API}{r.json()['steps'][1]['photo_path'].removeprefix('/api/v1')}")
     assert photo.status_code == 200 and photo.content.startswith(JPEG_MAGIC)
+    # Admin önizlemesi personel uç noktasından; pasif rehberde de görünür, kimliksiz erişilemez.
+    admin_path = r.json()["steps"][1]["admin_photo_path"]
+    assert client.get(f"{API}/{admin_path}").status_code == 401
+    r = client.put(f"{API}/admin/meeting-guides/{gid}", headers=ops, json={
+        "region_id": gzp, "terminal": "Dış Hatlar", "steps": [step, step], "is_active": False})
+    assert client.get(f"{API}{r.json()['steps'][1]['photo_path'].removeprefix('/api/v1')}").status_code == 404
+    preview = client.get(f"{API}/{admin_path}", headers=ops)
+    assert preview.status_code == 200 and preview.content.startswith(JPEG_MAGIC)
     # Adım sırası değişince fotoğraf adımıyla birlikte gider (photo_from).
     r = client.put(f"{API}/admin/meeting-guides/{gid}", headers=ops, json={
         "region_id": gzp, "terminal": "Dış Hatlar", "steps": [{**step, "photo_from": 1}, {**step, "photo_from": 0}]})
@@ -362,7 +375,7 @@ def test_open_tip_page_is_reused_and_stale_paid_page_is_handled(client, db, ops)
     db.expire_all()
     tips = list(db.scalars(select(DriverLedger).where(DriverLedger.booking_leg_id == trip["leg_id"],
                                                       DriverLedger.kind == "tip")))
-    assert len(tips) == 1 and tips[0].net_amount == Decimal("5.00")
+    assert len(tips) == 1 and tips[0].gross_amount == Decimal("5.00") and tips[0].net_amount == Decimal("4.00")
     dup = db.scalar(select(Payment).where(Payment.merchant_oid == new_oid))
     assert dup.refunds and dup.refunds[0].amount == Decimal("10.00") and dup.refunds[0].status is not RefundStatus.FAILED
 
@@ -372,3 +385,13 @@ def test_tip_minimum(client, ops):
     _complete(client, driver, trip["leg_id"])
     r = client.post(f"{API}/me/bookings/{code}/rating", headers=customer, json={"stars": 4, "tip_amount": "0.50"})
     assert r.json()["error"]["code"] == "tip_invalid"
+
+
+def test_tip_checkout_returns_to_tip_result_page():
+    """K-75: bahşiş ödemesi PayTR'de kendi dönüş sayfasına gider; rezervasyon ödemesi eskisi gibi."""
+    from app.providers.payments import PaytrProvider, result_path
+
+    ok = "https://getawaytransfers.com/booking/payment-result?status=ok"
+    assert PaytrProvider._return_url(ok, "tip") == "https://getawaytransfers.com/booking/tip-result?status=ok"
+    assert PaytrProvider._return_url(ok, "booking") == ok
+    assert result_path("tip") == "/booking/tip-result" and result_path("booking") == "/booking/payment-result"

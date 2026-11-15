@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Getaway Transfers | Antalya ve Muğla VIP Transfer",
-    "description": "Antalya, Dalaman, Bodrum ve Gazipaşa havalimanlarından otelinize sabit fiyatlı, önceden ödemeli VIP transfer."
+    "title": "Getaway Transfers | İstanbul, Antalya ve Kapadokya VIP Transfer",
+    "description": "İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya havalimanlarından otelinize sabit fiyatlı, önceden ödemeli VIP transfer."
   },
   "nav": {
     "book": "Rezervasyon",
@@ -16,7 +16,7 @@
   },
   "home": {
     "heroTitle": "Şoförünüz hazır. Yolculuğunuz sabit fiyatlı.",
-    "heroText": "Antalya ve Muğla'da havalimanı, otel ve şehirlerarası özel transfer. Fiyatı şimdi görün, kartla ödeyin, sürücünüz sizi isminizle karşılasın.",
+    "heroText": "İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya'da havalimanı, otel ve şehirlerarası özel transfer. Fiyatı şimdi görün, kartla ödeyin, sürücünüz sizi isminizle karşılasın.",
     "why1Title": "Sabit fiyat",
     "why1Text": "Fiyat mesafeye göre rezervasyonda hesaplanır ve önceden ödenir. Yolda sürpriz yok.",
     "why2Title": "Belgeli sürücüler",
@@ -51,7 +51,7 @@
     "s2Title": "İş ve VIP transfer",
     "s2Text": "Toplantı, otel ve etkinlik arası sessiz, konforlu ve dakik ulaşım.",
     "s3Title": "Şehirlerarası transfer",
-    "s3Text": "Antalya ve Muğla içindeki tüm ilçeler arasında kapıdan kapıya özel araç.",
+    "s3Text": "Hizmet verdiğimiz yedi ilin tüm ilçeleri arasında kapıdan kapıya özel araç.",
     "s4Title": "Özel günler",
     "s4Text": "Düğün, nişan ve özel davetler için şoförlü araç. Saat ve rota önceden planlanır.",
     "bookThis": "Rezervasyon yap",
@@ -398,7 +398,7 @@
     "contact": "İletişim",
     "tursab": "TÜRSAB belge no: {no}",
     "rights": "Tüm hakları saklıdır.",
-    "about": "Antalya ve Muğla'da şoförlü özel transfer.",
+    "about": "İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya'da şoförlü özel transfer.",
     "airports": "Havalimanları",
     "routes": "Popüler rotalar"
   },
@@ -509,14 +509,15 @@
     "comment": "Yorumunuz (isteğe bağlı, yalnızca ekibimiz görür)",
     "tipLegend": "Sürücünüze bahşiş",
     "noTip": "Bahşiş yok",
-    "tipHint": "Bahşişin tamamı sürücünüze gider.",
+    "tipHint": "Bahşiş rezervasyon toplamınıza eklenir ve sürücünüze iletilir.",
     "tipTitle": "Sürücünüze bahşiş",
     "tipPay": "Bahşişi öde",
     "rateSend": "Puanı gönder",
     "rateAndTip": "Puanla ve bahşiş öde",
     "sending": "Gönderiliyor…",
-    "tipPaid": "{amount} bahşişiniz sürücünüze iletildi.",
+    "tipPaid": "{amount} bahşiş toplamınıza eklendi ve sürücünüze iletildi. Yeni toplam: {total}.",
     "tipPending": "Bahşiş ödemesi bekleniyor.",
+    "tipFailed": "Bahşiş ödemesi tamamlanmadı. Kartınızdan çekim yapıldıysa otomatik iade edilir; tekrar deneyebilirsiniz.",
     "extrasTitle": "Ekstralar",
     "childSeatLabel": "Çocuk koltuğu",
     "childSeatNone": "Gerekmiyor",

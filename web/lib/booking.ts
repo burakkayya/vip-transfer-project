@@ -24,6 +24,9 @@ export function statusClass(s: BookingStatus) {
 /** Sağlayıcı dönüşünde ödeme ekranına geri dönmek için saklanan rezervasyon kodu (`sessionStorage`). */
 export const PENDING_KEY = "ga_pending_booking";
 
+/** Bahşiş ödeme sayfasından dönüşte rezervasyon ekranına geri dönmek için saklanan kod (`sessionStorage`). */
+export const TIP_KEY = "ga_pending_tip";
+
 /** Ödeme sayfası açıkken oturum düştüyse saklanır: yeniden girişte yeni ödeme açılmaz, aynı rezervasyon yoklanır (K-45). */
 export const RESUME_KEY = "ga_resume_checkout";
 

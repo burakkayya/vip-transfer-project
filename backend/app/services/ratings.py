@@ -3,7 +3,8 @@
 - Müşteri tamamlanan her bacağı bir kez 1-5 yıldızla puanlar (isteğe bağlı yorum). Sürücüye yalnızca yıldız
   bildirilir; yorum yalnızca operasyonda görünür.
 - Bahşiş isteğe bağlıdır, rezervasyon para biriminde, ödeme sağlayıcısının sayfasında ayrıca ödenir
-  (`Payment.purpose="tip"`). Ödeme gelince tamamı komisyonsuz sürücü hakedişine eklenir (`kind="tip"`).
+  (`Payment.purpose="tip"`). K-75: bahşiş rezervasyon toplamına eklenir; komisyon toplamın tamamından
+  (bahşiş dahil) rezervasyonda dondurulan oranla alınır, kalanı sürücü hakedişine eklenir (`kind="tip"`).
   Bahşiş rezervasyon iadesi ve iptal hesaplarına girmez.
 """
 
@@ -17,6 +18,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.commission import split
 from app.config import get_settings
 from app.errors import Conflict, DomainError, NotFound
 from app.models import Booking, BookingLeg, Customer, DriverLedger, Payment, Refund, TripRating
@@ -132,6 +134,7 @@ def start_tip(db: Session, booking: Booking, customer: Customer, provider: Payme
         user_ip=user_ip,
         description=f"Bahşiş {booking.booking_code}",
         locale=booking.locale,
+        purpose="tip",
     ))
     payment.checkout_url = checkout.iframe_url
     rating.tip_amount = amount
@@ -141,7 +144,7 @@ def start_tip(db: Session, booking: Booking, customer: Customer, provider: Payme
 
 
 def on_tip_result(db: Session, payment: Payment, provider: PaymentProvider, *, paid: bool, now: datetime) -> None:
-    """Ödeme bildirimi: bahşiş ödendiyse sürücü hakedişine eklenir (komisyonsuz).
+    """Ödeme bildirimi: bahşiş ödendiyse komisyonu düşülüp sürücü hakedişine eklenir (K-75).
 
     Yerine yenisi açılmış eski bir bahşiş sayfası da ödenebilir (müşteri iki sekmede ödedi, bildirim gecikti):
     bahşiş henüz ödenmediyse bu ödeme bahşiş sayılır; ödendiyse para müşteriye tamamen iade edilir."""
@@ -170,18 +173,21 @@ def on_tip_result(db: Session, payment: Payment, provider: PaymentProvider, *, p
         return
     rating.tip_status = TIP_PAID
     leg = db.get(BookingLeg, rating.booking_leg_id)
+    booking = db.get(Booking, payment.booking_id)
+    # K-75: bahşiş toplam fiyatın parçasıdır; rezervasyondaki komisyon oranı bahşişe de uygulanır.
+    parts = split(payment.amount, booking.commission_rate)
     if payment.currency is Currency.TRY:
-        net_try = payment.amount
+        net_try = parts.net
     else:
         fx = latest_exchange_rate(db, now)
-        net_try = (payment.amount * fx.rate).quantize(Decimal("0.01")) if fx else None
-    db.add(DriverLedger(driver_id=rating.driver_id, booking_leg_id=leg.id, gross_amount=payment.amount,
-                        commission_amount=Decimal("0"), net_amount=payment.amount, currency=payment.currency,
+        net_try = (parts.net * fx.rate).quantize(Decimal("0.01")) if fx else None
+    db.add(DriverLedger(driver_id=rating.driver_id, booking_leg_id=leg.id, gross_amount=parts.gross,
+                        commission_amount=parts.commission, net_amount=parts.net, currency=payment.currency,
                         net_amount_try=net_try, kind="tip"))
     audit.record(db, actor_id=None, action="tip.paid", entity_type="booking_leg", entity_id=leg.id,
-                 changes={"amount": payment.amount, "currency": payment.currency})
+                 changes={"amount": payment.amount, "commission": parts.commission, "currency": payment.currency})
     if leg.driver_id == rating.driver_id:
-        trip_updates.to_driver(db, leg, "tip_received", amount=f"{payment.amount:.2f}",
+        trip_updates.to_driver(db, leg, "tip_received", amount=f"{parts.net:.2f}",
                                currency=payment.currency.value)
 
 

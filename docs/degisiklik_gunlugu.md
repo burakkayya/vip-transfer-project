@@ -2,6 +2,15 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-15
+
+- **Komisyon %20, bahşiş toplam fiyatta, yedi il (K-75).** Genel komisyon %25 → %20 (seed ve migration 0014: açık genel kural kapatılır, %20 yeni sürüm; ileri tarihli kurala dokunulmaz; eski rezervasyonlar kendi oranıyla). Bahşiş rezervasyon toplamına eklenir ve rezervasyondaki oranla bölünür (10 € → 2 € komisyon, 8 € sürücü); puan ekranı bahşiş dahil yeni toplamı, sürücü bildirimi net tutarı gösterir. Hizmet alanı İstanbul, Ankara, İzmir, Antalya, Muğla, Nevşehir ve Kayseri: 160 bölge, 10 havalimanı (yeni: IST, SAW, ESB, ADB, NAV, ASR), ortak il listesi `backend/app/provinces.py`, adres arama dikdörtgeni genişledi, "Merkez" ilçe eşleşmesi, admin koordinat sınırları 35-42 / 25-37. Web metinleri (4 dil), alt bilgi havalimanları ve rotalar, mobil "7 ilde hizmet". Fiyat değişmedi (1,10 €/km). Dağıtımda migration sonrası `python -m app.cli seed` zorunlu.
+- **Admin buluşma rehberi sayfası.** Katalog → Buluşma rehberi: liste (adım, fotoğraf, eksik dil), düzenleyici (4 dil, taşıma, silme, en çok 8 adım), fotoğraf yükleme ve kaldırma, gizle/göster, rehberi olmayan havalimanına kısa yol. Yeni uç `GET /admin/meeting-guides/{id}/steps/{i}/photo` (pasif rehber önizlemesi). Admin BFF ikili gövdeyi (multipart) bozmadan iletir, 8 MB üstü 413.
+- **Bahşiş dönüş sayfası.** Bahşiş ödemesi `/booking/tip-result`'a döner (PayTR'ye istek başına `merchant_ok_url`), müşteriyi rezervasyonun puan bölümüne götürür; bekleyen bahşiş 1 dk yoklanır, başarısızlıkta uyarı ve yeniden deneme.
+- **Mobil temizlik.** Lint tabanı 5 hata/1 uyarı → 0/0 (`set-state-in-effect`, `immutability`); koyu zemindeki saydam beyazlar `onDark` ölçeğine bağlandı, `tokens.test.ts` denetler; kısa sorguda eski adres önerisi gösterilmez.
+- **İnceleme:** `code-reviewer` 6 bulgu (0 kritik; fotoğraf kaldırma kaydedilemiyordu, bahşiş hata metni, ileri tarihli kural, seed adımı, BFF gövde sınırı, eski öneriler), hepsi düzeltildi. `qa-tester`: e2e kaçış hatası ve çapa kaydırması düzeltildi; eşzamanlı koşuların ortak test veritabanını bozduğu not edildi.
+- **Testler:** backend 467, mobil 112 (18 süit), web `tip-result` e2e 8, admin `meeting-guides` e2e 2; lint tabanları korunuyor (mobil 0/0); gerçek Google ile SAW → Taksim fiyatı ekranda doğrulandı.
+
 ## 2026-11-14
 
 - **PR CI düzeltmeleri.** Pillow 11.3.0 → 13.0.0 (pip-audit: bilinen açıklar). Denetim gerekçesinde e-posta tespiti desen yerine doğrusal sözcük taramasıyla yapılır (CodeQL polinom ReDoS). Testler: dakikalık teklif ve yer arama sınırları süit genelinde gevşetildi (sınırı sınayan testler kendi değerini koyar); K-62 ve K-63 testlerinde güvenlik yolculuk zaman kuralları gevşetildi; çeviri testi PRIV-04'e göre (mesaj metni bildirime yazılmaz); yaklaşma rotası testleri canlı sağlayıcıya bağlandı.

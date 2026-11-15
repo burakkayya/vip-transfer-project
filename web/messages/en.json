@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Getaway Transfers | Antalya & Muğla VIP Transfers",
-    "description": "Fixed-price, prepaid private transfers from Antalya, Dalaman, Bodrum and Gazipaşa airports to your hotel."
+    "title": "Getaway Transfers | VIP Transfers in Istanbul, Antalya & Cappadocia",
+    "description": "Fixed-price, prepaid private transfers from airports in Istanbul, Ankara, Izmir, Antalya, Muğla and Cappadocia to your hotel."
   },
   "nav": {
     "book": "Book",
@@ -16,7 +16,7 @@
   },
   "home": {
     "heroTitle": "Your chauffeur is ready. Your fare is fixed.",
-    "heroText": "Private airport, hotel and intercity transfers across Antalya and Muğla. See your price now, pay by card, and be met by name.",
+    "heroText": "Private airport, hotel and intercity transfers across Istanbul, Ankara, Izmir, Antalya, Muğla and Cappadocia. See your price now, pay by card, and be met by name.",
     "why1Title": "Fixed price",
     "why1Text": "The price is calculated from the distance when you book and paid in advance. No surprises on the road.",
     "why2Title": "Licensed drivers",
@@ -51,7 +51,7 @@
     "s2Title": "Business and VIP",
     "s2Text": "Quiet, comfortable and punctual travel between meetings, hotels and events.",
     "s3Title": "Intercity transfers",
-    "s3Text": "Door-to-door private rides between every district in Antalya and Muğla.",
+    "s3Text": "Door-to-door private rides between every district in the seven provinces we serve.",
     "s4Title": "Special occasions",
     "s4Text": "Chauffeured cars for weddings and private events, with time and route planned ahead.",
     "bookThis": "Book now",
@@ -398,7 +398,7 @@
     "contact": "Contact",
     "tursab": "TÜRSAB licence no: {no}",
     "rights": "All rights reserved.",
-    "about": "Private chauffeured transfers in Antalya and Muğla.",
+    "about": "Private chauffeured transfers in Istanbul, Ankara, Izmir, Antalya, Muğla and Cappadocia.",
     "airports": "Airports",
     "routes": "Popular routes"
   },
@@ -509,14 +509,15 @@
     "comment": "Comment (optional, only our team sees it)",
     "tipLegend": "Tip your driver",
     "noTip": "No tip",
-    "tipHint": "The whole tip goes to your driver.",
+    "tipHint": "The tip is added to your booking total and passed on to your driver.",
     "tipTitle": "Tip your driver",
     "tipPay": "Pay tip",
     "rateSend": "Send rating",
     "rateAndTip": "Rate and pay tip",
     "sending": "Sending…",
-    "tipPaid": "Your {amount} tip has been passed to your driver.",
+    "tipPaid": "Your {amount} tip was added to your total and passed on to your driver. New total: {total}.",
     "tipPending": "Waiting for the tip payment.",
+    "tipFailed": "The tip payment was not completed. If your card was charged, it is refunded automatically; you can try again.",
     "extrasTitle": "Extras",
     "childSeatLabel": "Child seat",
     "childSeatNone": "Not needed",

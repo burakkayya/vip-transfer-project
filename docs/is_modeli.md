@@ -26,7 +26,8 @@ Uber'den farkı: taksimetre yoktur, fiyat önceden hesaplanır ve ödeme rezerva
 - Oran `commission_rules` tablosunda tanımlıdır.
 - Genel, bölge veya araç tipi bazında farklı oran tanımlanabilir.
 - Oranın değişmesi mevcut rezervasyonları etkilemez, yalnızca yeni rezervasyonlara uygulanır.
-- Örnek: 60 € toplam fiyat, %25 komisyon, 45 € sürücü payı.
+- Örnek: 60 € toplam fiyat, %20 komisyon, 48 € sürücü payı (K-75).
+- Bahşiş toplam fiyata eklenir; komisyon bahşiş dahil toplamdan alınır (K-75).
 
 ## Eşleştirme
 
@@ -36,9 +37,9 @@ Uber'den farkı: taksimetre yoktur, fiyat önceden hesaplanır ve ödeme rezerva
 
 ## Bölge
 
-- Antalya ve Muğla'nın tüm ilçeleri.
-- Antalya Havalimanı, Dalaman Havalimanı, Milas-Bodrum Havalimanı.
-- Şehirlerarası transfer (Antalya-Muğla arası) dahildir.
+- İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya (Nevşehir, Kayseri) illerinin tüm ilçeleri (K-75).
+- Havalimanları: Antalya (AYT), Gazipaşa-Alanya (GZP), Dalaman (DLM), Milas-Bodrum (BJV), İstanbul (IST), Sabiha Gökçen (SAW), Ankara Esenboğa (ESB), İzmir Adnan Menderes (ADB), Nevşehir Kapadokya (NAV), Kayseri Erkilet (ASR).
+- Şehirlerarası transfer (hizmet verilen iller arası) dahildir.
 
 ## Araç
 

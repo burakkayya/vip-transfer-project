@@ -20,7 +20,7 @@ class Region(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(50), unique=True)
-    province: Mapped[str] = mapped_column(String(30))  # antalya, mugla
+    province: Mapped[str] = mapped_column(String(30))  # app/provinces.py (K-75)
     name: Mapped[str] = mapped_column(String(100))
     type: Mapped[RegionType] = mapped_column(str_enum(RegionType))
     iata_code: Mapped[str | None] = mapped_column(String(3))

@@ -32,6 +32,8 @@ function origins(): OriginConfig {
 }
 // Personel oturumu en çok 12 saat yenilenebilir; backend süresinden kısa tutulur.
 const REFRESH_SECONDS = 12 * 3600;
+// En büyük istek gövdesi: rehber fotoğrafı 5 MB + multipart payı. Aşan istek backend'e gitmez (413).
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 const ALLOWED: RegExp[] = [/^auth\/staff\/(login|2fa|password)$/, /^auth\/(logout|me)$/, /^admin\/.+$/];
 const PASS_HEADERS = ["content-type", "content-disposition", "cache-control"];
@@ -80,7 +82,7 @@ function sameOrigin(req: NextRequest): boolean {
   return isAllowedOrigin(req.headers.get("origin"), origins());
 }
 
-async function callApi(req: NextRequest, upstream: URL, body: string | undefined, token?: string) {
+async function callApi(req: NextRequest, upstream: URL, body: ArrayBuffer | undefined, token?: string) {
   const headers: Record<string, string> = { accept: "application/json" };
   const contentType = req.headers.get("content-type");
   if (contentType) headers["content-type"] = contentType;
@@ -132,7 +134,12 @@ async function handle(req: NextRequest, { params }: Params) {
   if (req.method !== "GET" && !sameOrigin(req)) {
     return NextResponse.json({ error: { code: "forbidden", message: "köken reddedildi" } }, { status: 403 });
   }
-  const body = req.method === "GET" ? undefined : await req.text();
+  // İkili gövde (buluşma rehberi fotoğrafı, multipart) bozulmadan iletilir; boyut okunmadan önce ve sonra denetlenir.
+  const tooLarge = () =>
+    NextResponse.json({ error: { code: "payload_too_large", message: "istek çok büyük" } }, { status: 413 });
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return tooLarge();
+  const body = req.method === "GET" ? undefined : await req.arrayBuffer();
+  if (body && body.byteLength > MAX_BODY_BYTES) return tooLarge();
 
   if (path === "auth/staff/2fa") {
     const upstream = await callApi(req, target, body);

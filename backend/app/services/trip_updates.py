@@ -113,7 +113,7 @@ DRIVER_TEXTS: dict[str, tuple[str, str]] = {
     "passenger_baggage": ("{passenger} bagajda", "{pickup} alışı. Birazdan çıkışta olacak."),
     "passenger_exiting": ("{passenger} çıkıyor", "{pickup} alışı. Yolcu karşılama alanına geliyor."),
     "trip_rated": ("Yolculuğunuz {stars}/5 puan aldı", "{pickup} → {dropoff}"),
-    "tip_received": ("Bahşiş: {amount} {currency}", "{pickup} → {dropoff}. Kazanç'a eklendi."),
+    "tip_received": ("Bahşiş: {amount} {currency}", "{pickup} → {dropoff}. Komisyon düşülerek Kazanç'a eklendi."),
     # K-60 uçuş takibi. PRIV-04: uçuş numarası bildirime yazılmaz (yolculuk ekranında görünür).
     "flight_delayed": ("Uçuş saati değişti", "Tahmini iniş {time} (planlanan {scheduled}). {pickup} alışı."),
     "flight_landed": ("Uçuş indi", "{time} itibarıyla indi. {pickup} alışı."),

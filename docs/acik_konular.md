@@ -27,7 +27,7 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 
 ### Kıyı Yolu (K-39)
 
-- [ ] Mobilde koyu zemin üstündeki yarı saydam beyazlar (`rgba(255,255,255,…)`) ve Google harita stili token kapsamı dışında kaldı; mobil ekranlar gerçek cihazda yeni renklerle (özellikle `faint` artık daha koyu) gözden geçirilecek.
+- [ ] Mobilde koyu zemin üstündeki yarı saydam beyazlar 2026-11-15'te yedi basamaklı `onDark` ölçeğine bağlandı (`components/ui.tsx`, `tokens.test.ts` denetler; bazı değerler en yakın basamağa yuvarlandı). Google harita stili bilerek kapsam dışı (Google'ın renk şeması). Mobil ekranlar gerçek cihazda yeni renklerle (özellikle `faint`) gözden geçirilecek.
 
 ### Sürücü araçları (K-63)
 
@@ -37,10 +37,12 @@ Bu liste doğrulanmadan ilgili geliştirme veya satış başlatılmamalıdır.
 ### Buluşma deneyimi (K-62)
 
 - [ ] Sohbet çevirisi Google Cloud Translation'a (yurt dışı) mesaj metni gönderir. Telefon ve e-posta maskeleniyor ama serbest metinde ad, otel, oda numarası olabilir: KVKK m.9 yurt dışı aktarım için aydınlatma metni ve gerekirse açık rıza hukukçuyla teyit edilecek. Teyit gelene kadar `GETAWAY_TRANSLATION_PROVIDER=off` (varsayılan) kalır; anahtar `GETAWAY_TRANSLATION_API_KEY` ile verilir.
+- [ ] K-75 yeni iller: ilçe merkez koordinatları yaklaşıktır (seed), admin Bölgeler sayfasından düzeltilebilir. İstanbul'da köprü/tünel geçiş ücretleri ve trafik süresi km fiyatına yansımaz; operasyonla teyit edilecek. Uzun şehirlerarası yolculuklar (ör. İstanbul-Kapadokya ~730 km) için sürücü dinlenmesi ve dönüş boş km'si kuralı yok.
+- [ ] K-75 bahşiş komisyonu: bahşişin %20'si şirkette kalır; müşteri metni "toplamınıza eklenir ve sürücünüze iletilir" der. Tüketici mevzuatı ve e-Arşiv açısından muhasebeci/hukuk teyidi gerekir (önceki "tamamı sürücüye" metni kaldırıldı).
 - [ ] Bahşiş şirketin ödeme hesabına gelir olarak düşer, sürücüye hakedişle ödenir: e-Arşiv fatura ve muhasebe kaydı muhasebeciyle teyit edilecek. Bahşişin elle iadesi admin panelinde yok (yalnızca mükerrer ödeme otomatik iade edilir).
 - [ ] Sürücü fotoğrafı onaydan geçmeden müşteriye görünür; admin moderasyonu ve sürücü aydınlatma metnine "fotoğrafınız takip bağlantısıyla üçüncü kişilere gösterilir" maddesi eklenecek.
-- [ ] Buluşma rehberi seed metni geneldir ("isminizin yazılı tabelayla bekler"); her havalimanı ve terminal için gerçek fotoğraflı adımlar admin'den girilecek. Admin panelinde rehber sayfası henüz yok (uçlar hazır).
-- [ ] Bahşiş ödeme sonucu sayfası rezervasyon ödeme sonucuna yönlenir (sahte sağlayıcı); PayTR'de bahşiş için ayrı dönüş adresi düşünülecek.
+- [ ] Buluşma rehberi seed metni geneldir ("isminizin yazılı tabelayla bekler"); her havalimanı ve terminal için gerçek fotoğraflı adımlar admin'den girilecek. Admin sayfası 2026-11-15'te eklendi (Katalog > Buluşma rehberi); yeni altı havalimanı (IST, SAW, ESB, ADB, NAV, ASR) için de seed genel adımları ekler.
+- [x] Bahşiş ödemesi kendi dönüş sayfasına (`/booking/tip-result`) döner, müşteriyi rezervasyonun puan bölümüne götürür; PayTR'ye istek başına `merchant_ok_url` gönderilir (2026-11-15, K-75). PayTR test mağazasında denenmedi.
 
 - [ ] Yurt dışı servislerde veri bölgesi (Sentry, e-posta).
 - [x] Uçuş takip API'sinin seçimi ve maliyeti (2026-11-11, K-60): AeroDataBox (RapidAPI). Ücretsiz plan ayda ~200 sorgu, ticari kullanıma kapalı; canlıda Pro plan ~7,5–8 $/ay.
@@ -103,7 +105,7 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Ön yüz test altyapısı (K-40, 2026-11-02)
 
-- [ ] Lint taban borcu: web 0 (B-W0 `Motion.tsx` iki, B-W1 ana sayfa bir uyarıyı, B-W2 `BookingWizard.tsx` iki hata ve bir uyarıyı, B-W3 `OtpLogin.tsx` `no-autofocus` hatasını giderdi), admin 3 (1/2), mobil 9 (7/2) ihlal (`docs/ui-review/lint-taban.md`). Ekran görevleri ilgili dosyaya dokundukça giderilir; plan kapanışında lint sıfır ihlalle zorunlu olur, o zamana kadar `npm run lint` sıfırdan farklı çıkar ve web/admin `next.config.ts` içinde `eslint.ignoreDuringBuilds: true` durur.
+- [ ] Lint taban borcu: web 0 (B-W0 `Motion.tsx` iki, B-W1 ana sayfa bir uyarıyı, B-W2 `BookingWizard.tsx` iki hata ve bir uyarıyı, B-W3 `OtpLogin.tsx` `no-autofocus` hatasını giderdi), admin 2 uyarı, mobil 0 (2026-11-15'te mobil 5 hata/1 uyarı giderildi) ihlal (`docs/ui-review/lint-taban.md`). Ekran görevleri ilgili dosyaya dokundukça giderilir; plan kapanışında lint sıfır ihlalle zorunlu olur, o zamana kadar `npm run lint` sıfırdan farklı çıkar ve web/admin `next.config.ts` içinde `eslint.ignoreDuringBuilds: true` durur.
 - [ ] Yerel e2e admin hesabı: admin Playwright testleri geliştirme veritabanında ayrı bir admin hesabıyla çalışır; e-posta, parola ve TOTP sırrı yalnızca git'e girmeyen `admin/.env.e2e.local` dosyasındadır (repoya yazılmaz). Geliştirme veritabanında eski, pasif iki e2e personel kaydı kalmıştır; temizlenip temizlenmeyeceği kararlaştırılacak. Üretimde bu hesap açılmaz.
 
 ## Arayüz taraması (2026-11-02)

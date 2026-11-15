@@ -4,13 +4,13 @@ import * as WebBrowser from "expo-web-browser";
 import { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
-import { RouteBox, regionEndpoint } from "@/components/AddressField";
+import { PROVINCE, RouteBox, regionEndpoint } from "@/components/AddressField";
 import DateTimeField from "@/components/DateTimeField";
 import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
 import {
   Alert, Badge, Button, Card, CheckCard, Eyebrow, H2, IconBubble, IconButton, IconName, Input, P, RouteStops, Row,
-  Segmented, Skeleton, Steps, T, Toggle, colors, s, tap,
+  Segmented, Skeleton, Steps, T, Toggle, colors, onDark, s, tap,
 } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { WEB_URL } from "@/lib/config";
@@ -219,7 +219,7 @@ export default function Book() {
     <>
       <View style={{ backgroundColor: "#fff", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.ok }} />
-        <T style={{ fontWeight: "600", fontSize: 13 }}>Antalya · Muğla</T>
+        <T style={{ fontWeight: "600", fontSize: 13 }}>{t("home.serviceArea")}</T>
       </View>
       <IconButton icon="person" label={t("tabs.profile")} onPress={() => router.push("/profile")} />
     </>
@@ -256,7 +256,7 @@ export default function Book() {
                 <IconBubble name="airplane" size={42} />
                 <View style={{ flex: 1, borderBottomWidth: i < airports.length - 1 ? 1 : 0, borderBottomColor: colors.line, paddingBottom: 12, marginBottom: -12 }}>
                   <T style={{ fontWeight: "600", fontSize: 15.5 }} numberOfLines={1}>{a.name}</T>
-                  <T style={s.hint}>{a.iata_code} · {a.province === "mugla" ? "Muğla" : "Antalya"}</T>
+                  <T style={s.hint}>{a.iata_code} · {PROVINCE[a.province] ?? a.province}</T>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.faint} />
               </Pressable>
@@ -269,7 +269,7 @@ export default function Book() {
             <View style={{ width: "62%", gap: 6, zIndex: 1 }}>
               <Eyebrow>Getaway</Eyebrow>
               <T style={{ color: "#fff", fontSize: 18, fontWeight: "800", letterSpacing: -0.4 }}>{t("home.promoTitle")}</T>
-              <T style={{ color: "rgba(255,255,255,0.72)", fontSize: 13, lineHeight: 18 }}>{t("home.promoText")}</T>
+              <T style={{ color: onDark.muted, fontSize: 13, lineHeight: 18 }}>{t("home.promoText")}</T>
             </View>
             <Image source={require("@/assets/images/vito-side.png")} resizeMode="contain" style={{ position: "absolute", right: -46, bottom: 10, width: 210, height: 90 }} />
           </Pressable>

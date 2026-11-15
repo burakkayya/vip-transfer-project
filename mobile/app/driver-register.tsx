@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
-import { Alert, Button, Card, IconBubble, Input, P, Row, Screen, T, colors } from "@/components/ui";
+import { Alert, Button, Card, IconBubble, Input, Row, Screen, T, colors, onDark } from "@/components/ui";
 import { api } from "@/lib/api";
 import { errorTextTr } from "@/lib/i18n";
 
@@ -36,7 +36,7 @@ export default function DriverRegister() {
           <IconBubble name="id-card-outline" bg={colors.accent} color="#fff" />
           <T style={{ color: "#fff", fontSize: 20, fontWeight: "800" }}>Getaway sürücüsü olun</T>
         </Row>
-        <T style={{ color: "rgba(255,255,255,0.75)", lineHeight: 20 }}>
+        <T style={{ color: onDark.muted, lineHeight: 20 }}>
         Getaway ile çalışan sürücüler TÜRSAB onaylı, yetki belgeli bağımsız ortaklardır. Kayıttan sonra belgelerinizi
         yükleyin; onaylanınca iş almaya başlarsınız.
         </T>

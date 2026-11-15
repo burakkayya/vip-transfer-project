@@ -25,6 +25,27 @@ import {
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
+/**
+ * Koyu zemin (lake siyahı, fotoğraf) üstünde beyazın saydamlık basamakları. Ekranlarda `rgba(255,255,255,…)`
+ * yazılmaz; bu ölçek kullanılır (tokens.test.ts denetler).
+ */
+export const onDark = {
+  /** İç panel zemini. */
+  wash: "rgba(255,255,255,0.06)",
+  /** Hap, segment zemini. */
+  fill: "rgba(255,255,255,0.1)",
+  /** Ayırıcı, halka izi, tutamaç. */
+  line: "rgba(255,255,255,0.15)",
+  /** Çerçeveli düğme kenarı. */
+  border: "rgba(255,255,255,0.28)",
+  /** Üçüncül metin, rota çizgisi. */
+  faint: "rgba(255,255,255,0.55)",
+  /** İkincil metin. */
+  muted: "rgba(255,255,255,0.7)",
+  /** Fotoğraf üstü giriş metni. */
+  soft: "rgba(255,255,255,0.82)",
+} as const;
+
 /** K-38: anlamsal renkler ortak token kaynağından (kök DESIGN.md → lib/tokens.ts) gelir; burada sabit renk yazılmaz. */
 export const colors = {
   ink: palette.lacquerBlack,
@@ -150,7 +171,7 @@ export function Logo(props: { inverted?: boolean; size?: number; sub?: string })
       </View>
       <View>
         <T style={{ color: fg, fontWeight: "800", letterSpacing: 4, fontSize: 15 }}>GETAWAY</T>
-        <T style={{ color: props.inverted ? "rgba(255,255,255,0.6)" : colors.muted, letterSpacing: 4.5, fontSize: 9, marginTop: 2 }}>{props.sub ?? "TRANSFERS"}</T>
+        <T style={{ color: props.inverted ? onDark.faint : colors.muted, letterSpacing: 4.5, fontSize: 9, marginTop: 2 }}>{props.sub ?? "TRANSFERS"}</T>
       </View>
     </View>
   );
@@ -238,8 +259,8 @@ export function Button(props: {
         accessibilityLabel={props.title}
         accessibilityState={{ disabled: !!(props.disabled || props.busy), busy: !!props.busy }}
         disabled={props.disabled || props.busy}
-        onPressIn={() => (scale.value = withSpring(0.97, { damping: 20, stiffness: 400 }))}
-        onPressOut={() => (scale.value = withSpring(1, { damping: 20, stiffness: 400 }))}
+        onPressIn={() => scale.set(withSpring(0.97, { damping: 20, stiffness: 400 }))}
+        onPressOut={() => scale.set(withSpring(1, { damping: 20, stiffness: 400 }))}
         onPress={() => {
           tap();
           props.onPress();
@@ -360,7 +381,7 @@ export function CheckCard(props: { label: string; checked: boolean; onChange: (v
 /** İki-üç seçenekli bölümlü düğme. */
 export function Segmented<V extends string>(props: { value: V; options: { value: V; label: string }[]; onChange: (v: V) => void; dark?: boolean }) {
   return (
-    <View style={[s.segmented, props.dark && { backgroundColor: "rgba(255,255,255,0.1)" }]}>
+    <View style={[s.segmented, props.dark && { backgroundColor: onDark.fill }]}>
       {props.options.map((o) => {
         const on = o.value === props.value;
         return (
@@ -372,7 +393,7 @@ export function Segmented<V extends string>(props: { value: V; options: { value:
             }}
             style={[s.segment, on && { backgroundColor: props.dark ? "#fff" : colors.ink }]}
           >
-            <T style={{ fontWeight: "600", fontSize: 14, color: on ? (props.dark ? colors.ink : "#fff") : props.dark ? "rgba(255,255,255,0.7)" : colors.muted }}>{o.label}</T>
+            <T style={{ fontWeight: "600", fontSize: 14, color: on ? (props.dark ? colors.ink : "#fff") : props.dark ? onDark.muted : colors.muted }}>{o.label}</T>
           </Pressable>
         );
       })}
@@ -624,7 +645,7 @@ export const s = StyleSheet.create({
   btnAccent: { backgroundColor: colors.ink },
   btnLight: { backgroundColor: "#fff" },
   btnGhost: { backgroundColor: "transparent" },
-  btnOnDark: { backgroundColor: "transparent", borderWidth: 1, borderColor: "rgba(255,255,255,0.28)" },
+  btnOnDark: { backgroundColor: "transparent", borderWidth: 1, borderColor: onDark.border },
   btnText: { fontWeight: "700", fontSize: 16, letterSpacing: -0.2 },
   btnDisabled: { backgroundColor: palette.limestoneDeep },
   bottomBar: { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: colors.line, gap: 8 },

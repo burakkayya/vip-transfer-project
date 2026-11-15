@@ -212,6 +212,8 @@ class RatingOut(BaseModel):
     currency: str
     tip_max: MoneyStr
     tip_suggestions: list[MoneyStr]
+    # K-75: ödenen bahşiş rezervasyon toplamına eklenir (bahşiş dahil toplam).
+    total_amount: MoneyStr
     # Bahşiş ödeme sayfası (yalnızca bahşiş başlatılınca).
     iframe_url: str | None = None
 
@@ -229,6 +231,8 @@ def _rating_out(booking, leg, rating, iframe_url: str | None = None) -> RatingOu
         currency=booking.currency.value,
         tip_max=limit,
         tip_suggestions=[x for x in steps if x <= limit],
+        total_amount=booking.total_amount + (
+            rating.tip_amount if rating and rating.tip_status == ratings.TIP_PAID and rating.tip_amount else 0),
         iframe_url=iframe_url,
     )
 

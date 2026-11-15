@@ -71,6 +71,13 @@ class CheckoutRequest:
     user_ip: str
     description: str
     locale: str
+    # "tip": bahşiş ödemesi kendi dönüş sayfasına gider (rezervasyon ödeme sonucu değil).
+    purpose: str = "booking"
+
+
+def result_path(purpose: str) -> str:
+    """Ödeme sağlayıcısının iFrame içinde döndüğü web sayfası (sonuç sunucu bildirimiyle kesinleşir)."""
+    return "/booking/tip-result" if purpose == "tip" else "/booking/payment-result"
 
 
 @dataclass(frozen=True)
@@ -146,6 +153,10 @@ class PaytrProvider:
     code: PaymentProviderCode = PaymentProviderCode.PAYTR
     base_url: str = "https://www.paytr.com"
 
+    @staticmethod
+    def _return_url(url: str, purpose: str) -> str:
+        return url.replace("/booking/payment-result", result_path(purpose), 1)
+
     def create_checkout(self, req: CheckoutRequest) -> Checkout:
         payment_amount = str(int((req.amount * 100).to_integral_value()))  # kuruş/cent
         basket = base64.b64encode(
@@ -173,8 +184,8 @@ class PaytrProvider:
             "user_name": req.customer_name,
             "user_address": "-",
             "user_phone": req.customer_phone,
-            "merchant_ok_url": self.ok_url,
-            "merchant_fail_url": self.fail_url,
+            "merchant_ok_url": self._return_url(self.ok_url, req.purpose),
+            "merchant_fail_url": self._return_url(self.fail_url, req.purpose),
             "timeout_limit": str(PAYTR_TIMEOUT_LIMIT_MINUTES),
             "currency": currency,
             "test_mode": test_mode,

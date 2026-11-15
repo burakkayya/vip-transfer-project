@@ -42,7 +42,7 @@ Belge süresi dolduğunda sürücü otomatik pasif olur (zamanlanmış görev).
 | pricing_rules | id, vehicle_type_id, base_price_per_km (1.10), minimum_price (30), rounding_step (5), valid_from, valid_to, is_active |
 | round_trip_discounts | id, type (yüzde, sabit), value, valid_from, valid_to |
 | cancellation_policies | id, hours_before_pickup, refund_percent, valid_from |
-| commission_rules | id, scope (genel, bölge, araç tipi), scope_ref_id, rate (0.25), valid_from |
+| commission_rules | id, scope (genel, bölge, araç tipi), scope_ref_id, rate (0.20, K-75), valid_from |
 
 Fiyat ve komisyon geçmişi tutulur, eski rezervasyonların hangi kuralla hesaplandığı izlenir.
 

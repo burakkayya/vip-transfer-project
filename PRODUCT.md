@@ -10,17 +10,17 @@ web
 
 ## Users
 
-- **Müşteri (web sitesi):** Antalya ve Muğla'ya (AYT, GZP, DLM, BJV) gelen, çoğunlukla Avrupa ve Rusya'dan turistler. Rezervasyonu çoğunlukla telefondan, bazen uçaktan inmeden önce ya da yorgun indikten sonra yapar. İstediği: önceden belli sabit fiyat, güven, birkaç dakikada biten rezervasyon. Dilleri tr, en, de, ru; hedef on dil (K-34).
+- **Müşteri (web sitesi):** İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya'ya (IST, SAW, ESB, ADB, AYT, GZP, DLM, BJV, NAV, ASR) gelen, çoğunlukla Avrupa ve Rusya'dan turistler. Rezervasyonu çoğunlukla telefondan, bazen uçaktan inmeden önce ya da yorgun indikten sonra yapar. İstediği: önceden belli sabit fiyat, güven, birkaç dakikada biten rezervasyon. Dilleri tr, en, de, ru; hedef on dil (K-34).
 - **Admin personeli:** Operasyon, muhasebe, destek ve tam yetkili admin rolleri (K-21). Masaüstünde yoğun veriyle çalışır: eşleştirme, rezervasyon, sürücü ve belge onayı, ödeme, hakediş, KVKK talepleri. Hızlı tarama, denetlenebilirlik ve hata yapmama önceliklidir. Panel yalnızca Türkçedir.
 
 ## Product Purpose
 
-getawaytransfers.com, Antalya ve Muğla'da havalimanı, otel ve şehirlerarası özel şoförlü transfer satar (günlük araç kiralama K-29 ile kapsamda, henüz tasarlanmadı). Müşteri fiyatı rezervasyonda görür ve kartla önceden öder; sürücü belgeleri onaylanmış bağımsız ortaktır ve hakedişi komisyon düşülerek otomatik hesaplanır. Başarı: müşterinin ilk ziyarette fiyatı görüp güvenle ödemesi, operasyonun her işi zamanında ve denetlenebilir şekilde atayıp tamamlaması.
+getawaytransfers.com, İstanbul, Ankara, İzmir, Antalya, Muğla ve Kapadokya'da havalimanı, otel ve şehirlerarası özel şoförlü transfer satar (günlük araç kiralama K-29 ile kapsamda, henüz tasarlanmadı). Müşteri fiyatı rezervasyonda görür ve kartla önceden öder; sürücü belgeleri onaylanmış bağımsız ortaktır ve hakedişi komisyon düşülerek otomatik hesaplanır. Başarı: müşterinin ilk ziyarette fiyatı görüp güvenle ödemesi, operasyonun her işi zamanında ve denetlenebilir şekilde atayıp tamamlaması.
 
 ## Positioning
 
 - **Sabit, önceden ödenen fiyat:** taksimetre yok; fiyat backend'de ilçeler arası mesafe ve araç tipiyle hesaplanır, rezervasyonda dondurulur, yolda değişmez (K-03, K-05, K-28).
-- **Yerel uzmanlık:** yalnızca Antalya ve Muğla; tüm ilçeler ve dört havalimanı, şehirlerarası transfer dahil (K-06).
+- **Yerel uzmanlık:** yedi il (İstanbul, Ankara, İzmir, Antalya, Muğla, Nevşehir, Kayseri); tüm ilçeler ve on havalimanı, şehirlerarası transfer dahil (K-06, K-75).
 - **Belgeli, onaylı sürücü:** TÜRSAB ve turizm taşımacılığı yetki belgeli sürücüler; belgeler kayıtta yüklenir, admin onaylar, süresi dolan sürücü pasife düşer (K-01).
 - **VIP konfor:** isimle karşılama, Vito, V-Class ve Sprinter filosu (minivan, VIP van, minibüs, VIP minibüs; K-35).
 
@@ -51,7 +51,7 @@ getawaytransfers.com, Antalya ve Muğla'da havalimanı, otel ve şehirlerarası 
 ## Evidence on Hand
 
 - Gerçek filo ve hizmet fotoğrafları: `web/public/images/*.webp`, `mobile/assets/images/*`.
-- Sitedeki mevcut iddialar gerçek özelliklere dayanır: sabit fiyat, belgeli sürücü, 48 saat ücretsiz iptal, isimle karşılama, 4 havalimanı.
+- Sitedeki mevcut iddialar gerçek özelliklere dayanır: sabit fiyat, belgeli sürücü, 48 saat ücretsiz iptal, isimle karşılama, 10 havalimanı.
 - **Doğrulanması gereken iddia:** "uçuş takibi / sürücünüz iniş saatinizi takip eder, gecikmede ek ücret yok". Uçuş takip API'si henüz seçilmedi (`docs/acik_konular.md`); bugün yalnızca uçuş numarası saklanıyor.
 - **Henüz yok:** müşteri yorumu, puan, müşteri sayısı, basın, ortak otel logoları. Sahibi gerçek kanıtı sonra verecek; o zamana kadar uydurulmaz ve yer tutucu alan bırakılmaz.
 

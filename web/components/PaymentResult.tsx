@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
-import { BOOKING_CODE_RE, PENDING_KEY, session } from "@/lib/booking";
+import { BOOKING_CODE_RE, PENDING_KEY, TIP_KEY, session } from "@/lib/booking";
 import { LoadingState } from "./States";
 
 /** Yönlendirme bu süreden uzun sürerse müşteriye çıkış yolu gösterilir (ağ yavaş veya üst pencereye geçiş engelli). */
@@ -13,8 +13,8 @@ const STALL_MS = 8000;
  * Bekleyen rezervasyon kodu; depolama kapalı veya engelliyse yok sayılır (ekran çökmez, liste açılır).
  * Adrese girmeden önce biçimi denetlenir: geçersiz değer yok sayılır.
  */
-function pendingCode(): string | null {
-  const code = session.get(PENDING_KEY);
+function pendingCode(key: string): string | null {
+  const code = session.get(key);
   return code && BOOKING_CODE_RE.test(code) ? code : null;
 }
 
@@ -23,7 +23,7 @@ function pendingCode(): string | null {
  * Sayfa iFrame'den çıkar ve kullanıcıyı ödeme ekranına geri götürür; kesin sonuç sunucu bildirimiyle gelir.
  * Yönlendirme sürerken (iFrame içinde de) "Ödeme sonucu alınıyor…" duyurulur; gecikirse rezervasyonlara bağlantı çıkar.
  */
-export default function PaymentResult(props: { status: "ok" | "fail" }) {
+export default function PaymentResult(props: { status: "ok" | "fail"; kind?: "booking" | "tip" }) {
   const t = useTranslations("pay");
   const tn = useTranslations("nav");
   const router = useRouter();
@@ -38,10 +38,14 @@ export default function PaymentResult(props: { status: "ok" | "fail" }) {
       }
       return () => clearTimeout(timer);
     }
-    const code = pendingCode();
-    router.replace(code ? `/bookings/${code}/pay?result=${props.status}` : "/bookings");
+    // Bahşiş rezervasyon ekranındaki puan bölümüne döner; rezervasyon ödemesi ödeme ekranına.
+    const tip = props.kind === "tip";
+    const code = pendingCode(tip ? TIP_KEY : PENDING_KEY);
+    if (tip) session.remove(TIP_KEY);
+    router.replace(!code ? "/bookings" : tip ? `/bookings/${code}?tip=${props.status}#rate-title`
+      : `/bookings/${code}/pay?result=${props.status}`);
     return () => clearTimeout(timer);
-  }, [props.status, router]);
+  }, [props.status, props.kind, router]);
   return (
     <div className="result">
       <LoadingState label={t("resultLoading")} />

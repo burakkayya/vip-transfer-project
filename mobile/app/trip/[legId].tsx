@@ -101,8 +101,15 @@ function TripDetail({ legId }: { legId: string }) {
   }, [legId]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let live = true;
+    api<Trip>(apiPath`driver/trips/${legId}`).then(
+      (t) => live && setTrip(t),
+      (e) => live && setError(errorTextTr(e)),
+    );
+    return () => {
+      live = false;
+    };
+  }, [legId]);
 
   const status = trip?.status ?? "";
   const open = OPEN.includes(status);
