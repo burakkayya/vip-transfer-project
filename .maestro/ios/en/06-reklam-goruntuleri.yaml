@@ -48,7 +48,7 @@ appId: com.getawaytransfers.app
 - tapOn: ".*My bookings.*"
 - tapOn: ".*(On the way|Driver assigned|Driver on the way).*"
 - extendedWaitUntil:
-    visible: ".*(on the way|On the way).*"
+    visible: ".*(on the way|On the way|Driver assigned).*"
     timeout: 30000
 - swipe:
     start: "50%,8%"

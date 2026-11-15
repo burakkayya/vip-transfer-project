@@ -45,10 +45,20 @@ appId: com.getawaytransfers.driver
     element: ".*Karşılama tabelası.*"
     direction: DOWN
     centerElement: true
+# Kaydırma ivmesi bitmeden dokunulursa dokunuş boşa gider (yavaş Mac makinesi).
+- waitForAnimationToEnd:
+    timeout: 5000
 - tapOn: ".*Karşılama tabelası.*"
+- runFlow:
+    when:
+      notVisible: ".*Kapatmak için dokunun.*"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - tapOn: ".*Karşılama tabelası.*"
 - extendedWaitUntil:
     visible: ".*Kapatmak için dokunun.*"
-    timeout: 10000
+    timeout: 20000
 - takeScreenshot: s07-karsilama-tabelasi
 - tapOn: ".*Kapatmak için dokunun.*"
 - tapOn: "Yola çıktım"
