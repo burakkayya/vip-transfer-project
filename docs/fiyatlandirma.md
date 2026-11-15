@@ -6,8 +6,12 @@
 ham_fiyat = mesafe_km x 1,10 x araç_tipi_çarpanı
 ham_fiyat = max(ham_fiyat, 30)          # minimum 30 €
 indirimli = ham_fiyat - gidiş_dönüş_indirimi (varsa)
+indirimli = max(indirimli, 30 x bacak_sayısı)   # K-76: kısa yolculuk reddedilmez, 30 €'ya yükseltilir
 fiyat = 5'in katına yukarı yuvarlama(indirimli)
 ```
+
+Kısa yolculuk (K-76): VIP transferde kısa mesafe km'den fiyatlanmaz. 30 €'nun altında kalan her yolculuk 30 €
+olur ve rezervasyon kabul edilir; gidiş-dönüşte indirim bacak başına 30 € tabanının altına inemez.
 
 Örnek: 167,30 → 170 €. Minimum fiyat 30 € olduğu için yuvarlama ile çakışmaz.
 

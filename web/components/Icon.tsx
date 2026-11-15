@@ -29,6 +29,9 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
+// Yön bildiren ikonlar sağdan sola dilde aynalanır (globals.css `.icon-dir`).
+const DIRECTIONAL: ReadonlySet<IconName> = new Set(["arrow"]);
+
 export default function Icon(props: { name: IconName; size?: number; className?: string; label?: string }) {
   const size = props.size ?? 20;
   return (
@@ -41,7 +44,7 @@ export default function Icon(props: { name: IconName; size?: number; className?:
       strokeWidth={1.7}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={props.className}
+      className={DIRECTIONAL.has(props.name) ? `icon-dir ${props.className ?? ""}`.trim() : props.className}
       aria-hidden={props.label ? undefined : true}
       role={props.label ? "img" : undefined}
       aria-label={props.label}

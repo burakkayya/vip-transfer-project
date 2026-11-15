@@ -3,7 +3,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Image, Pressable, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { Alert, Badge, Button, Hero, RouteStops, Row, Screen, Segmented, Skeleton, T, colors, s, shadow, statusTone, tap } from "@/components/ui";
+import { Alert, Badge, Button, Hero, RouteStops, Row, Screen, Segmented, Skeleton, T, colors, rtlFlip, s, shadow, statusTone, tap } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dateTime, money } from "@/lib/format";
 import { LOCALE, errorText, statusLabel, t } from "@/lib/i18n";
@@ -78,7 +78,7 @@ export default function Bookings() {
                 </Row>
                 <Row gap={6} style={{ flexWrap: "nowrap" }}>
                   <T style={{ fontWeight: "800", fontSize: 17, letterSpacing: -0.3 }}>{money(b.total_amount, b.currency, LOCALE)}</T>
-                  <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.faint} style={rtlFlip("chevron-forward")} />
                 </Row>
               </Row>
               {b.status === "odeme_bekliyor" ? (

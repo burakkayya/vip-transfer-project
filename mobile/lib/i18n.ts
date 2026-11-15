@@ -1,7 +1,16 @@
-// Müşteri uygulaması metinleri (MVP dört dil). Sürücü uygulaması Türkçedir.
+// Müşteri uygulaması metinleri (K-77: on iki dil). Sürücü uygulaması Türkçedir.
 import { getLocales } from "expo-localization";
+import { I18nManager } from "react-native";
 import { ApiError } from "./api";
 import { VARIANT } from "./config";
+import ar from "./locales/ar";
+import es from "./locales/es";
+import fr from "./locales/fr";
+import it from "./locales/it";
+import ja from "./locales/ja";
+import ko from "./locales/ko";
+import pt from "./locales/pt";
+import zh from "./locales/zh";
 
 const tr = {
   "addr.placeholder": "Otel, adres veya havalimanı",
@@ -234,7 +243,7 @@ const tr = {
 };
 
 export type Key = keyof typeof tr;
-type Dict = Record<Key, string>;
+export type Dict = Record<Key, string>;
 
 const en: Dict = {
   "addr.placeholder": "Hotel, address or airport",
@@ -928,12 +937,52 @@ const ru: Dict = {
   "tabs.home": "Главная",
 };
 
-const DICTS: Record<string, Dict> = { tr, en, de, ru };
+const DICTS: Record<string, Dict> = { tr, en, de, es, ru, fr, ar, zh, ja, it, pt, ko };
+
+// Ülke → dil (web'deki i18n/locales.ts ile aynı eşleme). Listede olmayan ülke İngilizce açılır.
+const COUNTRY_GROUPS: Record<string, string[]> = {
+  tr: ["TR"],
+  de: ["DE", "AT", "CH", "LI"],
+  es: ["ES", "MX", "AR", "CO", "CL", "PE", "VE", "EC", "GT", "CU", "BO", "DO", "HN", "PY", "SV", "NI", "CR", "PA", "UY", "PR", "GQ"],
+  ru: ["RU", "BY", "KZ", "KG"],
+  fr: ["FR", "BE", "LU", "MC", "SN", "CI", "ML", "BF", "NE", "TG", "BJ", "GN", "CD", "CG", "GA", "MG", "HT", "TD", "CF", "DJ", "KM", "NC", "PF", "RE", "GP", "MQ", "GF", "YT", "PM", "WF", "BL", "MF"],
+  ar: ["SA", "AE", "QA", "KW", "BH", "OM", "YE", "IQ", "JO", "LB", "SY", "PS", "EG", "LY", "TN", "DZ", "MA", "SD", "MR"],
+  zh: ["CN", "HK", "MO", "TW"],
+  ja: ["JP"],
+  it: ["IT", "SM", "VA"],
+  pt: ["PT", "BR", "AO", "MZ", "CV", "GW", "ST", "TL"],
+  ko: ["KR"],
+};
+export const COUNTRY_LOCALE: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(COUNTRY_GROUPS).flatMap(([l, cs]) => cs.map((c) => [c, l])),
+);
+
+/**
+ * K-77: uygulama dili. Telefonun dili destekleniyorsa o dil (kullanıcının telefonda bilerek seçtiği dil, iOS ve
+ * Android'de uygulamaya özel dil ayarı da buraya yansır); değilse cihaz bölgesinin (ülkenin) dili; o da
+ * desteklenmiyorsa İngilizce.
+ */
+export function pickLocale(languageCode: string | null | undefined, regionCode: string | null | undefined): string {
+  const lang = languageCode?.toLowerCase();
+  if (lang && lang in DICTS) return lang;
+  // Türkiye'de Türkçe olmayan desteklenmeyen telefon dili turisttir: İngilizce (web ile aynı kural).
+  if (lang && regionCode?.toUpperCase() === "TR") return "en";
+  const byRegion = regionCode ? COUNTRY_LOCALE[regionCode.toUpperCase()] : undefined;
+  return byRegion ?? "en";
+}
+
 export const LOCALE = (() => {
   if (VARIANT === "driver") return "tr";
-  const code = getLocales()[0]?.languageCode ?? "en";
-  return code in DICTS ? code : "en";
+  const l = getLocales()[0];
+  return pickLocale(l?.languageCode, l?.regionCode);
 })();
+
+/** Sağdan sola dil (Arapça). Telefonun dili Arapçaysa düzen ilk açılışta, değilse bir sonraki açılışta çevrilir. */
+export const IS_RTL = LOCALE === "ar";
+if (I18nManager.isRTL !== IS_RTL) {
+  I18nManager.allowRTL(IS_RTL);
+  I18nManager.forceRTL(IS_RTL);
+}
 const dict = DICTS[LOCALE];
 
 export function t(key: Key, vars: Record<string, string | number> = {}): string {

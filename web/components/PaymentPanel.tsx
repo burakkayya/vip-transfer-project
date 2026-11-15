@@ -272,7 +272,7 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
               <dt>{roundTrip ? t(leg.leg_order === 1 ? "outbound" : "inbound") : t("route")}</dt>
               <dd>
                 <span className="pay-route">
-                  {regionLabel(leg.pickup_region)} → {regionLabel(leg.dropoff_region)}
+                  <span dir="ltr">{regionLabel(leg.pickup_region)} → {regionLabel(leg.dropoff_region)}</span>
                 </span>
                 <span className="pay-when">{dateTime(leg.pickup_at, locale)}</span>
               </dd>

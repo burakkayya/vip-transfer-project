@@ -20,13 +20,23 @@ interface Guide {
 }
 interface Region { id: number; name: string; type: string; iata_code: string | null; is_active: boolean }
 
-/** Sitenin dilleri. Diğer dillerdeki metinler (backend on dil kabul eder) kaydederken korunur. */
+/** K-77: sitenin on iki dili. Türkçe ve İngilizce her zaman açık; yolcu kendi dilinde metin yoksa İngilizceyi görür. */
 const LANGS = [
   { code: "tr", label: "Türkçe" },
-  { code: "en", label: "English" },
-  { code: "de", label: "Deutsch" },
-  { code: "ru", label: "Русский" },
+  { code: "en", label: "İngilizce" },
+  { code: "de", label: "Almanca" },
+  { code: "es", label: "İspanyolca" },
+  { code: "ru", label: "Rusça" },
+  { code: "fr", label: "Fransızca" },
+  { code: "ar", label: "Arapça" },
+  { code: "zh", label: "Çince (basitleştirilmiş)" },
+  { code: "ja", label: "Japonca" },
+  { code: "it", label: "İtalyanca" },
+  { code: "pt", label: "Portekizce" },
+  { code: "ko", label: "Korece" },
 ];
+const CORE = LANGS.slice(0, 2);
+const MORE = LANGS.slice(2);
 const MAX_STEPS = 8;
 const MAX_TEXT = 400;
 
@@ -202,13 +212,29 @@ export default function MeetingGuidesPage() {
                   </div>
                 </div>
                 <div className="guide-step-body">
-                  <div className="grid guide-texts">
-                    {LANGS.map((l) => (
-                      <Field key={l.code} label={l.label}>
-                        <textarea rows={2} maxLength={MAX_TEXT} lang={l.code} value={s.texts[l.code] ?? ""}
-                          onChange={(e) => patchStep(i, { texts: { ...s.texts, [l.code]: e.target.value } })} />
-                      </Field>
-                    ))}
+                  <div className="guide-text-col">
+                    <div className="grid guide-texts">
+                      {CORE.map((l) => (
+                        <Field key={l.code} label={l.label}>
+                          <textarea rows={2} maxLength={MAX_TEXT} lang={l.code} value={s.texts[l.code] ?? ""}
+                            onChange={(e) => patchStep(i, { texts: { ...s.texts, [l.code]: e.target.value } })} />
+                        </Field>
+                      ))}
+                    </div>
+                    <details className="guide-more">
+                      <summary>
+                        Diğer diller ({MORE.filter((l) => s.texts[l.code]?.trim()).length}/{MORE.length} dolu)
+                      </summary>
+                      <div className="grid guide-texts">
+                        {MORE.map((l) => (
+                          <Field key={l.code} label={l.label}>
+                            <textarea rows={2} maxLength={MAX_TEXT} lang={l.code} dir={l.code === "ar" ? "rtl" : undefined}
+                              value={s.texts[l.code] ?? ""}
+                              onChange={(e) => patchStep(i, { texts: { ...s.texts, [l.code]: e.target.value } })} />
+                          </Field>
+                        ))}
+                      </div>
+                    </details>
                   </div>
                   <div className="guide-photo-col">
                     {s.photo && s.from !== null && saved?.steps[s.from]?.admin_photo_path ? (
@@ -261,7 +287,9 @@ export default function MeetingGuidesPage() {
           {
             key: "langs", title: "Eksik dil", render: (g) => {
               const gaps = LANGS.filter((l) => g.steps.some((s) => !s.texts[l.code]?.trim())).map((l) => l.code.toUpperCase());
-              return gaps.length ? gaps.join(", ") : <span className="muted">Yok</span>;
+              if (!gaps.length) return <span className="muted">Yok</span>;
+              const shown = gaps.slice(0, 4).join(", ");
+              return gaps.length > 4 ? <span title={gaps.join(", ")}>{shown} +{gaps.length - 4}</span> : shown;
             },
           },
           { key: "active", title: "Durum", render: (g) => <Badge value={g.is_active ? "aktif" : "pasif"} labels={{ aktif: "Görünür", pasif: "Gizli" }} /> },

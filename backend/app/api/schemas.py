@@ -22,7 +22,8 @@ from app.security.crypto import normalize_phone
 from app.services import route_line
 
 MoneyStr = Annotated[Decimal, PlainSerializer(lambda v: f"{v:.2f}", return_type=str)]
-SUPPORTED_LOCALES = ("tr", "en", "de", "ru", "fr", "es", "it", "zh", "ja", "ar")
+# K-77: on iki dil. Arapça sağdan sola yazılır; zh basitleştirilmiş Çincedir.
+SUPPORTED_LOCALES = ("tr", "en", "de", "es", "ru", "fr", "ar", "zh", "ja", "it", "pt", "ko")
 
 
 class ORM(BaseModel):

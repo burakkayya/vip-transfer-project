@@ -334,7 +334,19 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 3. Ödeme ve tamamlama sonrası admin Finans > Hakedişler'de komisyon tutarın %20'sidir (60 € işte 12 € komisyon, 48 € sürücü). Eski rezervasyonlar kendi oranıyla (%25) kalır.
 4. Yolculuk bitince puan kartında bahşiş seçilir (ör. 10 €), sahte ödeme sayfasında **Ödemeyi onayla**: sayfa "Sürücünüze bahşiş" başlıklı dönüş ekranından rezervasyon detayının puan bölümüne döner, "10 € bahşiş toplamınıza eklendi … Yeni toplam: …" yazar. Sürücüye "Bahşiş: 8,00 EUR … Komisyon düşülerek Kazanç'a eklendi" bildirimi gider; hakedişte bahşiş satırı 10 € brüt, 2 € komisyon, 8 € net.
 5. Bahşiş sayfasında **Reddet** seçilirse puan bölümünde "Bahşiş ödemesi tamamlanmadı…" uyarısı ve yeniden **Bahşişi öde** düğmesi çıkar.
-6. Admin (operasyon) **Katalog → Buluşma rehberi**: listede her havalimanı (yeni altı dahil) için rehber, adım sayısı, fotoğraf sayısı ve eksik diller görünür. **Düzenle** ile adım metni (tr, en, de, ru) değiştirilir, adım taşınır/silinir, **Kaydet**. Kayıtlı adımda **Fotoğraf ekle** ile JPEG/PNG/WebP yüklenir, önizleme çıkar; **Fotoğrafı kaldır** + Kaydet fotoğrafı siler. **Gizle** rehberi müşteriden gizler (önizleme admin'de görünmeye devam eder).
+6. Admin (operasyon) **Katalog → Buluşma rehberi**: listede her havalimanı (yeni altı dahil) için rehber, adım sayısı, fotoğraf sayısı ve eksik diller görünür. **Düzenle** ile adım metni değiştirilir (Türkçe ve İngilizce açık, diğer on dil "Diğer diller" altında, K-77), adım taşınır/silinir, **Kaydet**. Kayıtlı adımda **Fotoğraf ekle** ile JPEG/PNG/WebP yüklenir, önizleme çıkar; **Fotoğrafı kaldır** + Kaydet fotoğrafı siler. **Gizle** rehberi müşteriden gizler (önizleme admin'de görünmeye devam eder).
+
+## Kısa yolculuk ve on iki dil (K-76, K-77)
+
+1. Rezervasyonda "Taksim" → "Sultanahmet" (birkaç km), ülke Almanya: her araçta en az **30 €** görünür, rezervasyon devam eder (hata yok). Gidiş-dönüş seçilince toplam **60 €** olur (indirim 30 € tabanının altına indirmez). Türkiye seçilince 30 €'nun TL karşılığı görünür.
+2. Ana sayfada SSS "Fiyat nasıl hesaplanır?" cevabında kısa yolculuklarda en düşük ücretin 30 € olduğu yazar (12 dilde).
+3. Üst bardaki dil seçicide 12 dil kendi adıyla listelenir (Türkçe, English, Deutsch, Español, Русский, Français, العربية, 简体中文, 日本語, Italiano, Português, 한국어); seçilen dilde sayfa yenilenir ve seçim hatırlanır.
+4. **العربية** seçilince sayfa sağdan sola akar: logo sağda, menü solda, metinler sağa yaslı, düğmelerdeki oklar sola bakar, Latin harfli rota adları ("Antalya Havalimanı → Kemer") soldan sağa okunur; fiyat ve saatler Batı rakamıyla yazılır; telefon alanı soldan sağa kalır. Yatay kaydırma çıkmaz (telefon genişliğinde de).
+5. **日本語 / 简体中文 / 한국어** seçilince metinler sistem yazı tipiyle düzgün görünür, başlıklarda harfler üst üste binmez.
+6. Ülkeye göre açılış (canlıda CDN başlığıyla; yerelde başlık elle verilerek denenir): `curl -sI -H "x-country-code: SA" http://localhost:3000/` → `location: /ar`; `DE` → `/de`, `BR` → `/pt`, `NL` → `/en` (desteklenmeyen dil). Türkiye'den Almanca tarayıcıyla (`x-country-code: TR`, `accept-language: de`) → `/de`, Felemenkçe tarayıcıyla → `/en`. Dil seçiciyle seçim yapılmışsa (`NEXT_LOCALE` çerezi) ülke dikkate alınmaz.
+7. Yasal sayfalarda Türkçe dışındaki dillerde "Türkçe sürüm bağlayıcıdır" notu görünür.
+8. Mobil müşteri uygulaması telefonun dilinde açılır (12 dil); telefon dili desteklenmiyorsa (ör. Felemenkçe, bölge Belçika) Fransızca, bölge de desteklenmiyorsa İngilizce. Telefon dili Arapçayken uygulama sağdan sola açılır, geri okları sağa bakar. Sürücü uygulaması her zaman Türkçedir; sürücü profilinde 12 dil seçilebilir.
+9. Admin **Yeni rezervasyon**ta müşteri dili listesinde 12 dil vardır; seçilen dilde SMS ve WhatsApp paylaşım metni üretilir (ör. İspanyolca "Hola …, se ha creado su reserva").
 
 ## Popüler yerler ve API kullanımı (K-61)
 

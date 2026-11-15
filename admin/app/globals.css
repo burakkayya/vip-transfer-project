@@ -763,6 +763,22 @@ fieldset.place legend {
   resize: vertical;
 }
 
+.guide-text-col {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guide-more > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.guide-more[open] > summary {
+  margin-bottom: 8px;
+}
+
 .guide-photo-col {
   display: flex;
   flex-direction: column;

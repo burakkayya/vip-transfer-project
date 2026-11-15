@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Alert, Button, Logo, Picker, T, colors, onDark, fonts, s, shadow, useScreenHeight } from "@/components/ui";
+import { Alert, Button, Logo, Picker, T, colors, onDark, fonts, rtlFlip, s, shadow, useScreenHeight } from "@/components/ui";
 import { api } from "@/lib/api";
 import { VARIANT } from "@/lib/config";
 import { countries, defaultCountry } from "@/lib/countries";
@@ -192,7 +192,7 @@ export default function Login() {
           ) : (
             <Animated.View key="code" entering={FadeInUp.duration(450)} style={{ gap: 18 }}>
               <Pressable onPress={() => { setPhone(null); setCode(""); setDevCode(null); setError(null); }} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Ionicons name="arrow-back" size={18} color={colors.ink} />
+                <Ionicons name="arrow-back" size={18} color={colors.ink} style={rtlFlip("arrow-back")} />
                 <T style={{ fontWeight: "600" }}>{t("login.changePhone")}</T>
               </Pressable>
               <View style={{ gap: 4 }}>

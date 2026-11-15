@@ -34,7 +34,7 @@
     "fleetTitle": "Unsere Fahrzeuge",
     "faqTitle": "Häufige Fragen",
     "faq1q": "Wie wird der Preis berechnet?",
-    "faq1a": "Nach der Straßenentfernung zwischen den Orten Ihrer Abhol- und Zieladresse und dem Fahrzeugtyp. Der Preis steht bei der Buchung fest.",
+    "faq1a": "Nach der Straßenentfernung zwischen den Orten Ihrer Abhol- und Zieladresse und dem Fahrzeugtyp. Der Preis steht bei der Buchung fest. Für kurze Strecken gilt ein Mindestpreis von 30 € (oder der Gegenwert in Lira).",
     "faq2q": "Was, wenn mein Flug Verspätung hat?",
     "faq2a": "Geben Sie Ihre Flugnummer an. Ihr Fahrer verfolgt die Landezeit und wartet ohne Aufpreis.",
     "faq3q": "Wie bezahle ich?",
@@ -404,6 +404,7 @@
   },
   "legal": {
     "draft": "Dieser Text ist ein Entwurf und wird noch rechtlich geprüft.",
+    "translationNotice": "Dies ist eine noch nicht geprüfte Übersetzung. Maßgeblich ist die türkische Fassung.",
     "updated": "Version {version}",
     "cancellation": {
       "title": "Storno- und Erstattungsbedingungen",

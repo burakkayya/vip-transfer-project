@@ -234,6 +234,38 @@ TEMPLATES = [
     ("booking_created_admin", "ru", NotificationChannel.SMS,
      "Vashe bronirovanie Getaway Transfers sozdano. Kod: {booking_code}, {pickup_at} {pickup} > {dropoff}, "
      "{total} {currency}. Oplata: {pay_url}"),
+    ("booking_confirmed", "es", NotificationChannel.SMS,
+     'Su reserva esta confirmada. Codigo: {booking_code}, {pickup_at} {pickup} > {dropoff}. getawaytransfers.com'),
+    ("booking_confirmed", "fr", NotificationChannel.SMS,
+     'Votre reservation est confirmee. Code : {booking_code}, {pickup_at} {pickup} > {dropoff}. getawaytransfers.com'),
+    ("booking_confirmed", "it", NotificationChannel.SMS,
+     'La sua prenotazione e confermata. Codice: {booking_code}, {pickup_at} {pickup} > {dropoff}. getawaytransfers.com'),
+    ("booking_confirmed", "pt", NotificationChannel.SMS,
+     'Sua reserva esta confirmada. Codigo: {booking_code}, {pickup_at} {pickup} > {dropoff}. getawaytransfers.com'),
+    ("booking_confirmed", "ar", NotificationChannel.SMS,
+     'تم تأكيد حجزك. الرمز: {booking_code}، {pickup_at} {pickup} > {dropoff}. getawaytransfers.com'),
+    ("booking_confirmed", "zh", NotificationChannel.SMS,
+     '您的预订已确认。预订码：{booking_code}，{pickup_at} {pickup} > {dropoff}。getawaytransfers.com'),
+    ("booking_confirmed", "ja", NotificationChannel.SMS,
+     'ご予約が確定しました。コード：{booking_code}、{pickup_at} {pickup} > {dropoff}。getawaytransfers.com'),
+    ("booking_confirmed", "ko", NotificationChannel.SMS,
+     '예약이 확정되었습니다. 코드: {booking_code}, {pickup_at} {pickup} > {dropoff}. getawaytransfers.com'),
+    ("booking_created_admin", "es", NotificationChannel.SMS,
+     'Se ha creado su reserva de Getaway Transfers. Codigo: {booking_code}, {pickup_at} {pickup} > {dropoff}, {total} {currency}. Pago: {pay_url}'),
+    ("booking_created_admin", "fr", NotificationChannel.SMS,
+     'Votre reservation Getaway Transfers est creee. Code : {booking_code}, {pickup_at} {pickup} > {dropoff}, {total} {currency}. Paiement : {pay_url}'),
+    ("booking_created_admin", "it", NotificationChannel.SMS,
+     'La sua prenotazione Getaway Transfers e stata creata. Codice: {booking_code}, {pickup_at} {pickup} > {dropoff}, {total} {currency}. Pagamento: {pay_url}'),
+    ("booking_created_admin", "pt", NotificationChannel.SMS,
+     'Sua reserva Getaway Transfers foi criada. Codigo: {booking_code}, {pickup_at} {pickup} > {dropoff}, {total} {currency}. Pagamento: {pay_url}'),
+    ("booking_created_admin", "ar", NotificationChannel.SMS,
+     'تم إنشاء حجزك لدى Getaway Transfers. الرمز: {booking_code}، {pickup_at} {pickup} > {dropoff}، {total} {currency}. الدفع: {pay_url}'),
+    ("booking_created_admin", "zh", NotificationChannel.SMS,
+     '您的 Getaway Transfers 预订已创建。预订码：{booking_code}，{pickup_at} {pickup} > {dropoff}，{total} {currency}。付款：{pay_url}'),
+    ("booking_created_admin", "ja", NotificationChannel.SMS,
+     'Getaway Transfers のご予約を作成しました。コード：{booking_code}、{pickup_at} {pickup} > {dropoff}、{total} {currency}。お支払い：{pay_url}'),
+    ("booking_created_admin", "ko", NotificationChannel.SMS,
+     'Getaway Transfers 예약이 생성되었습니다. 코드: {booking_code}, {pickup_at} {pickup} > {dropoff}, {total} {currency}. 결제: {pay_url}'),
     ("dispatch_offer", "tr", NotificationChannel.PUSH, "Yeni iş: {pickup} > {dropoff}"),
 ]
 
@@ -242,19 +274,51 @@ GUIDE_STEPS = [
     {"tr": "Pasaport kontrolünden sonra bagajınızı alın. Uygulamada \"İndim\" ve \"Bagajdayım\"a dokunun; sürücünüz görür.",
      "en": "After passport control, collect your luggage. Tap \"Landed\" and \"At baggage\" in the app; your driver sees it.",
      "de": "Holen Sie nach der Passkontrolle Ihr Gepäck. Tippen Sie in der App auf \"Gelandet\" und \"Am Gepäckband\"; Ihr Fahrer sieht es.",
-     "ru": "После паспортного контроля получите багаж. Нажмите в приложении \"Приземлился\" и \"У багажа\" — водитель увидит."},
+     "ru": "После паспортного контроля получите багаж. Нажмите в приложении \"Приземлился\" и \"У багажа\" — водитель увидит.",
+     "es": "Tras el control de pasaportes, recoja su equipaje. Toque \"He aterrizado\" y \"En el equipaje\" en la app; su conductor lo verá.",
+     "fr": "Après le contrôle des passeports, récupérez vos bagages. Touchez \"J'ai atterri\" puis \"Aux bagages\" dans l'application ; votre chauffeur le verra.",
+     "it": "Dopo il controllo passaporti, ritiri i bagagli. Tocchi \"Atterrato\" e \"Ai bagagli\" nell'app; il suo autista lo vedrà.",
+     "pt": "Depois do controle de passaportes, pegue sua bagagem. Toque em \"Pousei\" e \"Na bagagem\" no app; seu motorista verá.",
+     "ar": "بعد ختم الجوازات، استلم أمتعتك. اضغط \"هبطت\" ثم \"عند الأمتعة\" في التطبيق؛ سيرى السائق ذلك.",
+     "zh": "通过护照检查后提取行李。在应用中点按“已落地”和“在取行李”，司机即可看到。",
+     "ja": "入国審査の後、手荷物を受け取ってください。アプリで「着陸しました」「手荷物受取中」をタップすると、ドライバーに伝わります。",
+     "ko": "입국 심사 후 수하물을 찾으세요. 앱에서 \"착륙했어요\"와 \"수하물 찾는 중\"을 누르면 기사님이 확인합니다."},
     {"tr": "Gümrükten geçip çıkış kapısından karşılama salonuna çıkın. Çıkarken \"Çıkıyorum\"a dokunun.",
      "en": "Pass customs and walk through the exit doors to the arrivals hall. Tap \"Heading out\" as you leave.",
      "de": "Gehen Sie durch den Zoll und die Ausgangstür in die Ankunftshalle. Tippen Sie dabei auf \"Ich komme raus\".",
-     "ru": "Пройдите таможню и выйдите в зал прилёта. Выходя, нажмите \"Выхожу\"."},
+     "ru": "Пройдите таможню и выйдите в зал прилёта. Выходя, нажмите \"Выхожу\".",
+     "es": "Pase la aduana y salga por las puertas al vestíbulo de llegadas. Toque \"Estoy saliendo\" al salir.",
+     "fr": "Passez la douane et franchissez les portes de sortie vers le hall des arrivées. Touchez \"Je sors\" en sortant.",
+     "it": "Passi la dogana ed esca dalle porte verso la sala arrivi. Tocchi \"Sto uscendo\" mentre esce.",
+     "pt": "Passe pela alfândega e saia pelas portas para o saguão de desembarque. Toque em \"Estou saindo\" ao sair.",
+     "ar": "اعبر الجمارك واخرج من البوابات إلى صالة الوصول. اضغط \"أنا خارج\" أثناء خروجك.",
+     "zh": "通过海关后从出口门进入到达大厅。离开时点按“正在出来”。",
+     "ja": "税関を通過し、出口ドアから到着ロビーへお進みください。出るときに「今出ます」をタップしてください。",
+     "ko": "세관을 통과해 출구 문을 지나 입국장으로 나오세요. 나올 때 \"나가는 중\"을 누르세요."},
     {"tr": "Sürücünüz karşılama alanında adınızın yazılı olduğu tabelayla bekler. Fotoğrafı ve plakası uygulamada.",
      "en": "Your driver waits in the arrivals area holding a sign with your name. Their photo and plate are in the app.",
      "de": "Ihr Fahrer wartet im Ankunftsbereich mit einem Schild mit Ihrem Namen. Foto und Kennzeichen finden Sie in der App.",
-     "ru": "Водитель ждёт в зоне встречи с табличкой с вашим именем. Фото и номер машины — в приложении."},
+     "ru": "Водитель ждёт в зоне встречи с табличкой с вашим именем. Фото и номер машины — в приложении.",
+     "es": "Su conductor le espera en la zona de llegadas con un cartel con su nombre. Su foto y matrícula están en la app.",
+     "fr": "Votre chauffeur vous attend dans la zone des arrivées avec une pancarte à votre nom. Sa photo et la plaque figurent dans l'application.",
+     "it": "Il suo autista l'attende nell'area arrivi con un cartello con il suo nome. Foto e targa sono nell'app.",
+     "pt": "Seu motorista espera na área de desembarque com uma placa com seu nome. A foto e a placa do carro estão no app.",
+     "ar": "ينتظرك السائق في منطقة الوصول حاملًا لافتة باسمك. صورته ورقم اللوحة في التطبيق.",
+     "zh": "司机会在到达区举着写有您姓名的接机牌等候。司机照片和车牌号可在应用中查看。",
+     "ja": "ドライバーはお名前を書いたボードを持って到着エリアでお待ちしています。顔写真とナンバーはアプリで確認できます。",
+     "ko": "기사님이 입국장에서 고객님 이름이 적힌 피켓을 들고 기다립니다. 사진과 차량 번호는 앱에 있습니다."},
     {"tr": "Göremezseniz uygulamadan sürücünüze yazın; mesajınız onun diline çevrilir.",
      "en": "Can't spot them? Message your driver in the app; your message is translated into their language.",
      "de": "Sie sehen ihn nicht? Schreiben Sie Ihrem Fahrer in der App; Ihre Nachricht wird übersetzt.",
-     "ru": "Не видите водителя? Напишите ему в приложении — сообщение будет переведено."},
+     "ru": "Не видите водителя? Напишите ему в приложении — сообщение будет переведено.",
+     "es": "¿No lo ve? Escriba a su conductor desde la app; su mensaje se traduce a su idioma.",
+     "fr": "Vous ne le voyez pas ? Écrivez à votre chauffeur dans l'application ; votre message est traduit dans sa langue.",
+     "it": "Non lo vede? Scriva al suo autista nell'app; il messaggio viene tradotto nella sua lingua.",
+     "pt": "Não o encontrou? Escreva ao motorista pelo app; sua mensagem é traduzida para o idioma dele.",
+     "ar": "لا تراه؟ راسل السائق من التطبيق؛ تُترجم رسالتك إلى لغته.",
+     "zh": "没看到司机？在应用中给司机发消息，您的消息会被翻译成司机的语言。",
+     "ja": "見つからない場合は、アプリからドライバーにメッセージを送ってください。ドライバーの言語に翻訳されます。",
+     "ko": "기사님이 보이지 않나요? 앱에서 메시지를 보내세요. 기사님의 언어로 번역됩니다."},
 ]
 
 
@@ -307,6 +371,20 @@ def run(db: Session) -> None:
         if db.scalar(select(MeetingGuide.id).where(MeetingGuide.region_id == region.id).limit(1)) is None:
             db.add(MeetingGuide(region_id=region.id, terminal="", steps=[{"texts": t, "photo_key": None}
                                                                         for t in GUIDE_STEPS]))
+    # K-77: varsayılan metni değişmemiş adımlara yeni dillerin karşılığı eklenir; admin'in yazdığına dokunulmaz.
+    for guide in db.scalars(select(MeetingGuide)):
+        steps = [dict(st) for st in guide.steps or []]
+        changed = False
+        for i, st in enumerate(steps[: len(GUIDE_STEPS)]):
+            texts = dict(st.get("texts") or {})
+            if texts.get("tr") != GUIDE_STEPS[i]["tr"]:
+                continue
+            missing = {k: v for k, v in GUIDE_STEPS[i].items() if k not in texts}
+            if missing:
+                st["texts"] = {**texts, **missing}
+                changed = True
+        if changed:
+            guide.steps = steps
 
     have = set(db.execute(select(NotificationTemplate.code, NotificationTemplate.locale,
                                  NotificationTemplate.channel)).all())

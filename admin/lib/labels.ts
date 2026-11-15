@@ -142,4 +142,8 @@ export const BOOKING_CHANNEL: Record<string, string> = {
 };
 export const MANUAL_PAYMENT_METHOD: Record<string, string> = { havale: "Havale / EFT", nakit: "Nakit", pos: "Fiziki POS" };
 export const PAYMENT_PROVIDER: Record<string, string> = { paytr: "PayTR", iyzico: "iyzico", fake: "Test", elle: "Elle tahsilat" };
-export const LOCALE: Record<string, string> = { tr: "Türkçe", en: "İngilizce", de: "Almanca", ru: "Rusça" };
+// K-77: müşteri dili (SMS ve paylaşım metni bu dilde gider).
+export const LOCALE: Record<string, string> = {
+  tr: "Türkçe", en: "İngilizce", de: "Almanca", es: "İspanyolca", ru: "Rusça", fr: "Fransızca", ar: "Arapça",
+  zh: "Çince", ja: "Japonca", it: "İtalyanca", pt: "Portekizce", ko: "Korece",
+};

@@ -10,7 +10,7 @@ import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
 import {
   Alert, Badge, Button, Card, CheckCard, Eyebrow, H2, IconBubble, IconButton, IconName, Input, P, RouteStops, Row,
-  Segmented, Skeleton, Steps, T, Toggle, colors, onDark, s, tap,
+  Segmented, Skeleton, Steps, T, Toggle, colors, onDark, rtlFlip, s, tap,
 } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { WEB_URL } from "@/lib/config";
@@ -258,7 +258,7 @@ export default function Book() {
                   <T style={{ fontWeight: "600", fontSize: 15.5 }} numberOfLines={1}>{a.name}</T>
                   <T style={s.hint}>{a.iata_code} · {PROVINCE[a.province] ?? a.province}</T>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+                <Ionicons name="chevron-forward" size={18} color={colors.faint} style={rtlFlip("chevron-forward")} />
               </Pressable>
             </Animated.View>
           ))}

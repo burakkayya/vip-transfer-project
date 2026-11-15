@@ -1,5 +1,6 @@
 import createMiddleware from "next-intl/middleware";
-import type { NextRequest } from "next/server";
+import { NextRequest } from "next/server";
+import { countryFromHeaders, localeForCountry } from "./i18n/locales";
 import { routing } from "./i18n/routing";
 import { addRequestHeaders, buildCsp, createNonce } from "./lib/csp";
 
@@ -9,10 +10,32 @@ const intl = createMiddleware(routing);
 // kendi inline script'lerine ekler; aynı politika yanıta da yazılır.
 export default function middleware(req: NextRequest) {
   const csp = buildCsp(createNonce());
-  const res = intl(req);
+  const res = intl(withCountryLanguage(req));
+  // K-77: önekli olmayan yolda yönlendirme ülkeye ve tarayıcı diline göre değişir; ortak önbelleğe girmemeli.
+  const first = req.nextUrl.pathname.split("/")[1] ?? "";
+  if (!(routing.locales as readonly string[]).includes(first)) {
+    res.headers.set("cache-control", "private, no-store");
+    res.headers.append("vary", "Accept-Language, CF-IPCountry, X-Vercel-IP-Country, Cookie");
+  }
   addRequestHeaders(res, req, { "content-security-policy": csp });
   res.headers.set("content-security-policy", csp);
   return res;
+}
+
+/**
+ * K-77: dil önekli olmayan ilk ziyarette dil ziyaretçinin ülkesinden seçilir (ülkenin dili desteklenmiyorsa
+ * İngilizce). Açık seçim (NEXT_LOCALE çerezi, dil seçici) her zaman önce gelir. next-intl dili Accept-Language'dan
+ * okuduğu için seçilen dil bu başlığa yazılır; ülke bilinmiyorsa (yerel geliştirme) tarayıcı dili kullanılır.
+ */
+function withCountryLanguage(req: NextRequest): NextRequest {
+  if (req.cookies.has("NEXT_LOCALE")) return req;
+  const first = req.nextUrl.pathname.split("/")[1] ?? "";
+  if ((routing.locales as readonly string[]).includes(first)) return req;
+  const locale = localeForCountry(countryFromHeaders(req.headers), req.headers.get("accept-language"));
+  if (!locale) return req;
+  const headers = new Headers(req.headers);
+  headers.set("accept-language", locale);
+  return new NextRequest(req, { headers });
 }
 
 export const config = {

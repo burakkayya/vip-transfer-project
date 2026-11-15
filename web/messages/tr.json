@@ -34,7 +34,7 @@
     "fleetTitle": "Araçlarımız",
     "faqTitle": "Sık sorulan sorular",
     "faq1q": "Fiyat neye göre hesaplanıyor?",
-    "faq1a": "Alış ve bırakış adresinizin bağlı olduğu ilçeler arasındaki karayolu mesafesine ve araç tipine göre. Fiyat rezervasyonda kesinleşir, yolda değişmez.",
+    "faq1a": "Alış ve bırakış adresinizin bağlı olduğu ilçeler arasındaki karayolu mesafesine ve araç tipine göre. Fiyat rezervasyonda kesinleşir, yolda değişmez. Kısa yolculuklarda en düşük ücret 30 €’dur (veya TL karşılığı).",
     "faq2q": "Uçağım gecikirse ne olur?",
     "faq2a": "Uçuş numaranızı eklerseniz sürücünüz iniş saatinizi takip eder ve sizi bekler. Ek ücret alınmaz.",
     "faq3q": "Nasıl ödeme yapıyorum?",
@@ -404,6 +404,7 @@
   },
   "legal": {
     "draft": "Bu metin taslaktır ve hukuki onay bekliyor.",
+    "translationNotice": "Bu metnin bağlayıcı sürümü Türkçedir.",
     "updated": "Sürüm {version}",
     "cancellation": {
       "title": "İptal ve iade politikası",

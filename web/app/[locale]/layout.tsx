@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import { notFound } from "next/navigation";
 import Icon from "@/components/Icon";
 import Logo from "@/components/Logo";
 import SiteHeader from "@/components/SiteHeader";
 import { Link } from "@/i18n/navigation";
+import { dirOf } from "@/i18n/locales";
 import { routing } from "@/i18n/routing";
 import { company } from "@/lib/site";
 import "../tokens.css";
@@ -15,6 +16,9 @@ import "../home.css";
 
 // next/font yazı tipini derleme sırasında indirir ve kendi sunucumuzdan verir (ziyaretçi Google'a bağlanmaz).
 const sans = Inter({ subsets: ["latin", "latin-ext", "cyrillic"], variable: "--font-sans", display: "swap" });
+// K-77: Arapça glifler Inter'de yok; yalnızca Arapça sayfada önceden yüklenir. Çince, Japonca ve Korece sistem
+// yazı tipiyle çizilir (globals.css :lang yığınları); CJK web fontu sayfa başına megabaytlarca olurdu.
+const arabic = Noto_Sans_Arabic({ subsets: ["arabic"], variable: "--font-arabic", display: "swap", preload: false });
 
 type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
 
@@ -76,7 +80,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   const year = new Date().getFullYear();
 
   return (
-    <html lang={locale} className={sans.variable}>
+    <html lang={locale} dir={dirOf(locale)} className={`${sans.variable} ${arabic.variable}`}>
       <body>
         <NextIntlClientProvider>
           <SiteHeader
@@ -107,7 +111,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                     <h4>{f("routes")}</h4>
                     <ul>
                       {ROUTES.map((r) => (
-                        <li key={r.label}><Link href={`/book?from=${r.from}&to=${r.to}`}>{r.label}</Link></li>
+                        <li key={r.label}><Link href={`/book?from=${r.from}&to=${r.to}`}><span dir="ltr">{r.label}</span></Link></li>
                       ))}
                     </ul>
                   </div>

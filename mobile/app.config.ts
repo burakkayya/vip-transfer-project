@@ -166,7 +166,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-localization",
+      // K-77: müşteri uygulaması on iki dil; iOS ve Android 13+ ayarlarında uygulamaya özel dil seçilebilir.
+      // Arapçada düzen sağdan sola çevrilir (supportsRTL). Sürücü uygulaması yalnızca Türkçedir.
+      ["expo-localization", isDriver
+        ? { supportsRTL: false, supportedLocales: ["tr"] }
+        : { supportsRTL: true, supportedLocales: ["tr", "en", "de", "es", "ru", "fr", "ar", "zh-Hans", "ja", "it", "pt", "ko"] }] as [string, object],
       "@react-native-community/datetimepicker",
       "expo-task-manager",
       // defaultChannel: FCM bildirimi kanal belirtmeden ya da kanal henüz oluşturulmadan gelirse.

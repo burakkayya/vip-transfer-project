@@ -47,7 +47,8 @@ test("buluşma rehberi: liste, eksik dil, düzenleme ve sıralama", async ({ pag
   const row = page.getByRole("row", { name: /Antalya Havalimanı/ });
   await expect(row).toContainText("Dış Hatlar");
   await expect(row).toContainText("1/2");
-  await expect(row).toContainText("DE, RU");
+  // K-77: on iki dil; ilk dört eksik dil ve kalan sayısı gösterilir.
+  await expect(row).toContainText("DE, ES, RU, FR +6");
   // Rehberi olmayan havalimanı için kısa yol (ilçe listelenmez).
   await expect(page.getByRole("button", { name: "IST için rehber ekle" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Kemer/ })).toHaveCount(0);

@@ -21,6 +21,7 @@ import {
   View,
   ViewStyle,
   useWindowDimensions,
+  I18nManager,
 } from "react-native";
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -117,6 +118,12 @@ export function T(props: TextProps & { style?: TextStyle | (TextStyle | false | 
 }
 
 export type IconName = keyof typeof Ionicons.glyphMap;
+
+const DIRECTIONAL = /^(arrow-(forward|back)|chevron-(forward|back))/;
+/** K-77: yön bildiren ikon sağdan sola düzende aynalanır (gerçek düzen yönüne göre, I18nManager). */
+export function rtlFlip(name: string | undefined) {
+  return I18nManager.isRTL && name && DIRECTIONAL.test(name) ? { transform: [{ scaleX: -1 }] } : null;
+}
 
 export function Icon(props: { name: IconName; size?: number; color?: string }) {
   return <Ionicons name={props.name} size={props.size ?? 20} color={props.color ?? colors.ink} />;
@@ -282,9 +289,9 @@ export function Button(props: {
           <ActivityIndicator color={fg} />
         ) : (
           <View style={s.btnInner}>
-            {props.icon ? <Ionicons name={props.icon} size={props.small ? 16 : 19} color={off ? colors.faint : fg} /> : null}
+            {props.icon ? <Ionicons name={props.icon} size={props.small ? 16 : 19} color={off ? colors.faint : fg} style={rtlFlip(props.icon)} /> : null}
             <T style={[s.btnText, props.small && { fontSize: 14 }, { color: off ? colors.faint : fg }]}>{props.title}</T>
-            {props.iconRight ? <Ionicons name={props.iconRight} size={props.small ? 16 : 19} color={off ? colors.faint : fg} /> : null}
+            {props.iconRight ? <Ionicons name={props.iconRight} size={props.small ? 16 : 19} color={off ? colors.faint : fg} style={rtlFlip(props.iconRight)} /> : null}
           </View>
         )}
       </Pressable>
@@ -311,7 +318,7 @@ export function IconButton(props: { icon: IconName; onPress: () => void; label: 
         props.style,
       ]}
     >
-      <Ionicons name={props.icon} size={size * 0.46} color={props.dark ? "#fff" : colors.ink} />
+      <Ionicons name={props.icon} size={size * 0.46} color={props.dark ? "#fff" : colors.ink} style={rtlFlip(props.icon)} />
     </Pressable>
   );
 }
@@ -430,7 +437,7 @@ export function Alert(props: { text: string | null; tone?: "ok" | "danger" | "wa
       <Pressable onPress={props.onPress} style={[s.alert, { backgroundColor: bg }]}>
         <Ionicons name={icon} size={20} color={colors[tone]} />
         <T style={{ color: colors[tone], flex: 1, fontSize: 14, fontWeight: "500" }}>{props.text}</T>
-        {props.onPress ? <Ionicons name="chevron-forward" size={18} color={colors[tone]} /> : null}
+        {props.onPress ? <Ionicons name="chevron-forward" size={18} color={colors[tone]} style={rtlFlip("chevron-forward")} /> : null}
       </Pressable>
     </Animated.View>
   );
@@ -484,7 +491,7 @@ export function ListRow(props: { icon: IconName; title: string; subtitle?: strin
         <T style={[s.p, { fontWeight: "600" }, props.danger && { color: colors.danger }]}>{props.title}</T>
         {props.subtitle ? <T style={s.hint} numberOfLines={1}>{props.subtitle}</T> : null}
       </View>
-      {props.right ?? (props.onPress ? <Ionicons name="chevron-forward" size={18} color={colors.faint} /> : null)}
+      {props.right ?? (props.onPress ? <Ionicons name="chevron-forward" size={18} color={colors.faint} style={rtlFlip("chevron-forward")} /> : null)}
     </Pressable>
   );
 }
