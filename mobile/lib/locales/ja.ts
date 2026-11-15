@@ -225,6 +225,7 @@ const ja: Dict = {
   "profile.support": "サポート",
   "profile.privacy": "プライバシーとデータ",
   "login.noPassword": "パスワード不要 · コードで安全にログイン",
+  "home.searchTo": "目的地を検索",
   "login.welcome": "電話番号を入力してください",
   "login.resend": "コードを再送信",
   "login.resendIn": "{s} 秒後に再送信できます",

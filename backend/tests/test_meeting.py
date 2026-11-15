@@ -87,7 +87,7 @@ def test_passenger_status_and_meeting_guide(client, db, ops):
     leg_id = trip["leg_id"]
 
     guide = client.get(f"{API}/me/bookings/{code}/meeting-guide", headers=customer).json()
-    assert guide["airport"] == "Antalya Havalimanı" and guide["guides"]
+    assert guide["airport"] == "Antalya Havalimanı" and guide["airport_iata"] == "AYT" and guide["guides"]
     assert "Passkontrolle" in guide["guides"][0]["steps"][0]["text"]  # rezervasyon dili (de)
     assert "passport" in client.get(f"{API}/me/bookings/{code}/meeting-guide", headers=customer,
                                     params={"lang": "en"}).json()["guides"][0]["steps"][0]["text"]

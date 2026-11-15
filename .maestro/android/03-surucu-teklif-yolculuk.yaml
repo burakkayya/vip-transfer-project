@@ -25,8 +25,10 @@ appId: com.getawaytransfers.driver
 - tapOn:
     text: "İzin ver|Uygulamayı kullanırken|Her zaman izin ver|Allow|While using the app"
     optional: true
+# İş atandı ekranı. "Karşılama tabelası" düğmesi geç kalma uyarısı kartı yüzünden ekranın altında
+# kalabilir: atanma "Yola çıktım" ile beklenir, düğmeye kaydırılır.
 - extendedWaitUntil:
-    visible: ".*Karşılama tabelası.*"
+    visible: "Yola çıktım"
     timeout: 20000
 - takeScreenshot: s06-is-atandi
 - scrollUntilVisible:

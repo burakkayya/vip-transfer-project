@@ -225,6 +225,7 @@ const zh: Dict = {
   "profile.support": "帮助",
   "profile.privacy": "隐私与数据",
   "login.noPassword": "无需密码 · 验证码安全登录",
+  "home.searchTo": "搜索目的地",
   "login.welcome": "输入您的手机号码",
   "login.resend": "重新发送验证码",
   "login.resendIn": "{s} 秒后可重新发送",

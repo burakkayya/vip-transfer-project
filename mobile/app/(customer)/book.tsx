@@ -239,7 +239,7 @@ export default function Book() {
         <Pressable onPress={() => { tap(); setStep("trip"); }}
           style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.brandSoft, borderRadius: 18, paddingLeft: 18, paddingRight: 8, height: 62 }, pressed && { opacity: 0.85 }]}>
           <Ionicons name="search" size={22} color={colors.ink} />
-          <T style={{ flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink }}>{t("book.to")}?</T>
+          <T style={{ flex: 1, fontSize: 18, fontWeight: "700", color: colors.ink }}>{t("home.searchTo")}</T>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9 }}>
             <Ionicons name="time" size={16} color={colors.ink} />
             <T style={{ fontWeight: "600", fontSize: 13 }}>{t("home.later")}</T>

@@ -70,6 +70,8 @@ class GuideOut(BaseModel):
 
 class MeetingGuideOut(BaseModel):
     airport: str | None
+    # K-77: istemci havalimanı adını müşterinin dilinde yazsın diye IATA kodu.
+    airport_iata: str | None = None
     guides: list[GuideOut]
 
 
@@ -80,7 +82,7 @@ def meeting_guide(code: str, customer: CurrentCustomer, db: DbSession, lang: str
     if leg is None:
         return MeetingGuideOut(airport=None, guides=[])
     language = (lang or booking.locale).lower()[:2]
-    return MeetingGuideOut(airport=leg.pickup_region.name,
+    return MeetingGuideOut(airport=leg.pickup_region.name, airport_iata=leg.pickup_region.iata_code,
                            guides=[meeting.localized(g, language) for g in meeting.guides_for(db, leg.pickup_region_id)])
 
 

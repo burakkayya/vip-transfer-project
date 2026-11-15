@@ -225,6 +225,7 @@ const it: Dict = {
   "profile.support": "Assistenza",
   "profile.privacy": "Privacy e dati",
   "login.noPassword": "Nessuna password · Accesso sicuro con codice",
+  "home.searchTo": "Cerca destinazione",
   "login.welcome": "Inserisca il numero di telefono",
   "login.resend": "Invia di nuovo il codice",
   "login.resendIn": "Può richiederlo di nuovo tra {s} s",

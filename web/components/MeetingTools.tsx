@@ -7,7 +7,8 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { LOCALE_NAMES } from "@/i18n/locales";
+import { languageName } from "@/lib/languageNames";
+import { regionName } from "@/lib/regions";
 import { api } from "@/lib/api";
 import { TIP_KEY, isUnauthorized, session } from "@/lib/booking";
 import { money } from "@/lib/format";
@@ -16,7 +17,6 @@ import type { Booking, BookingLeg, DriverBrief, MeetingGuide, Rating, ShareLink 
 import Icon from "./Icon";
 import { useSessionExpired } from "./RequireLogin";
 
-const LANG_NAMES: Record<string, string> = LOCALE_NAMES;
 const PRE_PICKUP = new Set(["atandi", "yolda", "vardi"]);
 const PASSENGER_STEPS = ["indi", "bagajda", "cikiyor"] as const;
 
@@ -24,6 +24,7 @@ const PASSENGER_STEPS = ["indi", "bagajda", "cikiyor"] as const;
 export function DriverCard(props: { driver: DriverBrief; photoSrc: string | null }) {
   const t = useTranslations("meet");
   const tb = useTranslations("bookings");
+  const locale = useLocale();
   const [photoFailed, setPhotoFailed] = useState(false);
   const d = props.driver;
   const showPhoto = d.has_photo && props.photoSrc && !photoFailed;
@@ -46,7 +47,7 @@ export function DriverCard(props: { driver: DriverBrief; photoSrc: string | null
         </div>
         {d.languages.length > 0 && (
           <div className="muted driver-langs">
-            <Icon name="globe" size={14} /> {t("speaks", { languages: d.languages.map((x) => LANG_NAMES[x] ?? x).join(", ") })}
+            <Icon name="globe" size={14} /> {t("speaks", { languages: d.languages.map((x) => languageName(x, locale)).join(", ") })}
           </div>
         )}
       </div>
@@ -132,7 +133,7 @@ export function MeetingGuidePanel(props: { code: string; photoBase: string }) {
       </button>
       {open && (
         <div className="card stack guide-card">
-          <h3>{data?.airport ? t("guideTitle", { airport: data.airport }) : t("guideButton")}</h3>
+          <h3>{data?.airport ? t("guideTitle", { airport: regionName({ name: data.airport, iata_code: data.airport_iata ?? null }, locale) }) : t("guideButton")}</h3>
           {!data && <p className="muted">{t("loading")}</p>}
           {data && data.guides.length === 0 && <p className="muted">{t("guideEmpty")}</p>}
           {data && data.guides.length > 1 && (
