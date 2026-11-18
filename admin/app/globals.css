@@ -817,3 +817,64 @@ fieldset.place legend {
     grid-template-columns: 1fr;
   }
 }
+
+/* K-78 sürücü ve araç detayları */
+.detail-section > h2 {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-section h3 {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+}
+
+.stack.tight {
+  gap: 4px;
+}
+
+.plate {
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
+  padding: 1px 6px;
+  letter-spacing: 0.06em;
+}
+
+.older-docs > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 6px 0;
+}
+
+.vehicle-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.vehicle-photo {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.vehicle-photo-frame {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--bg, #f6f6f4);
+}
+
+.vehicle-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vehicle-photo figcaption {
+  font-size: 0.85rem;
+}

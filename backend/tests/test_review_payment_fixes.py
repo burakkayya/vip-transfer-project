@@ -60,7 +60,7 @@ def _kemer(client):
 def _expire_driver_doc(db, driver_id) -> datetime:
     """Sürücünün zorunlu belgesinin süresini doldurur; job'un çalışacağı anı döner."""
     doc = db.scalar(select(Document).where(Document.owner_id == uuid.UUID(str(driver_id)),
-                                           Document.doc_type == "src_belgesi"))
+                                           Document.doc_type == "surucu_belgesi"))
     later = _now() + timedelta(hours=1)
     doc.valid_until = local_date(later) - timedelta(days=1)
     db.commit()

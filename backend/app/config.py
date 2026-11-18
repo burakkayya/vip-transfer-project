@@ -182,10 +182,10 @@ class Settings(BaseSettings):
     # API-07: belge yükleme ucunun gövde üst sınırı (10 MB dosya + multipart payı); akış sırasında uygulanır.
     document_upload_max_body_bytes: int = 12 * 1024 * 1024
     # API-07: sürücü (ve aktif araçları) başına pencere içinde yüklenebilecek belge sayısı. Onaysız sürücü
-    # yalnızca başvuru belgelerini (sürücü + araç, ~9 tür) ve birkaç yeniden yüklemeyi yapabilir.
+    # yalnızca başvuru belgelerini (K-78: 5 sürücü + 7 araç = 12 tür) ve birkaç yeniden yüklemeyi yapabilir.
     document_quota_window_days: int = 30
-    document_quota_unapproved: int = 12
-    document_quota_approved: int = 20
+    document_quota_unapproved: int = 20
+    document_quota_approved: int = 30
     # REV-B-7: yukarıdaki kotalar reddedilen belgeleri saymaz (operasyonun reddi sürücüyü kilitlemesin);
     # reddedilen ve geri çekilenler dahil tüm yüklemeler için ayrı, geniş üst sınır (disk şişirmesine karşı).
     document_quota_including_rejected: int = 40

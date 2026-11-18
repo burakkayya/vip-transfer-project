@@ -94,16 +94,19 @@ async function send(path: string, init: RequestInit): Promise<Response> {
   }
 }
 
+async function ensureOk(res: Response): Promise<void> {
+  if (res.ok) return;
+  const data = await res.json().catch(() => null);
+  throw new ApiError(res.status, data?.error?.code ?? "unknown", data?.error?.message ?? String(res.status));
+}
+
 async function request(path: string, init: RequestInit): Promise<Response> {
   let res = await send(path, init);
   if (res.status === 401 && !path.startsWith("auth/otp")) {
     if (await refreshOnce()) res = await send(path, init);
     else await expireSession();
   }
-  if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    throw new ApiError(res.status, data?.error?.code ?? "unknown", data?.error?.message ?? String(res.status));
-  }
+  await ensureOk(res);
   return res;
 }
 
@@ -116,10 +119,68 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
-/** Çok parçalı form ile dosya yükler (belge yükleme). */
+/** Seçilen yerel dosyayı forma ekler (React Native {uri, name, type} dosya parçası). */
+export function appendFile(form: FormData, field: string, asset: { uri: string; name: string; mimeType?: string | null }) {
+  form.append(field, { uri: asset.uri, name: asset.name, type: asset.mimeType ?? mimeFromName(asset.name) } as unknown as Blob);
+}
+
+/** Bazı Android seçicileri MIME türü döndürmez; uzantıdan çıkarılır. */
+function mimeFromName(name: string): string {
+  const ext = name.toLowerCase().split(".").pop();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "png") return "image/png";
+  return ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "application/octet-stream";
+}
+
+/**
+ * Çok parçalı form XMLHttpRequest ile gönderilir: Expo'nun fetch'i React Native dosya parçasını desteklemez
+ * ("Unsupported FormDataPart implementation"), React Native'in ağ katmanı ise destekler.
+ */
+function sendForm(path: string, form: FormData): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}/api/v1/${path}`);
+    xhr.setRequestHeader("accept", "application/json");
+    if (access) xhr.setRequestHeader("authorization", `Bearer ${access}`);
+    xhr.timeout = 60_000;
+    const fail = () => reject(new ApiError(0, "network", "network"));
+    xhr.onload = () => {
+      // Durum 0 ağ hatasıdır; Response 200-599 dışını kabul etmez.
+      if (xhr.status < 200 || xhr.status > 599) return fail();
+      try {
+        resolve(new Response(xhr.responseText, { status: xhr.status }));
+      } catch {
+        fail();
+      }
+    };
+    xhr.onerror = fail;
+    xhr.ontimeout = fail;
+    xhr.send(form);
+  });
+}
+
+/** Çok parçalı form ile dosya yükler (belge yükleme). 401'de oturum bir kez yenilenip yeniden denenir. */
 export async function upload<T>(path: string, form: FormData): Promise<T> {
-  const res = await request(path, { method: "POST", body: form });
+  let res = await sendForm(path, form);
+  if (res.status === 401) {
+    if (await refreshOnce()) res = await sendForm(path, form);
+    else await expireSession();
+  }
+  await ensureOk(res);
   return (await res.json()) as T;
+}
+
+/**
+ * Yetkili uçtan görüntüyü data URI olarak döndürür. React Native Image, Android'de kaynak başlıklarını
+ * (Authorization) göndermediği için görüntü jetonla fetch edilip gösterilir; 401'de jeton yenilenir.
+ */
+export async function imageDataUri(path: string): Promise<string> {
+  const res = await request(path, { method: "GET" });
+  const type = res.headers.get("content-type") ?? "image/jpeg";
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:${type};base64,${btoa(bin)}`;
 }
 
 /** MOB-04: https tabanı her zaman wss olur (lib/urlPolicy.ts). `path` apiPath ile kurulmalıdır. */

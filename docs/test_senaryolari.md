@@ -198,11 +198,12 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 - Yönlendirme 8 saniyeden uzun sürerse (ağı yavaşlatın) "Yönlendirme beklenenden uzun sürüyor…" notu ve "Rezervasyonlarım" bağlantısı çıkar. Dört dilde (tr, en, de, ru) denenebilir.
 
 ### 7. Yeni sürücü başvurusu ve belge onayı
-1. Sürücü önizleme → çıkış → yeni bir numarayla giriş → **Sürücü kaydı** formu.
-2. **Belgeler** sekmesi: sürücü belgeleri için PDF/JPEG yükleyin, **Araç ekle** ile araç ekleyip araç belgelerini yükleyin.
-3. Admin → **Sürücüler** (Başvuru) → sürücü → belgeleri **Görüntüle**, geçerlilik tarihiyle **Onayla** → sürücüyü **Onayla**, aracı **Aktif** yapın.
-4. Sürücü ana ekranında durum **Onaylı** olur, çevrimiçi anahtarı görünür.
-5. Admin → **Belge takibi**: süresi yaklaşan belgeler burada listelenir.
+1. Sürücü önizleme → çıkış → yeni bir numarayla giriş → **Sürücü kaydı** formu: ad, WhatsApp (isteğe bağlı), çalıştığı il (zorunlu).
+2. **Belgeler** → **Sürücü detayları**: İletişim ve bölge kartında WhatsApp ve il değiştirilip **Kaydet**. Kişisel belgeler: kimlik kartı, ehliyet, adli sicil, D2, TÜRSAB. Satıra dokunun; süreli belgede önce son geçerlilik tarihi (GG.AA.YYYY) girilir, sonra **Dosya seç ve gönder** (PDF/JPEG/PNG). Satır "İnceleniyor" olur.
+3. **Araç detayları**: **Araç ekle** ile aracı ekleyin; dört fotoğraf kutusuna (dış görünüm, ön koltuklar, arka koltuklar, bagaj) JPEG/PNG yükleyin, küçük resim görünür; ruhsat, muayene (tarihli) ve sigorta (tarihli) yükleyin. PDF fotoğraf olarak reddedilir.
+4. Admin → **Sürücüler** (Başvuru) → sürücü: "Sürücü detayları" ve "Araç detayları" bölümleri. Belgeleri **Görüntüle**, **Onayla** (süreli belgede tarih dolu gelir; adli sicil, ruhsat ve fotoğraflarda tarih gerekmez) → aracı **Aktif**, sürücüyü **Onayla**.
+5. Sürücü ana ekranında durum **Onaylı** olur, çevrimiçi anahtarı görünür.
+6. Admin → **Belge takibi**: süresi yaklaşan belgeler burada listelenir.
 
 ### 8. Hakediş ve banka dosyası
 1. Senaryo 3 tamamlandıktan sonra admin → **Sürücü hakedişleri** → **Ödeme kayıtlarını oluştur**.

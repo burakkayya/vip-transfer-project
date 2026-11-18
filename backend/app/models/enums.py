@@ -69,6 +69,8 @@ class DocumentStatus(str, Enum):
 
 
 class DocumentType(str, Enum):
+    # K-78 sürücü detayları: kimlik, ehliyet, adli sicil, D2 yetki, TÜRSAB.
+    PERSONAL_ID = "kimlik"
     DRIVER_LICENSE = "surucu_belgesi"
     SRC = "src_belgesi"
     TURSAB = "tursab_belgesi"
@@ -78,6 +80,12 @@ class DocumentType(str, Enum):
     VEHICLE_INSURANCE = "arac_sigortasi"
     VEHICLE_INSPECTION = "arac_muayene"
     COMMERCIAL_PLATE = "ticari_plaka_yetki"
+    D2_PERMIT = "d2_yetki_belgesi"
+    # K-78 araç detayları: dört fotoğraf (her biri ayrı tür, ayrı incelenir).
+    VEHICLE_PHOTO_EXTERIOR = "arac_foto_dis"
+    VEHICLE_PHOTO_FRONT = "arac_foto_on_koltuk"
+    VEHICLE_PHOTO_REAR = "arac_foto_arka_koltuk"
+    VEHICLE_PHOTO_TRUNK = "arac_foto_bagaj"
 
 
 class ReviewDecision(str, Enum):

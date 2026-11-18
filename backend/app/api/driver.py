@@ -9,13 +9,16 @@ from decimal import Decimal
 from typing import Annotated
 
 import redis
+from PIL import Image
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
 from app.localtime import local_date
 from app.api.deps import ClientIp, CurrentDriver, DbSession, Now, current_driver_user
 from app.api.schemas import SUPPORTED_LOCALES, DocumentOut, MoneyStr
+from app.provinces import PROVINCE_PATTERN
+from app.security.crypto import normalize_phone
 from app.errors import Conflict, DomainError, Forbidden, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import (
     BookingLeg,
@@ -60,10 +63,40 @@ from app.services import (
 router = APIRouter(prefix="/driver", tags=["driver"])
 
 
+def _whatsapp(v: str | None) -> str | None:
+    """K-78: WhatsApp boşsa None; Türkiye içi yazımı (0532..., 532...) +90 ile tamamlanır."""
+    if not v or not v.strip():
+        return None
+    digits = "".join(ch for ch in v if ch.isdigit())
+    if not v.strip().startswith("+") and len(digits) in (10, 11) and digits.lstrip("0").startswith("5"):
+        v = "+90" + digits.lstrip("0")
+    return normalize_phone(v)
+
+
 class DriverRegisterIn(BaseModel):
     full_name: str = Field(min_length=3, max_length=120)
     tursab_or_agency_no: str | None = Field(default=None, max_length=50)
     iban: str | None = Field(default=None, pattern=r"^TR\d{24}$")
+    # K-78 sürücü detayları
+    whatsapp_phone: str | None = Field(default=None, max_length=40)
+    operating_province: str | None = Field(default=None, pattern=PROVINCE_PATTERN)
+
+    @field_validator("whatsapp_phone")
+    @classmethod
+    def _wa(cls, v: str | None) -> str | None:
+        return _whatsapp(v)
+
+
+class ContactIn(BaseModel):
+    """K-78: sürücü detayları (WhatsApp isteğe bağlı, çalıştığı il)."""
+
+    whatsapp_phone: str | None = Field(default=None, max_length=40)
+    operating_province: str | None = Field(default=None, pattern=PROVINCE_PATTERN)
+
+    @field_validator("whatsapp_phone")
+    @classmethod
+    def _wa(cls, v: str | None) -> str | None:
+        return _whatsapp(v)
 
 
 class DriverOut(BaseModel):
@@ -77,6 +110,10 @@ class DriverOut(BaseModel):
     has_photo: bool = False
     rating_avg: Decimal | None = None
     rating_count: int = 0
+    # K-78 sürücü detayları
+    phone: str | None = None
+    whatsapp_phone: str | None = None
+    operating_province: str | None = None
 
 
 def _driver_out(db, driver: Driver, today: date) -> DriverOut:
@@ -91,6 +128,9 @@ def _driver_out(db, driver: Driver, today: date) -> DriverOut:
         has_photo=bool(driver.photo_key),
         rating_avg=avg,
         rating_count=count,
+        phone=driver.user.phone,
+        whatsapp_phone=driver.whatsapp_phone,
+        operating_province=driver.operating_province,
     )
 
 
@@ -105,7 +145,8 @@ def register(
     if db.scalar(select(Driver).where(Driver.user_id == user.id)):
         raise Conflict("sürücü kaydı zaten var")
     driver = Driver(user_id=user.id, full_name=body.full_name,
-                    tursab_or_agency_no=body.tursab_or_agency_no, iban=body.iban)
+                    tursab_or_agency_no=body.tursab_or_agency_no, iban=body.iban,
+                    whatsapp_phone=body.whatsapp_phone, operating_province=body.operating_province)
     db.add(driver)
     db.flush()
     audit.record(db, actor_id=user.id, action="driver.register", entity_type="driver", entity_id=driver.id, ip=ip)
@@ -198,6 +239,22 @@ def withdraw_document(doc_id: uuid.UUID, driver: CurrentDriver, db: DbSession, i
         raise NotFound("belge bulunamadı")
     documents.withdraw(db, get_storage(), doc, actor_id=driver.user_id, ip=ip)
     db.commit()
+
+
+@router.get("/documents/{doc_id}/file")
+def own_vehicle_photo(doc_id: uuid.UUID, driver: CurrentDriver, db: DbSession):
+    """K-78: sürücünün kendi araç fotoğrafının küçük resmi (640 px JPEG). Yalnızca araç fotoğrafları; kimlik, ehliyet gibi
+    kişisel belgeler yüklendikten sonra uygulamaya geri verilmez (KVKK, gereksiz kopya yok)."""
+    doc = db.get(Document, doc_id)
+    own = (doc is not None and doc.owner_type is DocumentOwner.VEHICLE
+           and doc.owner_id in _vehicle_ids(db, driver) and doc.doc_type in documents.PHOTO_TYPES)
+    if not own:
+        raise NotFound("belge bulunamadı")
+    try:
+        data = documents.thumbnail(get_storage().get(doc.storage_key))
+    except (OSError, ValueError, Image.DecompressionBombError):
+        raise NotFound("fotoğraf okunamadı") from None
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=300"})
 
 
 class VehicleIn(BaseModel):
@@ -296,6 +353,16 @@ def update_profile(body: ProfileIn, driver: CurrentDriver, db: DbSession, now: N
     if any(x not in SUPPORTED_LOCALES for x in langs):
         raise DomainError("desteklenmeyen dil", code="invalid_language")
     driver.languages = ",".join(langs)
+    db.commit()
+    return _driver_out(db, driver, local_date(now))
+
+
+@router.put("/me/contact", response_model=DriverOut)
+def update_contact(body: ContactIn, driver: CurrentDriver, db: DbSession, now: Now, ip: ClientIp):
+    """K-78: sürücü detaylarındaki WhatsApp ve çalışılan il."""
+    driver.whatsapp_phone = body.whatsapp_phone
+    driver.operating_province = body.operating_province
+    audit.record(db, actor_id=driver.user_id, action="driver.contact", entity_type="driver", entity_id=driver.id, ip=ip)
     db.commit()
     return _driver_out(db, driver, local_date(now))
 

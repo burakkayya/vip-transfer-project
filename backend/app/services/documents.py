@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import uuid
 from datetime import date, datetime, timedelta
 
+from PIL import Image, ImageOps
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -25,7 +27,49 @@ from app.services import audit
 from app.services.dispatch import missing_documents
 
 ALLOWED_CONTENT_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+
+# K-78: süresi olan belgeler son geçerlilik tarihiyle yüklenir ve onaylanır (süre takibi ve uyarı için).
+EXPIRY_REQUIRED: frozenset[DocumentType] = frozenset({
+    DocumentType.PERSONAL_ID,
+    DocumentType.DRIVER_LICENSE,
+    DocumentType.D2_PERMIT,
+    DocumentType.TURSAB,
+    DocumentType.VEHICLE_INSPECTION,
+    DocumentType.VEHICLE_INSURANCE,
+})
+# K-78: araç fotoğrafları yalnızca görüntü olarak (PDF değil).
+PHOTO_TYPES: frozenset[DocumentType] = frozenset({
+    DocumentType.VEHICLE_PHOTO_EXTERIOR,
+    DocumentType.VEHICLE_PHOTO_FRONT,
+    DocumentType.VEHICLE_PHOTO_REAR,
+    DocumentType.VEHICLE_PHOTO_TRUNK,
+})
+DRIVER_ONLY: frozenset[DocumentType] = frozenset({
+    DocumentType.PERSONAL_ID, DocumentType.DRIVER_LICENSE, DocumentType.SRC, DocumentType.TURSAB,
+    DocumentType.CRIMINAL_RECORD, DocumentType.D2_PERMIT,
+})
+# Turizm taşımacılığı yetki belgesi eskiden araç belgesiydi (K-78 öncesi); iki sahibe de yüklenebilir.
+EITHER_OWNER: frozenset[DocumentType] = frozenset({DocumentType.TOURISM_PERMIT})
+
+
+def owner_allowed(doc_type: DocumentType, owner_type: DocumentOwner) -> bool:
+    """K-78: kişisel belge araca, araç belgesi ve fotoğrafı sürücüye yüklenmez."""
+    if doc_type in EITHER_OWNER:
+        return True
+    return (owner_type is DocumentOwner.DRIVER) == (doc_type in DRIVER_ONLY)
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
+THUMBNAIL_SIDE = 640
+
+
+def thumbnail(data: bytes) -> bytes:
+    """K-78: araç fotoğrafının küçük resmi (en uzun kenar 640 px, meta verisiz JPEG). Sürücü uygulamasına tam
+    dosya (10 MB'a kadar) gönderilmez."""
+    with Image.open(io.BytesIO(data)) as img:
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        img.thumbnail((THUMBNAIL_SIDE, THUMBNAIL_SIDE))
+        out = io.BytesIO()
+        img.save(out, format="JPEG", quality=80, optimize=True)
+    return out.getvalue()
 _MAGIC = {
     "application/pdf": (b"%PDF",),
     "image/jpeg": (b"\xff\xd8\xff",),
@@ -108,6 +152,13 @@ def upload(
 ) -> Document:
     if content_type not in ALLOWED_CONTENT_TYPES:
         raise DomainError("yalnızca PDF, JPEG veya PNG yüklenebilir", code="invalid_file_type")
+    # K-78: belge sahibi türle uyumlu olmalı (kimlik araca, ruhsat sürücüye yüklenmez).
+    if not owner_allowed(doc_type, owner_type):
+        raise DomainError("bu belge türü bu sahibe yüklenemez", code="invalid_document_owner")
+    if doc_type in PHOTO_TYPES and not content_type.startswith("image/"):
+        raise DomainError("araç fotoğrafı JPEG veya PNG olmalı", code="photo_required")
+    if doc_type in EXPIRY_REQUIRED and valid_until is None:
+        raise DomainError("bu belge için son geçerlilik tarihi gerekli", code="valid_until_required")
     if len(data) > MAX_DOCUMENT_BYTES:
         raise DomainError("dosya en fazla 10 MB olabilir", code="file_too_large")
     if not data.startswith(_MAGIC[content_type]):
@@ -167,6 +218,8 @@ def review(
         raise Conflict("belge zaten incelendi", code="already_reviewed")
     if decision is ReviewDecision.APPROVED:
         valid_until = valid_until or doc.valid_until
+        if valid_until is None and doc.doc_type in EXPIRY_REQUIRED:
+            raise DomainError("bu belge için son geçerlilik tarihi gerekli", code="valid_until_required")
         if valid_until is not None and valid_until < today:
             raise DomainError("geçerlilik tarihi geçmiş belge onaylanamaz", code="document_expired")
         doc.valid_until = valid_until

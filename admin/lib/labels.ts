@@ -53,16 +53,34 @@ export const DOCUMENT_STATUS: Record<string, string> = {
 };
 
 export const DOCUMENT_TYPE: Record<string, string> = {
-  surucu_belgesi: "Sürücü belgesi",
-  src_belgesi: "SRC belgesi",
-  tursab_belgesi: "TÜRSAB belgesi",
-  turizm_tasimacilik_yetki: "Turizm taşımacılığı yetki belgesi",
+  kimlik: "Kimlik kartı",
+  surucu_belgesi: "Ehliyet",
   adli_sicil: "Adli sicil kaydı",
+  d2_yetki_belgesi: "D2 yetki belgesi",
+  tursab_belgesi: "TÜRSAB belgesi",
+  src_belgesi: "SRC belgesi",
+  turizm_tasimacilik_yetki: "Turizm taşımacılığı yetki belgesi",
+  arac_foto_dis: "Araç fotoğrafı: dış görünüm",
+  arac_foto_on_koltuk: "Araç fotoğrafı: ön koltuklar",
+  arac_foto_arka_koltuk: "Araç fotoğrafı: arka koltuklar",
+  arac_foto_bagaj: "Araç fotoğrafı: bagaj",
   arac_ruhsati: "Araç ruhsatı",
-  arac_sigortasi: "Araç sigortası",
-  arac_muayene: "Araç muayenesi",
+  arac_muayene: "Muayene raporu",
+  arac_sigortasi: "Kasko ve zorunlu trafik sigortası",
   ticari_plaka_yetki: "Ticari plaka yetkisi",
 };
+
+/** K-78: sürücü detayları ve araç detayları (sıra ekrandaki sıradır). */
+export const DRIVER_DOCS = ["kimlik", "surucu_belgesi", "adli_sicil", "d2_yetki_belgesi", "tursab_belgesi"];
+export const VEHICLE_PHOTOS: Record<string, string> = {
+  arac_foto_dis: "Dış görünüm",
+  arac_foto_on_koltuk: "Ön koltuklar",
+  arac_foto_arka_koltuk: "Arka koltuklar",
+  arac_foto_bagaj: "Bagaj",
+};
+export const VEHICLE_DOCS = ["arac_ruhsati", "arac_muayene", "arac_sigortasi"];
+/** Son geçerlilik tarihi zorunlu belgeler (backend `documents.EXPIRY_REQUIRED`). */
+export const EXPIRY_REQUIRED = new Set(["kimlik", "surucu_belgesi", "d2_yetki_belgesi", "tursab_belgesi", "arac_muayene", "arac_sigortasi"]);
 
 export const PAYMENT_STATUS: Record<string, string> = {
   beklemede: "Beklemede",

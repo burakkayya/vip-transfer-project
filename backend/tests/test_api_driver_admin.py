@@ -14,8 +14,12 @@ from app.services import jobs
 from tests.conftest import PDF, booking_body, otp_login, pay, random_phone, staff_headers
 from tests.trip_clock import relaxed_trip_clock  # noqa: F401 - fikstür
 
-DRIVER_DOCS = ["surucu_belgesi", "src_belgesi", "adli_sicil"]
-VEHICLE_DOCS = ["arac_ruhsati", "arac_sigortasi", "arac_muayene", "turizm_tasimacilik_yetki"]
+# K-78: sürücü detayları ve araç detayları (dört fotoğraf + ruhsat, muayene, sigorta).
+DRIVER_DOCS = ["kimlik", "surucu_belgesi", "adli_sicil", "d2_yetki_belgesi", "tursab_belgesi"]
+VEHICLE_PHOTOS = ["arac_foto_dis", "arac_foto_on_koltuk", "arac_foto_arka_koltuk", "arac_foto_bagaj"]
+VEHICLE_DOCS = [*VEHICLE_PHOTOS, "arac_ruhsati", "arac_muayene", "arac_sigortasi"]
+PNG = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de"
+                    "0000000c49444154789c631011110100007c003d928027db0000000049454e44ae426082")
 NEXT_YEAR = (date.today() + timedelta(days=365)).isoformat()
 
 
@@ -23,8 +27,8 @@ def upload(client, headers, doc_type, vehicle_id=None):
     data = {"doc_type": doc_type, "valid_until": NEXT_YEAR}
     if vehicle_id:
         data["vehicle_id"] = vehicle_id
-    r = client.post("/api/v1/driver/documents", headers=headers, data=data,
-                    files={"file": ("belge.pdf", PDF, "application/pdf")})
+    file = ("foto.png", PNG, "image/png") if doc_type in VEHICLE_PHOTOS else ("belge.pdf", PDF, "application/pdf")
+    r = client.post("/api/v1/driver/documents", headers=headers, data=data, files={"file": file})
     assert r.status_code == 201, r.text
     return r.json()["id"]
 
@@ -331,7 +335,7 @@ def test_audit_log_is_append_only(db):
 def test_jobs_expire_documents_and_cancel_unpaid(client, db, ops):
     driver_headers, driver_id = onboard_driver(client, ops)
     doc = db.scalar(select(Document).where(Document.owner_id == db.get(Driver, driver_id).id,
-                                           Document.doc_type == "src_belgesi"))
+                                           Document.doc_type == "surucu_belgesi"))
     later = datetime.now(timezone.utc) + timedelta(hours=1)
     # Geçerlilik Türkiye takvimine göredir; sunucunun saat diliminden bağımsız.
     doc.valid_until = local_date(later) - timedelta(days=1)

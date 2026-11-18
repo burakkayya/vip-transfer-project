@@ -43,6 +43,9 @@ class Driver(Base):
     photo_key: Mapped[str | None] = mapped_column(EncryptedString)
     photo_content_type: Mapped[str | None] = mapped_column(String(20))
     languages: Mapped[str] = mapped_column(String(40), default="tr", server_default="tr")
+    # K-78 sürücü detayları: WhatsApp (isteğe bağlı, şifreli) ve çalıştığı il (app/provinces.py kodu).
+    whatsapp_phone: Mapped[str | None] = mapped_column(EncryptedString)
+    operating_province: Mapped[str | None] = mapped_column(String(20))
     created_at: Mapped[datetime] = created_at()
 
     user: Mapped[User] = relationship(lazy="joined")

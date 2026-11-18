@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 import redis
@@ -300,7 +300,7 @@ def _new_driver(client):
 
 
 def _upload(client, headers, doc_type):
-    return client.post(f"{API}/driver/documents", headers=headers, data={"doc_type": doc_type},
+    return client.post(f"{API}/driver/documents", headers=headers, data={"doc_type": doc_type, "valid_until": "2030-01-01"},
                        files={"file": ("x.pdf", PDF, "application/pdf")})
 
 
@@ -341,7 +341,7 @@ def test_single_pending_document_enforced_by_database(client, db):
     _, driver_id = _new_driver(client)
     owner = uuid.UUID(driver_id)
     kwargs = dict(owner_type=DocumentOwner.DRIVER, owner_id=owner, doc_type=DocumentType.DRIVER_LICENSE,
-                  content_type="application/pdf", data=PDF, valid_until=None, actor_id=None)
+                  content_type="application/pdf", data=PDF, valid_until=date(2030, 1, 1), actor_id=None)
     documents.upload(db, get_storage(), **kwargs)
     db.commit()
     # Kota kontrolü yarışta atlatılmış gibi doğrudan ikinci yükleme.

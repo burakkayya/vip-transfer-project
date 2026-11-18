@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, blobUrl, download } from "@/lib/api";
 import { d } from "@/lib/format";
-import { DOCUMENT_STATUS, DOCUMENT_TYPE } from "@/lib/labels";
+import { DOCUMENT_STATUS, DOCUMENT_TYPE, EXPIRY_REQUIRED } from "@/lib/labels";
 import { Badge, Field, Msg, useAction } from "./ui";
 
 export interface Doc {
@@ -63,7 +63,7 @@ export default function DocumentReview(props: { doc: Doc; onDone: () => void }) 
       {preview && <img className="doc-preview" src={preview} alt="belge" />}
       {doc.status === "beklemede" && (
         <div className="row end">
-          <Field label="Geçerlilik bitişi">
+          <Field label={EXPIRY_REQUIRED.has(doc.doc_type) ? "Son geçerlilik" : "Son geçerlilik (isteğe bağlı)"}>
             <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
           </Field>
           <div style={{ flex: 1, minWidth: 200 }}>
@@ -71,7 +71,8 @@ export default function DocumentReview(props: { doc: Doc; onDone: () => void }) 
               <input value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} />
             </Field>
           </div>
-          <button className="btn" disabled={action.busy || !validUntil} onClick={() => review("onayli")}>
+          {/* K-78: süresi olmayan belgede (adli sicil, fotoğraf) tarih istenmez. */}
+          <button className="btn" disabled={action.busy || (!validUntil && EXPIRY_REQUIRED.has(doc.doc_type))} onClick={() => review("onayli")}>
             Onayla
           </button>
           <button className="btn danger" disabled={action.busy || !note.trim()} onClick={() => review("reddedildi")}>

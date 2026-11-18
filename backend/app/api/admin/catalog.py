@@ -30,8 +30,8 @@ from app.models import (
     VehicleType,
 )
 from app.provinces import PROVINCE_PATTERN
-from app.models.enums import CommissionScope, DiscountType, NotificationChannel, RegionType
-from app.services import audit, system_settings
+from app.models.enums import CommissionScope, DiscountType, DocumentOwner, DocumentType, NotificationChannel, RegionType
+from app.services import audit, documents, system_settings
 
 router = APIRouter(tags=["admin:catalog"])
 
@@ -349,6 +349,23 @@ class SettingIn(BaseModel):
     value: Any
 
 
+_DOCUMENT_LISTS = {"required_driver_documents": DocumentOwner.DRIVER, "required_vehicle_documents": DocumentOwner.VEHICLE}
+
+
+def _check_document_list(key: str, value: Any) -> None:
+    """K-78: zorunlu belge listesinde yalnızca o sahibe yüklenebilen bilinen türler olur; yoksa kimse tamamlayamaz."""
+    owner = _DOCUMENT_LISTS.get(key)
+    if owner is None:
+        return
+    for item in value:
+        try:
+            doc_type = DocumentType(item)
+        except ValueError:
+            raise DomainError(f"bilinmeyen belge türü: {item}", code="invalid_setting_value") from None
+        if not documents.owner_allowed(doc_type, owner):
+            raise DomainError(f"{item} bu listeye eklenemez", code="invalid_setting_value")
+
+
 @router.put("/settings/{key}")
 def put_setting(key: str, body: SettingIn, staff: AdminOnly, db: DbSession, ip: ClientIp):
     default = system_settings.DEFAULTS.get(key)
@@ -356,6 +373,7 @@ def put_setting(key: str, body: SettingIn, staff: AdminOnly, db: DbSession, ip: 
         raise NotFound("bilinmeyen ayar")
     if type(body.value) is not type(default):
         raise DomainError(f"değer türü {type(default).__name__} olmalı", code="invalid_setting_type")
+    _check_document_list(key, body.value)
     system_settings.put(db, key, body.value, staff.id, ip)
     db.commit()
     return {"key": key, "value": body.value}
