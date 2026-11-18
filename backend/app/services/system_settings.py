@@ -20,17 +20,22 @@ DEFAULTS: dict[str, Any] = {
     "try_rounding_step": 5,
     "kvkk_disclosure_version": "1.0",
     "distance_sales_version": "1.0",
-    # Açık konu: sürücü ve araç yetki belgelerinin listesi hukukçu ile teyit edilecek.
+    # K-78: sürücü detayları ve araç detayları (admin ayarlardan değiştirebilir).
     "required_driver_documents": [
+        DocumentType.PERSONAL_ID.value,
         DocumentType.DRIVER_LICENSE.value,
-        DocumentType.SRC.value,
         DocumentType.CRIMINAL_RECORD.value,
+        DocumentType.D2_PERMIT.value,
+        DocumentType.TURSAB.value,
     ],
     "required_vehicle_documents": [
+        DocumentType.VEHICLE_PHOTO_EXTERIOR.value,
+        DocumentType.VEHICLE_PHOTO_FRONT.value,
+        DocumentType.VEHICLE_PHOTO_REAR.value,
+        DocumentType.VEHICLE_PHOTO_TRUNK.value,
         DocumentType.VEHICLE_REGISTRATION.value,
-        DocumentType.VEHICLE_INSURANCE.value,
         DocumentType.VEHICLE_INSPECTION.value,
-        DocumentType.TOURISM_PERMIT.value,
+        DocumentType.VEHICLE_INSURANCE.value,
     ],
     "document_expiry_warning_days": 30,
 }

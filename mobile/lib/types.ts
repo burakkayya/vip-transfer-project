@@ -99,6 +99,10 @@ export interface DriverMe {
   has_photo?: boolean;
   rating_avg?: string | null;
   rating_count?: number;
+  // K-78 sürücü detayları
+  phone?: string | null;
+  whatsapp_phone?: string | null;
+  operating_province?: string | null;
 }
 
 export interface Trip {
@@ -153,6 +157,7 @@ export interface DriverVehicle {
   capacity: number;
   status: string;
   missing_documents: string[];
+  color?: string | null;
 }
 
 export interface DriverDocument {

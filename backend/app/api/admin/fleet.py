@@ -33,6 +33,9 @@ def _driver_row(db, d: Driver, today: date) -> dict:
         "full_name": d.full_name,
         "phone": mask_phone(d.user.phone or ""),
         "tursab_or_agency_no": d.tursab_or_agency_no,
+        # K-78 sürücü detayları (WhatsApp listede maskeli, operasyon detayda tam görür)
+        "whatsapp_phone": mask_phone(d.whatsapp_phone) if d.whatsapp_phone else None,
+        "operating_province": d.operating_province,
         "status": d.status.value,
         "is_online": d.is_online,
         "missing_documents": dispatch.missing_documents(db, DocumentOwner.DRIVER, d.id, today),
@@ -66,6 +69,7 @@ def driver_detail(driver_id: uuid.UUID, staff: OpsStaff, db: DbSession, now: Now
     vehicles = db.scalars(select(Vehicle).where(Vehicle.id.in_(vehicle_ids)))
     return {
         **_driver_row(db, d, local_date(now)),
+        # K-78: operasyon sürücüye ulaşabilsin diye detayda WhatsApp açık (görüntüleme OpsStaff ile sınırlı).
         "vehicles": [_vehicle_row(db, v, local_date(now)) for v in vehicles],
         "documents": [DocumentOut.model_validate(x) for x in docs],
     }

@@ -70,7 +70,9 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 - [ ] TCMB satış kuru (`ForexSelling`) yerine alış kuru veya efektif kur mu kullanılacak, kura marj eklenecek mi. Şimdilik satış kuru, marj yok (K-33). Admin panelindeki elle kur girişi acil durum yedeği olarak duruyor; kullanım dışı bırakılabilir.
 - [ ] Sürücü hakedişinde EUR→TRY kuru: iş tamamlandığı andaki kur mu, ödeme günündeki kur mu? Şimdilik tamamlanma anındaki kur kullanılıyor.
-- [ ] Zorunlu belge listesi: sürücü için sürücü belgesi, SRC ve adli sicil; araç için ruhsat, sigorta, muayene ve turizm taşımacılığı yetki belgesi. Liste `system_settings` üzerinden değiştirilebilir, hukukçuyla teyit edilmeli.
+- [ ] Zorunlu belge listesi (K-78, 2026-11-18): sürücü için kimlik, ehliyet, adli sicil, D2 yetki belgesi, TÜRSAB belgesi; araç için dört fotoğraf, ruhsat, muayene, kasko ve trafik sigortası. Liste `system_settings` üzerinden değiştirilebilir; SRC ve turizm yetki belgesinin gerekip gerekmediği hukukçuyla teyit edilmeli.
+- [ ] Canlıya geçişte `alembic upgrade head` (0015: sürücü WhatsApp ve il, yeni zorunlu belge listeleri). Dikkat: mevcut onaylı sürücü ve araçlar yeni belgeleri (kimlik, D2, TÜRSAB, araç fotoğrafları) yükleyip onaylatana kadar **iş alamaz** (teklif gitmez, havuz boş, elle atanamaz). Canlıda henüz gerçek sürücü olmadığı için geçiş süresi konmadı; canlıya sürücü alındıktan sonra liste değişirse muafiyet süresi tasarlanmalı. Yerelde `seed-demo` demo sürücülerin eksik belgelerini tamamlar.
+- [ ] Mobil: içerik kaydırılınca saydam durum çubuğunun altından geçiyor (tüm ekranlarda); durum çubuğuna zemin verilmeli.
 - [ ] Gazipaşa-Alanya Havalimanı (GZP), K-06 kapsamında aktif olarak eklendi. is_modeli.md'de yalnızca üç havalimanı geçiyor.
 - [ ] Araç tipleri ve çarpanları yer tutucu: minivan 1,30, VIP van 1,60, minibüs 2,00, VIP minibüs 2,40. Sedan hizmetten kaldırıldı (2026-10-29), eski kayıtlar için pasif tutuluyor.
 - [ ] PayTR imza formülleri test mağazasında doğrulanmalı (iFrame token, bildirim hash'i, iade).

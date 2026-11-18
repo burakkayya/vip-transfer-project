@@ -5,10 +5,10 @@
 import Ionicons from "@/components/Icon";
 import * as DocumentPicker from "expo-document-picker";
 import { useState } from "react";
-import { Image, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
+import AuthImage from "@/components/AuthImage";
 import { Alert, Button, Card, H2, IconBubble, P, Row, T, colors } from "@/components/ui";
-import { API_URL } from "@/lib/config";
-import { accessToken, api, upload } from "@/lib/api";
+import { api, appendFile, upload } from "@/lib/api";
 import { errorTextTr } from "@/lib/i18n";
 import type { DriverMe } from "@/lib/types";
 
@@ -48,7 +48,7 @@ export default function DriverProfileCard(props: { me: DriverMe; onSaved: (me: D
     setMessage(null);
     try {
       const fd = new FormData();
-      fd.append("file", { uri: file.uri, name: file.name, type: file.mimeType ?? "image/jpeg" } as unknown as Blob);
+      appendFile(fd, "file", file);
       props.onSaved(await upload<DriverMe>("driver/me/photo", fd));
       setPhotoVersion((v) => v + 1);
       setMessage({ ok: true, text: "Fotoğraf güncellendi." });
@@ -68,8 +68,7 @@ export default function DriverProfileCard(props: { me: DriverMe; onSaved: (me: D
       <P muted small>Yolcu, alıştan bir gün önce fotoğrafınızı, aracınızı ve konuştuğunuz dilleri görür.</P>
       <Row gap={14} style={{ flexWrap: "nowrap" }}>
         {props.me.has_photo ? (
-          <Image accessibilityIgnoresInvertColors
-            source={{ uri: `${API_URL}/api/v1/driver/me/photo?v=${photoVersion}`, headers: { Authorization: `Bearer ${accessToken() ?? ""}` } }}
+          <AuthImage accessibilityIgnoresInvertColors key={photoVersion} path={`driver/me/photo?v=${photoVersion}`}
             style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.canvas }} />
         ) : (
           <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.canvas, alignItems: "center", justifyContent: "center" }}>

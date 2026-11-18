@@ -123,7 +123,7 @@ def _new_driver(client):
 
 
 def _upload(client, headers, doc_type, data=PDF):
-    return client.post(f"{API}/driver/documents", headers=headers, data={"doc_type": doc_type},
+    return client.post(f"{API}/driver/documents", headers=headers, data={"doc_type": doc_type, "valid_until": "2030-01-01"},
                        files={"file": ("x.pdf", data, "application/pdf")})
 
 
@@ -138,8 +138,8 @@ def test_document_upload_quota_for_unapproved_driver(client, monkeypatch):
 
 
 def test_document_upload_quota_for_approved_driver(client, ops, monkeypatch):  # noqa: F811
-    headers, _ = onboard_driver(client, ops, online=False)  # 7 belge yükler ve onaylatır
-    monkeypatch.setattr(get_settings(), "document_quota_approved", 8)
+    headers, _ = onboard_driver(client, ops, online=False)  # K-78: 12 belge yükler ve onaylatır
+    monkeypatch.setattr(get_settings(), "document_quota_approved", 13)
     assert _upload(client, headers, "surucu_belgesi").status_code == 201
     r = _upload(client, headers, "src_belgesi")
     assert r.status_code == 429, r.text
