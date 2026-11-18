@@ -4,6 +4,8 @@ En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
 ## 2026-11-18
 
+- **Faturalandırma ertelendi.** Fatura kesimi ve fatura e-postası "sonra bakılacak" olarak `docs/acik_konular.md`'ye işlendi (önerilen yol ve muhasebeciye sorulacaklar dahil); kod değişmedi.
+
 - **Sürücü ve araç detayları (K-78).** Sürücü başvurusunda zorunlu belgeler: kimlik kartı, ehliyet, adli sicil, D2 yetki belgesi, TÜRSAB belgesi; araç için dört fotoğraf (dış, ön koltuk, arka koltuk, bagaj), ruhsat, muayene, kasko ve trafik sigortası. Sürücüye WhatsApp ve çalıştığı il alanları (kayıt formu ve `PUT /driver/me/contact`). Süreli belgelerde son geçerlilik tarihi zorunlu, fotoğraflar yalnız görüntü, belge sahibi türe uymalı. Migration 0015 (`drivers.whatsapp_phone` şifreli, `drivers.operating_province`; varsayılan zorunlu listeler). Belge kotası 20/30.
 - **Testler (K-78):** backend 489 (+9 `test_k78_driver_details.py`), mobil 141 (19 süit); Android emülatörde tüm sürücü ve araç belgeleri yüklendi, küçük resimler doğrulandı.
 - **Mobil Belgeler ekranı yenilendi.** "Sürücü detayları" / "Araç detayları" sekmeleri; açılır belge satırları (durum, son geçerlilik, GG.AA.YYYY tarih girişi), 2×2 araç fotoğrafı ızgarası (küçük resimler `GET /driver/documents/{id}/file`, yalnız kendi araç fotoğrafları).
