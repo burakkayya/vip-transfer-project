@@ -127,6 +127,34 @@ class CancellationPolicyTier(Base):
     refund_percent: Mapped[int]
 
 
+class DailyRate(Base):
+    """K-29 şoförlü günlük kiralama fiyatı (araç tipi başına, EUR). Sürümlüdür: düzenlenmez, yeni sürüm eklenir;
+    rezervasyon hesaplandığı sürümü (`bookings.daily_rate_id`) dondurur. Saat ve km sınırı aşımı bilgi amaçlı
+    gösterilir; otomatik tahsil edilmez."""
+
+    __tablename__ = "daily_rates"
+    __table_args__ = (
+        CheckConstraint("full_day_price > 0 AND half_day_price > 0", name="positive_prices"),
+        CheckConstraint("full_day_hours > half_day_hours AND half_day_hours > 0", name="hours_order"),
+        CheckConstraint("full_day_km >= half_day_km AND half_day_km > 0", name="km_order"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("vehicle_types.id"), index=True)
+    full_day_price: Mapped[Decimal] = mapped_column(Money)
+    half_day_price: Mapped[Decimal] = mapped_column(Money)
+    full_day_hours: Mapped[int] = mapped_column(default=10)
+    half_day_hours: Mapped[int] = mapped_column(default=5)
+    full_day_km: Mapped[int] = mapped_column(default=250)
+    half_day_km: Mapped[int] = mapped_column(default=120)
+    extra_hour_price: Mapped[Decimal] = mapped_column(Money)
+    extra_km_price: Mapped[Decimal] = mapped_column(Money)
+    valid_from: Mapped[datetime]
+    valid_to: Mapped[datetime | None]
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = created_at()
+
+
 class CommissionRule(Base):
     __tablename__ = "commission_rules"
     __table_args__ = (CheckConstraint("rate >= 0 AND rate < 1", name="rate_range"),)

@@ -13,6 +13,8 @@ from app.config import get_settings
 from app.models import Booking, BookingLeg
 from app.models.enums import (
     BookingStatus,
+    DailyPackage,
+    ServiceType,
     BookingType,
     Currency,
     LegStatus,
@@ -143,6 +145,88 @@ class QuoteIn(BaseModel):
     @classmethod
     def _aware(cls, v: datetime | None) -> datetime | None:
         return validate_pickup_window(v)
+
+
+class DailyQuoteIn(BaseModel):
+    """K-29 günlük kiralama teklifi: başlangıç noktası, ilk günün başlangıcı, gün sayısı, paket."""
+
+    pickup: PlaceIn
+    vehicle_type_code: str = Field(max_length=30)
+    start_at: datetime
+    days: int = Field(ge=1, le=14)
+    package: DailyPackage = DailyPackage.FULL
+    passenger_count: int = Field(ge=1, le=50)
+    luggage_count: int = Field(default=0, ge=0, le=50)
+    country_code: str | None = Field(default=None, min_length=2, max_length=2, pattern=r"^[A-Za-z]{2}$")
+
+    @field_validator("start_at")
+    @classmethod
+    def _aware(cls, v: datetime) -> datetime:
+        return validate_pickup_window(v)
+
+
+class DailyDayOut(BaseModel):
+    day: int
+    start_at: datetime
+    price: MoneyStr
+
+
+class DailyQuoteOut(BaseModel):
+    vehicle_type_code: str
+    package: DailyPackage
+    days: int
+    hours_per_day: int
+    km_per_day: int
+    day_price: MoneyStr
+    price: MoneyStr
+    total: MoneyStr
+    currency: Currency
+    extra_hour_price: MoneyStr
+    extra_km_price: MoneyStr
+    schedule: list[DailyDayOut]
+
+
+class DailyBookingCreateIn(DailyQuoteIn):
+    expected_total: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    passenger_name: str = Field(min_length=2, max_length=120)
+    # Gün planı (gidilecek yerler, ara duraklar): sürücü kabulden sonra görür.
+    note: str | None = Field(default=None, max_length=500)
+    locale: str = Field(default="tr", max_length=10)
+    child_seat_count: int = Field(default=0, ge=0, le=4)
+    accept_disclosure: bool
+    accept_distance_sales: bool
+
+    @field_validator("locale")
+    @classmethod
+    def _norm_locale(cls, v: str) -> str:
+        return _locale(v)
+
+
+class DailyInfoOut(BaseModel):
+    """Rezervasyondaki günlük kiralama koşulları (dondurulan fiyat sürümünden, rezervasyon para biriminde)."""
+
+    package: DailyPackage
+    days: int
+    hours_per_day: int
+    km_per_day: int
+    extra_hour_price: MoneyStr
+    extra_km_price: MoneyStr
+
+    @classmethod
+    def of(cls, b: Booking) -> "DailyInfoOut | None":
+        if b.service_type is not ServiceType.DAILY or b.daily_rate is None or b.daily_package is None:
+            return None
+        from app.services import daily_rental
+
+        hours, km, _ = daily_rental.package_limits(b.daily_rate, b.daily_package)
+        return cls(
+            package=b.daily_package,
+            days=len(b.legs),
+            hours_per_day=hours,
+            km_per_day=km,
+            extra_hour_price=daily_rental.extra_price(b.daily_rate.extra_hour_price, b.currency, b.exchange_rate),
+            extra_km_price=daily_rental.extra_price(b.daily_rate.extra_km_price, b.currency, b.exchange_rate),
+        )
 
 
 class RoutePreviewIn(BaseModel):
@@ -299,6 +383,9 @@ class BookingOut(BaseModel):
     # Ödeme bekleyen rezervasyonun otomatik iptal anı (admin girişinde rezervasyona yazılı süre, diğerlerinde
     # `pending_payment_minutes` ayarı). Diğer durumlarda boş. İstemci "… saatine kadar ödeyin" gösterir.
     payment_due_at: datetime | None = None
+    # K-29: hizmet türü ve günlük kiralama koşulları (transferde None).
+    service_type: ServiceType = ServiceType.TRANSFER
+    daily: DailyInfoOut | None = None
 
     @classmethod
     def build(cls, b: Booking, with_route: bool = False, pending_minutes: int | None = None) -> "BookingOut":
@@ -310,6 +397,8 @@ class BookingOut(BaseModel):
                 due = b.created_at + timedelta(minutes=pending_minutes)
         return cls(
             payment_due_at=due,
+            service_type=b.service_type,
+            daily=DailyInfoOut.of(b),
             id=b.id,
             booking_code=b.booking_code,
             booking_type=b.booking_type,

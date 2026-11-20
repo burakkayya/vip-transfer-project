@@ -42,6 +42,7 @@ from app.models.enums import (
     PaymentStatus,
     RefundStatus,
     RegionType,
+    ServiceType,
 )
 from app.providers.payments import PaymentProvider, RefundResult
 from app.localtime import LOCAL_TZ
@@ -167,7 +168,20 @@ def create_booking(
             raise DomainError("fiyat değişikliği için gerekçe yazılmalı", code="override_reason_required")
         quote = override_quote(quote, admin.override_total)
     first_pickup = quote.legs[0].pickup_at
-    if booking_type is BookingType.SCHEDULED:
+    daily = quote.service_type is ServiceType.DAILY
+    if daily:
+        # K-29: günlük kiralama yalnızca planlıdır; sürücü planlaması için daha uzun ön süre.
+        if booking_type is not BookingType.SCHEDULED:
+            raise DomainError("günlük kiralama yalnızca planlı yapılır", code="daily_must_be_scheduled")
+        if flights:
+            raise DomainError("günlük kiralamada uçuş bilgisi alınmaz", code="invalid_flight_leg")
+        if market_stop:
+            raise DomainError("günlük kiralamada market molası seçilmez", code="invalid_extra")
+        if admin is None:
+            from app.services import daily_rental
+
+            daily_rental.check_lead_time(db, first_pickup, now)
+    elif booking_type is BookingType.SCHEDULED:
         lead_hours = int(system_settings.get(db, "scheduled_min_lead_hours"))
         if first_pickup < now + timedelta(hours=lead_hours):
             raise DomainError(
@@ -213,6 +227,9 @@ def create_booking(
         total_amount=quote.total,
         currency=quote.currency,
         quoted_at=now,
+        service_type=quote.service_type,
+        daily_rate_id=quote.daily_rate.id if quote.daily_rate else None,
+        daily_package=quote.daily_package,
     )
     if admin is not None:
         booking.source = BookingSource.ADMIN
@@ -274,6 +291,9 @@ def create_booking(
         "total": booking.total_amount,
         "currency": booking.currency,
     }
+    if daily:
+        changes.update(service_type=booking.service_type, daily_package=booking.daily_package,
+                       days=len(booking.legs))
     if admin is not None:
         # Admin girişinde onaylar müşteriden kanal üzerinden alınmıştır; kanal ve fiyat farkı denetimde durur.
         changes.update(source=BookingSource.ADMIN, channel=admin.channel, customer_id=customer.id)

@@ -20,6 +20,7 @@ from app.api.deps import AdminOnly, ClientIp, DbSession, FinanceStaff, Now, OpsS
 from app.errors import DomainError, NotFound
 from app.models import (
     CancellationPolicy,
+    DailyRate,
     CancellationPolicyTier,
     CommissionRule,
     ExchangeRate,
@@ -141,6 +142,62 @@ def _deactivate(db, model, obj_id: int, staff, ip: str, now: datetime, entity: s
 @router.post("/pricing-rules/{rule_id}/deactivate")
 def deactivate_pricing_rule(rule_id: int, staff: AdminOnly, db: DbSession, ip: ClientIp, now: Now):
     return _deactivate(db, PricingRule, rule_id, staff, ip, now, "pricing_rule")
+
+
+# --- K-29 günlük kiralama fiyatları -------------------------------------------
+
+_DAILY_FIELDS = ("id", "vehicle_type_id", "full_day_price", "half_day_price", "full_day_hours", "half_day_hours",
+                 "full_day_km", "half_day_km", "extra_hour_price", "extra_km_price", "valid_from", "valid_to",
+                 "is_active", "created_at")
+
+
+class DailyRateIn(BaseModel):
+    vehicle_type_id: int
+    full_day_price: Decimal = Field(gt=0, le=10000)
+    half_day_price: Decimal = Field(gt=0, le=10000)
+    full_day_hours: int = Field(default=10, ge=2, le=16)
+    half_day_hours: int = Field(default=5, ge=1, le=12)
+    full_day_km: int = Field(default=250, ge=10, le=1000)
+    half_day_km: int = Field(default=120, ge=5, le=1000)
+    extra_hour_price: Decimal = Field(ge=0, le=1000)
+    extra_km_price: Decimal = Field(ge=0, le=100)
+    valid_from: datetime | None = None
+
+    @model_validator(mode="after")
+    def _order(self):
+        if self.half_day_hours >= self.full_day_hours:
+            raise ValueError("yarım gün saati tam günden kısa olmalı")
+        if self.half_day_km > self.full_day_km:
+            raise ValueError("yarım gün km sınırı tam günü aşamaz")
+        if self.half_day_price > self.full_day_price:
+            raise ValueError("yarım gün fiyatı tam günü aşamaz")
+        return self
+
+
+@router.get("/daily-rates")
+def list_daily_rates(staff: OpsStaff, db: DbSession):
+    rows = db.scalars(select(DailyRate).order_by(DailyRate.vehicle_type_id, DailyRate.valid_from.desc())
+                      .limit(common.MAX_LIST))
+    return [_row(r, *_DAILY_FIELDS) for r in rows]
+
+
+@router.post("/daily-rates", status_code=201)
+def create_daily_rate(body: DailyRateIn, staff: AdminOnly, db: DbSession, ip: ClientIp, now: Now):
+    """Yeni fiyat sürümü; eski sürümler kapanmaz, en yeni geçerli sürüm kullanılır (rezervasyonlar dondurur)."""
+    if db.get(VehicleType, body.vehicle_type_id) is None:
+        raise NotFound("araç tipi bulunamadı")
+    r = DailyRate(**{**body.model_dump(), "valid_from": body.valid_from or now})
+    db.add(r)
+    db.flush()
+    audit.record(db, actor_id=staff.id, action="daily_rate.create", entity_type="daily_rate",
+                 entity_id=r.id, changes=body.model_dump(), ip=ip)
+    db.commit()
+    return _row(r, *_DAILY_FIELDS)
+
+
+@router.post("/daily-rates/{rate_id}/deactivate")
+def deactivate_daily_rate(rate_id: int, staff: AdminOnly, db: DbSession, ip: ClientIp, now: Now):
+    return _deactivate(db, DailyRate, rate_id, staff, ip, now, "daily_rate")
 
 
 # --- Gidiş-dönüş indirimi ----------------------------------------------------

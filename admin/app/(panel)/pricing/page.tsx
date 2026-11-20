@@ -6,6 +6,7 @@ import { Badge, ErrorBox, Field, Msg, PageHead, Select, Table, useAction, useDat
 import { api } from "@/lib/api";
 import { dt, localToIso, money } from "@/lib/format";
 import { DISCOUNT_TYPE } from "@/lib/labels";
+import DailyRates from "@/components/DailyRates";
 
 interface Rule {
   id: number;
@@ -111,6 +112,8 @@ export default function PricingPage() {
           <button className="btn" type="submit" disabled={action.busy}>Yeni kural ekle</button>
         </form>
       )}
+
+      <DailyRates isAdmin={isAdmin} vtName={vtName} types={types.data} />
 
       <h2>Gidiş-dönüş indirimi</h2>
       <ErrorBox error={discounts.error} />

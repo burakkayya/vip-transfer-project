@@ -17,13 +17,15 @@ from app.models.enums import (
     BookingStatus,
     BookingType,
     Currency,
+    DailyPackage,
     FlightDirection,
     LegStatus,
     OfferStatus,
+    ServiceType,
     TripEventType,
 )
 from app.models.fleet import Driver, Vehicle, VehicleType
-from app.models.pricing import Region
+from app.models.pricing import DailyRate, ExchangeRate, Region
 from app.security.crypto import EncryptedString
 
 
@@ -40,6 +42,13 @@ class Booking(Base):
     booking_code: Mapped[str] = mapped_column(String(12), unique=True)
     customer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("customers.id"), index=True)
     booking_type: Mapped[BookingType] = mapped_column(str_enum(BookingType))
+    # K-29: transfer ya da şoförlü günlük kiralama. Günlük kiralamada her gün bir bacaktır (alış = bırakış =
+    # başlangıç noktası, süre paket saatidir); fiyat dondurulmuş günlük fiyat sürümünden gelir.
+    service_type: Mapped[ServiceType] = mapped_column(
+        str_enum(ServiceType, 10), default=ServiceType.TRANSFER, server_default=ServiceType.TRANSFER.value
+    )
+    daily_rate_id: Mapped[int | None] = mapped_column(ForeignKey("daily_rates.id"))
+    daily_package: Mapped[DailyPackage | None] = mapped_column(str_enum(DailyPackage, 6))
     status: Mapped[BookingStatus] = mapped_column(
         str_enum(BookingStatus), default=BookingStatus.PENDING_PAYMENT, index=True
     )
@@ -96,12 +105,18 @@ class Booking(Base):
 
     customer: Mapped[Customer] = relationship(lazy="joined")
     vehicle_type: Mapped[VehicleType] = relationship(lazy="joined")
+    daily_rate: Mapped[DailyRate | None] = relationship(lazy="select")
+    exchange_rate: Mapped[ExchangeRate | None] = relationship(lazy="select")
     legs: Mapped[list[BookingLeg]] = relationship(
         back_populates="booking",
         lazy="selectin",
         order_by="BookingLeg.leg_order",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def is_daily(self) -> bool:
+        return self.service_type is ServiceType.DAILY
 
     @property
     def has_guarantee(self) -> bool:

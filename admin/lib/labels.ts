@@ -135,6 +135,9 @@ export const OFFER_STATUS: Record<string, string> = {
 export const COMMISSION_SCOPE: Record<string, string> = { genel: "Genel", bolge: "Bölge", arac_tipi: "Araç tipi" };
 export const DISCOUNT_TYPE: Record<string, string> = { yuzde: "Yüzde", sabit: "Sabit tutar (€)" };
 export const BOOKING_TYPE: Record<string, string> = { anlik: "Anlık", planli: "Planlı" };
+/** K-29 hizmet türü. */
+export const SERVICE_TYPE: Record<string, string> = { transfer: "Transfer", gunluk: "Günlük kiralama" };
+export const DAILY_PACKAGE: Record<string, string> = { tam: "Tam gün", yarim: "Yarım gün" };
 
 const OK = ["onaylandi", "atandi", "tamamlandi", "onayli", "aktif", "odendi", "kesildi", "kabul", "bitti"];
 const WARN = ["odeme_bekliyor", "beklemede", "basvuru", "acik", "isleniyor", "gonderildi", "kismi_iade",

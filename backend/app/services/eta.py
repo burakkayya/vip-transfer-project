@@ -133,6 +133,8 @@ def on_location(db: Session, leg: BookingLeg, at: Point) -> int | None:
     """Konum güncellemesi: tahmini güncelle, gerekiyorsa eşik bildirimi gönder."""
     if leg.status not in (LegStatus.EN_ROUTE, LegStatus.STARTED):
         return None
+    if leg.status is LegStatus.STARTED and leg.booking.is_daily:
+        return None  # K-29: gün içinde varış noktası yok; başlangıca dönüş süresi tahmini yanıltıcı olur
     target = target_point(leg)
     minutes = estimate_minutes(at, target)
     _store(leg, minutes)

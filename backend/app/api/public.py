@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import ClientIp, DbSession, Now
 from app.api.schemas import (
+    DailyDayOut,
+    DailyQuoteIn,
+    DailyQuoteOut,
     PlaceIn,
     PlaceOut,
     PlaceSuggestionOut,
@@ -27,7 +30,7 @@ from app.errors import ServiceUnavailable
 from app.models import Region, VehicleType
 from app.providers.places import get_places
 from app.providers.routing import get_routing
-from app.services import api_cache, places, popular_places, quotes
+from app.services import api_cache, daily_rental, places, popular_places, quotes
 
 router = APIRouter(tags=["public"])
 
@@ -100,6 +103,46 @@ def create_quote(body: QuoteIn, db: DbSession, now: Now, ip: ClientIp):
     quotes.check_rate_limit(ip)  # MON-03: ücretli Routes API, kimliksiz uç
     q = quotes.build_quote(db, to_quote_input(db, body), router=get_routing(), now=now)
     return quote_out(q)
+
+
+def to_daily_input(db: Session, body: DailyQuoteIn) -> daily_rental.DailyQuoteInput:
+    return daily_rental.DailyQuoteInput(
+        pickup=to_place(db, body.pickup),
+        vehicle_type_code=body.vehicle_type_code,
+        start_at=body.start_at,
+        days=body.days,
+        package=body.package,
+        passenger_count=body.passenger_count,
+        luggage_count=body.luggage_count,
+        country_code=body.country_code,
+    )
+
+
+def daily_quote_out(db: Session, q: quotes.Quote) -> DailyQuoteOut:
+    t = daily_rental.terms(db, q.daily_rate, q.daily_package, q.currency, q.exchange_rate)
+    return DailyQuoteOut(
+        vehicle_type_code=q.vehicle_type.code,
+        package=q.daily_package,
+        days=len(q.legs),
+        hours_per_day=t.hours,
+        km_per_day=t.km,
+        day_price=t.day_price,
+        price=q.price,
+        total=q.total,
+        currency=q.currency,
+        extra_hour_price=t.extra_hour_price,
+        extra_km_price=t.extra_km_price,
+        schedule=[DailyDayOut(day=i, start_at=leg.pickup_at, price=leg.price) for i, leg in enumerate(q.legs, 1)],
+    )
+
+
+@router.post("/daily-quotes", response_model=DailyQuoteOut)
+def create_daily_quote(body: DailyQuoteIn, db: DbSession, now: Now, ip: ClientIp):
+    """K-29 şoförlü günlük kiralama teklifi. Ücretli harita çağrısı yoktur (rota hesaplanmaz); teklif ucuyla aynı
+    IP sınırı uygulanır."""
+    quotes.check_rate_limit(ip)
+    q = daily_rental.build_daily_quote(db, to_daily_input(db, body), now=now)
+    return daily_quote_out(db, q)
 
 
 @router.post("/routes/preview", response_model=RoutePreviewOut)

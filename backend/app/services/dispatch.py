@@ -93,15 +93,19 @@ def missing_documents(
 
 
 def _is_busy(db: Session, driver_id: uuid.UUID, leg: BookingLeg) -> bool:
-    window = BUSY_BUFFER + timedelta(minutes=leg.duration_minutes or 60)
+    """Sürücünün başka bir işi bu işle (aralarında `BUSY_BUFFER` payla) zamanca kesişiyor mu? Her iki işin de
+    süresi hesaba katılır (K-29: günlük kiralama bacağı saatler sürer)."""
+    start = leg.pickup_at - BUSY_BUFFER
+    end = leg.pickup_at + timedelta(minutes=leg.duration_minutes or 60) + BUSY_BUFFER
+    other_end = BookingLeg.pickup_at + func.make_interval(0, 0, 0, 0, 0, func.coalesce(BookingLeg.duration_minutes, 60))
     return (
         db.scalar(
             select(BookingLeg.id).where(
                 BookingLeg.driver_id == driver_id,
                 BookingLeg.id != leg.id,
                 BookingLeg.status.in_(ACTIVE_LEG_STATUSES),
-                BookingLeg.pickup_at > leg.pickup_at - window,
-                BookingLeg.pickup_at < leg.pickup_at + window,
+                BookingLeg.pickup_at < end,
+                other_end > start,
             ).limit(1)
         )
         is not None
@@ -422,7 +426,7 @@ def _check_finish(db: Session, leg: BookingLeg, driver: Driver, at: Point, now: 
     elapsed = (now - started).total_seconds()
     planned = planned_minutes(leg)
     minimum = planned * s.trip_min_duration_ratio
-    if elapsed < minimum * 60:
+    if elapsed < minimum * 60 and not leg.booking.is_daily:
         _reject(leg, driver, TripEventType.FINISHED, "trip_too_short",
                 f"yolculuk başlayalı {int(elapsed // 60)} dk oldu; en erken {int(minimum + 0.999)} dk sonra bitirilebilir",
                 elapsed_minutes=round(elapsed / 60, 1), planned_minutes=planned)
@@ -481,7 +485,7 @@ def advance_trip(
             raise DomainError("yolculuğu bitirmek için konumunuz gerekli", code="location_required")
         radius = finish_radius_m(leg)
         distance = distance_to_dropoff_m(leg, at)
-        if distance > radius:
+        if distance > radius and not leg.booking.is_daily:
             raise DomainError(
                 f"varış noktasına {distance} m uzaktasınız; {radius} m içinde bitirebilirsiniz",
                 code="too_far_from_dropoff",
@@ -539,7 +543,12 @@ def _apply_transition(
         trip_updates.to_customer(db, leg, "driver_arrived")
         meeting.maybe_send_guide(db, leg, now)
     elif event is TripEventType.STARTED:
-        trip_updates.to_customer(db, leg, "trip_started", eta=leg.duration_minutes or "—")
+        if leg.booking.is_daily:
+            # K-29: istemciler "trip_started" kodunu tanır; metin günlük kiralamaya özgüdür (paket saati).
+            trip_updates.to_customer(db, leg, "trip_started", text_key="daily_started",
+                                     hours=(leg.duration_minutes or 0) // 60)
+        else:
+            trip_updates.to_customer(db, leg, "trip_started", eta=leg.duration_minutes or "—")
     elif event is TripEventType.FINISHED:
         _on_leg_finished(db, leg, now)
         trip_updates.to_customer(db, leg, "trip_finished")

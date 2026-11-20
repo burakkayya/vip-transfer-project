@@ -114,6 +114,20 @@ class BookingType(str, Enum):
     SCHEDULED = "planli"
 
 
+class ServiceType(str, Enum):
+    """K-29: hizmet türü. Transfer noktadan noktaya; günlük kiralama gün boyu şoförlü araç."""
+
+    TRANSFER = "transfer"
+    DAILY = "gunluk"
+
+
+class DailyPackage(str, Enum):
+    """K-29 günlük kiralama paketi: tam gün ya da yarım gün (saat ve km sınırı fiyat sürümünde)."""
+
+    FULL = "tam"
+    HALF = "yarim"
+
+
 class BookingStatus(str, Enum):
     PENDING_PAYMENT = "odeme_bekliyor"
     CONFIRMED = "onaylandi"

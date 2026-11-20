@@ -68,6 +68,10 @@ def preview_polyline(leg: BookingLeg, trim_m: float | None = None) -> str:
     Rota alınamazsa bölge merkezleri (herkese açık) arasında düz çizgi döner.
     """
     trim = get_settings().job_preview_trim_m if trim_m is None else trim_m
+    if leg.booking.is_daily:
+        # Başlangıç bölgesinin merkezi (herkese açık); kesin adres kabulden sonra görünür.
+        center = (float(leg.pickup_region.latitude), float(leg.pickup_region.longitude))
+        return encode([center, center])
     line = route_polyline(leg)
     if line:
         points = decode(line)
@@ -105,7 +109,10 @@ def _meters(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 
 def route_polyline(leg: BookingLeg) -> str | None:
-    """Önbellek: başarı 24 saat; sağlayıcı hatası veya boş sonuç 60 sn "olumsuz" kayıt (yavaş sağlayıcıyı yormaz)."""
+    """Önbellek: başarı 24 saat; sağlayıcı hatası veya boş sonuç 60 sn "olumsuz" kayıt (yavaş sağlayıcıyı yormaz).
+    K-29 günlük kiralamada güzergâh müşteriyle gün içinde belirlenir (alış = bırakış): çizgi yoktur."""
+    if leg.booking.is_daily:
+        return None
     try:
         cached = _redis().get(_key(leg.id))
     except redis.RedisError:

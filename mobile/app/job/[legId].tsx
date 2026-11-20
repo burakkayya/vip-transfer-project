@@ -8,6 +8,7 @@ import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
 import { Alert, Badge, Button, Card, IconButton, Info, Loading, RouteStops, Row, Screen, T, colors, s } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { dailyLine } from "@/lib/driverLabels";
 import { dateTime, money } from "@/lib/format";
 import { errorTextTr, t } from "@/lib/i18n";
 import { decodePolyline } from "@/lib/polyline";
@@ -171,8 +172,14 @@ function JobDetail({ legId }: { legId: string }) {
         <RouteStops from={job.pickup_region} to={job.dropoff_region}
           fromHint={job.pickup_distance_km !== null ? `Size ${Number(job.pickup_distance_km).toLocaleString("tr-TR")} km` : undefined} />
         <Row gap={8}>
-          <Chip icon="speedometer-outline" text={`${Number(job.distance_km).toFixed(0)} km`} />
-          {job.duration_minutes ? <Chip icon="time-outline" text={`~${job.duration_minutes} dk`} /> : null}
+          {job.service_type === "gunluk" ? (
+            <Chip icon="sunny-outline" text={dailyLine(job.duration_minutes, job.distance_km)} />
+          ) : (
+            <>
+              <Chip icon="speedometer-outline" text={`${Number(job.distance_km).toFixed(0)} km`} />
+              {job.duration_minutes ? <Chip icon="time-outline" text={`~${job.duration_minutes} dk`} /> : null}
+            </>
+          )}
           <Chip icon="people-outline" text={`${job.passenger_count} yolcu`} />
           <Chip icon="briefcase-outline" text={`${job.luggage_count} bagaj`} />
           {job.has_flight ? <Chip icon="airplane-outline" text="Uçuş var" /> : null}

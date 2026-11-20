@@ -28,8 +28,9 @@ from app.api.deps import (
     current_customer,
     current_principal,
 )
-from app.api.public import to_quote_input
+from app.api.public import to_daily_input, to_quote_input
 from app.api.schemas import (
+    DailyBookingCreateIn,
     BookingCreateIn,
     BookingOut,
     CancelIn,
@@ -42,11 +43,11 @@ from app.currency import currency_for_country
 from app.db import SessionLocal
 from app.errors import DomainError, NotFound
 from app.models import Booking, Consent, DataRequest
-from app.models.enums import ConsentType, DataRequestStatus, DataRequestType, LegStatus
+from app.models.enums import BookingType, ConsentType, DataRequestStatus, DataRequestType, LegStatus
 from app.providers.payments import get_payment_provider
 from app.providers.routing import get_routing
 from app.security import tokens
-from app.services import audit, bookings, live_location, payments, quotes, system_settings
+from app.services import audit, bookings, daily_rental, live_location, payments, quotes, system_settings
 
 router = APIRouter(prefix="/me", tags=["customer"])
 
@@ -98,6 +99,39 @@ def create_booking(body: BookingCreateIn, customer: CurrentCustomer, db: DbSessi
 
 def _pending_minutes(db) -> int:
     return int(system_settings.get(db, "pending_payment_minutes"))
+
+
+@router.post("/daily-bookings", response_model=BookingOut, status_code=201)
+def create_daily_booking(body: DailyBookingCreateIn, customer: CurrentCustomer, db: DbSession, ip: ClientIp,
+                         now: Now):
+    """K-29 şoförlü günlük kiralama rezervasyonu: her gün bir bacak, ödeme ve iptal transferle aynı akıştır."""
+    if not (body.accept_disclosure and body.accept_distance_sales):
+        raise DomainError(
+            "aydınlatma metni ve mesafeli satış ön bilgilendirmesi onaylanmalı", code="consent_required"
+        )
+    req = to_daily_input(db, body)
+    if req.country_code is None:
+        req = dataclasses.replace(req, country_code=customer.country_code)
+    daily_rental.check_lead_time(db, req.start_at, now)
+    q = daily_rental.build_daily_quote(db, req, now=now)
+    booking = bookings.create_booking(
+        db,
+        customer=customer,
+        quote=q,
+        expected_total=body.expected_total,
+        booking_type=BookingType.SCHEDULED,
+        passenger_name=body.passenger_name,
+        passenger_count=body.passenger_count,
+        luggage_count=body.luggage_count,
+        note=body.note,
+        flights=[],
+        locale=body.locale,
+        ip=ip,
+        now=now,
+        child_seat_count=body.child_seat_count,
+    )
+    db.commit()
+    return BookingOut.build(booking, pending_minutes=_pending_minutes(db))
 
 
 @router.get("/bookings", response_model=list[BookingOut])

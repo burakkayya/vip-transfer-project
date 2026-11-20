@@ -73,3 +73,10 @@ export const NEXT_STEP: Record<string, { event: string; label: string } | undefi
   vardi: { event: "basladi", label: "Yolcu alındı" },
   basladi: { event: "bitti", label: "Yolculuğu bitir" },
 };
+
+/** K-29 şoförlü günlük kiralama: iş kartı ve yolculuk ekranındaki kısa özet (ör. "Günlük kiralama · 10 sa / 250 km"). */
+export function dailyLine(durationMinutes: number | null | undefined, km: string | number | null | undefined): string {
+  const hours = durationMinutes ? Math.round(durationMinutes / 60) : null;
+  const parts = [hours ? `${hours} sa` : null, km ? `${Number(km).toFixed(0)} km` : null].filter(Boolean);
+  return parts.length ? `Günlük kiralama · ${parts.join(" / ")}` : "Günlük kiralama";
+}

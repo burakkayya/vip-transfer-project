@@ -140,6 +140,8 @@ export interface Trip {
   dropoff_lng?: string | null;
   distance_km?: string | null;
   duration_minutes?: number | null;
+  /** K-29: "gunluk" ise bitiş yeri serbest, süre paket saatidir. */
+  service_type?: "transfer" | "gunluk";
 }
 
 export interface Offer {
@@ -225,6 +227,8 @@ export interface Job {
   pickup_distance_km: string | null;
   offer_expires_at: string | null;
   preview_polyline: string | null;
+  /** K-29: "gunluk" ise süre paket saati, mesafe km sınırıdır. */
+  service_type?: "transfer" | "gunluk";
 }
 
 export interface Approach {

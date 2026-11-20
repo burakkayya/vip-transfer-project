@@ -122,6 +122,21 @@ CUSTOMER_TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         "ja": ("乗車が始まりました", "快適な移動をお楽しみください。目的地まで約 {eta} 分です。"),
         "ko": ("운행이 시작되었습니다", "편안한 여행 되세요. 목적지까지 약 {eta}분 걸립니다."),
     },
+    # K-29 günlük kiralama: gün başladı (bildirim kodu yine "trip_started").
+    "daily_started": {
+        "tr": ("Gününüz başladı", "İyi günler. Sürücünüz {hours} saat boyunca sizinle."),
+        "en": ("Your day has started", "Have a great day. Your driver is with you for {hours} hours."),
+        "de": ("Ihr Tag hat begonnen", "Einen schönen Tag. Ihr Fahrer ist {hours} Stunden für Sie da."),
+        "ru": ("Ваш день начался", "Хорошего дня. Водитель с вами {hours} ч."),
+        "es": ("Su día ha comenzado", "Que tenga un buen día. Su conductor está con usted {hours} horas."),
+        "fr": ("Votre journée a commencé", "Bonne journée. Votre chauffeur est à vos côtés pendant {hours} heures."),
+        "it": ("La sua giornata è iniziata", "Buona giornata. Il suo autista è con lei per {hours} ore."),
+        "pt": ("Seu dia começou", "Tenha um ótimo dia. Seu motorista está com você por {hours} horas."),
+        "ar": ("بدأ يومك", "نتمنى لك يومًا سعيدًا. سائقك معك لمدة {hours} ساعات."),
+        "zh": ("您的包车日已开始", "祝您愉快，司机将陪同您 {hours} 小时。"),
+        "ja": ("貸切が始まりました", "良い一日を。ドライバーが {hours} 時間ご一緒します。"),
+        "ko": ("하루 일정이 시작되었습니다", "즐거운 하루 되세요. 기사님이 {hours}시간 동안 함께합니다."),
+    },
     "trip_finished": {
         "tr": ("Yolculuk tamamlandı", "Bizi tercih ettiğiniz için teşekkürler."),
         "en": ("Trip completed", "Thank you for travelling with us."),
@@ -239,9 +254,11 @@ def leg_params(leg: BookingLeg) -> dict[str, str]:
     return params
 
 
-def to_customer(db: Session, leg: BookingLeg, code: str, **params: object) -> TripUpdate:
+def to_customer(db: Session, leg: BookingLeg, code: str, *, text_key: str | None = None,
+                **params: object) -> TripUpdate:
+    """`text_key`: aynı bildirim kodu için farklı metin (ör. K-29 günlük kiralamada "daily_started")."""
     booking = leg.booking
-    texts = CUSTOMER_TEXTS[code]
+    texts = CUSTOMER_TEXTS[text_key or code]
     title_t, body_t = texts.get(booking.locale) or texts["en"]
     values = _values(leg, params)
     title, body = title_t.format_map(values)[:120], body_t.format_map(values)[:500]

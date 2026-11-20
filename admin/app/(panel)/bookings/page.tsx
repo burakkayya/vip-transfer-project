@@ -6,7 +6,7 @@ import { Badge, ErrorBox, Field, PageHead, Select, Table, useData, usePager } fr
 import { withQuery } from "@/lib/api";
 import { dt, money } from "@/lib/format";
 import { useCan } from "@/components/Shell";
-import { BOOKING_CHANNEL, BOOKING_SOURCE, BOOKING_STATUS, BOOKING_TYPE } from "@/lib/labels";
+import { BOOKING_CHANNEL, BOOKING_SOURCE, BOOKING_STATUS, BOOKING_TYPE, SERVICE_TYPE } from "@/lib/labels";
 
 interface Row {
   id: string;
@@ -21,12 +21,14 @@ interface Row {
   created_at: string;
   source: string;
   channel: string | null;
+  service_type?: string;
+  days?: number;
 }
 
 /** Ekran 3: rezervasyon listesi. Müşteri telefonu maskeli gelir. */
 export default function BookingsPage() {
   const can = useCan();
-  const [filters, setFilters] = useState({ status: "", code: "", source: "", date_from: "", date_to: "" });
+  const [filters, setFilters] = useState({ status: "", code: "", source: "", service_type: "", date_from: "", date_to: "" });
   const { limit, offset, setOffset, pager } = usePager();
   const { data, error } = useData<Row[]>(withQuery("admin/bookings", { ...filters, limit, offset }));
   const set = (k: keyof typeof filters, v: string) => {
@@ -46,6 +48,9 @@ export default function BookingsPage() {
         <Field label="Kaynak">
           <Select value={filters.source} onChange={(v) => set("source", v)} options={BOOKING_SOURCE} empty="Tümü" />
         </Field>
+        <Field label="Hizmet">
+          <Select value={filters.service_type} onChange={(v) => set("service_type", v)} options={SERVICE_TYPE} empty="Tümü" />
+        </Field>
         <Field label="Kod">
           <input value={filters.code} placeholder="GA..." maxLength={8}
             onChange={(e) => set("code", e.target.value.toUpperCase())} />
@@ -64,7 +69,13 @@ export default function BookingsPage() {
         columns={[
           { key: "code", title: "Kod", render: (r) => <Link href={`/bookings/${r.id}`} className="mono">{r.booking_code}</Link> },
           { key: "status", title: "Durum", render: (r) => <Badge value={r.status} labels={BOOKING_STATUS} /> },
-          { key: "type", title: "Tür", render: (r) => BOOKING_TYPE[r.booking_type] ?? r.booking_type },
+          {
+            key: "type",
+            title: "Tür",
+            render: (r) => (r.service_type === "gunluk"
+              ? `${SERVICE_TYPE.gunluk} · ${r.days ?? 1} gün`
+              : BOOKING_TYPE[r.booking_type] ?? r.booking_type),
+          },
           {
             key: "source",
             title: "Kaynak",
