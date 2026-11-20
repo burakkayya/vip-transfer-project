@@ -29,13 +29,11 @@ interface Candidate {
   vehicle: string;
 }
 
-/** Backend eşleştirme listesinin üst sınırı (admin common.MAX_LIST). */
-const PENDING_LIMIT = 1000;
-
 /** Ekran 4: bekleyen işler ve uygun sürücüler. Planlı işte manuel atama, anlık işte teklif gönderimi. */
 function Dispatch() {
   const search = useSearchParams();
   const pending = useData<Pending[]>("admin/dispatch/pending");
+  const pendingCount = useData<{ total: number; limit: number }>("admin/dispatch/pending/count");
   const online = useData<{ id: string; full_name: string }[]>("admin/drivers/online");
   // WEB-06: `?leg=` değeri BFF yoluna eklenmeden önce UUID olarak doğrulanır; geçersizse seçim yapılmaz.
   const [legId, setLegId] = useState<string | null>(parseUuid(search.get("leg")));
@@ -46,10 +44,11 @@ function Dispatch() {
   useEffect(() => {
     const id = setInterval(() => {
       void pending.reload();
+      void pendingCount.reload();
       void online.reload();
     }, 20_000);
     return () => clearInterval(id);
-  }, [pending.reload, online.reload]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pending.reload, pendingCount.reload, online.reload]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function assign(c: Candidate) {
     if (!legId) return;
@@ -80,9 +79,9 @@ function Dispatch() {
       <ErrorBox error={pending.error} />
       <Msg message={action.message} />
       {/* REV-C-7: liste backend sınırında (MAX_LIST) kesilir; kesildiyse bunu sessizce saklama. */}
-      {(pending.data?.length ?? 0) >= PENDING_LIMIT && (
+      {pending.data && pendingCount.data && pendingCount.data.total > pending.data.length && (
         <p className="hint" role="status">
-          Yalnızca alış saati en yakın {PENDING_LIMIT} iş gösteriliyor; listede olmayan işler de var.
+          Toplam {pendingCount.data.total} bekleyen işin alış saati en yakın {pending.data.length} tanesi gösteriliyor.
         </p>
       )}
       <Table

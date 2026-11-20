@@ -765,7 +765,7 @@ REV-C ayrıntısı:
 | REV-C-4 | Bilgi | E-posta deseni uzun girdide karesel çalışıyor | DÜZELTİLDİ (desenlerden önce kırpma) |
 | REV-C-5 | Bilgi | PayTR `currency` alanı imzanın parçası değil | AKSİYON YOK (tutar imzalı; para birimi denetimi ek savunma) |
 | REV-C-6 | Bilgi | Ödeme sayfası yeniden kullanım penceresi PayTR sayacının başlangıcına bağlı | AÇIK (PayTR test mağazasında doğrulanmalı; çakışmada ikinci ödeme otomatik iade yoluna düşer) |
-| REV-C-7 | Bilgi | Admin liste sınırları sessizce kesiyor; `pending_legs` yine tüm satırları çekiyor | DÜZELTİLDİ (2026-11-20: eşleştirme listesi sınırı veritabanında, toplam `X-Total-Count` ve gösterge sayısı `COUNT`; admin ekranı sınıra ulaşınca not gösterir. Diğer `MAX_LIST` listeleri katalog ve personel gibi küçük tablolar) |
+| REV-C-7 | Bilgi | Admin liste sınırları sessizce kesiyor; `pending_legs` yine tüm satırları çekiyor | DÜZELTİLDİ (2026-11-20: eşleştirme listesi sınırı veritabanında, toplam `GET /admin/dispatch/pending/count` ve gösterge sayısı `COUNT`; admin ekranı sınıra ulaşınca not gösterir. Diğer `MAX_LIST` listeleri katalog ve personel gibi küçük tablolar) |
 | REV-C-8 | Bilgi | Worker hata logunda yalnızca istisna tipi var | DÜZELTİLDİ (2026-11-20: istisna tipi ve en içteki 8 çerçevenin `dosya:satır işlev` konumu; ileti ve yerel değişkenler yazılmaz. Hata izleme servisi MON-09'da açık) |
 | REV-C-9 | Bilgi | Mobil `toWsBase` büyük harfli şemada hata veriyordu; EAS dışı yerel release derlemesinde yerel ağa http serbest | DÜZELTİLDİ (şema; 2026-11-20: profilsiz Release derlemesi yerel http'ye yalnızca `GETAWAY_ALLOW_LOCAL_HTTP=1`, `GETAWAY_ANDROID_CLEARTEXT=1` ya da EAS `development*` profiliyle bağlanır) |
 

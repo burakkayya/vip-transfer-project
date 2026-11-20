@@ -39,8 +39,13 @@ def _mark_success(name: str, at: datetime) -> None:
 def _frames(exc: BaseException, limit: int = 8) -> str:
     """REV-C-8: hatanın kod konumu (dosya:satır işlev), en içteki `limit` çerçeve. İleti ve yerel değişkenler
     yazılmaz (kişisel veri taşıyabilir); yalnızca kaynak konumu teşhis için yeterlidir."""
-    frames = traceback.extract_tb(exc.__traceback__)[-limit:]
-    return " <- ".join(f"{os.path.basename(f.filename)}:{f.lineno} {f.name}" for f in reversed(frames)) or "?"
+    tb = traceback.extract_tb(exc.__traceback__)
+    # Uygulamanın kendi çerçeveleri (işin hangi satırı) önce; kütüphane içi (SQLAlchemy, psycopg) en içteki 2 çerçeve.
+    app_root = os.path.dirname(os.path.abspath(__file__))
+    own = [f for f in tb if os.path.abspath(f.filename).startswith(app_root)][-limit:]
+    inner = [f for f in tb[-2:] if f not in own]
+    frames = list(reversed(own)) + list(reversed(inner))
+    return " <- ".join(f"{os.path.basename(f.filename)}:{f.lineno} {f.name}" for f in frames) or "?"
 
 
 def _run(job) -> bool:

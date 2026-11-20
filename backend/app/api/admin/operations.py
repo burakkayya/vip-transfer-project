@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
@@ -250,9 +250,7 @@ def cancel_earning(entry_id: uuid.UUID, body: LedgerCancelIn, staff: OpsOrFinanc
 
 
 @router.get("/dispatch/pending")
-def pending(staff: OpsStaff, db: DbSession, now: Now, response: Response):
-    # REV-C-7: liste sınırda kesilirse admin bunu görür (X-Total-Count toplamı verir).
-    response.headers["X-Total-Count"] = str(dispatch.pending_leg_count(db, now))
+def pending(staff: OpsStaff, db: DbSession, now: Now):
     return [
         {"leg_id": str(leg.id), "booking_code": leg.booking.booking_code,
          "booking_type": leg.booking.booking_type.value, "pickup_at": leg.pickup_at,
@@ -260,6 +258,12 @@ def pending(staff: OpsStaff, db: DbSession, now: Now, response: Response):
          "vehicle_type": leg.booking.vehicle_type.code, "passengers": leg.booking.passenger_count}
         for leg in dispatch.pending_legs(db, now, limit=common.MAX_LIST)
     ]
+
+
+@router.get("/dispatch/pending/count")
+def pending_count(staff: OpsStaff, db: DbSession, now: Now):
+    """REV-C-7: eşleştirme bekleyen işlerin toplamı ve liste sınırı; liste kesildiyse admin ekranı bunu gösterir."""
+    return {"total": dispatch.pending_leg_count(db, now), "limit": common.MAX_LIST}
 
 
 def _leg(db, leg_id: uuid.UUID) -> BookingLeg:

@@ -118,7 +118,8 @@ def test_dispatch_pending_reports_total(client, db, ops, monkeypatch):  # noqa: 
     monkeypatch.setattr(common, "MAX_LIST", 1)
     r = client.get(f"{API}/admin/dispatch/pending", headers=ops)
     assert r.status_code == 200 and len(r.json()) == 1
-    assert int(r.headers["X-Total-Count"]) >= 2
+    count = client.get(f"{API}/admin/dispatch/pending/count", headers=ops).json()
+    assert count["total"] >= 2 and count["limit"] == 1
 
 
 def test_worker_logs_error_location_without_message(caplog):
@@ -144,3 +145,62 @@ def test_push_token_unique_index(client, db):
     with pytest.raises(IntegrityError):
         db.execute(text("UPDATE customers SET push_token = :t WHERE id = :i"), {"t": token, "i": ids[1]})
     db.rollback()
+
+
+@pytest.mark.usefixtures("relaxed_trip_clock")
+def test_reassign_back_shows_own_period_and_legacy_messages(client, db, ops):  # noqa: F811
+    from app.models import BookingLeg, TripMessage
+
+    customer, code = _paid_booking(client)
+    first, first_id = onboard_driver(client, ops, online=False)
+    second, second_id = onboard_driver(client, ops, online=False)
+    leg_id = client.post(f"{API}/driver/jobs/{_job(client, first, code)['leg_id']}/accept",
+                         headers=first).json()["leg_id"]
+    client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "İlk sürücüye"})
+    client.post(f"{API}/admin/dispatch/legs/{leg_id}/assign", headers=ops, json={"driver_id": second_id})
+    client.post(f"{API}/me/bookings/{code}/messages", headers=customer, json={"body": "İkinci sürücüye"})
+    client.post(f"{API}/admin/dispatch/legs/{leg_id}/assign", headers=ops, json={"driver_id": first_id})
+    bodies = [m["body"] for m in client.get(f"{API}/driver/trips/{leg_id}/messages", headers=first).json()["messages"]]
+    assert bodies == ["İlk sürücüye"]
+
+    # 0016 öncesi müşteri mesajı (alıcı yazılı değil): yalnızca atanma anından sonraysa görünür.
+    leg = db.get(BookingLeg, leg_id)
+    db.add(TripMessage(booking_leg_id=leg.id, sender="customer", body="eski kayıt, önce",
+                       created_at=leg.assigned_at - timedelta(minutes=5), driver_id=None))
+    db.add(TripMessage(booking_leg_id=leg.id, sender="customer", body="eski kayıt, sonra",
+                       created_at=leg.assigned_at + timedelta(seconds=1), driver_id=None))
+    db.commit()
+    bodies = [m["body"] for m in client.get(f"{API}/driver/trips/{leg_id}/messages", headers=first).json()["messages"]]
+    assert "eski kayıt, sonra" in bodies and "eski kayıt, önce" not in bodies
+
+
+def test_ip_limit_returns_retry_after(client, monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "otp_max_per_ip_per_hour", 2)
+    headers = {"X-Forwarded-For": "203.0.113.77"}
+    codes = [client.post(f"{API}/auth/otp/request", headers=headers,
+                         json={"phone": random_phone(), "purpose": "customer"}).status_code for _ in range(3)]
+    if codes[-1] != 429:
+        pytest.skip("test istemcisinin IP'si sabit değil (güvenilir vekil ayarı)")
+    r = client.post(f"{API}/auth/otp/request", headers=headers, json={"phone": random_phone(), "purpose": "customer"})
+    assert r.status_code == 429 and 1 <= r.json()["error"]["retry_after"] <= 3600
+
+
+def test_worker_frames_include_app_line_for_library_errors():
+    """REV-C-8 incelemesi: hata kütüphane içinde (ör. SQLAlchemy) oluşsa da işin uygulama satırı görünür."""
+    import os
+
+    from app import worker
+
+    ns: dict = {}
+    fake = os.path.join(os.path.dirname(os.path.abspath(worker.__file__)), "services", "fake_job.py")
+    source = "def fake_job():" + chr(10) + "    import json" + chr(10) + "    json.loads('{bozuk')" + chr(10)
+    exec(compile(source, fake, "exec"), ns)
+    try:
+        ns["fake_job"]()
+    except ValueError as exc:
+        text = worker._frames(exc)
+    first = text.split(" <- ")[0]
+    assert first == "fake_job.py:3 fake_job"
+    assert "decoder.py" in text  # kütüphane içindeki en içteki çerçeve de yazılır

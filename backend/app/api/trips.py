@@ -251,7 +251,7 @@ def driver_unread(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession):
 @driver_router.post("/trips/{leg_id}/messages", response_model=MessageOut, status_code=201)
 def driver_send(leg_id: uuid.UUID, body: MessageIn, driver: CurrentDriver, db: DbSession, now: Now):
     leg = _own_leg(db, driver, leg_id)
-    msg = messages.send(db, leg, "driver", body.body, now)
+    msg = messages.send(db, leg, "driver", body.body, now, sender_driver_id=driver.id)
     db.commit()
     return _msg_out(msg)
 

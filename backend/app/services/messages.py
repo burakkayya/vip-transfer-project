@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from datetime import datetime, timedelta
 
 from sqlalchemy import and_, false, func, or_, select, update
@@ -94,16 +95,21 @@ def unread_count(db: Session, leg: BookingLeg, viewer: str) -> int:
     ) or 0
 
 
-def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime) -> TripMessage:
+def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime,
+         sender_driver_id: uuid.UUID | None = None) -> TripMessage:
+    """`sender_driver_id`: sürücü gönderiyorsa kimliği; kilitten sonra bacağın hâlâ bu sürücüde olduğu denetlenir."""
     body = " ".join(text.split()) if "\n" not in text else text.strip()
     if not body:
         raise DomainError("mesaj boş olamaz", code="message_empty")
     if len(body) > MAX_LENGTH:
         raise DomainError("mesaj çok uzun", code="message_too_long")
+    # RT-10: aynı bacağa eşzamanlı gönderimler sayımı birlikte geçemesin; bacak satırı kilitlenir ve yeniden
+    # okunur. Açıklık ve alıcı sürücü kilitten sonra denetlenir (bu arada iş devredilmiş ya da kapanmış olabilir).
+    db.refresh(leg, with_for_update={"of": BookingLeg})
+    if sender == "driver" and (sender_driver_id is None or leg.driver_id != sender_driver_id):
+        raise NotFound("yolculuk bulunamadı")
     if not is_open(leg):
         raise Conflict("bu yolculuk için mesajlaşma kapandı", code="chat_closed")
-    # RT-10: aynı bacağa eşzamanlı gönderimler sayımı birlikte geçemesin; bacak satırı kilitlenir.
-    db.execute(select(BookingLeg.id).where(BookingLeg.id == leg.id).with_for_update())
     recent = db.scalar(
         select(func.count()).select_from(TripMessage).where(
             TripMessage.booking_leg_id == leg.id,
