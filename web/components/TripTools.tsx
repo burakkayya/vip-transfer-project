@@ -115,6 +115,8 @@ export function ChatPanel(props: { code: string; onClose: () => void; onRead: ()
         if (!current()) return;
         setChat(withSent(c, sentRef.current));
         setLoadError(null);
+        // WEB-07: okundu işareti ayrı POST ile; başarısızsa bir sonraki yoklamada yeniden denenir.
+        if (c.unread > 0) await api(`me/bookings/${props.code}/messages/read`, { method: "POST", signal }).catch(() => {});
         onRead();
       } catch (e) {
         if (!current()) return;

@@ -60,6 +60,8 @@ export default function DocumentReview(props: { doc: Doc; onDone: () => void }) 
           {doc.content_type.startsWith("image/") ? "Görüntüle" : "PDF indir"}
         </button>
       </div>
+      {/* Önizleme yetkili istekle alınan blob: adresi; next/image (sunucu tarafı optimizasyon) kullanılamaz. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       {preview && <img className="doc-preview" src={preview} alt="belge" />}
       {doc.status === "beklemede" && (
         <div className="row end">

@@ -6,6 +6,8 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public details: Record<string, unknown> = {},
+    /** 429 durumunda tekrar denemeden önce beklenecek saniye (backend `error.retry_after`). */
+    public retryAfter?: number,
   ) {
     super(message);
   }
@@ -50,7 +52,8 @@ export async function api<T>(
     });
     if (!res.ok) {
       const err = data?.error;
-      throw new ApiError(res.status, err?.code ?? "unknown", err?.message ?? res.statusText, err?.details ?? {});
+      const retry = typeof err?.retry_after === "number" ? err.retry_after : undefined;
+      throw new ApiError(res.status, err?.code ?? "unknown", err?.message ?? res.statusText, err?.details ?? {}, retry);
     }
     return data as T;
   } finally {

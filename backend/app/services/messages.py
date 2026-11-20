@@ -11,7 +11,7 @@ import logging
 import re
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, false, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -46,28 +46,48 @@ def is_open(leg: BookingLeg) -> bool:
     return leg.driver_id is not None and leg.status in OPEN_STATUSES
 
 
-def history(db: Session, leg: BookingLeg, viewer: str, now: datetime) -> tuple[list[TripMessage], int]:
-    """Mesajlar (eskiden yeniye) ve bu çağrıdan önce okunmamış olan sayısı. Karşı tarafın mesajları okundu sayılır."""
-    other = _other(viewer)
+def _visible(leg: BookingLeg, viewer: str):
+    """Görünürlük koşulu (RT-07). Müşteri bacağın tüm yazışmasını görür. Sürücü yalnızca kendi dönemini görür:
+    kendi yazdığı ve kendisine yazılan mesajlar (`driver_id` = bacağın şimdiki sürücüsü). 0016 öncesi müşteri
+    mesajlarında alıcı yazılı değildir; bunlar yalnızca sürücünün atanma anından sonra yazıldıysa görünür."""
+    if viewer == "customer":
+        return TripMessage.booking_leg_id == leg.id
+    legacy = and_(TripMessage.driver_id.is_(None), TripMessage.sender == "customer")
+    if leg.assigned_at is not None:
+        legacy = and_(legacy, TripMessage.created_at >= leg.assigned_at)
+    return and_(
+        TripMessage.booking_leg_id == leg.id,
+        or_(TripMessage.driver_id == leg.driver_id, legacy) if leg.driver_id is not None else false(),
+    )
+
+
+def history(db: Session, leg: BookingLeg, viewer: str) -> tuple[list[TripMessage], int]:
+    """Mesajlar (eskiden yeniye) ve okunmamış olanların sayısı. Okuma ayrıca `mark_read` ile işaretlenir
+    (WEB-07: GET isteği durum değiştirmez)."""
     unread = unread_count(db, leg, viewer)
-    if unread:
-        db.execute(
-            update(TripMessage)
-            .where(TripMessage.booking_leg_id == leg.id, TripMessage.sender == other, TripMessage.read_at.is_(None))
-            .values(read_at=now)
-        )
     rows = list(
         db.scalars(
-            select(TripMessage).where(TripMessage.booking_leg_id == leg.id).order_by(TripMessage.created_at).limit(500)
+            select(TripMessage).where(_visible(leg, viewer)).order_by(TripMessage.created_at).limit(500)
         )
     )
     return rows, unread
 
 
+def mark_read(db: Session, leg: BookingLeg, viewer: str, now: datetime) -> int:
+    """Karşı tarafın görünür ve okunmamış mesajlarını okundu yapar; işaretlenen sayıyı döner."""
+    result = db.execute(
+        update(TripMessage)
+        .where(_visible(leg, viewer), TripMessage.sender == _other(viewer), TripMessage.read_at.is_(None))
+        .values(read_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    return result.rowcount or 0
+
+
 def unread_count(db: Session, leg: BookingLeg, viewer: str) -> int:
     return db.scalar(
         select(func.count()).select_from(TripMessage).where(
-            TripMessage.booking_leg_id == leg.id,
+            _visible(leg, viewer),
             TripMessage.sender == _other(viewer),
             TripMessage.read_at.is_(None),
         )
@@ -82,6 +102,8 @@ def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime) ->
         raise DomainError("mesaj çok uzun", code="message_too_long")
     if not is_open(leg):
         raise Conflict("bu yolculuk için mesajlaşma kapandı", code="chat_closed")
+    # RT-10: aynı bacağa eşzamanlı gönderimler sayımı birlikte geçemesin; bacak satırı kilitlenir.
+    db.execute(select(BookingLeg.id).where(BookingLeg.id == leg.id).with_for_update())
     recent = db.scalar(
         select(func.count()).select_from(TripMessage).where(
             TripMessage.booking_leg_id == leg.id,
@@ -92,8 +114,8 @@ def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime) ->
     if recent >= RATE_LIMIT:
         raise TooManyRequests("çok fazla mesaj gönderildi, biraz bekleyin")
     # Gönderen sürücü mesajla saklanır: iş başka sürücüye devredilse de şikâyet incelemesinde doğru kişi görünür.
-    msg = TripMessage(booking_leg_id=leg.id, sender=sender, body=body, created_at=now,
-                      driver_id=leg.driver_id if sender == "driver" else None)
+    # Müşteri mesajında alıcı sürücü yazılır (RT-07): bacak devredilirse yeni sürücü eski yazışmayı görmez.
+    msg = TripMessage(booking_leg_id=leg.id, sender=sender, body=body, created_at=now, driver_id=leg.driver_id)
     # K-62: alıcının diline çeviri (sürücü tr, müşteri rezervasyon dili). Sürücü müşterinin dilini
     # konuşuyorsa ya da rezervasyon Türkçeyse çağrı yapılmaz.
     target = "tr" if sender == "customer" else leg.booking.locale

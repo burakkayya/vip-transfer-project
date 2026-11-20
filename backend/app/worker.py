@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import traceback
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
@@ -34,6 +36,13 @@ def _mark_success(name: str, at: datetime) -> None:
         log.warning("son başarılı çalışma yazılamadı (%s): %s", name, type(exc).__name__)
 
 
+def _frames(exc: BaseException, limit: int = 8) -> str:
+    """REV-C-8: hatanın kod konumu (dosya:satır işlev), en içteki `limit` çerçeve. İleti ve yerel değişkenler
+    yazılmaz (kişisel veri taşıyabilir); yalnızca kaynak konumu teşhis için yeterlidir."""
+    frames = traceback.extract_tb(exc.__traceback__)[-limit:]
+    return " <- ".join(f"{os.path.basename(f.filename)}:{f.lineno} {f.name}" for f in reversed(frames)) or "?"
+
+
 def _run(job) -> bool:
     """MON-14: iş kendi işleminde ve kendi try/except'inde çalışır; hatası aynı gruptaki sonraki işleri
     atlatmaz. Hata iletisi kişisel veri (SQL parametresi, ad, telefon) taşıyabileceği için yalnızca iş adı ve
@@ -44,7 +53,8 @@ def _run(job) -> bool:
             count = job(db, datetime.now(timezone.utc))
             db.commit()
     except Exception as exc:  # noqa: BLE001 - bir işin hatası diğerlerini durdurmamalı
-        log.error("GÜVENLİK ALARMI zamanlanmış iş başarısız: %s (%s)", name, type(exc).__name__)
+        log.error("GÜVENLİK ALARMI zamanlanmış iş başarısız: %s (%s) konum: %s", name, type(exc).__name__,
+                  _frames(exc))
         return False
     if count:
         log.info("%s: %s kayıt", name, count)

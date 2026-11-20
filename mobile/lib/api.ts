@@ -11,6 +11,8 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    /** 429 durumunda tekrar denemeden önce beklenecek saniye (backend `error.retry_after`). */
+    public retryAfter?: number,
   ) {
     super(message);
   }
@@ -97,7 +99,8 @@ async function send(path: string, init: RequestInit): Promise<Response> {
 async function ensureOk(res: Response): Promise<void> {
   if (res.ok) return;
   const data = await res.json().catch(() => null);
-  throw new ApiError(res.status, data?.error?.code ?? "unknown", data?.error?.message ?? String(res.status));
+  const retry = typeof data?.error?.retry_after === "number" ? data.error.retry_after : undefined;
+  throw new ApiError(res.status, data?.error?.code ?? "unknown", data?.error?.message ?? String(res.status), retry);
 }
 
 async function request(path: string, init: RequestInit): Promise<Response> {

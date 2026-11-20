@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app import commission
@@ -239,17 +239,19 @@ def _assignable_booking(leg: BookingLeg) -> None:
 
 
 def accept_offer(db: Session, driver: Driver, offer_id: uuid.UUID, *, now: datetime) -> BookingLeg:
-    offer = db.get(DispatchOffer, offer_id, with_for_update={"of": DispatchOffer})
+    # BIZ-08: kilit sırası her yerde aynı: önce bacak, sonra teklifler (accept_job ve assign ile aynı).
+    # Teklif önce kilitsiz okunur, bacak kilitlenir, ardından teklif kilitlenip yeniden okunur.
+    offer = db.get(DispatchOffer, offer_id)
     if offer is None or offer.driver_id != driver.id:
         raise NotFound("teklif bulunamadı")
+    leg = db.get(BookingLeg, offer.booking_leg_id, with_for_update={"of": BookingLeg})
+    db.refresh(leg)
+    db.refresh(offer, with_for_update={"of": DispatchOffer})
     if offer.status is not OfferStatus.SENT:
         raise Conflict("teklif artık geçerli değil", code="offer_closed")
     if offer.expires_at <= now:
         offer.status = OfferStatus.EXPIRED
         raise Conflict("teklifin süresi doldu", code="offer_expired")
-    # Aynı bacağa eşzamanlı kabulleri sıraya sokmak için bacak satırı kilitlenir.
-    leg = db.get(BookingLeg, offer.booking_leg_id, with_for_update={"of": BookingLeg})
-    db.refresh(leg)
     if leg.driver_id is not None:
         offer.status = OfferStatus.WITHDRAWN
         raise Conflict("iş başka bir sürücüye atandı", code="already_taken")
@@ -785,22 +787,29 @@ def expire_offers(db: Session, now: datetime) -> int:
     return len(offers)
 
 
-def pending_legs(db: Session, now: datetime) -> list[BookingLeg]:
-    """Ödemesi alınmış, henüz sürücüsü olmayan bacaklar (admin eşleştirme ekranı)."""
-    return list(
-        db.scalars(
-            select(BookingLeg)
-            .join(Booking)
-            .where(
-                and_(
-                    BookingLeg.status == LegStatus.PENDING,
-                    BookingLeg.driver_id.is_(None),
-                    Booking.status.in_(
-                        [BookingStatus.CONFIRMED, BookingStatus.ASSIGNED, BookingStatus.IN_PROGRESS]
-                    ),
-                    BookingLeg.pickup_at > now - timedelta(hours=6),
-                )
+def _pending_legs_query(now: datetime):
+    return (
+        select(BookingLeg)
+        .join(Booking)
+        .where(
+            and_(
+                BookingLeg.status == LegStatus.PENDING,
+                BookingLeg.driver_id.is_(None),
+                Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.ASSIGNED, BookingStatus.IN_PROGRESS]),
+                BookingLeg.pickup_at > now - timedelta(hours=6),
             )
-            .order_by(BookingLeg.pickup_at)
         )
     )
+
+
+def pending_legs(db: Session, now: datetime, limit: int | None = None) -> list[BookingLeg]:
+    """Ödemesi alınmış, henüz sürücüsü olmayan bacaklar (admin eşleştirme ekranı). REV-C-7: sınır veritabanında
+    uygulanır (tüm satırlar çekilmez); toplam ayrıca `pending_leg_count` ile alınır."""
+    q = _pending_legs_query(now).order_by(BookingLeg.pickup_at)
+    if limit is not None:
+        q = q.limit(limit)
+    return list(db.scalars(q).unique())
+
+
+def pending_leg_count(db: Session, now: datetime) -> int:
+    return db.scalar(select(func.count()).select_from(_pending_legs_query(now).subquery())) or 0

@@ -41,6 +41,15 @@ const withoutLocationUsage: ConfigPlugin = (cfg) =>
     return mod;
   });
 
+// Sürücü çeşidi: expo-location yerleşik eklentisi kesin konum geçici izni için İngilizce varsayılan metin
+// ("Allow $(PRODUCT_NAME) to access your precise location") ekliyor; sürücü uygulaması Türkçedir.
+const DRIVER_PRECISE_TEXT = "Yolcunun sizi doğru noktada bulabilmesi için kesin konumunuz gerekir.";
+const withDriverLocationTexts: ConfigPlugin = (cfg) =>
+  withInfoPlist(cfg, (mod) => {
+    mod.modResults.NSLocationTemporaryUsageDescriptionDictionary = { ExpoLocationFullAccuracy: DRIVER_PRECISE_TEXT };
+    return mod;
+  });
+
 // Yalnızca CI/emülatör testi: Android sürüm (release) derlemesi düz HTTP'yi engeller; emülatördeki uygulama
 // bilgisayardaki backend'e http://10.0.2.2:8000 ile ulaşır. Mağaza derlemesinde bu değişken verilmez.
 const allowCleartext = process.env.GETAWAY_ANDROID_CLEARTEXT === "1";
@@ -62,9 +71,13 @@ if (storeProfile) {
     throw new Error(`EAS profili "${buildProfile}": GETAWAY_ANDROID_CLEARTEXT mağaza/önizleme derlemesinde verilemez (MOB-04).`);
   }
 }
-// Mağaza dışı derleme (geliştirme profili, CI emülatör/simülatör Release derlemesi) yerel/özel ağdaki
-// http backend'e bağlanabilir; çalışma zamanı denetimi (lib/config.ts) bunu yalnızca yerel adreslerle sınırlar.
-const allowLocalHttp = !storeProfile;
+// Yerel/özel ağdaki http backend'e yalnızca açıkça izin verilen mağaza dışı derleme bağlanabilir (REV-C-9):
+// EAS geliştirme profili, Android emülatör testi (GETAWAY_ANDROID_CLEARTEXT=1) ya da CI simülatör derlemesi
+// (GETAWAY_ALLOW_LOCAL_HTTP=1). Profilsiz yerel Release derlemesi varsayılan olarak https ister. Çalışma zamanı
+// denetimi (lib/config.ts) izni yalnızca yerel adreslerle sınırlar; geliştirme (__DEV__) bundan etkilenmez.
+const allowLocalHttp =
+  !storeProfile &&
+  (buildProfile.startsWith("development") || allowCleartext || process.env.GETAWAY_ALLOW_LOCAL_HTTP === "1");
 const withCleartext: ConfigPlugin = (cfg) =>
   withAndroidManifest(cfg, (mod) => {
     const appNode = mod.modResults.manifest.application?.[0];
@@ -202,7 +215,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       googleMapsAndroid: Boolean(googleMapsAndroidKey),
     },
   };
-  const withVariant = isDriver ? app : withoutLocationUsage(app);
+  const withVariant = isDriver ? withDriverLocationTexts(app) : withoutLocationUsage(app);
   const withMaps = googleMapsIosKey ? withGoogleMapsIos(withVariant, googleMapsIosKey) : withVariant;
   return allowCleartext ? withCleartext(withMaps) : withMaps;
 };

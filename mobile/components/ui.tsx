@@ -142,6 +142,7 @@ export function tap() {
 // --- Yerleşim --------------------------------------------------------------
 
 export function Screen(props: { children: React.ReactNode; refreshing?: boolean; onRefresh?: () => void; header?: React.ReactNode; canvas?: boolean; bottom?: React.ReactNode }) {
+  const top = useSafeAreaInsets().top;
   return (
     <SafeAreaView style={[s.screen, props.canvas && { backgroundColor: colors.canvas }]} edges={["left", "right"]}>
       <ScrollView
@@ -156,7 +157,23 @@ export function Screen(props: { children: React.ReactNode; refreshing?: boolean;
         {props.children}
       </ScrollView>
       {props.bottom ? <BottomBar>{props.bottom}</BottomBar> : null}
+      <StatusBarScrim height={top} color={props.canvas ? colors.canvas : colors.bg} />
     </SafeAreaView>
+  );
+}
+
+/**
+ * Durum çubuğu zemini: uygulama kenardan kenara çizilir (Android 15+, iOS), durum çubuğu saydamdır. Kaydırılan
+ * içerik saat ve pil simgelerinin altından geçmesin diye üstte, güvenli alan yüksekliğinde ekran renginde bir şerit.
+ */
+export function StatusBarScrim(props: { height: number; color?: string }) {
+  if (props.height <= 0) return null;
+  return (
+    <View
+      pointerEvents="none"
+      testID="status-bar-scrim"
+      style={{ position: "absolute", top: 0, left: 0, right: 0, height: props.height, backgroundColor: props.color ?? colors.bg }}
+    />
   );
 }
 

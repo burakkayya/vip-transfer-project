@@ -55,8 +55,11 @@ function Chat({ id }: { id: string }) {
 
   const load = useCallback(async () => {
     try {
-      setChat(await api<ChatData>(base));
+      const data = await api<ChatData>(base);
+      setChat(data);
       setError(null);
+      // WEB-07: okundu işareti ayrı POST ile; başarısızsa bir sonraki yoklamada yeniden denenir.
+      if (data.unread > 0) await api(`${base}/read`, { method: "POST" }).catch(() => {});
     } catch (e) {
       setError(errText(e));
     }

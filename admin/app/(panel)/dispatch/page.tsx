@@ -29,6 +29,9 @@ interface Candidate {
   vehicle: string;
 }
 
+/** Backend eşleştirme listesinin üst sınırı (admin common.MAX_LIST). */
+const PENDING_LIMIT = 1000;
+
 /** Ekran 4: bekleyen işler ve uygun sürücüler. Planlı işte manuel atama, anlık işte teklif gönderimi. */
 function Dispatch() {
   const search = useSearchParams();
@@ -76,6 +79,12 @@ function Dispatch() {
       </PageHead>
       <ErrorBox error={pending.error} />
       <Msg message={action.message} />
+      {/* REV-C-7: liste backend sınırında (MAX_LIST) kesilir; kesildiyse bunu sessizce saklama. */}
+      {(pending.data?.length ?? 0) >= PENDING_LIMIT && (
+        <p className="hint" role="status">
+          Yalnızca alış saati en yakın {PENDING_LIMIT} iş gösteriliyor; listede olmayan işler de var.
+        </p>
+      )}
       <Table
         rows={pending.data}
         rowKey={(r) => r.leg_id}

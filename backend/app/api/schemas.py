@@ -296,10 +296,20 @@ class BookingOut(BaseModel):
     cancelled_at: datetime | None
     legs: list[BookingLegOut]
     share_active: bool = False
+    # Ödeme bekleyen rezervasyonun otomatik iptal anı (admin girişinde rezervasyona yazılı süre, diğerlerinde
+    # `pending_payment_minutes` ayarı). Diğer durumlarda boş. İstemci "… saatine kadar ödeyin" gösterir.
+    payment_due_at: datetime | None = None
 
     @classmethod
-    def build(cls, b: Booking, with_route: bool = False) -> "BookingOut":
+    def build(cls, b: Booking, with_route: bool = False, pending_minutes: int | None = None) -> "BookingOut":
+        due = None
+        if b.status is BookingStatus.PENDING_PAYMENT:
+            if b.payment_due_at is not None:
+                due = b.payment_due_at
+            elif pending_minutes is not None and b.created_at is not None:
+                due = b.created_at + timedelta(minutes=pending_minutes)
         return cls(
+            payment_due_at=due,
             id=b.id,
             booking_code=b.booking_code,
             booking_type=b.booking_type,

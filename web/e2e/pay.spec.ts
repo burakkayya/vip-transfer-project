@@ -208,7 +208,13 @@ test("pay summary shows booking code, route and amount as returned by the API", 
   expect(await amount.evaluate((el) => getComputedStyle(el).fontVariantNumeric)).toContain("tabular-nums");
   expect(await amount.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe("nowrap");
   // Süre kuralı ve güvenlik notu ayrı satırlardadır.
-  await expect(summary.locator(".pay-expiry")).toHaveText("Ödenmeyen rezervasyonlar 30 dakika sonra iptal edilir.");
+  // Son ödeme anı API'nin `payment_due_at` değeridir (admin ayarı değişirse metin de değişir).
+  expect(data.payment_due_at).toBeTruthy();
+  const due = new Intl.DateTimeFormat("tr", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Istanbul" })
+    .format(new Date(data.payment_due_at));
+  await expect(summary.locator(".pay-expiry")).toHaveText(
+    `Ödemeyi ${due} (Türkiye saati) öncesinde tamamlayın; ödenmeyen rezervasyon iptal edilir.`,
+  );
 });
 
 test("cancelled booking explains why no payment is taken and offers a new booking", async ({ page }) => {

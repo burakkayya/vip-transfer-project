@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, created_at, str_enum, uuid_pk
@@ -23,6 +23,11 @@ class Customer(Base):
     """Telefon users tablosunda (şifreli + kör indeks) tutulur, burada tekrarlanmaz."""
 
     __tablename__ = "customers"
+    # Bir cihaz jetonu tek hesaba aittir (0016; uygulama da devreder, notifications.bind_push_token).
+    __table_args__ = (
+        Index("uq_customers_push_token", "push_token", unique=True,
+              postgresql_where=text("push_token IS NOT NULL")),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(

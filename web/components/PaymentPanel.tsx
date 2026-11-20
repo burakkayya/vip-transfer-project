@@ -286,7 +286,12 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
           </p>
           <p className="pay-note pay-expiry">
             <Icon name="clock" size={16} />
-            <span>{t("expiresHint")}</span>
+            {/* Süre admin ayarı ya da elle girilen son ödeme anıdır (API `payment_due_at`); yoksa genel metin. */}
+            <span>
+              {booking.payment_due_at
+                ? t("expiresAt", { time: dateTime(booking.payment_due_at, locale) })
+                : t("expiresHint")}
+            </span>
           </p>
         </div>
       </section>

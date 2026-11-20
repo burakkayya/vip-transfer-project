@@ -99,6 +99,8 @@ export default function LoginPage() {
                 İlk giriş: doğrulama uygulamanızla (Google Authenticator, Microsoft Authenticator vb.) aşağıdaki kodu
                 okutun.
               </p>
+              {/* QR bir data: adresi; next/image optimizasyonu uygulanamaz (ve gizli anahtar önbelleğe girmemeli). */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               {qr && <img className="qr" src={qr} alt="2FA QR kodu" />}
               {secret && (
                 <p className="hint">

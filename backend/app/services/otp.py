@@ -78,6 +78,22 @@ def _alarm_slot_claimed(now: datetime) -> bool:
         return True
 
 
+def _retry_after(db: Session, *conditions, count: int, limit: int, now: datetime) -> int:
+    """Saatlik pencere sınırı aşıldığında yeniden denemeye kalan saniye: sayı sınırın altına inmesi için
+    penceredeki en eski (count - limit + 1). isteğin bir saati dolmalı. Bulunamazsa bir saat."""
+    since = now - timedelta(hours=1)
+    nth = db.scalar(
+        select(OtpChallenge.created_at)
+        .where(OtpChallenge.created_at > since, *conditions)
+        .order_by(OtpChallenge.created_at.asc())
+        .offset(max(0, count - limit))
+        .limit(1)
+    )
+    if nth is None:
+        return 3600
+    return max(1, min(3600, int((nth + timedelta(hours=1) - now).total_seconds()) + 1))
+
+
 def _ip_count(db: Session, ip: str, now: datetime) -> int:
     """Son bir saatte aynı IP önekinden (ip_bucket) gelen istek sayısı."""
     since = now - timedelta(hours=1)
@@ -114,11 +130,20 @@ def request_code(
         )
     )
     if recent >= s.otp_max_per_hour:
-        raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+        raise TooManyRequests(
+            "çok fazla kod istendi, lütfen daha sonra tekrar deneyin",
+            retry_after=_retry_after(db, OtpChallenge.phone_hash == phone_hash, count=recent,
+                                     limit=s.otp_max_per_hour, now=now),
+        )
     # AUTH-04: numara değiştirerek SMS pompalamaya karşı IP başına saatlik sınır.
     # REV-A-1: IPv6 /64 önekine göre sayılır (ip_bucket); IPv4 tam adres.
-    if ip and _ip_count(db, ip, now) >= s.otp_max_per_ip_per_hour:
-        raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+    if ip:
+        ip_count = _ip_count(db, ip, now)
+        if ip_count >= s.otp_max_per_ip_per_hour:
+            # IPv4'te kesin süre; IPv6 önekinde (Python'da sayılır) en kötü durum: bir saat.
+            wait = (_retry_after(db, OtpChallenge.ip == ip, count=ip_count, limit=s.otp_max_per_ip_per_hour,
+                                 now=now) if ip_bucket(ip) == ip else 3600)
+            raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin", retry_after=wait)
     total = db.scalar(
         select(func.count(OtpChallenge.id)).where(OtpChallenge.created_at > now - timedelta(hours=1))
     )
@@ -127,7 +152,10 @@ def request_code(
     if total >= s.otp_global_hard_limit_per_hour:
         logger.error("otp küresel sert tavanı aşıldı (%s/saat): tüm OTP istekleri reddediliyor",
                      s.otp_global_hard_limit_per_hour)
-        raise TooManyRequests("çok fazla kod istendi, lütfen daha sonra tekrar deneyin")
+        raise TooManyRequests(
+            "çok fazla kod istendi, lütfen daha sonra tekrar deneyin",
+            retry_after=_retry_after(db, count=total, limit=s.otp_global_hard_limit_per_hour, now=now),
+        )
     if total >= s.otp_global_max_per_hour and _alarm_slot_claimed(now):
         # Saatte bir kez ERROR: log toplayıcıdaki alarm kuralı bu kaydı yakalar (ayrı Sentry yok).
         logger.error("GÜVENLİK ALARMI otp küresel saatlik eşiği aşıldı: %s istek (eşik %s, sert tavan %s); "

@@ -46,7 +46,7 @@ from app.models.enums import ConsentType, DataRequestStatus, DataRequestType, Le
 from app.providers.payments import get_payment_provider
 from app.providers.routing import get_routing
 from app.security import tokens
-from app.services import audit, bookings, live_location, payments, quotes
+from app.services import audit, bookings, live_location, payments, quotes, system_settings
 
 router = APIRouter(prefix="/me", tags=["customer"])
 
@@ -93,7 +93,11 @@ def create_booking(body: BookingCreateIn, customer: CurrentCustomer, db: DbSessi
         market_stop=body.market_stop,
     )
     db.commit()
-    return BookingOut.build(booking)
+    return BookingOut.build(booking, pending_minutes=_pending_minutes(db))
+
+
+def _pending_minutes(db) -> int:
+    return int(system_settings.get(db, "pending_payment_minutes"))
 
 
 @router.get("/bookings", response_model=list[BookingOut])
@@ -101,12 +105,14 @@ def list_bookings(customer: CurrentCustomer, db: DbSession):
     rows = db.scalars(
         select(Booking).where(Booking.customer_id == customer.id).order_by(Booking.created_at.desc()).limit(100)
     )
-    return [BookingOut.build(b) for b in rows]
+    minutes = _pending_minutes(db)
+    return [BookingOut.build(b, pending_minutes=minutes) for b in rows]
 
 
 @router.get("/bookings/{code}", response_model=BookingOut)
 def get_booking(code: str, customer: CurrentCustomer, db: DbSession):
-    return BookingOut.build(_own_booking(db, customer, code), with_route=True)
+    return BookingOut.build(_own_booking(db, customer, code), with_route=True,
+                            pending_minutes=_pending_minutes(db))
 
 
 @router.get("/bookings/{code}/cancellation", response_model=RefundQuoteOut)

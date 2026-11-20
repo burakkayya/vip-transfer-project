@@ -2,6 +2,13 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-20
+
+- **Küçük düzeltmeler (1. grup).** Backend: SMS kodu sınırında (429) `Retry-After` başlığı ve `error.retry_after`; rezervasyon yanıtında `payment_due_at` (ödeme bekleyen rezervasyonun otomatik iptal anı); sohbette okundu işareti ayrı `POST …/messages/read` ucunda, GET durum değiştirmez (WEB-07); devredilen bacakta yeni sürücü önceki yazışmayı görmez, müşteri mesajına alıcı sürücü yazılır (RT-07); `accept_offer` kilit sırası `accept_job` ile aynı (önce bacak), kilitlenme ve serileştirme hatası 409 `concurrent_update` (BIZ-08); sohbet hız sınırı sayımından önce bacak kilidi (RT-10); eşleştirme listesi sınırı veritabanında ve `X-Total-Count` (REV-C-7); worker hata logunda iletisiz kod konumu (REV-C-8). Migration 0016: `customers.push_token` ve `drivers.push_token` kısmi benzersiz indeks (önce tekrarlar temizlenir).
+- **Web ve mobil:** yeni hata kodları için 12 dilde metin (`payment_under_review`, `payment_provider_error`, `trip_not_active`, `invalid_push_token`, `concurrent_update`) ve 429'da "N dakika sonra tekrar deneyin"; ödeme ekranında sabit "30 dakika" yerine API'nin son ödeme anı; rezervasyon detayı ödeme bekleyen rezervasyonu da 20 sn'de bir yeniler; sohbet okunmamış mesajda okundu POST'u gönderir. Mobil: kaydırılan içerik durum çubuğunun altından geçmez (`StatusBarScrim`, `Screen` ve `MapSheet`). Sürücü iOS kesin konum izni metni Türkçe. Profilsiz yerel Release derlemesi yerel http backend'e yalnızca açık izinle bağlanır (REV-C-9; iOS iş akışına `GETAWAY_ALLOW_LOCAL_HTTP=1`).
+- **Admin:** iki `no-img-element` uyarısı (2FA QR ve belge önizlemesi data:/blob: adresleri) gerekçeli istisnayla kapandı; lint tabanı üç projede 0/0; web ve admin `next build` artık lint'i atlamıyor. Eşleştirme ekranı liste sınırına ulaşınca not gösterir.
+- **Testler:** backend 498 (+9 `test_grup1_fixes.py`, sohbet testi yeni okundu akışına göre), mobil 142 (`app-config` REV-C-9), web e2e `pay.spec.ts` (son ödeme anı metni) ve `trip-tools.spec.ts` (okundu POST'u).
+
 ## 2026-11-18
 
 - **Faturalandırma ertelendi.** Fatura kesimi ve fatura e-postası "sonra bakılacak" olarak `docs/acik_konular.md`'ye işlendi (önerilen yol ve muhasebeciye sorulacaklar dahil); kod değişmedi.

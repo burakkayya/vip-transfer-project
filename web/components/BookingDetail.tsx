@@ -25,6 +25,8 @@ const LEG_FLOW = ["beklemede", "atandi", "yolda", "vardi", "basladi", "bitti"];
 const CANCELLABLE = new Set<BookingStatus>(["odeme_bekliyor", "onaylandi", "atandi"]);
 /** Sürücü ilerledikçe (atandı → yolda → başladı) durum sayfa yenilenmeden güncellensin. */
 const ACTIVE = new Set<BookingStatus>(["onaylandi", "atandi", "yolculukta"]);
+// Kendiliğinden yenilenen durumlar: ödeme bekleyen rezervasyon da (süre dolunca iptal olur, başka sekmede ödenebilir).
+const REFRESHING = new Set<BookingStatus>(["odeme_bekliyor", ...ACTIVE]);
 const REFRESH_MS = 20_000;
 /** Canlı konum yoklama aralığı. */
 const POLL_MS = 5000;
@@ -175,7 +177,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
   const unread = useUnread(props.code, chatLive && !chatOpen);
   const canFinish = booking?.legs.some((l) => l.status === "basladi") ?? false;
 
-  // Etkin rezervasyon 20 sn'de bir sessizce yenilenir (durum, sürücü ataması). Hata gösterilmez.
+  // Etkin rezervasyon 20 sn'de bir sessizce yenilenir (durum, sürücü ataması, yolculuk bitişi). Hata gösterilmez.
   usePoll(
     async ({ signal, current }) => {
       try {
@@ -185,7 +187,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
         if (current() && isUnauthorized(e)) sessionExpired();
       }
     },
-    { enabled: booking !== null && ACTIVE.has(booking.status), intervalMs: REFRESH_MS, timeoutMs: REFRESH_MS - 2000 },
+    { enabled: booking !== null && REFRESHING.has(booking.status), intervalMs: REFRESH_MS, timeoutMs: REFRESH_MS - 2000 },
   );
 
   async function previewCancel() {

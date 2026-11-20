@@ -176,7 +176,7 @@ SMS doğrulama ek kontrolleri (B-W3; `/book` Doğrulama adımı ve oturumsuz `/a
 
 Ödeme ekranı ek kontrolleri (B-W4; `/bookings/<kod>/pay`):
 - Açılırken önce "Oturum denetleniyor…", sonra "Rezervasyon bilgileri yükleniyor…", ardından "Güvenli ödeme sayfası hazırlanıyor…" görünür; boş ekran kalmaz.
-- Özet kartında ödenecek tutar (API'nin tutarı, tek satır), rezervasyon kodu, güzergâh ve alış tarihi; altında kilit simgesiyle kart bilgisi notu ve saat simgesiyle "Ödenmeyen rezervasyonlar 30 dakika sonra iptal edilir." yazar.
+- Özet kartında ödenecek tutar (API'nin tutarı, tek satır), rezervasyon kodu, güzergâh ve alış tarihi; altında kilit simgesiyle kart bilgisi notu ve saat simgesiyle "Ödemeyi {tarih saat} (Türkiye saati) öncesinde tamamlayın; ödenmeyen rezervasyon iptal edilir." yazar (zaman API'nin `payment_due_at` değeri: oluşturma + admin ayarı `pending_payment_minutes`, admin girişinde elle verilen süre).
 - Sahte ödeme sayfası açıkken üstünde "Ödemeniz bekleniyor. Onaylandığında bu sayfa kendiliğinden ilerler." yazar; bu sırada **Tekrar dene** düğmesi yoktur (açık ödeme sayfası sıfırlanmaz).
 - Backend kapalıyken (veya ağ kesikken) sayfa "Sunucuya ulaşılamadı…" ve **Tekrar dene** gösterir; backend açılıp düğmeye basınca ödeme sayfası gelir.
 - Sahte sayfada **Ödemeyi onayla** sonrası bildirim gecikirse "Ödemeniz onaylanıyor…" görünür (sayfa yoklamaya devam eder, onay gelince detaya geçer). 75 saniye içinde onay gelmezse sarı uyarı ile **Durumu yenile** ve **Ödemeye dön** çıkar; **Ödemeye dön** adresten `result`'ı kaldırıp yeni ödeme sayfası açar. Denemek için: tarayıcıda `/tr/bookings/<ödeme bekleyen kod>/pay?result=ok` açın.
@@ -322,6 +322,8 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 10. **Hız sınırları:** fiyat teklifi IP başına dakikada 60, SMS kodu IP başına saatte 10; aşılınca 429.
 11. **Reddedilen ödeme ve otomatik iade (K-74):** PayTR bildirimi tutar ya da para birimi denetimine takılırsa çekilen tutar otomatik iade edilir; admin Finans > İadeler'de "otomatik iade: reddedilen ödeme bildirimi" satırını görür. İade tamamlandıysa müşteri yeniden **Öde** diyebilir. İade başarısızsa rezervasyon "ödeme bekliyor" durumunda kalır, müşteri 409 `payment_under_review` alır ve süre dolsa da iptal olmaz; muhasebe **Yeniden dene** der ya da admin PayTR panelinde iadeyi doğrulayıp **Tamamlandı işaretle** der. Bahşiş ödemesinde de aynı denetim ve iade uygulanır.
 12. **Web ve admin BFF:** başka kökenden gelen POST 403 alır; üretimde `ALLOWED_ORIGINS` tanımsızsa giriş dahil tüm yazma istekleri 403 döner. Admin'de `/bookings/abc` ya da `/drivers/..%2Fx` "Sayfa bulunamadı" gösterir. Üretimde çerez adları `__Secure-ga_at`, `__Secure-ga_rt` (admin `__Secure-gaa_*`); eski çerezli oturum ilk istekte yeni ada taşınır.
+13. **SMS kodu sınırı (2026-11-20):** aynı numaraya bir saatte 6. kod istendiğinde web ve mobil "Çok fazla deneme yapıldı. N dakika sonra tekrar deneyin." der (N, ilk kodun bir saati dolana kadar kalan dakika); yanıtta `Retry-After` başlığı vardır.
+14. **Sohbette okundu (2026-11-20):** sohbeti yalnızca açmak (GET) mesajları okundu yapmaz; web ve mobil sohbet ekranı okunmamış mesaj varsa `POST …/messages/read` çağırır, karşı tarafta "okundu" görünür. Admin işi başka sürücüye atarsa yeni sürücü sohbet ekranında önceki yazışmayı görmez, müşteri tümünü görür.
 
 ## Otomatik testler
 

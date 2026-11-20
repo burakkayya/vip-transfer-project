@@ -201,6 +201,12 @@ const tr = {
   "errors.invalid_return_time": "Dönüş saati gidiş varışından sonra olmalı.",
   "errors.otp_invalid": "Kod hatalı veya süresi dolmuş.",
   "errors.too_many_requests": "Çok fazla deneme. Lütfen biraz sonra tekrar deneyin.",
+  "errors.payment_under_review": "Ödemeniz inceleniyor. Lütfen destek ekibimizle iletişime geçin; yeni ödeme açmayın.",
+  "errors.payment_provider_error": "Ödeme hizmetine şu an ulaşılamıyor. Kartınızdan para çekilmedi; biraz sonra tekrar deneyin.",
+  "errors.trip_not_active": "Bu yolculuk artık aktif değil.",
+  "errors.invalid_push_token": "Bildirimler bu cihazda açılamadı.",
+  "errors.concurrent_update": "İşlem aynı anda başka bir işlemle çakıştı. Lütfen tekrar deneyin.",
+  "errors.too_many_requests_wait": "Çok fazla deneme yapıldı. {minutes} dakika sonra tekrar deneyin.",
   "errors.not_cancellable": "Bu rezervasyon artık iptal edilemez.",
   "errors.payment_not_expected": "Bu rezervasyon için ödeme beklenmiyor.",
   "errors.not_found": "Kayıt bulunamadı.",
@@ -436,6 +442,12 @@ const en: Dict = {
   "errors.invalid_return_time": "The return must be after the outbound arrival.",
   "errors.otp_invalid": "The code is wrong or has expired.",
   "errors.too_many_requests": "Too many attempts. Please try again later.",
+  "errors.payment_under_review": "Your payment is under review. Please contact our support team and do not start a new payment.",
+  "errors.payment_provider_error": "The payment service is unavailable right now. Your card was not charged; please try again shortly.",
+  "errors.trip_not_active": "This trip is no longer active.",
+  "errors.invalid_push_token": "Notifications could not be enabled on this device.",
+  "errors.concurrent_update": "This action clashed with another one. Please try again.",
+  "errors.too_many_requests_wait": "Too many attempts. Please try again in {minutes} min.",
   "errors.not_cancellable": "This booking can no longer be cancelled.",
   "errors.payment_not_expected": "No payment is due for this booking.",
   "errors.not_found": "Not found.",
@@ -669,6 +681,12 @@ const de: Dict = {
   "errors.invalid_return_time": "Die Rückfahrt muss nach der Ankunft beginnen.",
   "errors.otp_invalid": "Der Code ist falsch oder abgelaufen.",
   "errors.too_many_requests": "Zu viele Versuche. Bitte später erneut versuchen.",
+  "errors.payment_under_review": "Ihre Zahlung wird geprüft. Bitte kontaktieren Sie unseren Support und starten Sie keine neue Zahlung.",
+  "errors.payment_provider_error": "Der Zahlungsdienst ist gerade nicht erreichbar. Ihre Karte wurde nicht belastet; bitte versuchen Sie es gleich erneut.",
+  "errors.trip_not_active": "Diese Fahrt ist nicht mehr aktiv.",
+  "errors.invalid_push_token": "Benachrichtigungen konnten auf diesem Gerät nicht aktiviert werden.",
+  "errors.concurrent_update": "Die Aktion hat sich mit einer anderen überschnitten. Bitte erneut versuchen.",
+  "errors.too_many_requests_wait": "Zu viele Versuche. Bitte in {minutes} Min. erneut versuchen.",
   "errors.not_cancellable": "Diese Buchung kann nicht mehr storniert werden.",
   "errors.payment_not_expected": "Für diese Buchung ist keine Zahlung offen.",
   "errors.not_found": "Nicht gefunden.",
@@ -902,6 +920,12 @@ const ru: Dict = {
   "errors.invalid_return_time": "Обратная подача должна быть после прибытия.",
   "errors.otp_invalid": "Код неверный или устарел.",
   "errors.too_many_requests": "Слишком много попыток. Попробуйте позже.",
+  "errors.payment_under_review": "Ваш платёж проверяется. Свяжитесь со службой поддержки и не начинайте новый платёж.",
+  "errors.payment_provider_error": "Платёжный сервис сейчас недоступен. Деньги с карты не списаны; попробуйте чуть позже.",
+  "errors.trip_not_active": "Эта поездка больше не активна.",
+  "errors.invalid_push_token": "Не удалось включить уведомления на этом устройстве.",
+  "errors.concurrent_update": "Действие совпало с другим. Попробуйте ещё раз.",
+  "errors.too_many_requests_wait": "Слишком много попыток. Повторите через {minutes} мин.",
   "errors.not_cancellable": "Это бронирование уже нельзя отменить.",
   "errors.payment_not_expected": "По этому бронированию оплата не требуется.",
   "errors.not_found": "Не найдено.",
@@ -999,6 +1023,9 @@ export function t(key: Key, vars: Record<string, string | number> = {}): string 
 
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
+    if (e.code === "too_many_requests" && e.retryAfter) {
+      return t("errors.too_many_requests_wait", { minutes: Math.max(1, Math.ceil(e.retryAfter / 60)) });
+    }
     const key = `errors.${e.code}` as Key;
     return key in dict ? dict[key] : e.code === "network" ? dict["errors.network"] : dict["errors.unknown"];
   }

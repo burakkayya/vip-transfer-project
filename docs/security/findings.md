@@ -529,7 +529,7 @@ Doğrulama durumu etiketleri:
 - Kategori: A04:2021; CWE-833. Önem: Düşük. Veri bütünlüğü bozulmuyor, kullanıcı 500 alıyor.
 - Etkilenen yer: `backend/app/services/dispatch.py:198-205,226-236,432-451`.
 - Önerilen düzeltme: Tek bir kilit sırası (önce bacak, sonra teklifler) uygulanmalı. Deadlock hatası 409 olarak dönmeli.
-- Birleşen ID'ler: yok. Doğrulama: kilit sırası doğrulandı (B). Dinamik test gerekli (iki eşzamanlı istek). DURUM: AÇIK (dinamik test gerekir)
+- Birleşen ID'ler: yok. Doğrulama: kilit sırası doğrulandı (B). DURUM: DÜZELTİLDİ (2026-11-20): `accept_offer` de önce bacağı, sonra teklifi kilitler (tek kilit sırası); kilitlenme (40P01) ve serileştirme (40001) hataları 500 değil 409 `concurrent_update` döner. Eşzamanlı iki istekle dinamik test yapılmadı.
 
 ### BIZ-09: Ödeme sayfası yeniden kullanım penceresi (25 dk) PayTR sayfa ömründen (30 dk) kısa
 - Kategori: A04:2021; CWE-362. Önem: Düşük. İkinci ödeme otomatik iade ediliyor. İade başarısız olursa BIZ-03 ile birleşiyor.
@@ -632,7 +632,7 @@ Doğrulama durumu etiketleri:
 - Kategori: A01:2021; CWE-200, CWE-639. Önem: Düşük.
 - Etkilenen yer: `backend/app/api/trips.py:153-157,229-232`, `services/messages.py:53-56,88-90`.
 - Önerilen düzeltme: Sürücü görünümü devir anından sonraki mesajlarla sınırlanmalı. Müşteri mesajlarına alıcı sürücü kimliği yazılmalı.
-- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). İş kuralı niyeti doğrulanmadı. DURUM: AÇIK
+- Birleşen ID'ler: yok. Doğrulama: doğrulandı (C). DURUM: DÜZELTİLDİ (2026-11-20): müşteri mesajına alıcı sürücü yazılır; sürücü yalnızca kendi dönemindeki mesajları görür (0016 öncesi alıcısız müşteri mesajları atanma anından sonraysa). Müşteri ve admin tüm yazışmayı görür. Test: `test_reassigned_driver_does_not_see_previous_chat`.
 
 ### RT-08: Push jetonu kaydında biçim ve cihaz sahipliği doğrulanmıyor
 - Kategori: A01/A04:2021; CWE-639, CWE-345. Önem: Düşük.
@@ -721,11 +721,11 @@ Durumlar tablonun son sütunundadır. Olumlu tespitlerde aksiyon gerekmiyor, yal
 | BIZ-11 | Rezervasyon kodu tahmin edilebilirliği (sorun yok) | `services/bookings.py:51,90-91` | CSPRNG kullanılıyor. Kod tek başına yetki vermiyor. | doğrulandı | AKSİYON YOK (olumlu tespit) |
 | PRIV-11 | Konum geçmişi kalıcı tabloya yazılmıyor (olumlu) | `services/live_location.py:20-35` | Redis notu RT-01'de. Admin canlı konum görüntülemesi MON-08'de. | doğrulandı | AKSİYON YOK (olumlu tespit) |
 | WEB-03 | Origin denetimi `x-forwarded-host` değerine güveniyor | `admin/app/bff/[...path]/route.ts:39-48`, `web/.../route.ts:52-61` | Tarayıcıdan istismar yolu yok. Sabit `ALLOWED_ORIGINS` kullanılmalı. | doğrulandı | DÜZELTİLDİ (86b6134; üretimde `ALLOWED_ORIGINS` zorunlu) |
-| WEB-07 | Origin denetimi GET'leri kapsamıyor; yan etkili GET var | `web/.../route.ts:107`, `backend/app/api/trips.py:246-249`, `services/messages.py:47-52` | Okundu işaretlemesi POST'a taşınmalı ya da `Sec-Fetch-Site` kontrol edilmeli. | doğrulandı | KISMEN DÜZELTİLDİ (86b6134; BFF `Sec-Fetch-Site` denetimi var, okundu işaretlemesi hâlâ GET içinde) |
+| WEB-07 | Origin denetimi GET'leri kapsamıyor; yan etkili GET var | `web/.../route.ts:107`, `backend/app/api/trips.py:246-249`, `services/messages.py:47-52` | Okundu işaretlemesi POST'a taşınmalı ya da `Sec-Fetch-Site` kontrol edilmeli. | doğrulandı | DÜZELTİLDİ (86b6134 BFF `Sec-Fetch-Site`; 2026-11-20 okundu işaretlemesi ayrı `POST …/messages/read` ucunda, GET durum değiştirmez) |
 | WEB-08 | Çerezde `__Host-`/`__Secure-` öneki yok; `Secure` bayrağı `NODE_ENV`'e bağlı | `web/.../route.ts:28-36`, `admin/.../route.ts:19-27` | `__Secure-` öneki değerlendirilmeli. | doğrulandı | DÜZELTİLDİ (86b6134; eski çerezden geçiş uçtan uca denenmedi) |
 | MOB-10 | Web önizlemesinde jetonlar `localStorage`'da | `mobile/lib/storage.web.ts:1-8` | Yalnızca geliştirme ortamı. Yayınlanmayacağı karara bağlanmalı. | doğrulandı | AÇIK (web önizlemesinin yayınlanmayacağı karara bağlanmalı) |
 | MOB-11 | Ekran görüntüsü koruması yok; `keychainAccessible` varsayılan; `allowBackup` belirsiz | `mobile/lib/storage.ts:5-6` | `expo-screen-capture` değerlendirilmeli. Prebuild çıktısı kontrol edilmeli. | dinamik test gerekli | AÇIK (mağaza öncesi) |
-| RT-10 | Sohbet hız sınırı say-sonra-ekle (yarış durumu) | `services/messages.py:79-91`, `api/trips.py:243` | Redis `INCR` ya da `FOR UPDATE` kullanılmalı. | dinamik test gerekli | AÇIK (dinamik test gerekir) |
+| RT-10 | Sohbet hız sınırı say-sonra-ekle (yarış durumu) | `services/messages.py:79-91`, `api/trips.py:243` | Redis `INCR` ya da `FOR UPDATE` kullanılmalı. | dinamik test gerekli | DÜZELTİLDİ (2026-11-20: sayımdan önce bacak satırı `FOR UPDATE` ile kilitlenir; eşzamanlı dinamik test yapılmadı) |
 | INF-04 | `next@15.5.28` içindeki `postcss@8.4.31` advisory'leri | `web/package-lock.json:4675-4676`, `admin/package-lock.json:4606-4607` | Yalnızca build zamanında ve güvenilir CSS üzerinde çalışıyor. Next yamaları izlenmeli. | doğrulandı | AÇIK (Next yamaları Dependabot ile izleniyor) |
 
 ---
@@ -765,8 +765,8 @@ REV-C ayrıntısı:
 | REV-C-4 | Bilgi | E-posta deseni uzun girdide karesel çalışıyor | DÜZELTİLDİ (desenlerden önce kırpma) |
 | REV-C-5 | Bilgi | PayTR `currency` alanı imzanın parçası değil | AKSİYON YOK (tutar imzalı; para birimi denetimi ek savunma) |
 | REV-C-6 | Bilgi | Ödeme sayfası yeniden kullanım penceresi PayTR sayacının başlangıcına bağlı | AÇIK (PayTR test mağazasında doğrulanmalı; çakışmada ikinci ödeme otomatik iade yoluna düşer) |
-| REV-C-7 | Bilgi | Admin liste sınırları sessizce kesiyor; `pending_legs` yine tüm satırları çekiyor | AÇIK |
-| REV-C-8 | Bilgi | Worker hata logunda yalnızca istisna tipi var | AÇIK (hata izleme servisi kararına bağlı, MON-09) |
-| REV-C-9 | Bilgi | Mobil `toWsBase` büyük harfli şemada hata veriyordu; EAS dışı yerel release derlemesinde yerel ağa http serbest | Şema düzeltildi; yerel derleme davranışı AÇIK (mağaza akışını etkilemez) |
+| REV-C-7 | Bilgi | Admin liste sınırları sessizce kesiyor; `pending_legs` yine tüm satırları çekiyor | DÜZELTİLDİ (2026-11-20: eşleştirme listesi sınırı veritabanında, toplam `X-Total-Count` ve gösterge sayısı `COUNT`; admin ekranı sınıra ulaşınca not gösterir. Diğer `MAX_LIST` listeleri katalog ve personel gibi küçük tablolar) |
+| REV-C-8 | Bilgi | Worker hata logunda yalnızca istisna tipi var | DÜZELTİLDİ (2026-11-20: istisna tipi ve en içteki 8 çerçevenin `dosya:satır işlev` konumu; ileti ve yerel değişkenler yazılmaz. Hata izleme servisi MON-09'da açık) |
+| REV-C-9 | Bilgi | Mobil `toWsBase` büyük harfli şemada hata veriyordu; EAS dışı yerel release derlemesinde yerel ağa http serbest | DÜZELTİLDİ (şema; 2026-11-20: profilsiz Release derlemesi yerel http'ye yalnızca `GETAWAY_ALLOW_LOCAL_HTTP=1`, `GETAWAY_ANDROID_CLEARTEXT=1` ya da EAS `development*` profiliyle bağlanır) |
 
 Faz 2 web ve admin değişiklikleri (`86b6134`) ile REV-C düzeltmeleri (`1896187`) ayrı bir bağımsız incelemeden geçmedi; otomatik testleri, tip denetimi, lint ve build geçti.

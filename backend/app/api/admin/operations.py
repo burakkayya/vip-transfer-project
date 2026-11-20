@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
@@ -63,7 +63,7 @@ def dashboard(staff: OpsOrSupport, db: DbSession, now: Now):
              "driver": leg.driver.full_name if leg.driver else None}
             for leg in todays_legs
         ],
-        "open_dispatch": len(dispatch.pending_legs(db, now)),
+        "open_dispatch": dispatch.pending_leg_count(db, now),
         "booking_status_counts": {k.value: v for k, v in status_counts.items()},
         "payment_status_counts_7d": {k.value: v for k, v in payment_counts.items()},
         "live_locations": live,
@@ -250,13 +250,15 @@ def cancel_earning(entry_id: uuid.UUID, body: LedgerCancelIn, staff: OpsOrFinanc
 
 
 @router.get("/dispatch/pending")
-def pending(staff: OpsStaff, db: DbSession, now: Now):
+def pending(staff: OpsStaff, db: DbSession, now: Now, response: Response):
+    # REV-C-7: liste sınırda kesilirse admin bunu görür (X-Total-Count toplamı verir).
+    response.headers["X-Total-Count"] = str(dispatch.pending_leg_count(db, now))
     return [
         {"leg_id": str(leg.id), "booking_code": leg.booking.booking_code,
          "booking_type": leg.booking.booking_type.value, "pickup_at": leg.pickup_at,
          "pickup": leg.pickup_region.name, "dropoff": leg.dropoff_region.name,
          "vehicle_type": leg.booking.vehicle_type.code, "passengers": leg.booking.passenger_count}
-        for leg in dispatch.pending_legs(db, now)[:common.MAX_LIST]
+        for leg in dispatch.pending_legs(db, now, limit=common.MAX_LIST)
     ]
 
 
