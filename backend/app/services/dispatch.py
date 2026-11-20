@@ -426,7 +426,9 @@ def _check_finish(db: Session, leg: BookingLeg, driver: Driver, at: Point, now: 
     elapsed = (now - started).total_seconds()
     planned = planned_minutes(leg)
     minimum = planned * s.trip_min_duration_ratio
-    if elapsed < minimum * 60 and not leg.booking.is_daily:
+    # K-29 incelemesi: günlükte de asgari süre geçerli (sürücü günü hemen bitirip hakediş alamaz);
+    # müşteri günü dilediği an bitirebilir (K-48). Yalnızca varış yarıçapı günlükte uygulanmaz.
+    if elapsed < minimum * 60:
         _reject(leg, driver, TripEventType.FINISHED, "trip_too_short",
                 f"yolculuk başlayalı {int(elapsed // 60)} dk oldu; en erken {int(minimum + 0.999)} dk sonra bitirilebilir",
                 elapsed_minutes=round(elapsed / 60, 1), planned_minutes=planned)

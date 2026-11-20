@@ -203,7 +203,14 @@
     "cardText": "終日10時間または半日5時間。ドライバーがずっとご一緒します。",
     "cta": "日単位貸切",
     "edit": "変更",
-    "dayN": "{n} 日目"
+    "dayN": "{n} 日目",
+    "planStep": "ご予定",
+    "startRequired": "出発地点を選択してください。",
+    "summary1": "1 日 · {package}",
+    "total1": "1 日の合計",
+    "bookingLine1": "日単位貸切 · 1 日 · {package}",
+    "allUnavailable": "このご予定で利用できる車両がありません。日付またはプランを変更してください。",
+    "changePlan": "予定を変更"
   },
   "otp": {
     "phone": "電話番号",

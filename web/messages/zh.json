@@ -203,7 +203,14 @@
     "cardText": "全天 10 小时或半天 5 小时，司机全程陪同。",
     "cta": "按天包车",
     "edit": "修改",
-    "dayN": "第 {n} 天"
+    "dayN": "第 {n} 天",
+    "planStep": "您的行程",
+    "startRequired": "请选择出发地点。",
+    "summary1": "1 天 · {package}",
+    "total1": "1 天合计",
+    "bookingLine1": "按天包车 · 1 天 · {package}",
+    "allUnavailable": "此行程暂无可用车辆，请更改日期或套餐后重试。",
+    "changePlan": "修改行程"
   },
   "otp": {
     "phone": "手机号码",

@@ -203,7 +203,14 @@
     "cardText": "Tam gün 10 saat ya da yarım gün 5 saat; sürücünüz gün boyu sizinle.",
     "cta": "Günlük kiralama",
     "edit": "Düzenle",
-    "dayN": "{n}. gün"
+    "dayN": "{n}. gün",
+    "planStep": "Planınız",
+    "startRequired": "Başlangıç noktasını seçin.",
+    "summary1": "1 gün · {package}",
+    "total1": "1 gün toplam",
+    "bookingLine1": "Günlük kiralama · 1 gün · {package}",
+    "allUnavailable": "Bu plan için uygun araç bulunamadı. Tarihi veya paketi değiştirip tekrar deneyin.",
+    "changePlan": "Planı değiştir"
   },
   "otp": {
     "phone": "Telefon numarası",

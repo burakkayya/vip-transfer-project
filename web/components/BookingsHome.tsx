@@ -189,7 +189,9 @@ export default function BookingsHome() {
                       {leg && (
                         <span className="muted booking-row-route">
                           {b.daily ? (
-                            <>{td("summary", { days: b.daily.days, package: b.daily.package === "tam" ? td("full") : td("half") })} · <span dir="ltr">{regionLabel(leg.pickup_region, locale)}</span></>
+                            <>{b.daily.days === 1
+                              ? td("summary1", { package: b.daily.package === "tam" ? td("full") : td("half") })
+                              : td("summary", { days: b.daily.days, package: b.daily.package === "tam" ? td("full") : td("half") })} · <span dir="ltr">{regionLabel(leg.pickup_region, locale)}</span></>
                           ) : (
                             <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span>
                           )} ·{" "}

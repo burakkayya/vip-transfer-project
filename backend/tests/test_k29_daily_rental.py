@@ -149,8 +149,11 @@ def test_daily_driver_flow_finish_anywhere_and_busy_window(client, db, ops):  # 
     updates = client.get(f"{API}/me/updates", headers=customer).json()
     started = next(u for u in updates if u["code"] == "trip_started")
     assert "10" in started["body"] and "Stunden" in started["body"]  # locale de, günlük metin
+    # Sürücü günü hemen bitiremez (asgari süre günlükte de geçerli); müşteri dilediği an bitirebilir (K-48).
     r = client.post(f"{API}/driver/trips/{leg_id}/events", headers=driver,
                     json={"event": "bitti", "lat": point["lat"] + 0.002, "lng": point["lng"]})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "trip_too_short", r.text
+    r = client.post(f"{API}/me/bookings/{b['booking_code']}/finish", headers=customer)
     assert r.status_code == 200, r.text
     detail = client.get(f"{API}/me/bookings/{b['booking_code']}", headers=customer).json()
     assert [leg["status"] for leg in detail["legs"]] == ["bitti", "beklemede"]

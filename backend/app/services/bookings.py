@@ -353,6 +353,15 @@ def refund_quote(db: Session, booking: Booking, now: datetime) -> cancellation.R
     if booking.status is BookingStatus.PENDING_PAYMENT:
         # Ödeme alınmadıysa iade edilecek bir şey yok.
         return cancellation.RefundQuote(Decimal("0"), 0, Decimal("0.00"), False)
+    if booking.is_daily:
+        # K-29: her gün kendi başlangıcına göre K-14 kademesiyle iade edilir; başlamış ve biten günler iade edilmez.
+        open_legs = [leg for leg in booking.legs if leg.status in (LegStatus.PENDING, LegStatus.ASSIGNED)]
+        quotes = [cancellation.quote_refund(leg.leg_price, leg.pickup_at, now, tiers, booking.has_guarantee)
+                  for leg in open_legs]
+        amount = sum((q.refund_amount for q in quotes), Decimal("0.00"))
+        percent = int((amount * 100 / booking.quoted_price).to_integral_value()) if booking.quoted_price else 0
+        hours_left = quotes[0].hours_left if quotes else Decimal("0.00")
+        return cancellation.RefundQuote(hours_left, percent, amount, any(q.guarantee_applied for q in quotes))
     return cancellation.quote_refund(
         booking.quoted_price, booking.first_pickup_at, now, tiers, booking.has_guarantee
     )
@@ -385,6 +394,8 @@ def cancel_booking(
             raise DomainError("iade oranı 0-100 arasında olmalı")
         percent = override_refund_percent
         amount = (booking.quoted_price * percent / Decimal(100)).quantize(Decimal("0.01"))
+    elif booking.is_daily:
+        amount = quote.refund_amount  # gün bazlı toplam (oran yuvarlanmış gösterimdir)
 
     booking.status = BookingStatus.CANCELLED
     booking.cancelled_at = now

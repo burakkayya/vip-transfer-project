@@ -141,7 +141,8 @@ export default function Daily() {
     setError(null);
     try {
       const req = request(vehicle!);
-      const q = await api<DailyQuote>("daily-quotes", { body: req });
+      // Müşterinin ekranda gördüğü tutar gönderilir; fiyat değiştiyse sunucu price_changed döner.
+      const q = quote!;
       try {
         const booking = await api<Booking>("me/daily-bookings", {
           body: {
@@ -162,7 +163,9 @@ export default function Daily() {
         router.replace({ pathname: "/booking/[code]", params: { code: booking.booking_code } });
       } catch (e) {
         if (e instanceof ApiError && e.code === "price_changed") {
-          setError(t("book.priceChanged", { total: money(q.total, q.currency, LOCALE) }));
+          const fresh = await api<DailyQuote>("daily-quotes", { body: req });
+          setQuotes((m) => ({ ...m, [vehicle!]: fresh }));
+          setError(t("book.priceChanged", { total: money(fresh.total, fresh.currency, LOCALE) }));
           return;
         }
         throw e;

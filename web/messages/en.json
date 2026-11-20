@@ -203,7 +203,14 @@
     "cardText": "Full day 10 hours or half day 5 hours; your driver stays with you.",
     "cta": "Car by the day",
     "edit": "Edit",
-    "dayN": "Day {n}"
+    "dayN": "Day {n}",
+    "planStep": "Your plan",
+    "startRequired": "Choose a starting point.",
+    "summary1": "1 day · {package}",
+    "total1": "Total for 1 day",
+    "bookingLine1": "Car by the day · 1 day · {package}",
+    "allUnavailable": "No vehicle is available for this plan. Change the date or package and try again.",
+    "changePlan": "Change plan"
   },
   "otp": {
     "phone": "Phone number",

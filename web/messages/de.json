@@ -203,7 +203,14 @@
     "cardText": "Ganzer Tag 10 Stunden oder halber Tag 5 Stunden; Ihr Fahrer bleibt bei Ihnen.",
     "cta": "Fahrer pro Tag",
     "edit": "Ändern",
-    "dayN": "Tag {n}"
+    "dayN": "Tag {n}",
+    "planStep": "Ihr Plan",
+    "startRequired": "Bitte einen Startpunkt wählen.",
+    "summary1": "1 Tag · {package}",
+    "total1": "Gesamt für 1 Tag",
+    "bookingLine1": "Fahrer pro Tag · 1 Tag · {package}",
+    "allUnavailable": "Für diesen Plan ist kein Fahrzeug verfügbar. Bitte Datum oder Paket ändern.",
+    "changePlan": "Plan ändern"
   },
   "otp": {
     "phone": "Telefonnummer",

@@ -203,7 +203,14 @@
     "cardText": "Journée de 10 heures ou demi-journée de 5 heures ; votre chauffeur reste avec vous.",
     "cta": "Voiture à la journée",
     "edit": "Modifier",
-    "dayN": "Jour {n}"
+    "dayN": "Jour {n}",
+    "planStep": "Votre programme",
+    "startRequired": "Choisissez un point de départ.",
+    "summary1": "1 jour · {package}",
+    "total1": "Total pour 1 jour",
+    "bookingLine1": "Voiture à la journée · 1 jour · {package}",
+    "allUnavailable": "Aucun véhicule n’est disponible pour ce programme. Modifiez la date ou la formule.",
+    "changePlan": "Modifier le programme"
   },
   "otp": {
     "phone": "Numéro de téléphone",

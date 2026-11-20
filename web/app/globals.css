@@ -2939,7 +2939,7 @@ html:lang(ko) * {
   color: var(--ink);
 }
 
-.page-intro {
+.page-title + .page-intro {
   max-width: 62ch;
   margin: -12px 0 24px;
 }

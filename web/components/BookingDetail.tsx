@@ -306,7 +306,9 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
           {booking.daily && (
             // K-29 günlük kiralama: paket, gün sayısı, günlük sınırlar ve bilgi amaçlı aşım ücretleri.
             <div className="daily-terms">
-              <p><strong>{td("bookingLine", { days: booking.daily.days, package: booking.daily.package === "tam" ? td("full") : td("half") })}</strong></p>
+              <p><strong>{booking.daily.days === 1
+                ? td("bookingLine1", { package: booking.daily.package === "tam" ? td("full") : td("half") })
+                : td("bookingLine", { days: booking.daily.days, package: booking.daily.package === "tam" ? td("full") : td("half") })}</strong></p>
               <p className="muted">{td("limits", { hours: booking.daily.hours_per_day, km: booking.daily.km_per_day })}</p>
               <p className="hint">{td("extras", { hour: fmt(booking.daily.extra_hour_price), km: fmt(booking.daily.extra_km_price) })}</p>
             </div>

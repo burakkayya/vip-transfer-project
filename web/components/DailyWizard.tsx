@@ -53,6 +53,7 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
   const [plan, setPlan] = useState<Plan>({ start: null, at: inputFromNow(48).slice(0, 11) + "09:00", days: 2, pkg: "tam", pax: 2, lug: 2 });
   const [step, setStep] = useState<Step>("plan");
   const [startMissing, setStartMissing] = useState(false);
+  const [atError, setAtError] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<Record<string, DailyQuote | ApiError | undefined>>({});
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [vehicle, setVehicle] = useState<string | null>(null);
@@ -81,6 +82,10 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
   const set = <K extends keyof Plan>(k: K, v: Plan[K]) => setPlan((p) => ({ ...p, [k]: v }));
   const fmt = (amount: string, currency: string) => money(amount, currency, locale);
   const pkgLabel = (p: DailyPackage) => (p === "tam" ? t("full") : t("half"));
+  // Tek günde tekil biçim (ör. "1 day", "1 Tag"); diğer sayılarda çoğul metin.
+  const summaryText = (days: number, p: DailyPackage) =>
+    days === 1 ? t("summary1", { package: pkgLabel(p) }) : t("summary", { days, package: pkgLabel(p) });
+  const totalText = (days: number) => (days === 1 ? t("total1") : t("total", { days }));
   const request = (vt: string) => ({
     pickup: toPlace(plan.start!),
     vehicle_type_code: vt,
@@ -119,6 +124,13 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
       document.getElementById("daily-start")?.focus();
       return;
     }
+    // En az 24 saat önceden (backend de denetler); hata alanın yanında söylenir.
+    if (new Date(localInputToIso(plan.at)).getTime() < Date.now() + 24 * 3600_000) {
+      setAtError(tErr("daily_lead_time_too_short"));
+      document.getElementById("daily-at")?.focus();
+      return;
+    }
+    setAtError(null);
     setError(null);
     setStep("vehicle");
     setLoadingQuotes(true);
@@ -198,7 +210,9 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
   }
 
   const steps: Step[] = loggedIn === true ? ["plan", "vehicle", "details", "confirm"] : ["plan", "vehicle", "details", "verify", "confirm"];
-  const stepName = (s: Step) => (s === "plan" ? t("package") : tb(`steps.${s}`));
+  const stepName = (s: Step) => (s === "plan" ? t("planStep") : tb(`steps.${s}`));
+  const quoteList = props.vehicleTypes.map((v) => quotes[v.code]);
+  const allUnavailable = !loadingQuotes && quoteList.length > 0 && quoteList.every((q) => q instanceof ApiError);
   const stepIndex = steps.indexOf(step);
   const selectedType = props.vehicleTypes.find((v) => v.code === vehicle);
   const selectedQuote = vehicle ? quotes[vehicle] : undefined;
@@ -240,10 +254,10 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
 
         {step === "plan" && (
           <form className="card stack wizard-step" onSubmit={loadQuotes} noValidate>
-            {head(t("package"))}
+            {head(t("planStep"))}
             {errorBox}
             <AddressField id="daily-start" label={t("start")} icon="pin" regions={props.regions} value={plan.start}
-              error={startMissing && !plan.start ? t("start") : null}
+              error={startMissing && !plan.start ? t("startRequired") : null}
               onChange={(v) => {
                 set("start", v);
                 setStartMissing(false);
@@ -252,7 +266,13 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
               <div className="field">
                 <label htmlFor="daily-at">{t("startAt")}</label>
                 <input id="daily-at" type="datetime-local" required value={plan.at} min={inputFromNow(24)}
-                  onChange={(e) => set("at", e.target.value)} aria-describedby="daily-lead" />
+                  aria-invalid={atError ? true : undefined}
+                  aria-describedby={atError ? "daily-at-error daily-lead" : "daily-lead"}
+                  onChange={(e) => {
+                    set("at", e.target.value);
+                    setAtError(null);
+                  }} />
+                {atError && <span className="field-error" id="daily-at-error">{atError}</span>}
               </div>
               <div className="field">
                 <label htmlFor="daily-days">{t("days")}</label>
@@ -266,7 +286,15 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
               <div className="segmented" role="radiogroup" aria-labelledby="daily-package-label">
                 {(["tam", "yarim"] as const).map((p) => (
                   <button key={p} type="button" role="radio" aria-checked={plan.pkg === p} className={plan.pkg === p ? "on" : ""}
-                    onClick={() => set("pkg", p)}>
+                    data-pkg={p} tabIndex={plan.pkg === p ? 0 : -1} onClick={() => set("pkg", p)}
+                    onKeyDown={(e) => {
+                      // Radyo grubu: ok tuşları seçimi değiştirir, odak seçilene geçer (tek sekme durağı).
+                      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+                      e.preventDefault();
+                      const next: DailyPackage = p === "tam" ? "yarim" : "tam";
+                      set("pkg", next);
+                      (e.currentTarget.parentElement?.querySelector(`[data-pkg="${next}"]`) as HTMLButtonElement | null)?.focus();
+                    }}>
                     {pkgLabel(p)}
                   </button>
                 ))}
@@ -296,6 +324,12 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
             <p className={loadingQuotes ? "muted" : "sr-only"} role="status">
               {loadingQuotes ? tb("loading") : Object.keys(quotes).length > 0 ? tb("pricesReady") : ""}
             </p>
+            {allUnavailable && (
+              <div className="alert error stack" role="alert">
+                <p>{t("allUnavailable")}</p>
+                <button className="btn secondary" type="button" onClick={() => setStep("plan")}>{t("changePlan")}</button>
+              </div>
+            )}
             <div className="vehicle-list">
               {props.vehicleTypes.map((vt) => {
                 const q = quotes[vt.code];
@@ -330,7 +364,7 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
                       {ok ? (
                         <>
                           <span className="price">{fmt(q.total, q.currency)}</span>
-                          <span className="hint">{t("total", { days: plan.days })}</span>
+                          <span className="hint">{totalText(plan.days)}</span>
                         </>
                       ) : !q && loadingQuotes ? (
                         <span className="skeleton" aria-hidden="true" />
@@ -444,7 +478,7 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
             <dt><Icon name="pin" size={16} /> {t("start")}</dt>
             <dd>{plan.start?.label ?? "—"}</dd>
             <dt><Icon name="calendar" size={16} /> {tb("when")}</dt>
-            <dd>{dateTime(localInputToIso(plan.at), locale)}<br />{t("summary", { days: plan.days, package: pkgLabel(plan.pkg) })}</dd>
+            <dd>{dateTime(localInputToIso(plan.at), locale)}<br />{summaryText(plan.days, plan.pkg)}</dd>
             <dt><Icon name="users" size={16} /> {tb("people")}</dt>
             <dd>{tb("seats", { count: plan.pax })} · {tb("bags", { count: plan.lug })}</dd>
             {selectedType && (
