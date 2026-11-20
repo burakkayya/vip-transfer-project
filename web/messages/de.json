@@ -9,6 +9,7 @@
     "account": "Konto",
     "language": "Sprache",
     "services": "Leistungen",
+    "daily": "Fahrer pro Tag",
     "fleet": "Fahrzeuge",
     "faq": "FAQ",
     "menu": "Menü",
@@ -177,6 +178,32 @@
     "mapPickup": "Abholung",
     "mapDropoff": "Ziel",
     "mapUnavailable": "Die Karte kann gerade nicht angezeigt werden; Route und Preis bleiben gleich."
+  },
+  "daily": {
+    "title": "Mietwagen mit Fahrer pro Tag",
+    "intro": "Auto und Fahrer den ganzen Tag für Sie. Ausflug, Termin oder Einkauf: Sie planen.",
+    "start": "Startpunkt (Hotel)",
+    "startAt": "Startzeit am ersten Tag",
+    "days": "Anzahl der Tage",
+    "package": "Paket",
+    "full": "Ganzer Tag",
+    "half": "Halber Tag",
+    "limits": "{hours} Std. · {km} km pro Tag",
+    "perDay": "{price} / Tag",
+    "total": "Gesamt für {days} Tage",
+    "extras": "Darüber hinaus: {hour} pro Stunde, {km} pro km. Mehrnutzung wird nach der Fahrt mit Ihnen abgestimmt.",
+    "plan": "Tagesplan (Ziele)",
+    "planHint": "Ihr Fahrer sieht dies nach Annahme des Auftrags. Keine Passdaten eingeben.",
+    "leadTime": "Mindestens 24 Stunden im Voraus buchen. Der Tag endet am Startpunkt oder wo Sie möchten.",
+    "chooseVehicle": "Fahrzeug wählen",
+    "showPrices": "Preise anzeigen",
+    "summary": "{days} Tage · {package}",
+    "bookingLine": "Fahrer pro Tag · {days} Tage · {package}",
+    "cardTitle": "Fahrer für den ganzen Tag",
+    "cardText": "Ganzer Tag 10 Stunden oder halber Tag 5 Stunden; Ihr Fahrer bleibt bei Ihnen.",
+    "cta": "Fahrer pro Tag",
+    "edit": "Ändern",
+    "dayN": "Tag {n}"
   },
   "otp": {
     "phone": "Telefonnummer",
@@ -484,7 +511,10 @@
     "chat_unavailable": "Sie können schreiben, sobald ein Fahrer zugewiesen ist.",
     "message_empty": "Die Nachricht darf nicht leer sein.",
     "message_too_long": "Die Nachricht ist zu lang.",
-    "no_active_trip": "Es gibt keine aktive Fahrt zum Beenden."
+    "no_active_trip": "Es gibt keine aktive Fahrt zum Beenden.",
+    "daily_lead_time_too_short": "Tagesbuchungen mindestens 24 Stunden im Voraus.",
+    "invalid_days": "Bitte 1 bis 14 Tage wählen.",
+    "daily_rate_unavailable": "Für dieses Fahrzeug ist die Tagesmiete derzeit nicht verfügbar."
   },
   "meet": {
     "speaks": "Sprachen: {languages}",

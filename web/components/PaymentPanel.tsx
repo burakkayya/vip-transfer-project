@@ -35,6 +35,7 @@ const CONFIRM_WAIT_MS = 75_000;
 export default function PaymentPanel(props: { code: string; result?: "ok" | "fail" }) {
   const t = useTranslations("pay");
   const tb = useTranslations("bookings");
+  const td = useTranslations("daily");
   const locale = useLocale();
   const router = useRouter();
   const errorText = useApiError();
@@ -269,10 +270,19 @@ export default function PaymentPanel(props: { code: string; result?: "ok" | "fai
           </div>
           {booking.legs.map((leg) => (
             <div key={leg.id}>
-              <dt>{roundTrip ? t(leg.leg_order === 1 ? "outbound" : "inbound") : t("route")}</dt>
+              <dt>
+                {booking.daily
+                  ? td("dayN", { n: leg.leg_order })
+                  : roundTrip ? t(leg.leg_order === 1 ? "outbound" : "inbound") : t("route")}
+              </dt>
               <dd>
                 <span className="pay-route">
-                  <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span>
+                  {booking.daily ? (
+                    // K-29: günlük kiralamada başlangıç noktası (gün boyu, bırakış yok).
+                    <span dir="ltr">{regionLabel(leg.pickup_region, locale)}</span>
+                  ) : (
+                    <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span>
+                  )}
                 </span>
                 <span className="pay-when">{dateTime(leg.pickup_at, locale)}</span>
               </dd>

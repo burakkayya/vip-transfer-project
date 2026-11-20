@@ -17,6 +17,7 @@ import { EmptyState, LoadingState } from "./States";
 export default function BookingsHome() {
   const t = useTranslations("bookings");
   const to = useTranslations("otp");
+  const td = useTranslations("daily");
   const te = useTranslations("errors");
   const locale = useLocale();
   const router = useRouter();
@@ -187,7 +188,11 @@ export default function BookingsHome() {
                       </span>
                       {leg && (
                         <span className="muted booking-row-route">
-                          <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span> ·{" "}
+                          {b.daily ? (
+                            <>{td("summary", { days: b.daily.days, package: b.daily.package === "tam" ? td("full") : td("half") })} · <span dir="ltr">{regionLabel(leg.pickup_region, locale)}</span></>
+                          ) : (
+                            <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span>
+                          )} ·{" "}
                           {dateTime(leg.pickup_at, locale)}
                         </span>
                       )}

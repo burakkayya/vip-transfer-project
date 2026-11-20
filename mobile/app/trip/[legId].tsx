@@ -255,8 +255,6 @@ function TripDetail({ legId }: { legId: string }) {
   async function simulateLocation() {
     if (!trip) return;
     const toDropoff = status === "basladi";
-  // K-29 günlük kiralama: gün içinde varış noktası yok; gün istenen yerde bitirilir.
-  const daily = trip.service_type === "gunluk";
     const lat = Number(toDropoff ? trip.dropoff_lat : trip.pickup_lat) + (Math.random() - 0.5) * 0.004;
     const lng = Number(toDropoff ? trip.dropoff_lng : trip.pickup_lng) + (Math.random() - 0.5) * 0.004;
     const p = { latitude: lat, longitude: lng };
@@ -284,6 +282,8 @@ function TripDetail({ legId }: { legId: string }) {
   const next = NEXT_STEP[status];
   const idx = FLOW.indexOf(status);
   const toDropoff = status === "basladi";
+  // K-29 günlük kiralama: gün içinde varış noktası yok; gün istenen yerde bitirilir.
+  const daily = trip.service_type === "gunluk";
   const pickupPt = trip.pickup_lat ? { latitude: Number(trip.pickup_lat), longitude: Number(trip.pickup_lng) } : null;
   const dropoffPt = trip.dropoff_lat ? { latitude: Number(trip.dropoff_lat), longitude: Number(trip.dropoff_lng) } : null;
 
@@ -426,7 +426,7 @@ function TripDetail({ legId }: { legId: string }) {
 
         <Card delay={120}>
           <H2>Rota</H2>
-          <RouteStops from={trip.pickup_region} to={trip.dropoff_region} fromHint={trip.pickup_address ?? undefined} toHint={trip.dropoff_address ?? undefined} />
+          <RouteStops from={trip.pickup_region} to={trip.service_type === "gunluk" ? "Gün boyu, müşteriyle" : trip.dropoff_region} fromHint={trip.pickup_address ?? undefined} toHint={trip.dropoff_address ?? undefined} />
           <Info icon="calendar-outline">{dateTime(trip.pickup_at)}</Info>
           {trip.flight_no ? <Info icon="airplane-outline">{driverFlightLine(trip.flight_no, trip.flight_status, trip.flight_estimated_at)}</Info> : null}
           {daily ? (

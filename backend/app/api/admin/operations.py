@@ -119,7 +119,9 @@ def list_bookings(
         AdminBookingRow(
             id=b.id, booking_code=b.booking_code, status=b.status, booking_type=b.booking_type.value,
             pickup_at=b.first_pickup_at,
-            route=f"{b.legs[0].pickup_region.name} → {b.legs[0].dropoff_region.name}",
+            # K-29 günlük kiralamada bırakış yok (gün boyu): yalnızca başlangıç bölgesi.
+            route=(b.legs[0].pickup_region.name if b.is_daily
+                   else f"{b.legs[0].pickup_region.name} → {b.legs[0].dropoff_region.name}"),
             total_amount=b.total_amount, currency=b.currency.value,
             # Müşteri hassas alanları admin panelinde maskeli (ekran 14).
             customer_phone=mask_phone(b.customer.user.phone or ""), created_at=b.created_at,

@@ -72,6 +72,7 @@ export default function RootLayout() {
               <Stack.Screen name="job/[legId]" options={{ headerShown: false, animation: "slide_from_bottom" }} />
               <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="plan" options={{ headerShown: false }} />
+              <Stack.Screen name="daily" options={{ headerShown: false }} />
               <Stack.Screen name="driver-register" options={{ title: "Sürücü kaydı" }} />
             </Stack>
           </PhoneFrame>

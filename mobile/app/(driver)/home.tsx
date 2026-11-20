@@ -103,7 +103,7 @@ function JobCard(props: { job: Job; index: number }) {
           </View>
           <Badge text={j.service_type === "gunluk" ? "Günlük" : j.booking_type === "anlik" ? "Anlık" : "Planlı"} tone={j.booking_type === "anlik" ? "accent" : "dark"} />
         </Row>
-        <RouteStops from={j.pickup_region} to={j.dropoff_region} compact />
+        <RouteStops from={j.pickup_region} to={j.service_type === "gunluk" ? "Gün boyu, müşteriyle" : j.dropoff_region} compact />
         <Row spread>
           <T style={s.hint}>
             {j.service_type === "gunluk"

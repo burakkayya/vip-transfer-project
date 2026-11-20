@@ -9,6 +9,7 @@
     "account": "アカウント",
     "language": "言語",
     "services": "サービス",
+    "daily": "日単位貸切",
     "fleet": "車両",
     "faq": "よくある質問",
     "menu": "メニュー",
@@ -177,6 +178,32 @@
     "mapPickup": "乗車地",
     "mapDropoff": "降車地",
     "mapUnavailable": "現在地図を表示できません。ルートと料金に影響はありません。"
+  },
+  "daily": {
+    "title": "ドライバー付き日単位貸切",
+    "intro": "車とドライバーが一日中ご一緒します。観光、会議、ショッピングなど、予定はご自由に。",
+    "start": "出発地点（ホテル）",
+    "startAt": "初日の開始時刻",
+    "days": "日数",
+    "package": "プラン",
+    "full": "終日",
+    "half": "半日",
+    "limits": "1日 {hours} 時間 · {km} km",
+    "perDay": "{price} / 日",
+    "total": "{days} 日間の合計",
+    "extras": "上限超過分：1時間 {hour}、1km {km}。超過がある場合は乗車後にご確認します。",
+    "plan": "当日の予定（訪問先）",
+    "planHint": "ドライバーが予約を受けた後に表示されます。パスポート情報は入力しないでください。",
+    "leadTime": "24時間前までにご予約ください。終了地点は出発地点でもご希望の場所でもかまいません。",
+    "chooseVehicle": "車種を選択",
+    "showPrices": "料金を表示",
+    "summary": "{days} 日間 · {package}",
+    "bookingLine": "日単位貸切 · {days} 日間 · {package}",
+    "cardTitle": "一日貸切ドライバー",
+    "cardText": "終日10時間または半日5時間。ドライバーがずっとご一緒します。",
+    "cta": "日単位貸切",
+    "edit": "変更",
+    "dayN": "{n} 日目"
   },
   "otp": {
     "phone": "電話番号",
@@ -484,7 +511,10 @@
     "chat_unavailable": "ドライバーが決まるとメッセージを送れます。",
     "message_empty": "メッセージを入力してください。",
     "message_too_long": "メッセージが長すぎます。",
-    "no_active_trip": "終了できる移動はありません。"
+    "no_active_trip": "終了できる移動はありません。",
+    "daily_lead_time_too_short": "日単位貸切は24時間前までにご予約ください。",
+    "invalid_days": "1〜14日の間で選択してください。",
+    "daily_rate_unavailable": "この車種の日単位貸切は現在ご利用いただけません。"
   },
   "meet": {
     "speaks": "対応言語：{languages}",

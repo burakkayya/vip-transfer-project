@@ -9,6 +9,7 @@
     "account": "Compte",
     "language": "Langue",
     "services": "Services",
+    "daily": "Voiture à la journée",
     "fleet": "Flotte",
     "faq": "FAQ",
     "menu": "Menu",
@@ -177,6 +178,32 @@
     "mapPickup": "Prise en charge",
     "mapDropoff": "Arrivée",
     "mapUnavailable": "La carte ne peut pas s'afficher pour le moment ; votre trajet et votre prix ne changent pas."
+  },
+  "daily": {
+    "title": "Voiture avec chauffeur à la journée",
+    "intro": "Voiture et chauffeur à vos côtés toute la journée. Visites, rendez-vous ou shopping : vous décidez.",
+    "start": "Point de départ (hôtel)",
+    "startAt": "Heure de départ le premier jour",
+    "days": "Nombre de jours",
+    "package": "Formule",
+    "full": "Journée complète",
+    "half": "Demi-journée",
+    "limits": "{hours} h · {km} km par jour",
+    "perDay": "{price} / jour",
+    "total": "Total pour {days} jours",
+    "extras": "Au-delà de la limite : {hour} par heure, {km} par km. Tout dépassement vous est confirmé après le trajet.",
+    "plan": "Programme de la journée (lieux à visiter)",
+    "planHint": "Votre chauffeur le voit après avoir accepté la course. N’indiquez pas vos données de passeport.",
+    "leadTime": "Réservez au moins 24 heures à l’avance. La journée se termine au point de départ ou où vous le souhaitez.",
+    "chooseVehicle": "Choisissez un véhicule",
+    "showPrices": "Voir les prix",
+    "summary": "{days} jours · {package}",
+    "bookingLine": "Voiture à la journée · {days} jours · {package}",
+    "cardTitle": "Chauffeur pour la journée",
+    "cardText": "Journée de 10 heures ou demi-journée de 5 heures ; votre chauffeur reste avec vous.",
+    "cta": "Voiture à la journée",
+    "edit": "Modifier",
+    "dayN": "Jour {n}"
   },
   "otp": {
     "phone": "Numéro de téléphone",
@@ -484,7 +511,10 @@
     "chat_unavailable": "Vous pourrez écrire dès qu'un chauffeur sera attribué.",
     "message_empty": "Le message ne peut pas être vide.",
     "message_too_long": "Le message est trop long.",
-    "no_active_trip": "Aucun trajet en cours à terminer."
+    "no_active_trip": "Aucun trajet en cours à terminer.",
+    "daily_lead_time_too_short": "La location à la journée se réserve au moins 24 heures à l’avance.",
+    "invalid_days": "Choisissez entre 1 et 14 jours.",
+    "daily_rate_unavailable": "La location à la journée n’est pas disponible pour ce véhicule pour le moment."
   },
   "meet": {
     "speaks": "Langues : {languages}",

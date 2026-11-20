@@ -169,7 +169,7 @@ function JobDetail({ legId }: { legId: string }) {
       <Alert text={error} tone={gone ? "warn" : "danger"} />
 
       <Card elevated delay={60}>
-        <RouteStops from={job.pickup_region} to={job.dropoff_region}
+        <RouteStops from={job.pickup_region} to={job.service_type === "gunluk" ? "Gün boyu, müşteriyle" : job.dropoff_region}
           fromHint={job.pickup_distance_km !== null ? `Size ${Number(job.pickup_distance_km).toLocaleString("tr-TR")} km` : undefined} />
         <Row gap={8}>
           {job.service_type === "gunluk" ? (

@@ -265,6 +265,19 @@ export default function Book() {
           ))}
         </View>
 
+        {/* K-29: şoförlü günlük kiralama girişi */}
+        <Animated.View entering={FadeInDown.duration(420).delay(320)}>
+          <Pressable onPress={() => { tap(); router.push("/daily"); }} accessibilityRole="button" accessibilityLabel={t("daily.cardTitle")}
+            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.brandSoft, borderRadius: 18, padding: 14 }, pressed && { opacity: 0.85 }]}>
+            <IconBubble name="sunny" size={42} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <T style={{ fontWeight: "700", fontSize: 15.5 }}>{t("daily.cardTitle")}</T>
+              <T style={s.hint} numberOfLines={2}>{t("daily.cardText")}</T>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.faint} style={rtlFlip("chevron-forward")} />
+          </Pressable>
+        </Animated.View>
+
         <Animated.View entering={FadeInDown.duration(450).delay(380)}>
           <Pressable onPress={() => setStep("trip")} style={{ backgroundColor: colors.ink, borderRadius: 22, padding: 18, overflow: "hidden", minHeight: 150 }}>
             <View style={{ width: "62%", gap: 6, zIndex: 1 }}>

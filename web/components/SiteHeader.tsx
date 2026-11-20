@@ -7,7 +7,7 @@ import Icon from "./Icon";
 import LocaleSwitcher from "./LocaleSwitcher";
 import Logo from "./Logo";
 
-type Labels = { services: string; fleet: string; faq: string; bookings: string; account: string; book: string; menu: string; sections: string; home: string };
+type Labels = { services: string; daily: string; fleet: string; faq: string; bookings: string; account: string; book: string; menu: string; sections: string; home: string };
 
 /** Yapışkan üst bilgi: kaydırınca gölge alır; dar ekranda menü düğmesi açılır panel gösterir. */
 export default function SiteHeader(props: { labels: Labels }) {
@@ -47,6 +47,7 @@ export default function SiteHeader(props: { labels: Labels }) {
         </Link>
         <nav className="nav-center" aria-label={l.sections}>
           <Link href="/#services">{l.services}</Link>
+          <Link href="/daily">{l.daily}</Link>
           <Link href="/#fleet">{l.fleet}</Link>
           <Link href="/#faq">{l.faq}</Link>
         </nav>
@@ -75,6 +76,7 @@ export default function SiteHeader(props: { labels: Labels }) {
           >
             {[
               { href: "/#services", label: l.services },
+              { href: "/daily", label: l.daily },
               { href: "/#fleet", label: l.fleet },
               { href: "/#faq", label: l.faq },
               { href: "/bookings", label: l.bookings },

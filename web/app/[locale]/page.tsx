@@ -16,7 +16,8 @@ const SERVICES = [
   { key: "s1", image: "/images/service-airport.webp", to: "/book?from=ayt" },
   { key: "s2", image: "/images/service-business.webp", to: "/book" },
   { key: "s3", image: "/images/service-chauffeur.webp", to: "/book" },
-  { key: "s4", image: "/images/service-events.webp", to: "/book" },
+  // K-29: özel günler ve gün boyu şoförlü araç günlük kiralamaya gider.
+  { key: "s4", image: "/images/service-events.webp", to: "/daily" },
 ] as const;
 
 // Bento ızgarada kartın kapladığı genişlik (next/image sizes): ilk kart geniş, dördüncü tam satır.

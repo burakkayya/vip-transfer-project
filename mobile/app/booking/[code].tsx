@@ -378,10 +378,24 @@ function BookingDetail({ code }: { code: string }) {
 
       <Card delay={140}>
         <H2>{t("bookings.details")}</H2>
+        {booking.daily ? (
+          // K-29 günlük kiralama: paket, gün sayısı ve günlük sınırlar; her gün ayrı satır.
+          <View style={{ gap: 4 }}>
+            <T style={{ fontWeight: "700" }}>
+              {t("daily.bookingLine", { days: booking.daily.days, package: booking.daily.package === "tam" ? t("daily.full") : t("daily.half") })}
+            </T>
+            <T style={s.hint}>{t("daily.limits", { hours: booking.daily.hours_per_day, km: booking.daily.km_per_day })}</T>
+            <T style={s.hint}>
+              {t("daily.extras", { hour: money(booking.daily.extra_hour_price, booking.currency, LOCALE), km: money(booking.daily.extra_km_price, booking.currency, LOCALE) })}
+            </T>
+          </View>
+        ) : null}
         {booking.legs.map((l, i) => (
           <View key={l.id} style={{ gap: 10 }}>
-            {booking.legs.length > 1 ? <T style={[s.hint, { fontWeight: "700" }]}>{i === 0 ? "1 · " : "2 · "}{dateTime(l.pickup_at, LOCALE)}</T> : null}
-            <RouteStops from={regionName(l.pickup_region, LOCALE)} to={regionName(l.dropoff_region, LOCALE)} fromHint={l.pickup_address ?? undefined} toHint={l.dropoff_address ?? undefined} />
+            {booking.daily ? (
+              <T style={[s.hint, { fontWeight: "700" }]}>{t("daily.dayN", { n: i + 1 })} · {dateTime(l.pickup_at, LOCALE)}</T>
+            ) : booking.legs.length > 1 ? <T style={[s.hint, { fontWeight: "700" }]}>{i === 0 ? "1 · " : "2 · "}{dateTime(l.pickup_at, LOCALE)}</T> : null}
+            {booking.daily && i > 0 ? null : <RouteStops from={regionName(l.pickup_region, LOCALE)} to={regionName(l.dropoff_region, LOCALE)} fromHint={l.pickup_address ?? undefined} toHint={l.dropoff_address ?? undefined} />}
             {l.flight ? <Info icon="airplane-outline" label={t("bookings.flight")}>{flightText(l.flight)}</Info> : null}
           </View>
         ))}

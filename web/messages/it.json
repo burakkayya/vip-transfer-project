@@ -9,6 +9,7 @@
     "account": "Account",
     "language": "Lingua",
     "services": "Servizi",
+    "daily": "Auto a giornata",
     "fleet": "Flotta",
     "faq": "Domande frequenti",
     "menu": "Menu",
@@ -177,6 +178,32 @@
     "mapPickup": "Partenza",
     "mapDropoff": "Arrivo",
     "mapUnavailable": "Al momento la mappa non è disponibile; percorso e prezzo non cambiano."
+  },
+  "daily": {
+    "title": "Auto con autista a giornata",
+    "intro": "Auto e autista con lei tutto il giorno. Escursioni, riunioni o shopping: il programma lo decide lei.",
+    "start": "Punto di partenza (hotel)",
+    "startAt": "Ora di inizio il primo giorno",
+    "days": "Numero di giorni",
+    "package": "Pacchetto",
+    "full": "Giornata intera",
+    "half": "Mezza giornata",
+    "limits": "{hours} ore · {km} km al giorno",
+    "perDay": "{price} / giorno",
+    "total": "Totale per {days} giorni",
+    "extras": "Oltre il limite: {hour} all’ora, {km} al km. L’eventuale eccedenza le viene confermata dopo il viaggio.",
+    "plan": "Programma della giornata (luoghi da visitare)",
+    "planHint": "L’autista lo vede dopo aver accettato il servizio. Non inserisca i dati del passaporto.",
+    "leadTime": "Prenoti con almeno 24 ore di anticipo. La giornata termina al punto di partenza o dove preferisce.",
+    "chooseVehicle": "Scelga un veicolo",
+    "showPrices": "Mostra i prezzi",
+    "summary": "{days} giorni · {package}",
+    "bookingLine": "Auto a giornata · {days} giorni · {package}",
+    "cardTitle": "Autista per tutto il giorno",
+    "cardText": "Giornata intera di 10 ore o mezza giornata di 5 ore; l’autista resta con lei.",
+    "cta": "Auto a giornata",
+    "edit": "Modifica",
+    "dayN": "Giorno {n}"
   },
   "otp": {
     "phone": "Numero di telefono",
@@ -484,7 +511,10 @@
     "chat_unavailable": "Potrà scrivere quando sarà assegnato un autista.",
     "message_empty": "Il messaggio non può essere vuoto.",
     "message_too_long": "Il messaggio è troppo lungo.",
-    "no_active_trip": "Non c'è alcun viaggio in corso da terminare."
+    "no_active_trip": "Non c'è alcun viaggio in corso da terminare.",
+    "daily_lead_time_too_short": "Il noleggio a giornata si prenota con almeno 24 ore di anticipo.",
+    "invalid_days": "Scelga tra 1 e 14 giorni.",
+    "daily_rate_unavailable": "Il noleggio a giornata non è disponibile per questo veicolo al momento."
   },
   "meet": {
     "speaks": "Lingue: {languages}",

@@ -9,6 +9,7 @@
     "account": "Conta",
     "language": "Idioma",
     "services": "Serviços",
+    "daily": "Carro por dia",
     "fleet": "Frota",
     "faq": "Perguntas frequentes",
     "menu": "Menu",
@@ -177,6 +178,32 @@
     "mapPickup": "Embarque",
     "mapDropoff": "Destino",
     "mapUnavailable": "O mapa não pode ser exibido agora; seu trajeto e seu preço não mudam."
+  },
+  "daily": {
+    "title": "Carro com motorista por dia",
+    "intro": "Carro e motorista consigo o dia todo. Passeios, reuniões ou compras: o plano é seu.",
+    "start": "Ponto de partida (hotel)",
+    "startAt": "Hora de início no primeiro dia",
+    "days": "Número de dias",
+    "package": "Pacote",
+    "full": "Dia inteiro",
+    "half": "Meio dia",
+    "limits": "{hours} h · {km} km por dia",
+    "perDay": "{price} / dia",
+    "total": "Total de {days} dias",
+    "extras": "Acima do limite: {hour} por hora, {km} por km. Qualquer excesso é confirmado consigo após a viagem.",
+    "plan": "Plano do dia (locais a visitar)",
+    "planHint": "O motorista vê isto depois de aceitar o serviço. Não indique dados do passaporte.",
+    "leadTime": "Reserve com pelo menos 24 horas de antecedência. O dia termina no ponto de partida ou onde preferir.",
+    "chooseVehicle": "Escolha um veículo",
+    "showPrices": "Ver preços",
+    "summary": "{days} dias · {package}",
+    "bookingLine": "Carro por dia · {days} dias · {package}",
+    "cardTitle": "Motorista para o dia todo",
+    "cardText": "Dia inteiro de 10 horas ou meio dia de 5 horas; o motorista fica consigo.",
+    "cta": "Carro por dia",
+    "edit": "Editar",
+    "dayN": "Dia {n}"
   },
   "otp": {
     "phone": "Número de telefone",
@@ -484,7 +511,10 @@
     "chat_unavailable": "Você poderá escrever assim que um motorista for definido.",
     "message_empty": "A mensagem não pode ficar vazia.",
     "message_too_long": "A mensagem é longa demais.",
-    "no_active_trip": "Não há nenhuma viagem em andamento para encerrar."
+    "no_active_trip": "Não há nenhuma viagem em andamento para encerrar.",
+    "daily_lead_time_too_short": "O aluguer por dia é reservado com pelo menos 24 horas de antecedência.",
+    "invalid_days": "Escolha entre 1 e 14 dias.",
+    "daily_rate_unavailable": "O aluguer por dia não está disponível para este veículo neste momento."
   },
   "meet": {
     "speaks": "Idiomas: {languages}",

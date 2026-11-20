@@ -119,6 +119,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
   const tb = useTranslations("book");
   const tf = useTranslations("footer");
   const tm = useTranslations("meet");
+  const td = useTranslations("daily");
   const locale = useLocale();
   const errorText = useApiError();
   const sessionExpired = useSessionExpired();
@@ -302,6 +303,14 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
             {(booking.child_seat_count ?? 0) > 0 && <> · {tm("childSeats", { count: booking.child_seat_count ?? 0 })}</>}
             {booking.market_stop && <> · {tm("marketStop")}</>}
           </p>
+          {booking.daily && (
+            // K-29 günlük kiralama: paket, gün sayısı, günlük sınırlar ve bilgi amaçlı aşım ücretleri.
+            <div className="daily-terms">
+              <p><strong>{td("bookingLine", { days: booking.daily.days, package: booking.daily.package === "tam" ? td("full") : td("half") })}</strong></p>
+              <p className="muted">{td("limits", { hours: booking.daily.hours_per_day, km: booking.daily.km_per_day })}</p>
+              <p className="hint">{td("extras", { hour: fmt(booking.daily.extra_hour_price), km: fmt(booking.daily.extra_km_price) })}</p>
+            </div>
+          )}
         </div>
         <div className="booking-head-side">
           <span className={`badge ${statusClass(booking.status)}`}>{t(`status.${booking.status}`)}</span>
@@ -319,8 +328,14 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
           <section key={leg.id} className="card stack booking-leg" aria-labelledby={titleId}>
             <div className="leg-head">
               <h2 className="leg-title" id={titleId}>
-                {multi && <span className="leg-order">{leg.leg_order}. </span>}
-                <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span>
+                {booking.daily ? (
+                  <span>{td("dayN", { n: leg.leg_order })} · <span dir="ltr">{regionLabel(leg.pickup_region, locale)}</span></span>
+                ) : (
+                  <>
+                    {multi && <span className="leg-order">{leg.leg_order}. </span>}
+                    <span dir="ltr">{regionLabel(leg.pickup_region, locale)} → {regionLabel(leg.dropoff_region, locale)}</span>
+                  </>
+                )}
               </h2>
               <p className="leg-when">
                 <Icon name="calendar" size={16} />

@@ -9,6 +9,7 @@
     "account": "Account",
     "language": "Language",
     "services": "Services",
+    "daily": "Car by the day",
     "fleet": "Fleet",
     "faq": "FAQ",
     "menu": "Menu",
@@ -177,6 +178,32 @@
     "mapPickup": "Pickup",
     "mapDropoff": "Drop-off",
     "mapUnavailable": "The map can’t be shown right now; your route and price are not affected."
+  },
+  "daily": {
+    "title": "Chauffeured car by the day",
+    "intro": "A car and driver with you all day. Sightseeing, meetings or shopping: you set the plan.",
+    "start": "Starting point (hotel)",
+    "startAt": "Start time on the first day",
+    "days": "Number of days",
+    "package": "Package",
+    "full": "Full day",
+    "half": "Half day",
+    "limits": "{hours} hours · {km} km per day",
+    "perDay": "{price} / day",
+    "total": "Total for {days} days",
+    "extras": "Use beyond the limit: {hour} per hour, {km} per km. Any extra is confirmed with you after the trip.",
+    "plan": "Plan for the day (places to visit)",
+    "planHint": "Your driver sees this after accepting the job. Do not enter passport details.",
+    "leadTime": "Book at least 24 hours ahead. The day ends where you started or wherever you prefer.",
+    "chooseVehicle": "Choose a vehicle",
+    "showPrices": "Show prices",
+    "summary": "{days} days · {package}",
+    "bookingLine": "Car by the day · {days} days · {package}",
+    "cardTitle": "Chauffeur for the day",
+    "cardText": "Full day 10 hours or half day 5 hours; your driver stays with you.",
+    "cta": "Car by the day",
+    "edit": "Edit",
+    "dayN": "Day {n}"
   },
   "otp": {
     "phone": "Phone number",
@@ -484,7 +511,10 @@
     "chat_unavailable": "You can message once a driver is assigned.",
     "message_empty": "The message cannot be empty.",
     "message_too_long": "The message is too long.",
-    "no_active_trip": "There is no active trip to end."
+    "no_active_trip": "There is no active trip to end.",
+    "daily_lead_time_too_short": "Day hire must be booked at least 24 hours ahead.",
+    "invalid_days": "Choose between 1 and 14 days.",
+    "daily_rate_unavailable": "Day hire is not available for this vehicle right now."
   },
   "meet": {
     "speaks": "Speaks: {languages}",

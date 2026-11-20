@@ -92,7 +92,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         <NextIntlClientProvider>
           <SiteHeader
             labels={{
-              services: t("services"), fleet: t("fleet"), faq: t("faq"), bookings: t("bookings"),
+              services: t("services"), daily: t("daily"), fleet: t("fleet"), faq: t("faq"), bookings: t("bookings"),
               account: t("account"), book: t("book"), menu: t("menu"), sections: t("sections"), home: company.name,
             }}
           />
