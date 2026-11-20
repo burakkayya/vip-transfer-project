@@ -11,10 +11,11 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.errors import DomainError
+from app.errors import Conflict, DomainError
 from app.models import Booking, Customer, Driver, Notification, NotificationTemplate
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.providers.sms import get_sms_sender
@@ -143,7 +144,15 @@ def bind_push_token(db: Session, owner: Customer | Driver, token: str | None) ->
             audit.record(db, actor_id=owner.user_id, action="push_token.reassigned",
                          entity_type=type(owner).__tablename__, entity_id=owner.id,
                          changes={"previous_owners": moved})
-    owner.push_token = token
+    # 0016 benzersiz indeksi: aynı jeton eşzamanlı başka hesaba bağlanıyorsa (devir sırasında birbirini
+    # göremeyen iki işlem) 500 yerine yeniden denenebilir 409 döner; yeniden denemede devir normal işler.
+    try:
+        with db.begin_nested():
+            owner.push_token = token
+            db.flush()
+    except IntegrityError as exc:
+        raise Conflict("cihaz jetonu aynı anda başka hesaba bağlanıyor, tekrar deneyin",
+                       code="concurrent_update") from exc
 
 
 def release_push_token(db: Session, user_id, token: str) -> None:

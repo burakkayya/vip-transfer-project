@@ -26,6 +26,10 @@ class Driver(Base):
     """Telefon users tablosunda tutulur."""
 
     __tablename__ = "drivers"
+    # Bir cihaz jetonu tek hesaba aittir (0016; uygulama da devreder, notifications.bind_push_token).
+    __table_args__ = (
+        Index("uq_drivers_push_token", "push_token", unique=True, postgresql_where=text("push_token IS NOT NULL")),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(

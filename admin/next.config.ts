@@ -30,9 +30,6 @@ const PREFETCH_HEADERS = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  // Lint ayrı çalıştırılır (`npm run lint`); mevcut taban ihlalleri docs/ui-review/lint-taban.md'de.
-  // Plan kapanışında lint zorunlu hale getirilir.
-  eslint: { ignoreDuringBuilds: true },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

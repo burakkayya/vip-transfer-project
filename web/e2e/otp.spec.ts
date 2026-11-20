@@ -153,7 +153,8 @@ test("international number with another country's code switches the country", as
 
 test("country code outside the list shows field error", async ({ page }) => {
   await openLogin(page);
-  await page.fill("#otp-phone", "+81 90 1234 5678");
+  // +998 (Özbekistan) listede yok; +81 (Japonya) K-77 ile listeye eklendi.
+  await page.fill("#otp-phone", "+998 90 123 45 67");
   await page.locator("form:has(#otp-phone) button[type=submit]").click();
   const phone = page.locator("#otp-phone");
   await expect(phone).toHaveAttribute("aria-invalid", "true");

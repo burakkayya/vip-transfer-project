@@ -28,6 +28,9 @@ export default function MapSheet(props: {
     transform: [{ translateY: interpolate(y.value, [0, mapH], [0, -mapH * 0.35], "clamp") }],
   }));
   const overlayStyle = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [0, mapH * 0.5], [1, 0], "clamp") }));
+  // Sayfa üst kenara yaklaşınca durum çubuğuna zemin gelir (kaydırılan içerik saatin altından geçmesin).
+  const sheetTop = mapH - 26 - insets.top;
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [sheetTop - 24, sheetTop], [0, 1], "clamp") }));
   const bg = props.dark ? colors.ink : colors.bg;
 
   return (
@@ -52,6 +55,13 @@ export default function MapSheet(props: {
         </Animated.View>
       ) : null}
       {props.bottom ? <BottomBar>{props.bottom}</BottomBar> : null}
+      {insets.top > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          testID="status-bar-scrim"
+          style={[{ position: "absolute", top: 0, left: 0, right: 0, height: insets.top, backgroundColor: bg }, scrimStyle]}
+        />
+      ) : null}
     </View>
   );
 }

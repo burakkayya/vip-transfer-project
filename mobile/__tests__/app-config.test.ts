@@ -54,8 +54,15 @@ test("mağaza profili https ile derlenir ve yerel http izni vermez", () => {
   expect(cfg.extra?.allowLocalHttp).toBe(false);
 });
 
-test("geliştirme profili (ve profil yokken yerel derleme) yerel http adresine izin verir", () => {
+test("geliştirme profili yerel http adresine izin verir", () => {
   expect(loadConfig({ EAS_BUILD_PROFILE: "development", GETAWAY_API_URL: "http://10.0.2.2:8000" })({ config: {} }).extra?.allowLocalHttp).toBe(true);
+});
+
+test("REV-C-9: profilsiz yerel Release derlemesi açık izin olmadan yerel http'ye izin vermez", () => {
+  expect(loadConfig({ GETAWAY_API_URL: "http://192.168.1.20:8000" })({ config: {} }).extra?.allowLocalHttp).toBe(false);
+  expect(
+    loadConfig({ GETAWAY_API_URL: "http://localhost:8000", GETAWAY_ALLOW_LOCAL_HTTP: "1" })({ config: {} }).extra?.allowLocalHttp,
+  ).toBe(true);
 });
 
 test("CI emülatör derlemesi (profil yok, cleartext) kırılmaz", () => {

@@ -41,6 +41,13 @@ class TooManyRequests(DomainError):
     status_code = 429
     code = "too_many_requests"
 
+    def __init__(self, message: str, *, code: str | None = None, details: Any = None,
+                 retry_after: int | None = None):
+        # retry_after: tekrar denemeden önce beklenecek saniye; yanıtta `Retry-After` başlığı ve
+        # `error.retry_after` alanı olarak döner (istemci kalan süreyi gösterir).
+        super().__init__(message, code=code, details=details)
+        self.retry_after = max(1, int(retry_after)) if retry_after is not None else None
+
 
 class ServiceUnavailable(DomainError):
     status_code = 503

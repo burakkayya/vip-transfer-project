@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from app.api import admin, auth, customer, driver, driver_tools, meeting, payments, public, trips
 from app.body_limit import UploadBodyLimit
@@ -42,7 +43,23 @@ def create_app() -> FastAPI:
         body = {"error": {"code": exc.code, "message": exc.message}}
         if exc.details is not None:
             body["error"]["details"] = exc.details
-        return JSONResponse(status_code=exc.status_code, content=body)
+        headers = None
+        retry_after = getattr(exc, "retry_after", None)
+        if retry_after is not None:
+            body["error"]["retry_after"] = retry_after
+            headers = {"Retry-After": str(retry_after)}
+        return JSONResponse(status_code=exc.status_code, content=body, headers=headers)
+
+    @app.exception_handler(OperationalError)
+    async def _db_operational_error(request: Request, exc: OperationalError):
+        # BIZ-08: eşzamanlı işlemlerde kilitlenme (40P01) ya da serileştirme hatası (40001) kullanıcıya 500
+        # değil, yeniden denenebilir 409 olarak döner. Diğer veritabanı hataları olduğu gibi yükselir.
+        sqlstate = getattr(getattr(exc, "orig", None), "sqlstate", None)
+        if sqlstate in ("40P01", "40001"):
+            log.warning("veritabanı eşzamanlılık çakışması (%s): %s %s", sqlstate, request.method, request.url.path)
+            return JSONResponse(status_code=409, content={"error": {
+                "code": "concurrent_update", "message": "işlem aynı anda başka bir işlemle çakıştı, tekrar deneyin"}})
+        raise exc
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request: Request, exc: RequestValidationError):

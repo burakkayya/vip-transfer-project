@@ -214,9 +214,8 @@ class UnreadOut(BaseModel):
     unread: int
 
 
-def _chat(db, leg: BookingLeg, viewer: str, other_name: str, now: datetime) -> ChatOut:
-    rows, unread = messages.history(db, leg, viewer, now)
-    db.commit()
+def _chat(db, leg: BookingLeg, viewer: str, other_name: str) -> ChatOut:
+    rows, unread = messages.history(db, leg, viewer)
     return ChatOut(
         open=messages.is_open(leg),
         unread=unread,
@@ -231,9 +230,17 @@ def _msg_out(m: TripMessage) -> MessageOut:
 
 
 @driver_router.get("/trips/{leg_id}/messages", response_model=ChatOut)
-def driver_chat(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession, now: Now):
+def driver_chat(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession):
     leg = _own_leg(db, driver, leg_id)
-    return _chat(db, leg, "driver", leg.booking.passenger_name.split()[0], now)
+    return _chat(db, leg, "driver", leg.booking.passenger_name.split()[0])
+
+
+@driver_router.post("/trips/{leg_id}/messages/read", response_model=UnreadOut)
+def driver_mark_read(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession, now: Now):
+    """WEB-07: okundu işareti ayrı yazma ucunda (GET durum değiştirmez)."""
+    messages.mark_read(db, _own_leg(db, driver, leg_id), "driver", now)
+    db.commit()
+    return UnreadOut(unread=0)
 
 
 @driver_router.get("/trips/{leg_id}/messages/unread", response_model=UnreadOut)
@@ -244,15 +251,23 @@ def driver_unread(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession):
 @driver_router.post("/trips/{leg_id}/messages", response_model=MessageOut, status_code=201)
 def driver_send(leg_id: uuid.UUID, body: MessageIn, driver: CurrentDriver, db: DbSession, now: Now):
     leg = _own_leg(db, driver, leg_id)
-    msg = messages.send(db, leg, "driver", body.body, now)
+    msg = messages.send(db, leg, "driver", body.body, now, sender_driver_id=driver.id)
     db.commit()
     return _msg_out(msg)
 
 
 @customer_router.get("/bookings/{code}/messages", response_model=ChatOut)
-def customer_chat(code: str, customer: CurrentCustomer, db: DbSession, now: Now):
+def customer_chat(code: str, customer: CurrentCustomer, db: DbSession):
     leg = messages.chat_leg(_own_booking(db, customer, code))
-    return _chat(db, leg, "customer", leg.driver.full_name.split()[0], now)
+    return _chat(db, leg, "customer", leg.driver.full_name.split()[0])
+
+
+@customer_router.post("/bookings/{code}/messages/read", response_model=UnreadOut)
+def customer_mark_read(code: str, customer: CurrentCustomer, db: DbSession, now: Now):
+    """WEB-07: okundu işareti ayrı yazma ucunda (GET durum değiştirmez)."""
+    messages.mark_read(db, messages.chat_leg(_own_booking(db, customer, code)), "customer", now)
+    db.commit()
+    return UnreadOut(unread=0)
 
 
 @customer_router.get("/bookings/{code}/messages/unread", response_model=UnreadOut)

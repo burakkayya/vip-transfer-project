@@ -159,6 +159,8 @@ export interface Booking {
   created_at: string;
   cancelled_at: string | null;
   legs: BookingLeg[];
+  /** Ödeme bekleyen rezervasyonun otomatik iptal anı; diğer durumlarda null. */
+  payment_due_at?: string | null;
 }
 
 export interface RefundQuote {

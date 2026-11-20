@@ -9,7 +9,13 @@ export function useApiError() {
   const t = useTranslations("errors");
   return useCallback(
     (e: unknown): string => {
-      if (e instanceof ApiError) return t.has(e.code) ? t(e.code) : t("unknown");
+      if (e instanceof ApiError) {
+        // 429 durumunda backend kalan süreyi verirse dakika olarak gösterilir (yukarı yuvarlanır).
+        if (e.code === "too_many_requests" && e.retryAfter) {
+          return t("too_many_requests_wait", { minutes: Math.max(1, Math.ceil(e.retryAfter / 60)) });
+        }
+        return t.has(e.code) ? t(e.code) : t("unknown");
+      }
       return t("network");
     },
     [t],

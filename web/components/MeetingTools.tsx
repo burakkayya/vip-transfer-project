@@ -45,9 +45,9 @@ export function DriverCard(props: { driver: DriverBrief; photoSrc: string | null
           {d.color ? `${d.color} ` : ""}
           {d.vehicle} · <strong className="tabular plate">{d.plate}</strong>
         </div>
-        {d.languages.length > 0 && (
+        {(d.languages?.length ?? 0) > 0 && (
           <div className="muted driver-langs">
-            <Icon name="globe" size={14} /> {t("speaks", { languages: d.languages.map((x) => languageName(x, locale)).join(", ") })}
+            <Icon name="globe" size={14} /> {t("speaks", { languages: (d.languages ?? []).map((x) => languageName(x, locale)).join(", ") })}
           </div>
         )}
       </div>

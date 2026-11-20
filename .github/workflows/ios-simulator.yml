@@ -37,6 +37,8 @@ env:
   GETAWAY_API_URL: http://localhost:8000
   GETAWAY_WEB_URL: http://localhost:8000
   GETAWAY_PUBLIC_WEB_URL: http://localhost:8000
+  # REV-C-9: profilsiz Release derlemesi yerel http backend'e yalnızca açık izinle bağlanır.
+  GETAWAY_ALLOW_LOCAL_HTTP: "1"
   OUT: ${{ github.workspace }}/ios-out
 
 jobs:

@@ -42,7 +42,15 @@ async function mockChat(page: Page, code: string) {
     { id: "m1", sender: "driver", body: "Girişte bekliyorum.", created_at: new Date().toISOString(), read_at: null },
   ];
   const sent: string[] = [];
+  const reads: string[] = [];
+  let unread = 1;
   await page.route(`**/bff/me/bookings/${code}/messages/unread`, (route) => route.fulfill({ json: { unread: 2 } }));
+  // WEB-07: okundu işareti ayrı POST ile; GET okundu yapmaz.
+  await page.route(`**/bff/me/bookings/${code}/messages/read`, async (route) => {
+    reads.push(route.request().method());
+    unread = 0;
+    await route.fulfill({ json: { unread: 0 } });
+  });
   await page.route(`**/bff/me/bookings/${code}/messages`, async (route) => {
     if (route.request().method() === "POST") {
       const { body } = route.request().postDataJSON() as { body: string };
@@ -51,9 +59,10 @@ async function mockChat(page: Page, code: string) {
       messages.push(msg);
       return route.fulfill({ status: 201, json: msg });
     }
-    await route.fulfill({ json: { open: true, unread: 0, other_name: "Mehmet", messages } });
+    await route.fulfill({ json: { open: true, unread, other_name: "Mehmet", messages } });
   });
-  return sent;
+  // `reads` sayılamaz özellik: `expect(sent).toEqual([...])` yalnızca gönderilen metinleri karşılaştırır.
+  return Object.defineProperty(sent, "reads", { value: reads, enumerable: false }) as string[] & { reads: string[] };
 }
 
 test("aktif yolculukta kalan süre, okunmamış rozeti ve sohbet", async ({ page }) => {
@@ -74,6 +83,7 @@ test("aktif yolculukta kalan süre, okunmamış rozeti ve sohbet", async ({ page
   }).toPass({ timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Mehmet ile mesajlaşma" })).toBeFocused();
   await expect(page.getByRole("log")).toContainText("Girişte bekliyorum.");
+  await expect.poll(() => sent.reads).toEqual(["POST"]);
 
   await page.getByRole("button", { name: "Kapıdayım" }).click();
   await expect(page.getByRole("log")).toContainText("Kapıdayım");

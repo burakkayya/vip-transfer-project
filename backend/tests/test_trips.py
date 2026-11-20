@@ -167,6 +167,9 @@ def test_chat_between_customer_and_driver(client, db, ops):
     chat = client.get(f"{API}/me/bookings/{code}/messages", headers=customer).json()
     assert chat["open"] and chat["unread"] == 1 and chat["other_name"] == "Mehmet"
     assert [m["sender"] for m in chat["messages"]] == ["driver", "customer"]
+    # WEB-07: GET okundu işaretlemez; ayrı POST işaretler.
+    assert client.get(f"{API}/me/bookings/{code}/messages/unread", headers=customer).json()["unread"] == 1
+    assert client.post(f"{API}/me/bookings/{code}/messages/read", headers=customer).status_code == 200
     assert client.get(f"{API}/me/bookings/{code}/messages/unread", headers=customer).json()["unread"] == 0
     assert "new_message" in _updates(client, customer)
     assert "new_message" in _updates(client, driver, who="driver")
