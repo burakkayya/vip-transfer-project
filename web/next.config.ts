@@ -16,11 +16,12 @@ const securityHeaders = [
 ];
 
 // Sayfa yanıtlarının CSP'si middleware'de istek başına nonce ile yazılır (lib/csp.ts). Middleware'e girmeyen
-// yollar (bff, _next, uzantılı dosyalar) burada nonce'suz ve `'unsafe-inline'` içermeyen politikayı alır.
+// yollar (bff, _next, statik uzantılı dosyalar) burada nonce'suz ve `'unsafe-inline'` içermeyen politikayı alır.
 // Kaynak deseni middleware.ts'teki matcher'ın tam tersidir; iki CSP başlığı aynı yanıta yazılmaz.
 // REV-B-9: önekler yalnızca tam yol parçası olarak eşleşir (`/bff`, `/bff/...`; `/bffx` sayfa yoludur ve
 // middleware'den nonce'lı CSP alır). Böylece her yanıt tam olarak bir CSP alır (e2e/csp-fallback.spec.ts).
-const NON_PAGE_SOURCE = "/:path((?:bff|_next|_vercel)(?:/.*)?|.*\\..*)";
+// K-81: "uzantılı dosya" yalnızca bilinen statik uzantılardır (middleware matcher'ındaki listeyle aynı).
+const NON_PAGE_SOURCE = "/:path((?:bff|_next|_vercel)(?:/.*)?|.*\\.(?:svg|png|jpe?g|gif|webp|avif|ico|txt|xml|webmanifest|json|js|mjs|css|map|woff2?|ttf|otf))";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

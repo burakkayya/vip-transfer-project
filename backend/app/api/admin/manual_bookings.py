@@ -17,7 +17,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import select
 
-from app.api.deps import ClientIp, DbSession, FinanceStaff, Now, OpsOrSupport, OpsStaff
+from app.api.deps import ClientIp, DbSession, FinanceStaff, Now, OpsOrSupport, OpsStaff, is_admin
 from app.api.public import autocomplete as public_autocomplete
 from app.api.public import place_details as public_place_details
 from app.api.public import daily_quote_out, quote_out, to_daily_input, to_quote_input
@@ -44,7 +44,7 @@ from app.models import Booking, Customer, Refund, Region, User, VehicleType
 from app.models.enums import BookingChannel, BookingStatus, BookingType, ManualPaymentMethod
 from app.providers.routing import get_routing
 from app.security.crypto import blind_index, mask_email, mask_phone, normalize_email, normalize_phone
-from app.services import audit, auth, bookings, daily_rental, notifications, payments, quotes
+from app.services import audit, auth, bookings, daily_rental, notifications, payments, quotes, system_settings
 
 router = APIRouter(tags=["admin:manual-booking"])
 
@@ -138,6 +138,9 @@ def booking_catalog(staff: OpsOrSupport, db: DbSession):
         "payment_methods": [m.value for m in ManualPaymentMethod],
         "default_payment_hours": DEFAULT_PAYMENT_HOURS,
         "max_payment_hours": MAX_PAYMENT_HOURS,
+        # BIZ-04 (K-81): fiyat değiştirme aralığı, sistem fiyatının yüzdesi.
+        "override_min_percent": int(system_settings.get(db, "price_override_min_percent")),
+        "override_max_percent": int(system_settings.get(db, "price_override_max_percent")),
     }
 
 
@@ -221,7 +224,8 @@ def admin_daily_quotes(body: AdminDailyQuoteIn, staff: OpsOrSupport, db: DbSessi
 class ManualPaymentIn(BaseModel):
     method: ManualPaymentMethod
     amount: Decimal = Field(gt=0, decimal_places=2)
-    reference: str | None = Field(default=None, max_length=100)
+    # BIZ-04: dekont, makbuz ya da slip numarası zorunlu.
+    reference: str = Field(min_length=1, max_length=100)
     note: str | None = Field(default=None, max_length=500)
 
 
@@ -358,6 +362,7 @@ def create_manual_booking(body: AdminBookingIn, staff: OpsStaff, db: DbSession, 
         payment_due_at=payment_due(q.legs[0].pickup_at, now, body.payment_hours),
         override_total=body.override_total,
         override_reason=body.override_reason,
+        may_exceed_override_limit=is_admin(staff),
     )
     booking = bookings.create_booking(
         db,
@@ -381,7 +386,7 @@ def create_manual_booking(body: AdminBookingIn, staff: OpsStaff, db: DbSession, 
         # Onay SMS'i (booking_confirmed) ödeme kaydında gider; ayrıca bağlantı SMS'i gönderilmez.
         payments.record_manual_payment(
             db, booking, staff_id=staff.id, method=body.payment.method, amount=body.payment.amount,
-            reference=body.payment.reference, note=body.payment.note, now=now, ip=ip,
+            reference=body.payment.reference, note=body.payment.note, now=now, ip=ip, staff_is_admin=is_admin(staff),
         )
     elif body.send_sms:
         notifications.notify_customer(db, booking, "booking_created_admin")
@@ -415,7 +420,7 @@ def _finish_admin_booking(db, booking: Booking, body, staff, ip, now) -> dict:
     if body.payment is not None:
         payments.record_manual_payment(
             db, booking, staff_id=staff.id, method=body.payment.method, amount=body.payment.amount,
-            reference=body.payment.reference, note=body.payment.note, now=now, ip=ip,
+            reference=body.payment.reference, note=body.payment.note, now=now, ip=ip, staff_is_admin=is_admin(staff),
         )
     elif body.send_sms:
         notifications.notify_customer(db, booking, "booking_created_admin")
@@ -444,6 +449,7 @@ def create_manual_daily_booking(body: AdminDailyBookingIn, staff: OpsStaff, db: 
         staff_id=staff.id, channel=body.channel,
         payment_due_at=payment_due(q.legs[0].pickup_at, now, body.payment_hours),
         override_total=body.override_total, override_reason=body.override_reason,
+        may_exceed_override_limit=is_admin(staff),
     )
     booking = bookings.create_booking(
         db, customer=customer, quote=q, expected_total=body.expected_total, booking_type=BookingType.SCHEDULED,
@@ -462,7 +468,7 @@ def manual_payment(booking_id: uuid.UUID, body: ManualPaymentIn, staff: OpsStaff
         raise NotFound("rezervasyon bulunamadı")
     p = payments.record_manual_payment(
         db, b, staff_id=staff.id, method=body.method, amount=body.amount,
-        reference=body.reference, note=body.note, now=now, ip=ip,
+        reference=body.reference, note=body.note, now=now, ip=ip, staff_is_admin=is_admin(staff),
     )
     db.commit()
     return {"payment_id": str(p.id), "booking": BookingOut.build(b)}

@@ -25,7 +25,7 @@ Pasaport bilgisi bu tabloda yoktur (K-17).
 
 | Tablo | Ana alanlar |
 |---|---|
-| drivers | id, user_id, full_name, phone (şifreli), tursab_or_agency_no, status (başvuru, onaylı, askıda, pasif), is_online |
+| drivers | id, user_id, full_name, phone (şifreli), tursab_or_agency_no, status (başvuru, onaylı, askıda, pasif), is_online; photo_status (beklemede, onaylandi, reddedildi), photo_reject_reason, photo_reviewed_at, photo_reviewed_by (K-81 fotoğraf onayı; 0019) |
 | vehicles | id, plate, vehicle_type_id, brand, model, capacity, status |
 | vehicle_types | id, code, name, capacity, price_multiplier |
 | driver_vehicle_assignments | driver_id, vehicle_id, valid_from, valid_to |

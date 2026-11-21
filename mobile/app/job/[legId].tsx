@@ -2,7 +2,7 @@ import Ionicons from "@/components/Icon";
 import * as Location from "expo-location";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import { Alert as NativeAlert, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
@@ -50,7 +50,7 @@ function JobDetail({ legId }: { legId: string }) {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
-  const [busy, setBusy] = useState<"accept" | "decline" | null>(null);
+  const [busy, setBusy] = useState<"accept" | "acceptAll" | "decline" | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
@@ -90,6 +90,36 @@ function JobDetail({ legId }: { legId: string }) {
     }
   }
 
+  /** K-81: günlük kiralamanın kimseye atanmamış bütün günleri tek seferde (hepsi ya da hiçbiri). */
+  function confirmAcceptAll() {
+    if (!job) return;
+    const total = job.open_days_amount ? ` Toplam kazanç ${money(job.open_days_amount, job.currency)}.` : "";
+    NativeAlert.alert("Bütün günler", `Bu kiralamanın ${allDays} günü birlikte size atanacak.${total}`, [
+      { text: "Vazgeç", style: "cancel" },
+      { text: "Kabul et", onPress: () => void acceptAll() },
+    ]);
+  }
+
+  async function acceptAll() {
+    setBusy("acceptAll");
+    try {
+      const r = await api<{ trip: Trip; accepted_days: number[] }>(apiPath`driver/jobs/${legId}/accept-all`, { body: {} });
+      router.replace({ pathname: "/trip/[legId]", params: { legId: r.trip.leg_id } });
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "already_taken") setGone(true);
+      const days = e instanceof ApiError && e.code === "not_eligible" ? (e.details as { days?: number[] } | undefined)?.days : undefined;
+      if (Array.isArray(days)) {
+        setError(days.length
+          ? `Bütün günler alınamadı: ${days.join(", ")}. gün için takviminiz, belgeleriniz veya aracınız uygun değil. Günleri tek tek alabilirsiniz.`
+          : "Bütün günlere uygun tek bir aracınız yok. Günleri tek tek alabilirsiniz.");
+      } else {
+        setError(errorTextTr(e));
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function decline() {
     setBusy("decline");
     try {
@@ -123,6 +153,7 @@ function JobDetail({ legId }: { legId: string }) {
   const points = job.preview_polyline ? decodePolyline(job.preview_polyline) : [];
   const left = job.offer_expires_at ? Math.max(0, Math.round((new Date(job.offer_expires_at).getTime() - now) / 1000)) : null;
   const instant = job.booking_type === "anlik";
+  const allDays = job.service_type === "gunluk" && (job.open_days ?? 0) > 1 ? job.open_days! : 0;
 
   return (
     <MapSheet
@@ -141,10 +172,18 @@ function JobDetail({ legId }: { legId: string }) {
         </>
       }
       bottom={
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <Button title="Reddet" variant="secondary" icon="close" onPress={decline} busy={busy === "decline"} disabled={busy !== null || gone} style={{ flex: 1 }} />
-          <Button title="Kabul et" icon="checkmark" onPress={accept} busy={busy === "accept"}
-            disabled={busy !== null || gone || left === 0} style={{ flex: 2 }} />
+        <View style={{ gap: 10 }}>
+          {allDays ? (
+            <Button title={`Bütün günleri kabul et (${allDays} gün)`} icon="checkmark-done" onPress={confirmAcceptAll}
+              busy={busy === "acceptAll"} disabled={busy !== null || gone || left === 0}
+              accessibilityHint="Bu kiralamanın kimseye atanmamış bütün günlerini birlikte alır" />
+          ) : null}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Button title="Reddet" variant="secondary" icon="close" onPress={decline} busy={busy === "decline"} disabled={busy !== null || gone} style={{ flex: 1 }} />
+            <Button title={allDays ? "Yalnızca bu gün" : "Kabul et"} variant={allDays ? "secondary" : undefined}
+              icon="checkmark" onPress={accept} busy={busy === "accept"}
+              disabled={busy !== null || gone || left === 0} style={{ flex: 2 }} />
+          </View>
         </View>
       }
     >
@@ -164,6 +203,9 @@ function JobDetail({ legId }: { legId: string }) {
           )}
         </Row>
         <T style={{ fontWeight: "700", fontSize: 16 }}>{dateTime(job.pickup_at)}</T>
+        {allDays && job.open_days_amount ? (
+          <T style={s.hint}>{`Bütün günler (${allDays} gün): toplam ${money(job.open_days_amount, job.currency)}`}</T>
+        ) : null}
       </Animated.View>
 
       <Alert text={error} tone={gone ? "warn" : "danger"} />

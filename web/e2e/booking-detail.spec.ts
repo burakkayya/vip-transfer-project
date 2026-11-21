@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./a11y";
-import { bookingAwaitingPayment as createBooking, login } from "./session";
+import { LIST_URL, bookingAwaitingPayment as createBooking, login } from "./session";
 
 test.describe.configure({ timeout: 60_000 });
 // Test biterken yanıtı beklenen taklit istekleri (geliştirme modunda çift GET) hata saymaz.
@@ -616,12 +616,12 @@ test("bookings page shows loading state while the session is checked", async ({ 
 
 test("bookings list load error shows ErrorState with retry", async ({ page }) => {
   await login(page);
-  await page.route("**/bff/me/bookings", (route) => route.abort());
+  await page.route(LIST_URL, (route) => route.abort());
   await page.goto("/tr/bookings");
   const error = page.locator(".page").getByRole("alert");
   await expect(error).toContainText("Sunucuya ulaşılamadı", { timeout: 30_000 });
   await expect(page.getByText("Henüz rezervasyonunuz yok.")).toHaveCount(0);
-  await page.unroute("**/bff/me/bookings");
+  await page.unroute(LIST_URL);
   await error.getByRole("button", { name: "Tekrar dene" }).click();
   // Hesapta rezervasyon olup olmaması varsayılmaz: liste ya da boş durum gelir, hata kalkar.
   await expect(page.locator(".booking-row").or(page.getByText("Henüz rezervasyonunuz yok.")).first()).toBeVisible({
@@ -659,7 +659,7 @@ test("bookings list row shows region labels like pay and detail", async ({ page 
 
 test("bookings list 401 returns to the login", async ({ page }) => {
   await login(page);
-  await page.route("**/bff/me/bookings", (route) =>
+  await page.route(LIST_URL, (route) =>
     route.fulfill({ status: 401, json: { error: { code: "unauthorized", message: "x" } } }),
   );
   await page.goto("/tr/bookings");

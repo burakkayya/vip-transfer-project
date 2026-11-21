@@ -38,6 +38,21 @@ CUSTOMER_TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         "ja": ("ドライバーが決まりました", "{driver} が {vehicle}（{plate}）でお迎えに上がります。"),
         "ko": ("기사님이 배정되었습니다", "{driver} 기사님이 {vehicle}({plate})로 모시러 갑니다."),
     },
+    # K-81: günlük kiralamada bütün günler tek seferde atandığında tek özet bildirim (gün sayısı yazılmaz).
+    "daily_driver_assigned_all": {
+        "tr": ("Sürücünüz belli oldu", "{driver}, {vehicle} ({plate}) ile kiralamanızın bütün günlerinde sizinle."),
+        "en": ("Your driver is confirmed", "{driver} will be with you on every day of your booking in a {vehicle} ({plate})."),
+        "de": ("Ihr Fahrer steht fest", "{driver} ist an allen Tagen Ihrer Buchung mit einem {vehicle} ({plate}) für Sie da."),
+        "ru": ("Водитель назначен", "{driver} будет с вами во все дни аренды на {vehicle} ({plate})."),
+        "es": ("Su conductor está confirmado", "{driver} le acompañará todos los días de su reserva en un {vehicle} ({plate})."),
+        "fr": ("Votre chauffeur est confirmé", "{driver} sera à vos côtés chaque jour de votre réservation en {vehicle} ({plate})."),
+        "it": ("Il suo autista è confermato", "{driver} sarà con lei ogni giorno della prenotazione con un {vehicle} ({plate})."),
+        "pt": ("Seu motorista está confirmado", "{driver} estará com você em todos os dias da reserva em um {vehicle} ({plate})."),
+        "ar": ("تم تأكيد سائقك", "سيرافقك {driver} في جميع أيام حجزك بسيارة {vehicle} ({plate})."),
+        "zh": ("您的司机已确定", "{driver} 将在您预订的每一天驾驶 {vehicle}（{plate}）为您服务。"),
+        "ja": ("ドライバーが決まりました", "ご予約の全日程、{driver} が {vehicle}（{plate}）でご一緒します。"),
+        "ko": ("기사님이 배정되었습니다", "{driver} 기사님이 예약하신 모든 날 {vehicle}({plate})로 함께합니다."),
+    },
     "driver_en_route": {
         "tr": ("Sürücünüz yola çıktı", "{driver} alış noktasına geliyor. Tahmini varış {eta} dk."),
         "en": ("Your driver is on the way", "{driver} is heading to your pickup. About {eta} min away."),

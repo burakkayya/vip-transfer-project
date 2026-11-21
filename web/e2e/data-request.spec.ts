@@ -166,7 +166,7 @@ test("deletion request asks for confirmation before sending", async ({ page }) =
   const title = panel.getByRole("heading", { level: 2, name: "Silme talebini onaylayın" });
   await expect(title).toBeFocused();
   await expect(panel).toContainText(
-    "Hesabınızdaki kişisel verilerin silinmesi talebini göndermek üzeresiniz. Gönderdikten sonra bu ekrandan geri çekemezsiniz.",
+    "Hesabınızdaki kişisel verilerin silinmesi talebini göndermek üzeresiniz. Talep işleme alındıktan sonra geri çekilemez.",
   );
   expect(posted).toHaveLength(0);
   const confirm = panel.getByRole("button", { name: "Silme talebini gönder" });

@@ -2597,7 +2597,30 @@ dl.summary.booking-facts {
   }
 }
 
+/* K-81: onay adımındaki kısa özet yalnızca özet kartının formun altına düştüğü dar ekranda görünür. */
+.confirm-recap {
+  display: none;
+}
+
 @media (max-width: 960px) {
+  .confirm-recap {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 12px;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    background: var(--soft);
+    font-size: 0.92rem;
+  }
+  .confirm-recap dt {
+    color: var(--muted);
+  }
+  .confirm-recap dd {
+    margin: 0;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
   .wizard {
     grid-template-columns: 1fr;
   }
@@ -2803,6 +2826,11 @@ input.readonly:focus {
 .request-type {
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+/* K-81: "Geri çek" telefonda en az 44 px dokunma alanı. */
+.request-list .btn {
+  min-height: 44px;
 }
 
 .request-list .hint {

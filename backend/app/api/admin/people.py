@@ -80,9 +80,15 @@ def update_data_request(request_id: uuid.UUID, body: DataRequestUpdateIn, staff:
                         db: DbSession, ip: ClientIp, now: Now):
     """Silme talebi (PRIV-01, F0-4): kapatmak (tamamlandı/reddedildi) yalnızca admin yetkisidir ve
     "tamamlandı" anonimleştirmeyi aynı işlemde çalıştırır; anonimleştirme yapılamıyorsa talep açık kalır."""
-    r = db.get(DataRequest, request_id)
+    # K-81: satır kilitlenir; müşterinin aynı anda geri çekmesiyle yarışta geri çekilmiş talep anonimleştirilmez.
+    r = db.get(DataRequest, request_id, with_for_update=True, populate_existing=True)
     if r is None:
         raise NotFound("talep bulunamadı")
+    # K-81: geri çekme yalnızca müşterinin işlemidir; geri çekilmiş talep personelce yeniden açılmaz.
+    if r.status is DataRequestStatus.WITHDRAWN:
+        raise Conflict("müşteri bu talebi geri çekti", code="data_request_withdrawn")
+    if body.status is DataRequestStatus.WITHDRAWN:
+        raise DomainError("talebi yalnızca müşteri geri çekebilir", code="invalid_status")
     closing = body.status in (DataRequestStatus.COMPLETED, DataRequestStatus.REJECTED)
     is_deletion = r.request_type is DataRequestType.DELETE
     if is_deletion and closing and RoleCode.ADMIN.value not in staff.user.role_codes:

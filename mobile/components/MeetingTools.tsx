@@ -225,7 +225,9 @@ export function RatingCard(props: { code: string; driverName: string }) {
           <Ionicons name="star" size={18} color={colors.accent} />
           <T style={{ fontWeight: "700" }}>{t("meet.ratedTitle", { stars: state.stars ?? 0 })}</T>
         </Row>
-        <T style={s.hint}>{state.tip_status === "odendi" ? t("meet.tipPaid", { amount: fmt(state.tip_amount ?? "0"), total: fmt(state.total_amount) }) : t("meet.tipPending")}</T>
+        <T style={s.hint}>{state.tip_status === "odendi"
+          ? t("meet.tipPaid", { amount: fmt(state.tip_amount ?? "0"), total: fmt(state.total_amount) })
+          : state.tip_status === "iade_edildi" ? t("meet.tipRefunded") : t("meet.tipPending")}</T>
       </Card>
     );
   }

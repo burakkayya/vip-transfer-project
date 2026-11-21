@@ -2,11 +2,11 @@
 // sonuç ayırt edilir ve yerel oturum her durumda kapanır.
 import { act, render, screen, waitFor } from "@testing-library/react-native";
 import { useEffect } from "react";
-import { Text } from "react-native";
+import { Alert, Text } from "react-native";
 
 import { ApiError, api } from "@/lib/api";
 import { serverLogout } from "@/lib/logout";
-import { SessionProvider, useSession, type SignOutResult } from "@/lib/session";
+import { SessionProvider, notifyIfServerLogoutFailed, useSession, type SignOutResult } from "@/lib/session";
 import { stopBackgroundTracking } from "@/lib/tracking";
 
 jest.mock("@/lib/notify", () => ({ registeredPushToken: () => "push-abc", clearRegisteredPushToken: jest.fn() }));
@@ -131,5 +131,17 @@ describe("SessionProvider.signOut", () => {
       await session!.signOut();
     });
     expect(await SecureStore.getItemAsync("ga_updates_cursor")).toBeNull();
+  });
+});
+
+describe("notifyIfServerLogoutFailed (MOB-07, K-81)", () => {
+  test("warns the user only when the server logout failed", () => {
+    const spy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    notifyIfServerLogoutFailed({ server: "ok" });
+    notifyIfServerLogoutFailed({ server: "already_invalid" });
+    expect(spy).not.toHaveBeenCalled();
+    notifyIfServerLogoutFailed({ server: "failed" }, "driver");
+    expect(spy).toHaveBeenCalledWith("Çıkış yapıldı", expect.stringContaining("sunucuya ulaşılamadı"));
+    spy.mockRestore();
   });
 });

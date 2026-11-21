@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
+from app import commission
 from app.localtime import local_date
 from app.api.deps import ClientIp, CurrentDriver, DbSession, Now, current_driver_user
 from app.api.schemas import SUPPORTED_LOCALES, DocumentOut, MoneyStr
@@ -31,6 +32,7 @@ from app.models import (
     Vehicle,
     VehicleType,
 )
+from app.models.fleet import PHOTO_PENDING, PHOTO_REJECTED
 from app.models.enums import (
     DocumentOwner,
     DocumentType,
@@ -109,6 +111,9 @@ class DriverOut(BaseModel):
     # K-62 sürücü kartı ve puan
     languages: list[str] = []
     has_photo: bool = False
+    # K-81: fotoğraf onayı (beklemede | onaylandi | reddedildi) ve ret gerekçesi.
+    photo_status: str | None = None
+    photo_reject_reason: str | None = None
     rating_avg: Decimal | None = None
     rating_count: int = 0
     # K-78 sürücü detayları
@@ -127,6 +132,8 @@ def _driver_out(db, driver: Driver, today: date) -> DriverOut:
         missing_documents=dispatch.missing_documents(db, DocumentOwner.DRIVER, driver.id, today),
         languages=driver.language_list,
         has_photo=bool(driver.photo_key),
+        photo_status=driver.photo_status if driver.photo_key else None,
+        photo_reject_reason=driver.photo_reject_reason if driver.photo_status == PHOTO_REJECTED else None,
         rating_avg=avg,
         rating_count=count,
         phone=driver.user.phone,
@@ -377,6 +384,11 @@ async def upload_photo(driver: CurrentDriver, db: DbSession, now: Now, file: Ann
     old = driver.photo_key
     driver.photo_key = storage.put(f"driver_photo/{driver.id}", clean)
     driver.photo_content_type = meeting.PHOTO_CONTENT_TYPE
+    # K-81: yeni fotoğraf admin onayına düşer; onaylanana kadar müşteriye gösterilmez.
+    driver.photo_status = PHOTO_PENDING
+    driver.photo_reject_reason = None
+    driver.photo_reviewed_at = None
+    driver.photo_reviewed_by = None
     audit.record(db, actor_id=driver.user_id, action="driver.photo", entity_type="driver", entity_id=driver.id)
     db.commit()
     if old:
@@ -386,7 +398,7 @@ async def upload_photo(driver: CurrentDriver, db: DbSession, now: Now, file: Ann
 
 @router.get("/me/photo")
 def my_photo(driver: CurrentDriver):
-    key, content_type = meeting.driver_photo(driver)
+    key, content_type = meeting.driver_photo(driver, own=True)
     return Response(get_storage().get(key), media_type=content_type, headers={"Cache-Control": "private, max-age=300"})
 
 
@@ -469,7 +481,7 @@ def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
         flight_status=leg.flight.status if leg.flight else None,
         flight_scheduled_at=(leg.flight.provider_scheduled_at or leg.flight.scheduled_at) if leg.flight else None,
         flight_estimated_at=leg.flight.estimated_at if leg.flight else None,
-        driver_amount=leg.leg_price - (leg.leg_price * b.commission_rate).quantize(Decimal("0.01")),
+        driver_amount=commission.leg_split(leg).net,
         currency=b.currency.value,
         route_polyline=route_line.route_polyline(leg) if with_route else None,
         booking_type=b.booking_type.value,

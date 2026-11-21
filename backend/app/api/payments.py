@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.api.deps import ClientIp, DbSession, Now
 from app.config import DEV_ENVS, get_settings
 from app.errors import DomainError, NotFound
-from app.models import Payment
+from app.models import Booking, Payment
 from app.models.enums import PaymentProviderCode
 from app.providers.payments import FakeProvider, get_payment_provider, result_path
 from app.services import payments
@@ -122,6 +122,8 @@ async def fake_complete(oid: str, request: Request, db: DbSession, now: Now):
     payments.handle_callback(db, provider, form, now)
     db.commit()
     result = "ok" if status == "success" else "fail"
-    url = f"{get_settings().public_web_url}{result_path(payment.purpose)}?status={result}"
+    booking = db.get(Booking, payment.booking_id)
+    locale = booking.locale if booking is not None else None
+    url = f"{get_settings().public_web_url}{result_path(payment.purpose, locale)}?status={result}"
     title = "Ödeme tamamlandı" if result == "ok" else "Ödeme reddedildi"
     return HTMLResponse(_FAKE_DONE.format(url=url, title=title), headers=_frame_headers())

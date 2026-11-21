@@ -41,6 +41,8 @@ class DataRequestStatus(str, Enum):
     IN_PROGRESS = "isleniyor"
     COMPLETED = "tamamlandi"
     REJECTED = "reddedildi"
+    # K-81: müşteri açık talebini işleme alınmadan geri çekti.
+    WITHDRAWN = "geri_cekildi"
 
 
 class DriverStatus(str, Enum):

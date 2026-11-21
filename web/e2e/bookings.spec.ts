@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./a11y";
-import { bookingAwaitingPayment as createBooking, login, warmUp } from "./session";
+import { LIST_URL, bookingAwaitingPayment as createBooking, login, warmUp } from "./session";
 
 // Rezervasyonlarım (B-W8): `/bookings`, `BookingsHome`. Kodla sorgulama alanı, liste, boş ve hata durumları.
 // Oturum denetimi, liste ağ hatası ve 401 testleri `booking-detail.spec.ts` sonundadır (B-W6/B-W7).
@@ -20,7 +20,7 @@ const codeError = (page: Page) => page.locator("#code-error");
 
 /** Liste GET'ini durağan yanıtla taklit eder (geliştirme sunucusundaki gerçek isteği beklemez). */
 async function staticList(page: Page, reply: { json: unknown } | { status: number; code: string }) {
-  await page.route("**/bff/me/bookings", (route) => {
+  await page.route(LIST_URL, (route) => {
     if (route.request().method() !== "GET") return route.continue();
     return "json" in reply
       ? route.fulfill({ json: reply.json })
@@ -30,7 +30,7 @@ async function staticList(page: Page, reply: { json: unknown } | { status: numbe
 
 /** Gerçek liste yanıtını değiştirerek taklit eder (yalnızca gerçek rezervasyon gereken testte). */
 async function mockList(page: Page, reply: (body: Record<string, unknown>[]) => unknown) {
-  await page.route("**/bff/me/bookings", async (route) => {
+  await page.route(LIST_URL, async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     const res = await route.fetch();
     const body = res.ok() ? ((await res.json()) as Record<string, unknown>[]) : [];

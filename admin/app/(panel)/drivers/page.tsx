@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Badge, ErrorBox, Field, PageHead, Select, Table, useData, usePager } from "@/components/ui";
 import { withQuery } from "@/lib/api";
 import { dt } from "@/lib/format";
-import { DOCUMENT_TYPE, DRIVER_STATUS } from "@/lib/labels";
+import { DOCUMENT_TYPE, DRIVER_STATUS, PHOTO_STATUS } from "@/lib/labels";
 
 export interface DriverRow {
   id: string;
@@ -15,14 +15,23 @@ export interface DriverRow {
   status: string;
   is_online: boolean;
   missing_documents: string[];
+  /** K-81: profil fotoğrafı onayı (fotoğraf yoksa null). */
+  photo_status: string | null;
+  photo_reject_reason: string | null;
+  /** Onay isteğinde geri gönderilir; arada yeni fotoğraf yüklendiyse backend 409 döner. */
+  photo_version: string | null;
   created_at: string;
 }
+
 
 /** Ekran 5: sürücü listesi ve başvuru kuyruğu. */
 export default function DriversPage() {
   const [status, setStatus] = useState("basvuru");
+  const [photoPending, setPhotoPending] = useState(false);
   const { limit, offset, setOffset, pager } = usePager();
-  const { data, error } = useData<DriverRow[]>(withQuery("admin/drivers", { status, limit, offset }));
+  const { data, error } = useData<DriverRow[]>(
+    withQuery("admin/drivers", { status, limit, offset, photo_pending: photoPending ? "true" : "" }),
+  );
 
   return (
     <div className="stack">
@@ -31,6 +40,10 @@ export default function DriversPage() {
         <Field label="Durum">
           <Select value={status} onChange={(v) => { setStatus(v); setOffset(0); }} options={DRIVER_STATUS} empty="Tümü" />
         </Field>
+        <label className="check">
+          <input type="checkbox" checked={photoPending} onChange={(e) => { setPhotoPending(e.target.checked); setOffset(0); }} />
+          Fotoğrafı onay bekleyenler
+        </label>
       </div>
       <ErrorBox error={error} />
       <Table
@@ -43,6 +56,7 @@ export default function DriversPage() {
           { key: "tursab", title: "TÜRSAB / acente no", render: (r) => r.tursab_or_agency_no ?? "—" },
           { key: "status", title: "Durum", render: (r) => <Badge value={r.status} labels={DRIVER_STATUS} /> },
           { key: "online", title: "Çevrimiçi", render: (r) => (r.is_online ? "●" : "") },
+          { key: "photo", title: "Fotoğraf", render: (r) => (r.photo_status ? <Badge value={r.photo_status} labels={PHOTO_STATUS} /> : "—") },
           {
             key: "missing",
             title: "Eksik belge",

@@ -184,14 +184,20 @@ def test_admin_daily_booking_with_manual_payment_and_override(client, db, ops): 
     cid = _admin_customer(client, ops)
     plan = _quote_body(client, days=2)
     q = client.post(f"{API}/daily-quotes", json=plan).json()
+    new_total = str((Decimal(q["total"]) * Decimal("0.9")).quantize(Decimal("0.01")))
     body = {**plan, "customer_id": cid, "channel": "whatsapp", "consent_confirmed": True,
-            "expected_total": q["total"], "passenger_name": "Hans Müller", "override_total": "300.00",
-            "override_reason": "sadık müşteri", "payment": {"method": "havale", "amount": "300.00"}}
-    r = client.post(f"{API}/admin/daily-bookings", headers=ops, json=body)
+            "expected_total": q["total"], "passenger_name": "Hans Müller", "override_total": new_total,
+            "override_reason": "sadık müşteri",
+            "payment": {"method": "havale", "amount": new_total, "reference": "DEKONT-9"}}
+    # BIZ-04 (K-81): fiyatı değiştiren operasyon personeli aynı rezervasyonda tahsilat kaydedemez.
+    same = client.post(f"{API}/admin/daily-bookings", headers=ops, json=body)
+    assert same.status_code == 409 and same.json()["error"]["code"] == "manual_payment_needs_other_staff"
+    admin = staff_headers(client, db, ["admin"])
+    r = client.post(f"{API}/admin/daily-bookings", headers=admin, json=body)
     assert r.status_code == 201, r.text
     booking = _booking(db, r.json()["booking"]["booking_code"])
-    assert booking.total_amount == Decimal("300.00") and booking.status.value == "onaylandi"
-    assert sum(leg.leg_price for leg in booking.legs) == Decimal("300.00")
+    assert booking.total_amount == Decimal(new_total) and booking.status.value == "onaylandi"
+    assert sum(leg.leg_price for leg in booking.legs) == Decimal(new_total)
 
 
 def test_admin_daily_booking_requires_consent_and_ops_role(client, db, ops):  # noqa: F811
@@ -424,6 +430,7 @@ def test_assign_all_finds_common_vehicle_across_days(db, monkeypatch):
 
     monkeypatch.setattr(dispatch, "eligible_candidates", fake_candidates)
     monkeypatch.setattr(dispatch, "_assignable_booking", lambda leg: None)
+    monkeypatch.setattr(dispatch, "_notify_days_assigned", lambda _db, changed: None)
     monkeypatch.setattr(dispatch, "assign", lambda _db, leg, c, **kw: assigned.append((leg.leg_order, c.vehicle.id)))
     booking = SimpleNamespace(id=_uuid.uuid4(), is_daily=True)
     dispatch.assign_all_days(_DB(), booking, drv.id, None, actor_id=_uuid.uuid4(), now=datetime.now(timezone.utc),

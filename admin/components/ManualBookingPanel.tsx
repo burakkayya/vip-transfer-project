@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCan } from "@/components/Shell";
+import { useCan, useMe } from "@/components/Shell";
 import { Field, Msg, Select, useAction } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dt, money } from "@/lib/format";
@@ -10,6 +10,7 @@ import { BOOKING_CHANNEL, BOOKING_SOURCE, MANUAL_PAYMENT_METHOD } from "@/lib/la
 export interface ManualInfo {
   source: string;
   channel: string | null;
+  created_by_id: string | null;
   payment_due_at: string | null;
   system_total_amount: string | null;
   price_override_reason: string | null;
@@ -31,7 +32,10 @@ export default function ManualBookingPanel(props: {
   onChanged: () => void;
 }) {
   const can = useCan();
+  const me = useMe();
   const m = props.manual;
+  // BIZ-04 (K-81): fiyatı değiştiren personel aynı rezervasyonun tahsilatını kaydedemez (admin hariç).
+  const ownOverride = Boolean(m.system_total_amount) && m.created_by_id === me.id && !me.roles.includes("admin");
   const pending = props.status === "odeme_bekliyor";
   const action = useAction();
   const [copied, setCopied] = useState<string | null>(null);
@@ -56,7 +60,7 @@ export default function ManualBookingPanel(props: {
     if (!confirm(`${money(props.total, props.currency)} tahsilat kaydedilsin ve rezervasyon onaylansın mı?`)) return;
     const ok = await action.run(
       () => api(`admin/bookings/${props.bookingId}/manual-payment`, {
-        body: { method, amount: props.total, reference: reference.trim() || null, note: note.trim() || null },
+        body: { method, amount: props.total, reference: reference.trim(), note: note.trim() || null },
       }),
       "Tahsilat kaydedildi, rezervasyon onaylandı.",
     );
@@ -105,6 +109,9 @@ export default function ManualBookingPanel(props: {
       {pending && can("operasyon") && m.source === "admin" && (
         <div className="stack">
           <h3>Elle tahsilat</h3>
+          {ownOverride ? (
+            <p className="hint">Fiyatı siz değiştirdiğiniz için bu tahsilatı başka bir personel kaydetmeli.</p>
+          ) : (
           <div className="row end">
             <Field label="Yöntem">
               <Select value={method} onChange={setMethod} options={MANUAL_PAYMENT_METHOD} />
@@ -112,16 +119,17 @@ export default function ManualBookingPanel(props: {
             <Field label="Tutar">
               <input readOnly value={money(props.total, props.currency)} />
             </Field>
-            <Field label="Dekont / makbuz no">
-              <input value={reference} maxLength={100} onChange={(e) => setReference(e.target.value)} />
+            <Field label="Dekont / makbuz / slip no (zorunlu)">
+              <input value={reference} maxLength={100} required aria-required="true" onChange={(e) => setReference(e.target.value)} />
             </Field>
             <Field label="Not">
               <input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
             </Field>
-            <button className="btn" type="button" disabled={action.busy} onClick={() => void recordPayment()}>
+            <button className="btn" type="button" disabled={action.busy || !reference.trim()} onClick={() => void recordPayment()}>
               Tahsilatı kaydet
             </button>
           </div>
+          )}
         </div>
       )}
       <Msg message={action.message} />

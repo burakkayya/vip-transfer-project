@@ -3,6 +3,7 @@
     python -m app.cli seed
     python -m app.cli create-admin --email ad@getawaytransfers.com
     python -m app.cli seed-demo          # yalnızca geliştirme: hazır demo sürücüler
+    python -m app.cli cleanup-e2e [--dry-run]  # yalnızca geliştirme: e2e kurgusal numaralı kayıtları temizler
 """
 
 from __future__ import annotations
@@ -24,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("seed-demo", help="geliştirme: onaylı demo sürücüler ve kur (üretimde çalışmaz)")
     create = sub.add_parser("create-admin", help="tam yetkili personel oluştur (K-21)")
     create.add_argument("--email", required=True)
+    clean = sub.add_parser("cleanup-e2e", help="geliştirme: e2e testlerinin kurgusal numaralı kayıtlarını temizle")
+    clean.add_argument("--dry-run", action="store_true", help="yalnızca say, değiştirme")
     args = parser.parse_args(argv)
 
     with SessionLocal() as db:
@@ -35,6 +38,16 @@ def main(argv: list[str] | None = None) -> int:
             for line in demo.run(db):
                 print(line)
             db.commit()
+        elif args.command == "cleanup-e2e":
+            from datetime import datetime, timezone
+
+            from app.services import e2e_cleanup
+
+            r = e2e_cleanup.cleanup(db, datetime.now(timezone.utc), dry_run=args.dry_run)
+            if not args.dry_run:
+                db.commit()
+            verb = "bulundu" if args.dry_run else "temizlendi"
+            print(f"e2e müşterisi {verb}: {r.customers}, kapatılan rezervasyon: {r.closed_bookings}")
         elif args.command == "create-admin":
             auth.ensure_roles(db)
             password = getpass.getpass("Parola (en az 12 karakter): ")

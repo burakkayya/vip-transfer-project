@@ -177,7 +177,8 @@
     "mapLabel": "Mappa del percorso: {from} → {to}",
     "mapPickup": "Partenza",
     "mapDropoff": "Arrivo",
-    "mapUnavailable": "Al momento la mappa non è disponibile; percorso e prezzo non cambiano."
+    "mapUnavailable": "Al momento la mappa non è disponibile; percorso e prezzo non cambiano.",
+    "route": "Percorso"
   },
   "daily": {
     "title": "Auto con autista a giornata",
@@ -373,7 +374,9 @@
     "finishCancel": "Non ora",
     "finishing": "Chiusura…",
     "finishDone": "Il suo viaggio è terminato. Buona giornata.",
-    "chatOriginal": "Originale"
+    "chatOriginal": "Originale",
+    "showMore": "Mostra altri",
+    "loadedMore": "Prenotazioni caricate: {count}"
   },
   "account": {
     "title": "Il mio account",
@@ -415,7 +418,8 @@
       "acik": "Aperta",
       "isleniyor": "In lavorazione",
       "tamamlandi": "Completata",
-      "reddedildi": "Respinta"
+      "reddedildi": "Respinta",
+      "geri_cekildi": "Ritirata"
     },
     "typeRequired": "Scelga un tipo di richiesta.",
     "noteHint": "Caratteri rimanenti: {count}",
@@ -424,9 +428,14 @@
     "listLoading": "Caricamento delle richieste…",
     "empty": "Non ha ancora richieste.",
     "deleteConfirmTitle": "Confermi la richiesta di cancellazione",
-    "deleteConfirmText": "Sta per inviare una richiesta di cancellazione dei dati personali del suo account. Una volta inviata, non potrà ritirarla da questa pagina.",
+    "deleteConfirmText": "Sta per richiedere la cancellazione dei dati personali del suo account. Una volta avviata l'elaborazione, la richiesta non potrà essere ritirata.",
     "deleteConfirm": "Invia la richiesta di cancellazione",
-    "keep": "Torna indietro"
+    "keep": "Torna indietro",
+    "withdraw": "Ritira",
+    "withdrawLabel": "Ritira la richiesta: {type}",
+    "withdrawn": "La sua richiesta è stata ritirata.",
+    "withdrawHint": "Le richieste aperte possono essere ritirate finché non iniziamo a elaborarle.",
+    "withdrawConfirm": "Conferma il ritiro"
   },
   "footer": {
     "legal": "Note legali",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Cookie policy",
       "text": "Usiamo solo i cookie necessari al funzionamento del sito: cookie di sessione (se ha effettuato l'accesso) e la sua preferenza di lingua. Non usiamo cookie pubblicitari o di tracciamento, per questo non chiediamo il consenso ai cookie.",
-      "list": "ga_at, ga_rt: sessione (fino a 30 giorni). NEXT_LOCALE: preferenza di lingua."
+      "list": "__Secure-ga_at, __Secure-ga_rt: sessione (fino a 30 giorni). NEXT_LOCALE: preferenza di lingua."
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "Invio…",
     "tipPaid": "La mancia di {amount} è stata aggiunta al totale e consegnata al suo autista. Nuovo totale: {total}.",
     "tipPending": "In attesa del pagamento della mancia.",
+    "tipRefunded": "La sua mancia è stata rimborsata.",
     "tipFailed": "Il pagamento della mancia non è stato completato. Se la carta è stata addebitata, l'importo viene rimborsato automaticamente; può riprovare.",
     "extrasTitle": "Extra",
     "childSeatLabel": "Seggiolino per bambini",

@@ -17,8 +17,9 @@ from app.api.admin import common
 from app.api.admin.common import Page, page
 from app.api.deps import AdminOnly, ClientIp, DbSession, Now, OpsStaff
 from app.api.schemas import DocumentOut
-from app.errors import NotFound
+from app.errors import Conflict, DomainError, NotFound
 from app.models import Document, Driver, DriverVehicleAssignment, Vehicle, VehicleType
+from app.models.fleet import PHOTO_APPROVED, PHOTO_PENDING, PHOTO_REJECTED
 from app.models.enums import DocumentOwner, DocumentStatus, DriverStatus, ReviewDecision, VehicleStatus
 from app.providers.storage import get_storage
 from app.security.crypto import mask_phone
@@ -39,16 +40,22 @@ def _driver_row(db, d: Driver, today: date) -> dict:
         "status": d.status.value,
         "is_online": d.is_online,
         "missing_documents": dispatch.missing_documents(db, DocumentOwner.DRIVER, d.id, today),
+        # K-81: profil fotoğrafı onayı (fotoğraf yoksa boş).
+        "photo_status": d.photo_status if d.photo_key else None,
+        "photo_reject_reason": d.photo_reject_reason,
+        "photo_version": photo_version(d),
         "created_at": d.created_at,
     }
 
 
 @router.get("/drivers")
 def list_drivers(staff: OpsStaff, db: DbSession, now: Now, p: Annotated[Page, Depends(page)],
-                 status: DriverStatus | None = None):
+                 status: DriverStatus | None = None, photo_pending: bool = False):
     q = select(Driver)
     if status:
         q = q.where(Driver.status == status)
+    if photo_pending:
+        q = q.where(Driver.photo_key.is_not(None), Driver.photo_status == PHOTO_PENDING)
     rows = db.scalars(q.order_by(Driver.created_at.desc()).limit(p.limit).offset(p.offset))
     return [_driver_row(db, d, local_date(now)) for d in rows]
 
@@ -73,6 +80,56 @@ def driver_detail(driver_id: uuid.UUID, staff: OpsStaff, db: DbSession, now: Now
         "vehicles": [_vehicle_row(db, v, local_date(now)) for v in vehicles],
         "documents": [DocumentOut.model_validate(x) for x in docs],
     }
+
+
+@router.get("/drivers/{driver_id}/photo")
+def driver_photo(driver_id: uuid.UUID, staff: OpsStaff, db: DbSession):
+    """K-81: onay için sürücünün yüklediği fotoğraf (onay durumundan bağımsız)."""
+    d = _get_driver(db, driver_id)
+    if not d.photo_key:
+        raise NotFound("fotoğraf yok", code="photo_missing")
+    return Response(get_storage().get(d.photo_key), media_type=d.photo_content_type or "image/jpeg",
+                    headers={"Cache-Control": "private, no-store", "X-Photo-Version": photo_version(d)})
+
+
+class PhotoReviewIn(BaseModel):
+    approve: bool
+    reason: str | None = Field(default=None, max_length=255)
+    # Adminin incelediği fotoğrafın sürümü (detaydaki `photo_version`); arada yeni fotoğraf yüklendiyse 409.
+    photo_version: str = Field(min_length=8, max_length=64)
+
+
+def photo_version(d: Driver) -> str | None:
+    """Fotoğraf sürümü: depo anahtarının özeti (anahtar her yüklemede değişir, kendisi dışarı verilmez)."""
+    import hashlib
+
+    return hashlib.sha256(d.photo_key.encode()).hexdigest()[:16] if d.photo_key else None
+
+
+@router.post("/drivers/{driver_id}/photo/review")
+def review_driver_photo(driver_id: uuid.UUID, body: PhotoReviewIn, staff: OpsStaff, db: DbSession, ip: ClientIp,
+                        now: Now):
+    """K-81: fotoğraf onayı. Onaylanan fotoğraf müşteri kartında ve takip bağlantısında görünür; reddedilen
+    görünmez, sürücü gerekçeyi uygulamada görüp yeni fotoğraf yükler."""
+    d = db.get(Driver, driver_id, with_for_update={"of": Driver})
+    if d is None:
+        raise NotFound("sürücü bulunamadı")
+    if not d.photo_key:
+        raise NotFound("fotoğraf yok", code="photo_missing")
+    if body.photo_version != photo_version(d):
+        raise Conflict("sürücü bu arada yeni fotoğraf yükledi; sayfayı yenileyip yeni fotoğrafı inceleyin",
+                       code="photo_changed")
+    reason = (body.reason or "").strip()
+    if not body.approve and len(reason) < 3:
+        raise DomainError("ret gerekçesi yazılmalı (sürücüye gösterilir)", code="reason_required")
+    d.photo_status = PHOTO_APPROVED if body.approve else PHOTO_REJECTED
+    d.photo_reject_reason = None if body.approve else reason
+    d.photo_reviewed_at = now
+    d.photo_reviewed_by = staff.id
+    audit.record(db, actor_id=staff.id, action="driver.photo_review", entity_type="driver", entity_id=d.id,
+                 changes={"approve": body.approve, "reason": d.photo_reject_reason}, ip=ip)
+    db.commit()
+    return _driver_row(db, d, local_date(now))
 
 
 class StatusIn(BaseModel):

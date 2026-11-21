@@ -316,7 +316,9 @@ export function RatingPanel(props: { code: string; booking: Booking }) {
           <Icon name="star" size={18} /> {t("ratedTitle", { stars: state.stars ?? 0 })}
         </h2>
         <p className="muted">
-          {state.tip_status === "odendi" ? t("tipPaid", { amount: fmt(state.tip_amount ?? "0"), total: fmt(state.total_amount) }) : t("tipPending")}
+          {state.tip_status === "odendi"
+            ? t("tipPaid", { amount: fmt(state.tip_amount ?? "0"), total: fmt(state.total_amount) })
+            : state.tip_status === "iade_edildi" ? t("tipRefunded") : t("tipPending")}
         </p>
       </section>
     );

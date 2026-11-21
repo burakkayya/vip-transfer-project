@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Index, Numeric, String, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Numeric, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, created_at, str_enum, uuid_pk
@@ -22,6 +22,9 @@ from app.models.identity import User
 from app.security.crypto import EncryptedString
 
 
+PHOTO_PENDING, PHOTO_APPROVED, PHOTO_REJECTED = "beklemede", "onaylandi", "reddedildi"
+
+
 class Driver(Base):
     """Telefon users tablosunda tutulur."""
 
@@ -29,6 +32,8 @@ class Driver(Base):
     # Bir cihaz jetonu tek hesaba aittir (0016; uygulama da devreder, notifications.bind_push_token).
     __table_args__ = (
         Index("uq_drivers_push_token", "push_token", unique=True, postgresql_where=text("push_token IS NOT NULL")),
+        CheckConstraint("photo_status IS NULL OR photo_status IN ('beklemede', 'onaylandi', 'reddedildi')",
+                        name="photo_status_values"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -46,13 +51,23 @@ class Driver(Base):
     # K-62 sürücü kartı: profil fotoğrafı (şifreli depoda) ve konuştuğu diller (virgülle, ör. "tr,en").
     photo_key: Mapped[str | None] = mapped_column(EncryptedString)
     photo_content_type: Mapped[str | None] = mapped_column(String(20))
+    # K-81: fotoğraf admin onayından geçmeden müşteriye gösterilmez (beklemede | onaylandi | reddedildi).
+    photo_status: Mapped[str | None] = mapped_column(String(12))
+    photo_reject_reason: Mapped[str | None] = mapped_column(String(255))
+    photo_reviewed_at: Mapped[datetime | None]
+    photo_reviewed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     languages: Mapped[str] = mapped_column(String(40), default="tr", server_default="tr")
     # K-78 sürücü detayları: WhatsApp (isteğe bağlı, şifreli) ve çalıştığı il (app/provinces.py kodu).
     whatsapp_phone: Mapped[str | None] = mapped_column(EncryptedString)
     operating_province: Mapped[str | None] = mapped_column(String(20))
     created_at: Mapped[datetime] = created_at()
 
-    user: Mapped[User] = relationship(lazy="joined")
+    user: Mapped[User] = relationship(lazy="joined", foreign_keys=[user_id])
+
+    @property
+    def photo_visible(self) -> bool:
+        """Müşteriye (sürücü kartı, takip bağlantısı) gösterilebilir mi: yalnızca onaylı fotoğraf."""
+        return bool(self.photo_key) and self.photo_status == PHOTO_APPROVED
 
     @property
     def language_list(self) -> list[str]:

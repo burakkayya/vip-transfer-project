@@ -268,6 +268,7 @@ export function Button(props: {
   iconRight?: IconName;
   small?: boolean;
   style?: ViewStyle;
+  accessibilityHint?: string;
 }) {
   const v = props.variant ?? "primary";
   const fg = v === "secondary" || v === "light" || v === "ghost" ? colors.text : "#fff";
@@ -281,6 +282,7 @@ export function Button(props: {
         accessibilityRole="button"
         // Etiket yalnızca başlık: iOS aksi halde simge glifini de etikete katar (VoiceOver anlamsız karakter okur).
         accessibilityLabel={props.title}
+        accessibilityHint={props.accessibilityHint}
         accessibilityState={{ disabled: !!(props.disabled || props.busy), busy: !!props.busy }}
         disabled={props.disabled || props.busy}
         onPressIn={() => scale.set(withSpring(0.97, { damping: 20, stiffness: 400 }))}

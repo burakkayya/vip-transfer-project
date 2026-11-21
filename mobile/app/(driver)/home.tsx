@@ -12,7 +12,7 @@ import { ApiError, api } from "@/lib/api";
 import { DOC_LABEL, DRIVER_STATUS, LEG_STATUS, dailyLine, DAILY_DROPOFF } from "@/lib/driverLabels";
 import { dateTime, money } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
-import { useSession } from "@/lib/session";
+import { notifyIfServerLogoutFailed, useSession } from "@/lib/session";
 import type { DriverMe, Earnings, Job, Trip } from "@/lib/types";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -377,8 +377,9 @@ export default function DriverHome() {
       <Pressable style={{ alignSelf: "center", padding: 12, flexDirection: "row", gap: 6, alignItems: "center" }}
         accessibilityRole="button" accessibilityLabel="Çıkış yap" onPress={async () => {
         if (me.is_online) await api("driver/me/online", { body: { is_online: false } }).catch(() => undefined);
-        await signOut();
+        const result = await signOut();
         router.replace("/login");
+        notifyIfServerLogoutFailed(result, "driver");
       }}>
         <Ionicons name="log-out-outline" size={16} color={colors.muted} />
         <T style={{ color: colors.muted, fontWeight: "600" }}>Çıkış yap</T>

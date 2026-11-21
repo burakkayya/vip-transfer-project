@@ -39,6 +39,12 @@ export default function DataRequestPanel() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [list, setList] = useState<DataRequest[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  /** K-81: açık talep işleme alınana kadar geri çekilebilir. */
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  /** Geri çekme iki adımlıdır: ilk dokunuş onay ister. */
+  const [confirmWithdraw, setConfirmWithdraw] = useState<string | null>(null);
+  const [withdrawMsg, setWithdrawMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const listTitle = useRef<HTMLHeadingElement>(null);
   const firstRadio = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
   /** Silme talebi gönderilmeden önce satır içi onay (rezervasyon iptaliyle aynı desen). */
@@ -111,6 +117,29 @@ export default function DataRequestPanel() {
   }
 
   const statusLabel = (s: string) => (t.has(`statuses.${s}`) ? t(`statuses.${s}`) : s);
+
+  async function withdraw(r: DataRequest) {
+    if (withdrawing) return;
+    if (confirmWithdraw !== r.id) {
+      setConfirmWithdraw(r.id);
+      return;
+    }
+    setConfirmWithdraw(null);
+    setWithdrawing(r.id);
+    setWithdrawMsg(null);
+    try {
+      const updated = await api<DataRequest>(`me/data-requests/${encodeURIComponent(r.id)}/withdraw`, { body: {} });
+      setList((l) => l?.map((x) => (x.id === r.id ? updated : x)) ?? null);
+      setWithdrawMsg({ ok: true, text: t("withdrawn") });
+      // Düğme kaybolur; odak liste başlığına döner (sonuç canlı bölgede duyurulur).
+      listTitle.current?.focus();
+    } catch (err) {
+      if (isUnauthorized(err)) sessionExpired();
+      else setWithdrawMsg({ ok: false, text: errorText(err) });
+    } finally {
+      setWithdrawing(null);
+    }
+  }
 
   return (
     <div className="stack">
@@ -203,7 +232,14 @@ export default function DataRequestPanel() {
       </form>
 
       <section className="card stack data-request-list" aria-labelledby="data-request-list-title">
-        <h2 id="data-request-list-title">{t("list")}</h2>
+        <h2 id="data-request-list-title" tabIndex={-1} ref={listTitle}>{t("list")}</h2>
+        {list?.some((r) => r.status === "acik") && <p className="hint">{t("withdrawHint")}</p>}
+        <div role="status">{withdrawMsg?.ok && <p className="alert ok">{withdrawMsg.text}</p>}</div>
+        {withdrawMsg && !withdrawMsg.ok && (
+          <p className="alert error" role="alert">
+            {withdrawMsg.text}
+          </p>
+        )}
         {listError ? (
           <ErrorState text={listError} onRetry={load} />
         ) : list === null ? (
@@ -217,6 +253,14 @@ export default function DataRequestPanel() {
                 <span className="request-type">{t(`types.${r.request_type}`)}</span>
                 <span className={`badge ${statusClass(r.status)}`}>{statusLabel(r.status)}</span>
                 <span className="hint">{t("due", { date: dateTime(r.due_at, locale) })}</span>
+                {r.status === "acik" && (
+                  <button className="btn outline small" type="button" disabled={withdrawing !== null}
+                    aria-busy={withdrawing === r.id || undefined}
+                    aria-label={confirmWithdraw === r.id ? undefined : t("withdrawLabel", { type: t(`types.${r.request_type}`) })}
+                    onClick={() => void withdraw(r)}>
+                    {confirmWithdraw === r.id ? t("withdrawConfirm") : t("withdraw")}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

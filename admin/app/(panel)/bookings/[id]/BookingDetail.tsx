@@ -90,6 +90,8 @@ interface Detail {
     note: string | null;
     refunds: { id: string; amount: string; percent: number; status: string; reason: string }[];
     refundable: string;
+    /** K-62: "booking" rezervasyon tahsilatı, "tip" bahşiş. */
+    purpose?: string;
   }[];
   earnings: {
     id: string;
@@ -160,6 +162,19 @@ export default function BookingDetail({ id }: { id: string }) {
       setRefundReason("");
       void reload();
     }
+  }
+
+  /** K-81: ödenmiş bahşişin tam iadesi; sürücünün bekleyen bahşiş hakedişi iptal edilir. */
+  async function refundTip(p: Detail["payments"][number]) {
+    const why = prompt(`${money(p.refundable, p.currency)} bahşiş müşteriye iade edilecek ve sürücünün bahşiş hakedişi iptal edilecek. Gerekçe:`);
+    if (!why || why.trim().length < 3) return;
+    const ok = await action.run(async () => {
+      const r = await api<{ status: string }>(`admin/bookings/${id}/tip-refund`, { body: { reason: why.trim() } });
+      action.setMessage(r.status === "basarisiz"
+        ? { ok: false, text: "Bahşiş iadesi sağlayıcıda başarısız oldu; Finans > Ödemeler ve iadeler'den tekrar deneyin. Bahşiş hakedişi iptal edildi." }
+        : { ok: true, text: `Bahşiş iadesi: ${REFUND_STATUS[r.status] ?? r.status}.` });
+    });
+    if (ok) void reload();
   }
 
   async function cancelEarning(entryId: string, label: string) {
@@ -310,6 +325,7 @@ export default function BookingDetail({ id }: { id: string }) {
             title: "Sağlayıcı",
             render: (p) => (
               <>
+                {p.purpose === "tip" && <Badge value="tip" labels={{ tip: "Bahşiş" }} />}{" "}
                 {PAYMENT_PROVIDER[p.provider] ?? p.provider}
                 {p.manual_method && ` · ${MANUAL_PAYMENT_METHOD[p.manual_method] ?? p.manual_method}`}
                 {(p.provider_ref || p.note) && (
@@ -330,6 +346,16 @@ export default function BookingDetail({ id }: { id: string }) {
                   {money(r.amount, p.currency)} (%{r.percent}) <Badge value={r.status} labels={REFUND_STATUS} />
                 </div>
               )),
+          },
+          {
+            key: "act",
+            title: "",
+            render: (p) =>
+              p.purpose === "tip" && Number(p.refundable) > 0 && can("operasyon", "muhasebe") ? (
+                <button className="btn small secondary" type="button" disabled={action.busy} onClick={() => void refundTip(p)}>
+                  Bahşişi iade et
+                </button>
+              ) : null,
           },
         ]}
       />

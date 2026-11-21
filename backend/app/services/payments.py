@@ -342,6 +342,7 @@ def record_manual_payment(
     note: str | None,
     now: datetime,
     ip: str | None,
+    staff_is_admin: bool = False,
 ) -> Payment:
     """K-54: havale/EFT, ofiste nakit veya fiziki POS tahsilatını kaydeder ve rezervasyonu onaylar.
     Tutar rezervasyon toplamına eşit olmalıdır (kısmi tahsilat yok). Sağlayıcı çağrılmaz."""
@@ -351,6 +352,13 @@ def record_manual_payment(
         raise Conflict("elle tahsilat yalnızca admin girişli rezervasyonda kaydedilir", code="manual_payment_not_allowed")
     if booking.status is not BookingStatus.PENDING_PAYMENT:
         raise Conflict("bu rezervasyon için ödeme beklenmiyor", code="payment_not_expected")
+    if not (reference and reference.strip()):
+        # BIZ-04: dekont, makbuz ya da POS slip numarası olmadan tahsilat kaydedilmez.
+        raise DomainError("tahsilat için dekont, makbuz veya slip numarası yazılmalı", code="payment_reference_required")
+    if booking.system_total_amount is not None and booking.created_by_id == staff_id and not staff_is_admin:
+        # BIZ-04 görev ayrılığı: fiyatı değiştiren kişi aynı rezervasyonun elle tahsilatını kaydedemez.
+        raise Conflict("fiyatı değiştirilen rezervasyonun tahsilatını başka bir personel kaydetmeli",
+                       code="manual_payment_needs_other_staff")
     if amount != booking.total_amount:
         raise DomainError(
             "tahsil edilen tutar rezervasyon toplamına eşit olmalı",

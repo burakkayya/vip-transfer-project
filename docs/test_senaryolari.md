@@ -396,3 +396,17 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 5. Yanlış uçuş numarasında üç sorgudan sonra sürücüde ve admin'de "Uçuş bulunamadı" görünür, sorgu durur.
 6. Tahmini iniş 15 dk ve üzeri kayarsa sürücüye "Uçuş saati değişti" bildirimi, inişte "Uçuş indi" bildirimi gelir.
 
+## K-81 iyileştirmeleri (2026-11-21)
+
+1. **Fiyat değiştirme sınırı:** operasyon personeliyle Rezervasyonlar > Yeni rezervasyon; fiyatları hesaplayıp "Fiyatı değiştir"de sistem fiyatının yarısından düşük tutar girin. Beklenen: alan altında kırmızı "İzin verilen aralık … yalnızca admin girebilir", gönder düğmesi pasif. Admin rolüyle aynı tutar kabul edilir.
+2. **Görev ayrılığı:** aynı formda fiyatı değiştirip "Ödeme alındı" seçin. Beklenen: "ödeme alındı kaydını siz giremezsiniz" uyarısı. Fiyatı değiştirilmiş rezervasyonun detayında elle tahsilatı başka bir operasyon personeli kaydeder; dekont/makbuz/slip numarası boşken düğme pasif.
+3. **İncelemedeki ödemeler:** Finans > Ödemeler ve iadeler sayfasının başında tutarı tutmayan bildirimler ve iade durumları listelenir; iade tamamlanınca satır düşer.
+4. **Sürücü fotoğrafı:** sürücü uygulamasında Belgeler > Sürücü kartım'dan fotoğraf yükleyin; "onay bekliyor" yazar ve müşteri kartında fotoğraf görünmez. Admin Sürücüler > sürücü > Profil fotoğrafı'ndan onaylayınca müşteride görünür; gerekçeyle reddedince sürücü gerekçeyi görür.
+5. **Bahşiş iadesi:** bahşişli tamamlanmış rezervasyonun admin detayında Ödemeler tablosunda "Bahşişi iade et". Beklenen: iade tamamlandı, bahşiş hakedişi iptal, müşteri ekranında "Bahşişiniz iade edildi".
+6. **Bütün günleri kabul et:** ödenmiş ve atanmamış çok günlük kiralamayı sürücü havuzunda açın; "Bütün günleri kabul et (N gün)" bütün günleri aynı araçla alır. Bir gün takvime uymuyorsa hiçbiri alınmaz ve uygun olmayan gün numaraları yazılır. Müşteriye tek "sürücünüz belli oldu" bildirimi gider.
+7. **Rezervasyonlarım:** 20'den çok rezervasyonu olan müşteride listenin altında "Daha fazla göster".
+8. **Veri talebi geri çekme:** Veri talebi sayfasında açık talepte "Geri çek"; durum "Geri çekildi" olur. İşleme alınmış talepte düğme yoktur.
+9. **Onay adımı özeti (telefon):** rezervasyon sihirbazının onay adımında güzergâh, tarih ve araç en üstte görünür.
+10. **Noktalı yol:** `/tr/a.b` adresi boş sayfa değil 404 sayfasını gösterir.
+11. **Çıkış uyarısı (mobil):** internet kapalıyken çıkış yapın; "Çıkış yapıldı … sunucuya ulaşılamadı" uyarısı görünür, yerel oturum kapanır.
+12. **Hazır olma:** `curl http://127.0.0.1:8000/ready` → `{"status":"ready",...}`; `X-Forwarded-For` başlığıyla 404.

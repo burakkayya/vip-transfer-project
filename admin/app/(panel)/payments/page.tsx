@@ -31,6 +31,19 @@ interface Refund {
   created_at: string;
   manual: boolean;
 }
+/** K-74: tutar ya da para birimi denetimine takılan başarılı bildirim; kart çekilmiş olabilir. */
+interface UnderReview {
+  id: string;
+  booking_id: string;
+  booking_code: string;
+  booking_status: string;
+  merchant_oid: string;
+  amount: string;
+  currency: string;
+  failure_reason: string | null;
+  created_at: string;
+  refunds: Refund[];
+}
 
 /** Ekran 11: ödemeler ve iadeler. Başarısız iade tekrar denenebilir; belirsiz iadede admin mutabakatla karar verir. */
 export default function PaymentsPage() {
@@ -41,8 +54,15 @@ export default function PaymentsPage() {
   const { limit, offset, setOffset, pager } = usePager();
   const payments = useData<Payment[]>(withQuery("admin/payments", { status, limit, offset }));
   const refunds = useData<Refund[]>(withQuery("admin/refunds", { status: refundStatus }));
+  const review = useData<UnderReview[]>("admin/payments/under-review");
   const action = useAction();
-  const currencyOf = (paymentId: string) => payments.data?.find((p) => p.id === paymentId)?.currency ?? "EUR";
+  const currencyOf = (paymentId: string) =>
+    payments.data?.find((p) => p.id === paymentId)?.currency ?? review.data?.find((p) => p.id === paymentId)?.currency ?? "EUR";
+  function reloadAll() {
+    void refunds.reload();
+    void payments.reload();
+    void review.reload();
+  }
 
   async function retry(id: string, reconciled = false) {
     const ok = await action.run(async () => {
@@ -50,8 +70,7 @@ export default function PaymentsPage() {
       action.setMessage({ ok: r.status === "tamamlandi", text: `İade sonucu: ${REFUND_STATUS[r.status] ?? r.status}` });
     });
     if (ok) {
-      void refunds.reload();
-      void payments.reload();
+      reloadAll();
     }
   }
 
@@ -70,8 +89,7 @@ export default function PaymentsPage() {
       "İade tamamlandı işaretlendi.",
     );
     if (ok) {
-      void refunds.reload();
-      void payments.reload();
+      reloadAll();
     }
   }
 
@@ -105,8 +123,7 @@ export default function PaymentsPage() {
       "Elle iade kapatıldı.",
     );
     if (ok) {
-      void refunds.reload();
-      void payments.reload();
+      reloadAll();
     }
   }
 
@@ -114,6 +131,44 @@ export default function PaymentsPage() {
     <div className="stack">
       <PageHead title="Ödemeler ve iadeler" />
       <Msg message={action.message} />
+
+      <section className="stack" aria-labelledby="h-review">
+        <h2 id="h-review">İncelemedeki ödemeler</h2>
+        <p className="muted">
+          Tutarı ya da para birimi tutmayan başarılı bildirimler. Kart çekilmiş olabilir; iade tamamlanana kadar rezervasyon
+          ödeme beklemede kalır, yeni ödeme sayfası açılmaz ve otomatik iptal edilmez.
+        </p>
+        <ErrorBox error={review.error} />
+        <Table
+          rows={review.data}
+          rowKey={(p) => p.id}
+          empty="İncelemede ödeme yok."
+          columns={[
+            { key: "created", title: "Bildirim", render: (p) => dt(p.created_at) },
+            { key: "booking", title: "Rezervasyon", render: (p) => <Link href={`/bookings/${p.booking_id}`} className="mono">{p.booking_code}</Link> },
+            { key: "reason", title: "Neden", render: (p) => p.failure_reason ?? "—" },
+            { key: "amount", title: "Beklenen", align: "right", render: (p) => money(p.amount, p.currency) },
+            {
+              key: "refund",
+              title: "İade",
+              render: (p) =>
+                p.refunds.length === 0 ? (
+                  <span className="muted">İade kaydı yok</span>
+                ) : (
+                  <div className="stack">
+                    {p.refunds.map((r) => (
+                      <div key={r.id} className="row">
+                        <span>{money(r.amount, p.currency)}</span>
+                        <Badge value={r.status} labels={REFUND_STATUS} />
+                        {refundActions(r)}
+                      </div>
+                    ))}
+                  </div>
+                ),
+            },
+          ]}
+        />
+      </section>
 
       <div className="card row end">
         <Field label="Ödeme durumu">
