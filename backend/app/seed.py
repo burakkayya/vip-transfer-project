@@ -373,13 +373,16 @@ GUIDE_STEPS = [
 ]
 
 
-# K-29 tahmini günlük kiralama fiyatları (EUR): tam gün, yarım gün, aşım saati, aşım km.
+# K-82 günlük kiralama fiyatları (EUR): tam gün, yarım gün, aşım saati, aşım km. Tam gün fiyatları kesin
+# (Standart Vito 250, VIP Vito 275, Standart Sprinter 300, VIP Sprinter 375; günde 200 km dahil); yarım gün ve
+# aşım ücretleri K-79 tahminidir.
 DAILY_RATES = {
-    "minivan": ("170", "100", "20", "0.80"),
-    "vip_van": ("220", "130", "25", "1.00"),
-    "minibus": ("260", "150", "30", "1.20"),
-    "vip_minibus": ("320", "185", "35", "1.40"),
+    "minivan": ("250", "100", "20", "0.80"),
+    "vip_van": ("275", "130", "25", "1.00"),
+    "minibus": ("300", "150", "30", "1.20"),
+    "vip_minibus": ("375", "185", "35", "1.40"),
 }
+DAILY_FULL_DAY_KM = 200
 
 
 def run(db: Session) -> None:
@@ -409,15 +412,15 @@ def run(db: Session) -> None:
             db.add(PricingRule(vehicle_type_id=vt.id, base_price_per_km=D("1.10"), minimum_price=D("30"),
                                rounding_step=D("5"), valid_from=EPOCH))
 
-    # K-29 şoförlü günlük kiralama: tahmini başlangıç fiyatları (EUR/gün; gerçek fiyatlar admin panelinden
-    # yeni sürüm olarak girilir). Tam gün 10 saat / 250 km, yarım gün 5 saat / 120 km.
+    # K-29 şoförlü günlük kiralama fiyatları (EUR/gün; değişiklikler admin panelinden yeni sürüm olarak girilir).
+    # Tam gün 10 saat / 200 km (K-82), yarım gün 5 saat / 120 km.
     daily_priced = set(db.scalars(select(DailyRate.vehicle_type_id)))
     for vt in types.values():
         prices = DAILY_RATES.get(vt.code)
         if vt.is_active and prices and vt.id not in daily_priced:
             full, half, extra_hour, extra_km = prices
             db.add(DailyRate(vehicle_type_id=vt.id, full_day_price=D(full), half_day_price=D(half),
-                             full_day_hours=10, half_day_hours=5, full_day_km=250, half_day_km=120,
+                             full_day_hours=10, half_day_hours=5, full_day_km=DAILY_FULL_DAY_KM, half_day_km=120,
                              extra_hour_price=D(extra_hour), extra_km_price=D(extra_km), valid_from=EPOCH))
 
     # K-14

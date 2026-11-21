@@ -216,7 +216,8 @@
     "cancelDayTitle": "{n}. günü iptal et",
     "cancelDayText": "Yalnızca bu gün iptal edilir, diğer günler aynen devam eder. İade bu günün başlangıç saatine göre hesaplanır.",
     "cancelDayConfirm": "Günü iptal et",
-    "dayCancelled": "{n}. gün iptal edildi."
+    "dayCancelled": "{n}. gün iptal edildi.",
+    "kmIncluded": "Günlük fiyatlara günde {km} km'ye kadar yol dahildir."
   },
   "otp": {
     "phone": "Telefon numarası",

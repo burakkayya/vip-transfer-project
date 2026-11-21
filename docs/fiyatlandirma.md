@@ -47,14 +47,14 @@ olur ve rezervasyon kabul edilir; gidiş-dönüşte indirim bacak başına 30 �
 - Fiyat araç tipi başına sürümlü `daily_rates` tablosundan gelir (EUR); admin Fiyatlandırma sayfasında yeni sürüm ekler, rezervasyon hesaplandığı sürümü dondurur.
 - Toplam = gün fiyatı × gün sayısı (1-14). Gün fiyatı 5'in katına yukarı yuvarlanır; TRY'de transferle aynı kur ve yuvarlama adımı. Gidiş-dönüş indirimi ve en düşük ücret kuralı günlükte uygulanmaz.
 
-| Araç | Tam gün (10 sa / 250 km) | Yarım gün (5 sa / 120 km) | Aşım saati | Aşım km |
+| Araç | Tam gün (10 sa / 200 km) | Yarım gün (5 sa / 120 km) | Aşım saati | Aşım km |
 |---|---|---|---|---|
-| Minivan | 170 € | 100 € | 20 € | 0,80 € |
-| VIP Van | 220 € | 130 € | 25 € | 1,00 € |
-| Minibüs | 260 € | 150 € | 30 € | 1,20 € |
-| VIP Minibüs | 320 € | 185 € | 35 € | 1,40 € |
+| Standart Vito (Minivan) | 250 € | 100 € | 20 € | 0,80 € |
+| VIP Vito (VIP Van) | 275 € | 130 € | 25 € | 1,00 € |
+| Standart Sprinter (Minibüs) | 300 € | 150 € | 30 € | 1,20 € |
+| VIP Sprinter (VIP Minibüs) | 375 € | 185 € | 35 € | 1,40 € |
 
-Fiyatlar tahminidir (2026-11-21); aşım ücreti bilgi amaçlıdır, otomatik tahsil edilmez. İptal iadesi her güne kendi başlangıcına göre K-14 kademesiyle hesaplanır; tek bir gün de iptal edilebilir, o zaman yalnızca o günün payı aynı kuralla iade edilir (K-80). Aşım tutarı = aşım saati (başladı-bitti süresinden paket saati düşülüp tam saate yukarı yuvarlanır) × saat ücreti + aşım km (sürücünün girdiği km - paket km) × km ücreti; admin'de gün bazında bilgi olarak görünür.
+Tam gün fiyatları kesindir (K-82, 2026-11-21); günde 200 km'ye kadar yol fiyata dahildir ve müşteriye araç listesinde ve özette "Günlük fiyatlara günde 200 km'ye kadar yol dahildir." notuyla gösterilir. Yarım gün fiyatları ve aşım ücretleri hâlâ K-79 tahminidir; aşım ücreti bilgi amaçlıdır, otomatik tahsil edilmez. İptal iadesi her güne kendi başlangıcına göre K-14 kademesiyle hesaplanır; tek bir gün de iptal edilebilir, o zaman yalnızca o günün payı aynı kuralla iade edilir (K-80). Aşım tutarı = aşım saati (başladı-bitti süresinden paket saati düşülüp tam saate yukarı yuvarlanır) × saat ücreti + aşım km (sürücünün girdiği km - paket km) × km ücreti; admin'de gün bazında bilgi olarak görünür.
 
 ## Para birimi
 

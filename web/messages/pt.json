@@ -216,7 +216,8 @@
     "cancelDayTitle": "Cancelar o dia {n}",
     "cancelDayText": "Só este dia é cancelado; os outros dias continuam reservados. O reembolso é calculado pela hora de início deste dia.",
     "cancelDayConfirm": "Cancelar dia",
-    "dayCancelled": "O dia {n} foi cancelado."
+    "dayCancelled": "O dia {n} foi cancelado.",
+    "kmIncluded": "Os preços diários incluem até {km} km por dia."
   },
   "otp": {
     "phone": "Número de telefone",

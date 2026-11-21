@@ -210,6 +210,7 @@ const fr: Dict = {
   "daily.perDay": "{price} / jour",
   "daily.total": "Total pour {days} jours",
   "daily.extras": "Au-delà de la limite : {hour} par heure, {km} par km. Tout dépassement vous est confirmé après le trajet.",
+  "daily.kmIncluded": "Les tarifs journaliers incluent jusqu’à {km} km par jour.",
   "daily.plan": "Programme de la journée (lieux à visiter)",
   "daily.planHint": "Votre chauffeur le voit après avoir accepté la course. N’indiquez pas vos données de passeport.",
   "daily.leadTime": "Réservez au moins 24 heures à l’avance. La journée se termine au point de départ ou où vous le souhaitez.",

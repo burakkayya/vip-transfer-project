@@ -225,12 +225,15 @@ jobs:
       - name: Playwright tarayıcısı
         working-directory: web
         run: npx playwright install --with-deps chromium
+      # `github` raporcusu her düşen testi açıklama (annotation) olarak yazar; açıklamalar giriş yapmadan da
+      # API'den okunur. Admin e2e, web e2e düşse de koşar.
       - name: Web e2e
         working-directory: web
-        run: npx playwright test --workers=2
+        run: npx playwright test --workers=2 --reporter=list,github
       - name: Admin e2e
+        if: ${{ !cancelled() }}
         working-directory: admin
-        run: npx playwright test --workers=1
+        run: npx playwright test --workers=1 --reporter=list,github
       - name: Sunucu logları
         if: failure()
         run: tail -n 200 "$RUNNER_TEMP"/*.log

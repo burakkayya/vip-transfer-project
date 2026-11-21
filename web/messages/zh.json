@@ -216,7 +216,8 @@
     "cancelDayTitle": "取消第 {n} 天",
     "cancelDayText": "仅取消这一天，其他日期保持不变。退款按这一天的开始时间计算。",
     "cancelDayConfirm": "取消这一天",
-    "dayCancelled": "第 {n} 天已取消。"
+    "dayCancelled": "第 {n} 天已取消。",
+    "kmIncluded": "每日价格包含每天最多 {km} 公里。"
   },
   "otp": {
     "phone": "手机号码",

@@ -191,6 +191,8 @@ export default function Daily() {
 
   const selected = vehicle ? quotes[vehicle] : undefined;
   const quote = selected && !(selected instanceof ApiError) ? selected : null;
+  // K-82: fiyata dahil günlük km (seçilen paketin sınırı; bütün araç tiplerinde aynı).
+  const includedKm = Object.values(quotes).find((q): q is DailyQuote => !(q instanceof ApiError))?.km_per_day ?? null;
   const selectedType = types.find((x) => x.code === vehicle);
   const pkgLabel = pkg === "tam" ? t("daily.full") : t("daily.half");
   const legal = (slug: string) => WebBrowser.openBrowserAsync(`${WEB_URL}/${LOCALE}/legal/${slug}`);
@@ -311,6 +313,7 @@ export default function Daily() {
             );
           })}
         </View>
+        {includedKm !== null ? <P muted small>{t("daily.kmIncluded", { km: includedKm })}</P> : null}
         {quote ? <P muted small>{t("daily.extras", { hour: money(quote.extra_hour_price, quote.currency, LOCALE), km: money(quote.extra_km_price, quote.currency, LOCALE) })}</P> : null}
       </MapSheet>
     );
@@ -341,6 +344,7 @@ export default function Daily() {
             </Row>
           ))}
           <P muted small>{t("daily.limits", { hours: quote.hours_per_day, km: quote.km_per_day })}</P>
+          <P muted small>{t("daily.kmIncluded", { km: quote.km_per_day })}</P>
         </Card>
       )}
       <Alert text={error} />

@@ -216,7 +216,8 @@
     "cancelDayTitle": "{n}일차 취소",
     "cancelDayText": "이날만 취소되며 다른 날은 그대로 유지됩니다. 환불액은 이날의 시작 시간을 기준으로 계산됩니다.",
     "cancelDayConfirm": "이날 취소",
-    "dayCancelled": "{n}일차가 취소되었습니다."
+    "dayCancelled": "{n}일차가 취소되었습니다.",
+    "kmIncluded": "일일 요금에는 하루 최대 {km}km 주행이 포함됩니다."
   },
   "otp": {
     "phone": "휴대폰 번호",

@@ -216,7 +216,8 @@
     "cancelDayTitle": "Tag {n} stornieren",
     "cancelDayText": "Nur dieser Tag wird storniert, die anderen Tage bleiben gebucht. Die Erstattung richtet sich nach der Startzeit dieses Tages.",
     "cancelDayConfirm": "Tag stornieren",
-    "dayCancelled": "Tag {n} ist storniert."
+    "dayCancelled": "Tag {n} ist storniert.",
+    "kmIncluded": "Die Tagespreise enthalten bis zu {km} km pro Tag."
   },
   "otp": {
     "phone": "Telefonnummer",
