@@ -451,7 +451,8 @@ export function Alert(props: { text: string | null; tone?: "ok" | "danger" | "wa
   const icon: IconName = tone === "ok" ? "checkmark-circle" : tone === "warn" ? "alert-circle" : "close-circle";
   return (
     <Animated.View entering={FadeInDown.duration(300)}>
-      <Pressable onPress={props.onPress} style={[s.alert, { backgroundColor: bg }]}>
+      <Pressable onPress={props.onPress} style={[s.alert, { backgroundColor: bg }]}
+        accessibilityLiveRegion={tone === "danger" ? "assertive" : "polite"} accessibilityRole={props.onPress ? "button" : "alert"}>
         <Ionicons name={icon} size={20} color={colors[tone]} />
         <T style={{ color: colors[tone], flex: 1, fontSize: 14, fontWeight: "500" }}>{props.text}</T>
         {props.onPress ? <Ionicons name="chevron-forward" size={18} color={colors[tone]} style={rtlFlip("chevron-forward")} /> : null}

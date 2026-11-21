@@ -175,6 +175,26 @@ def cancel(code: str, body: CancelIn, customer: CurrentCustomer, db: DbSession, 
     return BookingOut.build(booking)
 
 
+@router.get("/bookings/{code}/days/{leg_id}/cancellation", response_model=RefundQuoteOut)
+def day_cancellation_preview(code: str, leg_id: uuid.UUID, customer: CurrentCustomer, db: DbSession, now: Now):
+    """K-79: günlük kiralamada tek günün iade önizlemesi."""
+    booking = _own_booking(db, customer, code)
+    leg = bookings.daily_leg(booking, leg_id)
+    q = bookings.day_refund_quote(db, booking, leg, now)
+    return RefundQuoteOut(**q.__dict__, currency=booking.currency)
+
+
+@router.post("/bookings/{code}/days/{leg_id}/cancel", response_model=BookingOut)
+def cancel_day(code: str, leg_id: uuid.UUID, body: CancelIn, customer: CurrentCustomer, db: DbSession,
+               ip: ClientIp, now: Now):
+    booking = _own_booking(db, customer, code)
+    bookings.cancel_day(db, booking, leg_id, provider=get_payment_provider(), actor_id=customer.user_id,
+                        reason=body.reason, now=now, ip=ip)
+    db.commit()
+    db.refresh(booking)
+    return BookingOut.build(booking, pending_minutes=_pending_minutes(db))
+
+
 @router.post("/bookings/{code}/payments", response_model=CheckoutOut)
 def start_payment(code: str, customer: CurrentCustomer, db: DbSession, ip: ClientIp):
     booking = _own_booking(db, customer, code)

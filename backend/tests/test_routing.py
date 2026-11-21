@@ -56,6 +56,13 @@ def test_google_route_without_polyline_is_none(monkeypatch):
     assert r.distance_km == Decimal("12.00")
 
 
+def test_google_route_same_point_has_no_distance_field(monkeypatch):
+    """Google sıfır değerli alanları göndermez: aynı noktada `distanceMeters` yoktur (sürücü alışta yola çıkarsa)."""
+    _patch_post(monkeypatch, {"routes": [{"duration": "0s"}]})
+    r = GoogleRouting("key").route(A, A)
+    assert r.distance_km == Decimal("0.00") and r.duration_minutes == 1
+
+
 def test_dev_and_prod_require_google_providers(monkeypatch):
     """Haritayla ilgili her şey Google: sahte adres ve kuş uçuşu rota yalnızca otomatik testlerde."""
     import pytest

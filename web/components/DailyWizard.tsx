@@ -18,6 +18,7 @@ import { ErrorState } from "./ErrorState";
 import Icon, { vehicleIcon } from "./Icon";
 import OtpLogin from "./OtpLogin";
 import RouteMap, { type MapPoint } from "./RouteMap";
+import Segmented from "./Segmented";
 
 type Step = "plan" | "vehicle" | "details" | "verify" | "confirm";
 const MAX_DAYS = 14;
@@ -283,22 +284,8 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
             </div>
             <div className="field">
               <span className="field-label" id="daily-package-label">{t("package")}</span>
-              <div className="segmented" role="radiogroup" aria-labelledby="daily-package-label">
-                {(["tam", "yarim"] as const).map((p) => (
-                  <button key={p} type="button" role="radio" aria-checked={plan.pkg === p} className={plan.pkg === p ? "on" : ""}
-                    data-pkg={p} tabIndex={plan.pkg === p ? 0 : -1} onClick={() => set("pkg", p)}
-                    onKeyDown={(e) => {
-                      // Radyo grubu: ok tuşları seçimi değiştirir, odak seçilene geçer (tek sekme durağı).
-                      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-                      e.preventDefault();
-                      const next: DailyPackage = p === "tam" ? "yarim" : "tam";
-                      set("pkg", next);
-                      (e.currentTarget.parentElement?.querySelector(`[data-pkg="${next}"]`) as HTMLButtonElement | null)?.focus();
-                    }}>
-                    {pkgLabel(p)}
-                  </button>
-                ))}
-              </div>
+              <Segmented labelledBy="daily-package-label" value={plan.pkg} onChange={(v) => set("pkg", v)}
+                options={(["tam", "yarim"] as const).map((p) => ({ value: p, label: pkgLabel(p) }))} />
             </div>
             <div className="grid grid-2">
               <div className="field">

@@ -129,7 +129,10 @@ class Booking(Base):
 
 class BookingLeg(Base):
     __tablename__ = "booking_legs"
-    __table_args__ = (UniqueConstraint("booking_id", "leg_order"),)
+    __table_args__ = (
+        UniqueConstraint("booking_id", "leg_order"),
+        CheckConstraint("day_km_used IS NULL OR (day_km_used >= 0 AND day_km_used <= 3000)", name="day_km_used_range"),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     booking_id: Mapped[uuid.UUID] = mapped_column(
@@ -164,6 +167,9 @@ class BookingLeg(Base):
     # K-63 kanıtlı bekleme: sürücünün "Vardım" anı ve "Yolcu gelmedi" kaydı.
     arrived_at: Mapped[datetime | None]
     no_show_at: Mapped[datetime | None]
+    # K-79 günlük kiralama: sürücünün gün sonunda beyan ettiği km (aşım bilgisi için; tahsil edilmez).
+    day_km_used: Mapped[int | None]
+    day_reported_at: Mapped[datetime | None]
 
     booking: Mapped[Booking] = relationship(back_populates="legs")
     pickup_region: Mapped[Region] = relationship(foreign_keys=[pickup_region_id], lazy="joined")

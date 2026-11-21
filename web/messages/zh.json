@@ -210,7 +210,12 @@
     "total1": "1 天合计",
     "bookingLine1": "按天包车 · 1 天 · {package}",
     "allUnavailable": "此行程暂无可用车辆，请更改日期或套餐后重试。",
-    "changePlan": "修改行程"
+    "changePlan": "修改行程",
+    "cancelDay": "取消这一天",
+    "cancelDayTitle": "取消第 {n} 天",
+    "cancelDayText": "仅取消这一天，其他日期保持不变。退款按这一天的开始时间计算。",
+    "cancelDayConfirm": "取消这一天",
+    "dayCancelled": "第 {n} 天已取消。"
   },
   "otp": {
     "phone": "手机号码",

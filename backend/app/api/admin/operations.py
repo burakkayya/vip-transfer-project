@@ -23,7 +23,7 @@ from app.models.enums import BookingSource, BookingStatus, LegStatus, PaymentSta
 from app.providers.routing import Point, haversine_km
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
-from app.services import bookings, dispatch, eta, live_location
+from app.services import bookings, daily_rental, dispatch, eta, live_location
 
 router = APIRouter(tags=["admin:operations"])
 
@@ -151,6 +151,21 @@ def _event_out(e: TripEvent, leg, see_coords: bool) -> dict:
     return out
 
 
+def _day_usage(db, b: Booking) -> list[dict] | None:
+    if not b.is_daily:
+        return None
+    out = []
+    for leg in sorted(b.legs, key=lambda x: x.leg_order):
+        u = daily_rental.day_usage(db, b, leg)
+        if u is None:
+            return None
+        out.append({"leg_id": str(leg.id), "day": leg.leg_order, "status": leg.status.value,
+                    "minutes_used": u.minutes_used, "km_used": u.km_used, "extra_hours": u.extra_hours,
+                    "extra_km": u.extra_km, "extra_amount": f"{u.extra_amount:.2f}", "currency": b.currency.value,
+                    "reported_at": leg.day_reported_at})
+    return out
+
+
 @router.get("/bookings/{booking_id}")
 def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
     b = _booking(db, booking_id)
@@ -195,6 +210,8 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
             if (rp := bookings.paid_payment(db, b)) is not None else None
         ),
         # K-57: bacakların sürücü hakedişleri (admin iptal edebilir).
+        # K-79: günlük kiralamada gün başına kullanım (saat olaylardan, km sürücü beyanı) ve bilgi amaçlı aşım.
+        "day_usage": _day_usage(db, b),
         "earnings": [
             {"id": str(e.id), "leg_id": str(e.booking_leg_id), "driver_id": str(e.driver_id), "kind": e.kind,
              "net": f"{e.net_amount:.2f}", "currency": e.currency.value,
@@ -221,6 +238,32 @@ def cancel_booking(booking_id: uuid.UUID, body: AdminCancelIn, staff: OpsStaff, 
                             now=now, ip=ip, override_refund_percent=body.refund_percent, by_staff=True,
                             cancel_driver_earnings=body.cancel_driver_earnings)
     db.commit()
+    return BookingOut.build(b)
+
+
+class AdminDayCancelIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+    refund_percent: int | None = Field(default=None, ge=0, le=100)
+
+
+@router.get("/bookings/{booking_id}/days/{leg_id}/cancellation")
+def day_cancellation_preview(booking_id: uuid.UUID, leg_id: uuid.UUID, staff: OpsOrSupport, db: DbSession, now: Now):
+    """K-79: günlük kiralamada tek günün politika iadesi."""
+    b = _booking(db, booking_id)
+    q = bookings.day_refund_quote(db, b, bookings.daily_leg(b, leg_id), now)
+    return {**q.__dict__, "refund_amount": f"{q.refund_amount:.2f}", "hours_left": f"{q.hours_left:.2f}",
+            "currency": b.currency.value}
+
+
+@router.post("/bookings/{booking_id}/days/{leg_id}/cancel", response_model=BookingOut)
+def cancel_day(booking_id: uuid.UUID, leg_id: uuid.UUID, body: AdminDayCancelIn, staff: OpsStaff, db: DbSession,
+               ip: ClientIp, now: Now):
+    """K-79: tek günü iptal eder; iade oranı boşsa politika uygulanır."""
+    b = _booking(db, booking_id)
+    bookings.cancel_day(db, b, leg_id, provider=get_payment_provider(), actor_id=staff.id, reason=body.reason,
+                        now=now, ip=ip, by_staff=True, override_refund_percent=body.refund_percent)
+    db.commit()
+    db.refresh(b)
     return BookingOut.build(b)
 
 
@@ -301,6 +344,26 @@ def assign(leg_id: uuid.UUID, body: AssignIn, staff: OpsStaff, db: DbSession, ip
     leg = _leg(db, leg_id)
     dispatch.manual_assign(db, leg, body.driver_id, body.vehicle_id, actor_id=staff.id, now=now, ip=ip)
     db.commit()
+
+
+@router.get("/dispatch/bookings/{booking_id}/candidates")
+def booking_candidates(booking_id: uuid.UUID, staff: OpsStaff, db: DbSession, now: Now):
+    """K-79: günlük kiralamanın açık günlerinin hepsine uygun sürücüler (toplu atama için)."""
+    b = _booking(db, booking_id)
+    return [
+        {"driver_id": str(c.driver.id), "driver_name": c.driver.full_name, "is_online": c.driver.is_online,
+         "vehicle_id": str(c.vehicle.id), "plate": c.vehicle.plate, "vehicle": f"{c.vehicle.brand} {c.vehicle.model}"}
+        for c in dispatch.booking_candidates(db, b, now)
+    ]
+
+
+@router.post("/dispatch/bookings/{booking_id}/assign-all")
+def assign_all(booking_id: uuid.UUID, body: AssignIn, staff: OpsStaff, db: DbSession, ip: ClientIp, now: Now):
+    """K-79: günlük kiralamanın açık günlerinin tümünü tek sürücüye atar (ya hepsi ya hiçbiri)."""
+    b = _booking(db, booking_id)
+    legs = dispatch.assign_all_days(db, b, body.driver_id, body.vehicle_id, actor_id=staff.id, now=now, ip=ip)
+    db.commit()
+    return {"assigned_days": [leg.leg_order for leg in legs]}
 
 
 @router.post("/dispatch/legs/{leg_id}/offer")

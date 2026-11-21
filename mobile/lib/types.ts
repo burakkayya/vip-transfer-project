@@ -172,6 +172,8 @@ export interface Trip {
   duration_minutes?: number | null;
   /** K-29: "gunluk" ise bitiş yeri serbest, süre paket saatidir. */
   service_type?: "transfer" | "gunluk";
+  /** K-79: sürücünün girdiği gün sonu km. */
+  day_km_used?: number | null;
 }
 
 export interface Offer {

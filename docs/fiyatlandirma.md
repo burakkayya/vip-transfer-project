@@ -54,7 +54,7 @@ olur ve rezervasyon kabul edilir; gidiş-dönüşte indirim bacak başına 30 �
 | Minibüs | 260 € | 150 € | 30 € | 1,20 € |
 | VIP Minibüs | 320 € | 185 € | 35 € | 1,40 € |
 
-Fiyatlar tahminidir (2026-11-21); aşım ücreti bilgi amaçlıdır, otomatik tahsil edilmez. İptal iadesi her güne kendi başlangıcına göre K-14 kademesiyle hesaplanır.
+Fiyatlar tahminidir (2026-11-21); aşım ücreti bilgi amaçlıdır, otomatik tahsil edilmez. İptal iadesi her güne kendi başlangıcına göre K-14 kademesiyle hesaplanır; tek bir gün de iptal edilebilir, o zaman yalnızca o günün payı aynı kuralla iade edilir (K-80). Aşım tutarı = aşım saati (başladı-bitti süresinden paket saati düşülüp tam saate yukarı yuvarlanır) × saat ücreti + aşım km (sürücünün girdiği km - paket km) × km ücreti; admin'de gün bazında bilgi olarak görünür.
 
 ## Para birimi
 

@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { dt, money, pct } from "@/lib/format";
 import ChatReview from "@/components/ChatReview";
 import ManualBookingPanel, { type ManualInfo } from "@/components/ManualBookingPanel";
+import DailyOps, { type DayUsage } from "@/components/DailyOps";
 import {
   BOOKING_STATUS,
   BOOKING_TYPE,
@@ -101,6 +102,7 @@ interface Detail {
     in_payout: boolean;
   }[];
   refund_target: { payment_id: string; refundable: string; currency: string } | null;
+  day_usage?: DayUsage[] | null;
 }
 
 // K-57: personel başlamış yolculuğu da iptal edebilir; tamamlanmış yolculukta iade ve hakediş iptali ayrıdır.
@@ -217,7 +219,7 @@ export default function BookingDetail({ id }: { id: string }) {
       <ManualBookingPanel bookingId={id} status={b.status} total={b.total_amount} currency={b.currency}
         manual={data.manual} onChanged={() => void reload()} />
 
-      <h2>Bacaklar</h2>
+      <h2>{b.daily ? "Günler" : "Bacaklar"}</h2>
       <Table
         rows={b.legs}
         rowKey={(l) => l.id}
@@ -229,8 +231,10 @@ export default function BookingDetail({ id }: { id: string }) {
             title: "Rota",
             render: (l) => (
               <>
-                {l.pickup_region.name} → {l.dropoff_region.name}
-                <div className="hint">{[l.pickup_address, l.dropoff_address].filter(Boolean).join(" → ")}</div>
+                {b.daily ? `${l.pickup_region.name} (gün boyu)` : `${l.pickup_region.name} → ${l.dropoff_region.name}`}
+                <div className="hint">
+                  {b.daily ? l.pickup_address : [l.pickup_address, l.dropoff_address].filter(Boolean).join(" → ")}
+                </div>
               </>
             ),
           },
@@ -265,6 +269,10 @@ export default function BookingDetail({ id }: { id: string }) {
           { key: "status", title: "Durum", render: (l) => <Badge value={l.status} labels={LEG_STATUS} /> },
         ]}
       />
+
+      {b.daily && data.day_usage && (
+        <DailyOps bookingId={id} status={b.status} usage={data.day_usage} onChanged={() => void reload()} />
+      )}
 
       <div className="grid cols-2">
         <div>

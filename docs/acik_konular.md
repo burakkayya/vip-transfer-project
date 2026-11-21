@@ -109,11 +109,11 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 - [x] Günlük araç kiralama (K-29): 2026-11-21 uygulandı, tasarım K-79 (şoförlü; backend, web, mobil müşteri, sürücü ve admin).
 - [ ] K-79 günlük kiralama fiyatları tahminidir; gerçek fiyatlar ve paket saat/km sınırları operasyonla belirlenip admin panelinden yeni sürüm olarak girilecek.
-- [ ] K-79 aşım ücreti (saat, km) yalnızca bilgi olarak gösteriliyor; tahsil akışı yok (elle ödeme bağlantısı ya da sürücüye nakit kararı bekliyor). Sürücü uygulamasında gün sonu km/saat kaydı yok.
-- [ ] K-79 tek bir günün iptali yok (rezervasyon bütün olarak iptal edilir; iade gün bazında hesaplanır). Admin manuel rezervasyonda günlük kiralama yok (K-54 yalnızca transfer).
-- [ ] K-79 rezervasyon onayı SMS şablonu "{pickup} > {dropoff}" yazar; günlük kiralamada "Kemer > Kemer" görünür. Şablon günlük kiralamaya göre ayrılmalı.
-- [ ] K-79 çok günlü işlerde sürücü dinlenme kuralı ve aynı sürücünün bütün günleri alması (toplu atama) yok; her gün ayrı eşleştirilir.
-- [ ] K-79 çeviriler: çoğul biçimi yalnızca 1 gün için ayrı metin; Arapçada 2 ve 11+ gün biçimleri anadili gözden geçirmesinde düzeltilmeli. Web rezervasyon sihirbazındaki ve günlük kiralamadaki paket/yön seçici (`segmented`) ortak bir bileşene alınmalı (günlükte ok tuşları var, transfer formunda yok).
+- [ ] K-79 aşım ücreti (saat, km) yalnızca bilgi olarak gösteriliyor; tahsil akışı yok (elle ödeme bağlantısı ya da sürücüye nakit kararı bekliyor). 2026-11-21 (K-80): sürücü gün sonu km'yi giriyor, saat olaylardan hesaplanıyor, aşım admin rezervasyon detayında gün bazında görünüyor; müşteriye gösterilmiyor. Km sürücü beyanıdır (odometre fotoğrafı veya GPS doğrulaması yok).
+- [x] K-79 tek gün iptali ve admin manuel günlük rezervasyon: 2026-11-21 uygulandı (K-80).
+- [x] K-79 günlük kiralama SMS şablonları ayrıldı (`daily_booking_confirmed`, `daily_booking_created_admin`, 12 dil; 2026-11-21, K-80). Dağıtımda `python -m app.cli seed` ile eklenir.
+- [ ] K-80 dinlenme süresi (`daily_rest_hours`, varsayılan 9 saat) operasyonla teyit edilecek. Toplu atama yalnızca admin'de; sürücü iş havuzunda günleri tek tek kabul eder (bütün günleri birlikte kabul seçeneği yok). Toplu atamada müşteriye gün başına ayrı "sürücü atandı" bildirimi gider (tek özet bildirim yok).
+- [ ] K-79 çeviriler: Arapça gün sayıları 2026-11-21'de ICU çoğul biçimine geçti (K-80; web ve mobil), metinler anadili gözden geçirmesinde doğrulanmalı. Ortak paket/yön seçici `web/components/Segmented.tsx` (2026-11-21).
 - [ ] On dil (K-34, uygulaması K-36): web, mobil ve bildirim şablonları için fr, es, it, zh, ja, ar çevirileri. Arapça için sağdan sola yerleşim. Bildirim şablonları 6 yeni dilde de hazırlanmalı (admin şablon ekranında dil başına kayıt). Yasal metinlerin çevirisi taslak olarak "çeviri doğrulanmadı" notuyla yayımlanır; yayından önce hukukçu kontrolünden geçmeli.
 - [ ] Uçuş verisinin kuruma bildirimi: zorunluysa bildirim akışı ve kaydı yazılacak, silme bu kayda bağlanacak (K-31).
 

@@ -210,7 +210,12 @@
     "total1": "Totale per 1 giorno",
     "bookingLine1": "Auto a giornata · 1 giorno · {package}",
     "allUnavailable": "Nessun veicolo disponibile per questo programma. Cambi data o pacchetto.",
-    "changePlan": "Modifica programma"
+    "changePlan": "Modifica programma",
+    "cancelDay": "Annulla questo giorno",
+    "cancelDayTitle": "Annulla il giorno {n}",
+    "cancelDayText": "Viene annullato solo questo giorno; gli altri giorni restano prenotati. Il rimborso dipende dall’orario di inizio di questo giorno.",
+    "cancelDayConfirm": "Annulla giorno",
+    "dayCancelled": "Il giorno {n} è annullato."
   },
   "otp": {
     "phone": "Numero di telefono",

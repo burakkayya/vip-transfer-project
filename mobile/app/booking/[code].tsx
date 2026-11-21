@@ -54,6 +54,13 @@ function flightText(f: { flight_no: string; status: string | null; estimated_at:
   return `${f.flight_no} · ${f.status === "indi" ? t("bookings.flightLanded", { time }) : t("bookings.flightEta", { time })}`;
 }
 
+/** K-79: ödenmiş günlük kiralamada başlamamış gün, başka açık gün varsa iptal edilebilir. */
+function canCancelDay(b: Booking, l: Booking["legs"][number]): boolean {
+  if (!b.daily || !["onaylandi", "atandi", "yolculukta"].includes(b.status)) return false;
+  if (!["beklemede", "atandi"].includes(l.status)) return false;
+  return b.legs.some((x) => x.id !== l.id && x.status !== "iptal");
+}
+
 export default function BookingScreen() {
   const params = useLocalSearchParams<{ code: string }>();
   // MOB-02: kod derin bağlantıdan gelebilir; biçimi doğrulanmadan hiçbir istek atılmaz.
@@ -212,6 +219,39 @@ function BookingDetail({ code }: { code: string }) {
     void expireSession().finally(() => router.replace("/login"));
   }, []);
   useLiveLocation(code, tracking, setLocation, onAuthLost);
+
+  // K-79: günlük kiralamada tek gün iptali (önce o günün iade önizlemesi, sonra onay).
+  async function cancelDay(legId: string, n: number) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const q = await api<RefundQuote>(apiPath`me/bookings/${code}/days/${legId}/cancellation`);
+      NativeAlert.alert(
+        t("daily.cancelDayTitle", { n }),
+        t("daily.cancelDayText", { percent: q.refund_percent, amount: money(q.refund_amount, q.currency, LOCALE) }),
+        [
+          { text: t("bookings.keep"), style: "cancel" },
+          { text: t("daily.cancelDayConfirm"), style: "destructive", onPress: () => void confirmCancelDay(legId, n) },
+        ],
+      );
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmCancelDay(legId: string, n: number) {
+    setBusy(true);
+    try {
+      setBooking(await api<Booking>(apiPath`me/bookings/${code}/days/${legId}/cancel`, { body: {} }));
+      setNotice(t("daily.dayCancelled", { n }));
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function previewCancel() {
     try {
@@ -395,10 +435,22 @@ function BookingDetail({ code }: { code: string }) {
         {booking.legs.map((l, i) => (
           <View key={l.id} style={{ gap: 10 }}>
             {booking.daily ? (
-              <T style={[s.hint, { fontWeight: "700" }]}>{t("daily.dayN", { n: i + 1 })} · {dateTime(l.pickup_at, LOCALE)}</T>
+              <T style={[s.hint, { fontWeight: "700" }]}>
+                {t("daily.dayN", { n: l.leg_order })} · {dateTime(l.pickup_at, LOCALE)}
+                {l.status === "iptal" || l.status === "bitti" ? ` · ${statusLabel("leg", l.status)}` : ""}
+              </T>
             ) : booking.legs.length > 1 ? <T style={[s.hint, { fontWeight: "700" }]}>{i === 0 ? "1 · " : "2 · "}{dateTime(l.pickup_at, LOCALE)}</T> : null}
             {booking.daily && i > 0 ? null : <RouteStops from={regionName(l.pickup_region, LOCALE)} to={regionName(l.dropoff_region, LOCALE)} fromHint={l.pickup_address ?? undefined} toHint={l.dropoff_address ?? undefined} />}
             {l.flight ? <Info icon="airplane-outline" label={t("bookings.flight")}>{flightText(l.flight)}</Info> : null}
+            {canCancelDay(booking, l) ? (
+              <Pressable accessibilityRole="button" accessibilityLabel={t("daily.cancelDayTitle", { n: l.leg_order })}
+                accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void cancelDay(l.id, l.leg_order)}
+                hitSlop={{ top: 4, bottom: 4 }}
+                style={{ alignSelf: "flex-start", minHeight: 44, paddingVertical: 10, paddingRight: 12, flexDirection: "row", gap: 6, alignItems: "center" }}>
+                <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                <T style={{ color: colors.danger, fontWeight: "600", fontSize: 14 }}>{t("daily.cancelDay")}</T>
+              </Pressable>
+            ) : null}
           </View>
         ))}
         <View style={{ height: 1, backgroundColor: colors.line }} />

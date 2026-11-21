@@ -237,6 +237,11 @@ const tr = {
   "daily.bookingLine1": "Günlük kiralama · 1 gün · {package}",
   "daily.allUnavailable": "Bu plan için uygun araç bulunamadı. Tarihi veya paketi değiştirip tekrar deneyin.",
   "daily.changePlan": "Planı değiştir",
+  "daily.cancelDay": "Bu günü iptal et",
+  "daily.cancelDayTitle": "{n}. günü iptal et",
+  "daily.cancelDayText": "Yalnızca bu gün iptal edilir, diğer günler aynen devam eder. İade bu günün başlangıcına göre: %{percent}, {amount}.",
+  "daily.cancelDayConfirm": "Günü iptal et",
+  "daily.dayCancelled": "{n}. gün iptal edildi.",
   "daily.edit": "Düzenle",
   "daily.dayN": "{n}. gün",
   "errors.daily_lead_time_too_short": "Günlük kiralama en az 24 saat önceden yapılır.",
@@ -513,6 +518,11 @@ const en: Dict = {
   "daily.bookingLine1": "Car by the day · 1 day · {package}",
   "daily.allUnavailable": "No vehicle is available for this plan. Change the date or package and try again.",
   "daily.changePlan": "Change plan",
+  "daily.cancelDay": "Cancel this day",
+  "daily.cancelDayTitle": "Cancel day {n}",
+  "daily.cancelDayText": "Only this day is cancelled; your other days stay as booked. Refund based on this day's start: {percent}%, {amount}.",
+  "daily.cancelDayConfirm": "Cancel day",
+  "daily.dayCancelled": "Day {n} is cancelled.",
   "daily.edit": "Edit",
   "daily.dayN": "Day {n}",
   "errors.daily_lead_time_too_short": "Day hire must be booked at least 24 hours ahead.",
@@ -787,6 +797,11 @@ const de: Dict = {
   "daily.bookingLine1": "Fahrer pro Tag · 1 Tag · {package}",
   "daily.allUnavailable": "Für diesen Plan ist kein Fahrzeug verfügbar. Bitte Datum oder Paket ändern.",
   "daily.changePlan": "Plan ändern",
+  "daily.cancelDay": "Diesen Tag stornieren",
+  "daily.cancelDayTitle": "Tag {n} stornieren",
+  "daily.cancelDayText": "Nur dieser Tag wird storniert, die anderen Tage bleiben gebucht. Erstattung nach Startzeit dieses Tages: {percent} %, {amount}.",
+  "daily.cancelDayConfirm": "Tag stornieren",
+  "daily.dayCancelled": "Tag {n} ist storniert.",
   "daily.edit": "Ändern",
   "daily.dayN": "Tag {n}",
   "errors.daily_lead_time_too_short": "Tagesbuchungen mindestens 24 Stunden im Voraus.",
@@ -1061,6 +1076,11 @@ const ru: Dict = {
   "daily.bookingLine1": "Аренда на день · 1 день · {package}",
   "daily.allUnavailable": "Для этого плана нет доступных автомобилей. Измените дату или пакет.",
   "daily.changePlan": "Изменить план",
+  "daily.cancelDay": "Отменить этот день",
+  "daily.cancelDayTitle": "Отменить день {n}",
+  "daily.cancelDayText": "Отменяется только этот день, остальные дни остаются в силе. Возврат по времени начала этого дня: {percent}%, {amount}.",
+  "daily.cancelDayConfirm": "Отменить день",
+  "daily.dayCancelled": "День {n} отменён.",
   "daily.edit": "Изменить",
   "daily.dayN": "День {n}",
   "errors.daily_lead_time_too_short": "Аренду на день нужно бронировать минимум за 24 часа.",
@@ -1157,8 +1177,35 @@ if (I18nManager.isRTL !== IS_RTL) {
 }
 const dict = DICTS[LOCALE];
 
+/** CLDR çoğul kategorisi. Hermes'te Intl.PluralRules her sürümde yok; Arapça elle, diğerleri bir/diğer. */
+export function pluralCategory(locale: string, n: number): string {
+  if (locale === "ar") {
+    const m = n % 100;
+    if (n === 0) return "zero";
+    if (n === 1) return "one";
+    if (n === 2) return "two";
+    if (m >= 3 && m <= 10) return "few";
+    if (m >= 11 && m <= 99) return "many";
+    return "other";
+  }
+  if (["zh", "ja", "ko"].includes(locale)) return "other";
+  return n === 1 ? "one" : "other";
+}
+
+/** `{ad, plural, one {…} two {…} other {# …}}` biçimi (K-79: Arapça gün sayıları); `#` sayının yerine geçer. */
+export function formatPlural(text: string, locale: string, vars: Record<string, string | number>): string {
+  return text.replace(/\{(\w+), plural,((?:\s*\w+\s*\{[^{}]*\})+)\s*\}/g, (_, name: string, body: string) => {
+    const n = Number(vars[name] ?? 0);
+    const forms: Record<string, string> = {};
+    for (const m of body.matchAll(/(\w+)\s*\{([^{}]*)\}/g)) forms[m[1]] = m[2];
+    const form = forms[pluralCategory(locale, n)] ?? forms.other ?? "";
+    return form.replace(/#/g, String(n));
+  });
+}
+
 export function t(key: Key, vars: Record<string, string | number> = {}): string {
-  return dict[key].replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ""));
+  const text = dict[key].includes(", plural,") ? formatPlural(dict[key], LOCALE, vars) : dict[key];
+  return text.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ""));
 }
 
 export function errorText(e: unknown): string {

@@ -210,7 +210,12 @@
     "total1": "1 日の合計",
     "bookingLine1": "日単位貸切 · 1 日 · {package}",
     "allUnavailable": "このご予定で利用できる車両がありません。日付またはプランを変更してください。",
-    "changePlan": "予定を変更"
+    "changePlan": "予定を変更",
+    "cancelDay": "この日をキャンセル",
+    "cancelDayTitle": "{n} 日目をキャンセル",
+    "cancelDayText": "キャンセルされるのはこの日のみで、ほかの日はそのままです。返金額はこの日の開始時刻をもとに計算されます。",
+    "cancelDayConfirm": "この日をキャンセル",
+    "dayCancelled": "{n} 日目をキャンセルしました。"
   },
   "otp": {
     "phone": "電話番号",

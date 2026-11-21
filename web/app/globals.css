@@ -2952,6 +2952,17 @@ html:lang(ko) * {
   border-top: 1px solid var(--line);
 }
 
+/* K-79: günlük kiralamada tek gün iptali (gün kartının içinde). */
+.day-cancel {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.day-cancel h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
 .daily-terms p {
   margin: 0;
 }
