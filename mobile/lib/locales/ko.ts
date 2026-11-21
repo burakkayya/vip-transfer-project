@@ -217,6 +217,7 @@ const ko: Dict = {
   "daily.cardTitle": "하루 종일 전용 기사",
   "daily.cardText": "종일 10시간 또는 반일 5시간, 기사님이 계속 함께합니다.",
   "daily.cta": "일일 대절",
+  "daily.nameRequired": "승객의 성과 이름을 입력하세요.",
   "daily.planStep": "내 일정",
   "daily.startRequired": "출발 장소를 선택하세요.",
   "daily.summary1": "1일 · {package}",

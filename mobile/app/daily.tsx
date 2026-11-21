@@ -40,7 +40,14 @@ function place(e: Endpoint) {
 function Stepper(props: { label: string; icon: IconName; value: number; min: number; max: number; onChange: (n: number) => void }) {
   const btn = { width: 36, height: 36, borderRadius: 18, alignItems: "center" as const, justifyContent: "center" as const };
   return (
-    <View style={{ flex: 1, backgroundColor: colors.brandSoft, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, gap: 8 }}>
+    <View style={{ flex: 1, backgroundColor: colors.brandSoft, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, gap: 8 }}
+      accessible accessibilityRole="adjustable" accessibilityLabel={props.label}
+      accessibilityValue={{ min: props.min, max: props.max, now: props.value, text: String(props.value) }}
+      accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "increment") props.onChange(Math.min(props.max, props.value + 1));
+        if (e.nativeEvent.actionName === "decrement") props.onChange(Math.max(props.min, props.value - 1));
+      }}>
       <Row gap={6} style={{ flexWrap: "nowrap" }}>
         <Ionicons name={props.icon} size={15} color={colors.muted} />
         <T style={s.hint} numberOfLines={1}>{props.label}</T>
@@ -51,7 +58,7 @@ function Stepper(props: { label: string; icon: IconName; value: number; min: num
           style={[btn, { backgroundColor: "#fff", opacity: props.value <= props.min ? 0.4 : 1 }]}>
           <Ionicons name="remove" size={18} color={colors.ink} />
         </Pressable>
-        <T style={{ fontWeight: "800", fontSize: 20, minWidth: 28, textAlign: "center" }} accessibilityLiveRegion="polite">{props.value}</T>
+        <T style={{ fontWeight: "800", fontSize: 20, minWidth: 28, textAlign: "center" }} >{props.value}</T>
         <Pressable accessibilityRole="button" accessibilityLabel={`${props.label} +`} hitSlop={6} disabled={props.value >= props.max}
           onPress={() => { tap(); props.onChange(Math.min(props.max, props.value + 1)); }}
           style={[btn, { backgroundColor: colors.ink, opacity: props.value >= props.max ? 0.4 : 1 }]}>
@@ -83,6 +90,7 @@ export default function Daily() {
   const [quotes, setQuotes] = useState<Record<string, DailyQuote | ApiError>>({});
   const [vehicle, setVehicle] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [childSeats, setChildSeats] = useState(0);
   const [consent, setConsent] = useState({ disclosure: false, distance: false, marketing: false });
@@ -137,6 +145,10 @@ export default function Daily() {
   }
 
   async function create() {
+    if (name.trim().length < 2) {
+      setNameError(t("daily.nameRequired"));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -184,12 +196,12 @@ export default function Daily() {
   const legal = (slug: string) => WebBrowser.openBrowserAsync(`${WEB_URL}/${LOCALE}/legal/${slug}`);
   const back = () => (step === "plan" ? (router.canGoBack() ? router.back() : router.replace("/book")) : setStep(FLOW[FLOW.indexOf(step) - 1]));
   const overlay = <IconButton icon="arrow-back" label={t("back")} onPress={back} />;
-  const stepper = <Steps steps={[t("daily.package"), t("book.step.vehicle"), t("book.step.details")]} current={FLOW.indexOf(step)} />;
+  const stepper = <Steps steps={[t("daily.planStep"), t("book.step.vehicle"), t("book.step.details")]} current={FLOW.indexOf(step)} />;
   const map = <MapCanvas seed={`daily:${start?.label ?? ""}`} mode="idle" focusTop={0.5} endpoints={point} />;
   const summary = (
     <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
       <Badge text={wallClockLabel(startAt, LOCALE)} />
-      <Badge text={t("daily.summary", { days, package: pkgLabel })} tone="accent" />
+      <Badge text={days === 1 ? t("daily.summary1", { package: pkgLabel }) : t("daily.summary", { days, package: pkgLabel })} tone="accent" />
       <Badge text={`${pax} · ${lug}`} />
     </View>
   );
@@ -205,7 +217,8 @@ export default function Daily() {
           <P muted small>{t("daily.intro")}</P>
         </View>
         <Alert text={error} />
-        <Pressable onPress={() => setSearching(true)} accessibilityRole="button" accessibilityLabel={t("daily.start")}
+        <Pressable onPress={() => setSearching(true)} accessibilityRole="button"
+          accessibilityLabel={start ? `${t("daily.start")}: ${start.label}` : t("daily.start")}
           style={{ backgroundColor: colors.brandSoft, borderRadius: 18, minHeight: 60, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
           <Ionicons name="business-outline" size={20} color={colors.ink} />
           <View style={{ flex: 1, paddingVertical: 10 }}>
@@ -260,7 +273,7 @@ export default function Daily() {
         {summary}
         <H2>{t("daily.chooseVehicle")}</H2>
         <Alert text={error} />
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 10 }} accessibilityRole="radiogroup" accessibilityLabel={t("daily.chooseVehicle")}>
           {types.map((vt, i) => {
             const q = quotes[vt.code];
             const ok = q && !(q instanceof ApiError);
@@ -268,6 +281,7 @@ export default function Daily() {
             return (
               <Animated.View key={vt.code} entering={FadeInRight.duration(420).delay(i * 80)}>
                 <Pressable disabled={!ok} onPress={() => { tap(); setVehicle(vt.code); }} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !ok }}
+                  accessibilityLabel={ok ? `${vehicleName(vt, LOCALE)}, ${money(q.total, q.currency, LOCALE)}` : vehicleName(vt, LOCALE)}
                   style={[{ flexDirection: "row", alignItems: "center", gap: 12, padding: 10, paddingRight: 14, borderRadius: 18, borderWidth: 2, borderColor: on ? colors.ink : colors.line, backgroundColor: "#fff" }, !ok && q ? { opacity: 0.45 } : null]}>
                   <View style={{ width: 96, height: 62, borderRadius: 12, backgroundColor: colors.canvas, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                     {VEHICLE_IMAGE[vt.code] ? (
@@ -287,7 +301,7 @@ export default function Daily() {
                   {ok ? (
                     <View style={{ alignItems: "flex-end" }}>
                       <T style={{ fontWeight: "800", fontSize: 17, letterSpacing: -0.3 }}>{money(q.total, q.currency, LOCALE)}</T>
-                      <T style={s.hint}>{t("daily.total", { days })}</T>
+                      <T style={s.hint}>{days === 1 ? t("daily.total1") : t("daily.total", { days })}</T>
                     </View>
                   ) : !q ? (
                     <Skeleton width={72} height={22} />
@@ -312,7 +326,7 @@ export default function Daily() {
             <T style={{ fontWeight: "800", fontSize: 20, letterSpacing: -0.4 }}>{quote ? money(quote.total, quote.currency, LOCALE) : "—"}</T>
           </Row>
           <Button title={t("book.create")} icon="lock-closed" onPress={create} busy={busy}
-            disabled={name.trim().length < 2 || !consent.disclosure || !consent.distance || !quote} />
+            disabled={!consent.disclosure || !consent.distance || !quote} />
         </>
       }>
       {stepper}
@@ -331,7 +345,9 @@ export default function Daily() {
       )}
       <Alert text={error} />
       <H2>{t("book.detailsTitle")}</H2>
-      <Input label={t("book.passengerName")} icon="person-outline" value={name} onChangeText={setName} autoComplete="name" maxLength={120} />
+      <Input label={t("book.passengerName")} icon="person-outline" value={name}
+        onChangeText={(v) => { setName(v); setNameError(null); }} autoComplete="name" maxLength={120} />
+      {nameError ? <Alert text={nameError} /> : null}
       <Input label={t("daily.plan")} hint={t("daily.planHint")} icon="map-outline" value={note} onChangeText={setNote} multiline maxLength={500} />
       <Stepper label={t("meet.childSeats")} icon="happy-outline" value={childSeats} min={0} max={Math.min(4, pax)} onChange={setChildSeats} />
       <H2>{t("book.consentTitle")}</H2>

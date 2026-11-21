@@ -217,6 +217,7 @@ const ar: Dict = {
   "daily.cardTitle": "سائق طوال اليوم",
   "daily.cardText": "يوم كامل 10 ساعات أو نصف يوم 5 ساعات؛ يبقى السائق معك.",
   "daily.cta": "سيارة باليوم",
+  "daily.nameRequired": "اكتب الاسم الأول واسم العائلة للراكب.",
   "daily.planStep": "خطتك",
   "daily.startRequired": "اختر نقطة البداية.",
   "daily.summary1": "يوم واحد · {package}",

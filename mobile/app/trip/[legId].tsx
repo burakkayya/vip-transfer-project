@@ -12,7 +12,7 @@ import {
   shadow,
 } from "@/components/ui";
 import { api } from "@/lib/api";
-import { LEG_STATUS, NEXT_STEP, dailyLine } from "@/lib/driverLabels";
+import { LEG_STATUS, NEXT_STEP, dailyLine, DAILY_DROPOFF } from "@/lib/driverLabels";
 import { clock, dateTime, money } from "@/lib/format";
 import { errorTextTr, t } from "@/lib/i18n";
 import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
@@ -426,8 +426,12 @@ function TripDetail({ legId }: { legId: string }) {
 
         <Card delay={120}>
           <H2>Rota</H2>
-          <RouteStops from={trip.pickup_region} to={trip.service_type === "gunluk" ? "Gün boyu, müşteriyle" : trip.dropoff_region} fromHint={trip.pickup_address ?? undefined} toHint={trip.dropoff_address ?? undefined} />
+          <RouteStops from={trip.pickup_region} to={trip.service_type === "gunluk" ? DAILY_DROPOFF : trip.dropoff_region} fromHint={trip.pickup_address ?? undefined} toHint={trip.dropoff_address ?? undefined} />
           <Info icon="calendar-outline">{dateTime(trip.pickup_at)}</Info>
+          {/* Müşteri notu kabulden sonra görünür (K-63); günlük kiralamada gün planıdır (K-29). */}
+          {trip.customer_note ? (
+            <Info icon="document-text-outline" label={daily ? "Gün planı" : "Müşteri notu"}>{trip.customer_note}</Info>
+          ) : null}
           {trip.flight_no ? <Info icon="airplane-outline">{driverFlightLine(trip.flight_no, trip.flight_status, trip.flight_estimated_at)}</Info> : null}
           {daily ? (
             <Info icon="sunny-outline">{dailyLine(trip.duration_minutes, trip.distance_km)}. Gün, müşterinin istediği yerde bitirilir.</Info>

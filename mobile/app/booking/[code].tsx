@@ -382,7 +382,9 @@ function BookingDetail({ code }: { code: string }) {
           // K-29 günlük kiralama: paket, gün sayısı ve günlük sınırlar; her gün ayrı satır.
           <View style={{ gap: 4 }}>
             <T style={{ fontWeight: "700" }}>
-              {t("daily.bookingLine", { days: booking.daily.days, package: booking.daily.package === "tam" ? t("daily.full") : t("daily.half") })}
+              {booking.daily.days === 1
+                ? t("daily.bookingLine1", { package: booking.daily.package === "tam" ? t("daily.full") : t("daily.half") })
+                : t("daily.bookingLine", { days: booking.daily.days, package: booking.daily.package === "tam" ? t("daily.full") : t("daily.half") })}
             </T>
             <T style={s.hint}>{t("daily.limits", { hours: booking.daily.hours_per_day, km: booking.daily.km_per_day })}</T>
             <T style={s.hint}>

@@ -217,6 +217,7 @@ const ja: Dict = {
   "daily.cardTitle": "一日貸切ドライバー",
   "daily.cardText": "終日10時間または半日5時間。ドライバーがずっとご一緒します。",
   "daily.cta": "日単位貸切",
+  "daily.nameRequired": "乗客の姓と名を入力してください。",
   "daily.planStep": "ご予定",
   "daily.startRequired": "出発地点を選択してください。",
   "daily.summary1": "1 日 · {package}",

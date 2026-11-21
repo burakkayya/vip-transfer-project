@@ -202,3 +202,34 @@ def test_daily_lead_time_setting(client, db):
 
     assert system_settings.get(db, "daily_min_lead_hours") == 24
     assert datetime.now(timezone.utc)  # yalnızca ayarın varsayılanı
+
+
+def test_daily_cancel_refunds_each_day_by_its_own_start(client, db):
+    """K-29: iade gün bazında; 1. gün 24 saatten yakınsa %0, sonraki günler kendi kademesiyle."""
+    from app.services import bookings as svc
+
+    customer = otp_login(client, random_phone())
+    code = _book(client, customer, days=3, hours_ahead=30).json()["booking_code"]
+    pay(client, customer, code)
+    booking = db.scalar(select(Booking).where(Booking.booking_code == code))
+    now = datetime.now(timezone.utc) + timedelta(hours=10)  # günler 20, 44 ve 68 saat sonra
+    q = svc.refund_quote(db, booking, now)
+    day = booking.legs[0].leg_price
+    assert q.refund_amount == day * Decimal("0.5") + day  # %0 + %50 + %100
+    assert 0 < q.refund_percent < 100
+
+
+def test_daily_price_eur_matches_rounded_day_price(client, db, ops):  # noqa: F811
+    from tests.conftest import staff_headers
+
+    admin = staff_headers(client, db, ["admin"])
+    vt = db.scalar(select(VehicleType).where(VehicleType.code == "vip_minibus"))
+    r = client.post(f"{API}/admin/daily-rates", headers=admin, json={
+        "vehicle_type_id": vt.id, "full_day_price": "321.50", "half_day_price": "180",
+        "extra_hour_price": "35", "extra_km_price": "1.4"})
+    assert r.status_code == 201
+    customer = otp_login(client, random_phone())
+    code = _book(client, customer, days=2, vehicle="vip_minibus").json()["booking_code"]
+    booking = db.scalar(select(Booking).where(Booking.booking_code == code))
+    assert booking.total_amount == Decimal("650.00") and booking.price_eur == Decimal("650.00")
+    client.post(f"{API}/admin/daily-rates/{r.json()['id']}/deactivate", headers=admin)

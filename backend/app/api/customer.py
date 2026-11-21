@@ -18,6 +18,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import (
     ClientIp,
@@ -138,6 +139,8 @@ def create_daily_booking(body: DailyBookingCreateIn, customer: CurrentCustomer, 
 def list_bookings(customer: CurrentCustomer, db: DbSession):
     rows = db.scalars(
         select(Booking).where(Booking.customer_id == customer.id).order_by(Booking.created_at.desc()).limit(100)
+        # K-29: günlük kiralama koşulları için fiyat sürümü ve kur tek sorguda (N+1 olmasın).
+        .options(selectinload(Booking.daily_rate), selectinload(Booking.exchange_rate))
     )
     minutes = _pending_minutes(db)
     return [BookingOut.build(b, pending_minutes=minutes) for b in rows]

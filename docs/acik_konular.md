@@ -107,7 +107,13 @@ Kodda geçici varsayımla çözüldü. Teyit sonrası güncellenmeli.
 
 ## Kararı verilmiş, geliştirmesi bekleyen (2026-10-31)
 
-- [ ] Günlük araç kiralama (K-29): ürün tanımı (şoförlü mü şoförsüz mü, günlük km sınırı, teslim noktası, fiyat modeli, depozito), veritabanı, API, web, mobil ve admin ekranları.
+- [x] Günlük araç kiralama (K-29): 2026-11-21 uygulandı, tasarım K-79 (şoförlü; backend, web, mobil müşteri, sürücü ve admin).
+- [ ] K-79 günlük kiralama fiyatları tahminidir; gerçek fiyatlar ve paket saat/km sınırları operasyonla belirlenip admin panelinden yeni sürüm olarak girilecek.
+- [ ] K-79 aşım ücreti (saat, km) yalnızca bilgi olarak gösteriliyor; tahsil akışı yok (elle ödeme bağlantısı ya da sürücüye nakit kararı bekliyor). Sürücü uygulamasında gün sonu km/saat kaydı yok.
+- [ ] K-79 tek bir günün iptali yok (rezervasyon bütün olarak iptal edilir; iade gün bazında hesaplanır). Admin manuel rezervasyonda günlük kiralama yok (K-54 yalnızca transfer).
+- [ ] K-79 rezervasyon onayı SMS şablonu "{pickup} > {dropoff}" yazar; günlük kiralamada "Kemer > Kemer" görünür. Şablon günlük kiralamaya göre ayrılmalı.
+- [ ] K-79 çok günlü işlerde sürücü dinlenme kuralı ve aynı sürücünün bütün günleri alması (toplu atama) yok; her gün ayrı eşleştirilir.
+- [ ] K-79 çeviriler: çoğul biçimi yalnızca 1 gün için ayrı metin; Arapçada 2 ve 11+ gün biçimleri anadili gözden geçirmesinde düzeltilmeli. Web rezervasyon sihirbazındaki ve günlük kiralamadaki paket/yön seçici (`segmented`) ortak bir bileşene alınmalı (günlükte ok tuşları var, transfer formunda yok).
 - [ ] On dil (K-34, uygulaması K-36): web, mobil ve bildirim şablonları için fr, es, it, zh, ja, ar çevirileri. Arapça için sağdan sola yerleşim. Bildirim şablonları 6 yeni dilde de hazırlanmalı (admin şablon ekranında dil başına kayıt). Yasal metinlerin çevirisi taslak olarak "çeviri doğrulanmadı" notuyla yayımlanır; yayından önce hukukçu kontrolünden geçmeli.
 - [ ] Uçuş verisinin kuruma bildirimi: zorunluysa bildirim akışı ve kaydı yazılacak, silme bu kayda bağlanacak (K-31).
 

@@ -127,6 +127,8 @@ def build_daily_quote(db: Session, req: DailyQuoteInput, *, now: datetime) -> Qu
     currency, fx = customer_currency(db, req.country_code, now)
     t = terms(db, rate, req.package, currency, fx)
     _, _, day_eur = package_limits(rate, req.package)
+    # EUR karşılığı, müşteriye uygulanan yuvarlanmış gün fiyatıyla tutarlı olsun (EUR'da tahsil edilen tutar).
+    day_eur = round_up_to_step(day_eur, Decimal("5"))
 
     legs = tuple(
         LegPlan(

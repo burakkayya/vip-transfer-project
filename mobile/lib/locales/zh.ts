@@ -217,6 +217,7 @@ const zh: Dict = {
   "daily.cardTitle": "全天专车司机",
   "daily.cardText": "全天 10 小时或半天 5 小时，司机全程陪同。",
   "daily.cta": "按天包车",
+  "daily.nameRequired": "请输入乘客的名和姓。",
   "daily.planStep": "您的行程",
   "daily.startRequired": "请选择出发地点。",
   "daily.summary1": "1 天 · {package}",

@@ -89,12 +89,12 @@ export default function DailyRates(props: { isAdmin: boolean; vtName: (id: numbe
           { key: "extra", title: "Aşım", align: "right", render: (r) => `${money(r.extra_hour_price, "EUR")}/sa · ${money(r.extra_km_price, "EUR")}/km` },
           { key: "from", title: "Başlangıç", render: (r) => dt(r.valid_from) },
           { key: "to", title: "Bitiş", render: (r) => dt(r.valid_to) },
-          { key: "active", title: "", render: (r) => <Badge value={r.is_active ? "aktif" : "pasif"} labels={{ aktif: "Geçerli", pasif: "Kapalı" }} /> },
+          { key: "active", title: "Durum", render: (r) => <Badge value={r.is_active ? "aktif" : "pasif"} labels={{ aktif: "Geçerli", pasif: "Kapalı" }} /> },
           {
             key: "act",
-            title: "",
+            title: "İşlem",
             render: (r) => props.isAdmin && r.is_active && (
-              <button className="btn small secondary" onClick={() => deactivate(r.id)}>Kapat</button>
+              <button className="btn small secondary" aria-label={`${props.vtName(r.vehicle_type_id)} günlük fiyat sürümünü kapat`} onClick={() => deactivate(r.id)}>Kapat</button>
             ),
           },
         ]}
@@ -109,13 +109,13 @@ export default function DailyRates(props: { isAdmin: boolean; vtName: (id: numbe
               </select>
             </Field>
             <Field label="Tam gün (€)"><input required type="number" step="0.01" min="0.01" value={form.full_day_price} onChange={(e) => set("full_day_price", e.target.value)} /></Field>
-            <Field label="Saat"><input required type="number" min="2" max="16" value={form.full_day_hours} onChange={(e) => set("full_day_hours", e.target.value)} /></Field>
-            <Field label="Km"><input required type="number" min="10" max="1000" value={form.full_day_km} onChange={(e) => set("full_day_km", e.target.value)} /></Field>
+            <Field label="Tam gün saat"><input required type="number" min="2" max="16" value={form.full_day_hours} onChange={(e) => set("full_day_hours", e.target.value)} /></Field>
+            <Field label="Tam gün km"><input required type="number" min="10" max="1000" value={form.full_day_km} onChange={(e) => set("full_day_km", e.target.value)} /></Field>
           </div>
           <div className="row end">
             <Field label="Yarım gün (€)"><input required type="number" step="0.01" min="0.01" value={form.half_day_price} onChange={(e) => set("half_day_price", e.target.value)} /></Field>
-            <Field label="Saat"><input required type="number" min="1" max="12" value={form.half_day_hours} onChange={(e) => set("half_day_hours", e.target.value)} /></Field>
-            <Field label="Km"><input required type="number" min="5" max="1000" value={form.half_day_km} onChange={(e) => set("half_day_km", e.target.value)} /></Field>
+            <Field label="Yarım gün saat"><input required type="number" min="1" max="12" value={form.half_day_hours} onChange={(e) => set("half_day_hours", e.target.value)} /></Field>
+            <Field label="Yarım gün km"><input required type="number" min="5" max="1000" value={form.half_day_km} onChange={(e) => set("half_day_km", e.target.value)} /></Field>
           </div>
           <div className="row end">
             <Field label="Aşım saati (€)"><input required type="number" step="0.01" min="0" value={form.extra_hour_price} onChange={(e) => set("extra_hour_price", e.target.value)} /></Field>

@@ -10,6 +10,7 @@ Geri alma: günlük kiralama rezervasyonları varken geri alınırsa bu rezervas
 Revision ID: 0017
 Revises: 0016
 """
+import os
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -53,6 +54,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Test süiti her oturumda şemayı sıfırlar (yalnızca _test veritabanında); orada koruma uygulanmaz.
+    count = op.get_bind().execute(sa.text("SELECT count(*) FROM bookings WHERE service_type = 'gunluk'")).scalar()
+    if count and os.environ.get("GETAWAY_ENV") != "test":
+        raise RuntimeError(f"{count} günlük kiralama rezervasyonu var; geri alma bunları transfer gibi gösterir. "
+                           "Önce bu kayıtlar elle ele alınmalı.")
     op.drop_column("bookings", "daily_package")
     op.drop_constraint(op.f("fk_bookings_daily_rate_id_daily_rates"), "bookings", type_="foreignkey")
     op.drop_column("bookings", "daily_rate_id")

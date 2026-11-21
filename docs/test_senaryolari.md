@@ -360,6 +360,16 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 8. Mobil müşteri uygulaması telefonun dilinde açılır (12 dil); telefon dili desteklenmiyorsa (ör. Felemenkçe, bölge Belçika) Fransızca, bölge de desteklenmiyorsa İngilizce. Telefon dili Arapçayken uygulama sağdan sola açılır, geri okları sağa bakar. Sürücü uygulaması her zaman Türkçedir; sürücü profilinde 12 dil seçilebilir.
 9. Admin **Yeni rezervasyon**ta müşteri dili listesinde 12 dil vardır; seçilen dilde SMS ve WhatsApp paylaşım metni üretilir (ör. İspanyolca "Hola …, se ha creado su reserva").
 
+## Şoförlü günlük kiralama (K-29, K-79)
+
+1. **Web:** menüde **Günlük kiralama** (`/tr/daily`). Başlangıç noktası (ör. Kemer'de bir otel), ilk gün saati (en az 24 saat sonra; daha yakın tarih alan hatası verir), gün sayısı (1-14), paket (Tam gün / Yarım gün), yolcu ve bagaj, ardından **Fiyatları göster**. Her araçta "₺… / gün · Günde 10 saat · 250 km" ve toplam görünür (Türkçede TRY, İngilizcede EUR).
+2. Araç, yolcu adı ve gün planı notu, SMS doğrulama; onay ekranında K-14 iptal metni ve aşım ücreti bilgisi, **Rezervasyonu oluştur ve öde**. Ödeme sayfasında satırlar "1. gün", "2. gün" diye görünür.
+3. Rezervasyon detayında "Günlük kiralama · N gün · Tam gün", günlük sınırlar ve her gün ayrı yolculuk kartı.
+4. **Mobil müşteri:** ana sayfada **Günlük şoförlü araç** kartı, aynı adımlar; rezervasyon ekranına geçer, ödeme açılır.
+5. **Sürücü:** iş havuzunda "Günlük" rozeti, "Günlük kiralama · 10 sa / 250 km", varış "Gün boyu, müşteriyle"; iş detayında "GÜNLÜK İŞ". Kabulden sonra yolculuk ekranında **Gün planı** notu. Sürücü günü asgari süreden önce bitiremez (`trip_too_short`); müşteri **Yolculuğu bitir** ile günü dilediği an bitirebilir. Bitiş yeri serbesttir.
+6. **İptal:** 3 günlük kiralamada 1. gün 24 saatten yakınsa iade önizlemesi 1. gün %0, 2. gün %50, 3. gün %100 toplamını gösterir.
+7. **Admin:** Fiyatlandırma, **Günlük kiralama fiyatları** (yeni sürüm ekle, kapat; yalnızca admin). Rezervasyonlarda **Hizmet: Günlük kiralama** filtresi; detayda paket, gün ve aşım bilgisi.
+
 ## Popüler yerler ve API kullanımı (K-61)
 
 1. Admin'de (operasyon rolü) **Katalog → Popüler yerler** açılır. "Yeni yer" ile ad, açıklama, bölge ve konum girilip kaydedilir (ör. üç otel: "Rixos ...").

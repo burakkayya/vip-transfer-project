@@ -106,7 +106,7 @@ async function mobileLogin(page, digits) {
 async function mobile(browser) {
   const ctx = await browser.newContext(PHONE_VIEW);
   const page = await ctx.newPage();
-  await page.goto(URLS.mobile);
+  await page.goto(URLS.mobile, { waitUntil: "domcontentloaded", timeout: 180000 });
   await page.waitForTimeout(3000);
   await mobileLogin(page, `555${String(Date.now()).slice(-7)}`);
   await page.getByText("Günlük şoförlü araç").waitFor({ timeout: 20000 });
@@ -132,7 +132,7 @@ async function mobile(browser) {
 async function driver(browser) {
   const ctx = await browser.newContext(PHONE_VIEW);
   const page = await ctx.newPage();
-  await page.goto(URLS.driver);
+  await page.goto(URLS.driver, { waitUntil: "domcontentloaded", timeout: 180000 });
   await page.waitForTimeout(3000);
   await mobileLogin(page, "5300000001");
   await page.getByText("Yaklaşan işler").waitFor({ timeout: 20000 });

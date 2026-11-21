@@ -217,6 +217,7 @@ const fr: Dict = {
   "daily.cardTitle": "Chauffeur pour la journée",
   "daily.cardText": "Journée de 10 heures ou demi-journée de 5 heures ; votre chauffeur reste avec vous.",
   "daily.cta": "Voiture à la journée",
+  "daily.nameRequired": "Saisissez le prénom et le nom du passager.",
   "daily.planStep": "Votre programme",
   "daily.startRequired": "Choisissez un point de départ.",
   "daily.summary1": "1 jour · {package}",
