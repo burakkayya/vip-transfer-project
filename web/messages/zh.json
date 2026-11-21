@@ -177,7 +177,8 @@
     "mapLabel": "路线地图：{from} → {to}",
     "mapPickup": "上车点",
     "mapDropoff": "下车点",
-    "mapUnavailable": "暂时无法显示地图；您的路线和价格不受影响。"
+    "mapUnavailable": "暂时无法显示地图；您的路线和价格不受影响。",
+    "route": "路线"
   },
   "daily": {
     "title": "按天包车（含司机）",
@@ -373,7 +374,9 @@
     "finishCancel": "暂不",
     "finishing": "正在结束…",
     "finishDone": "您的行程已完成，祝您愉快。",
-    "chatOriginal": "原文"
+    "chatOriginal": "原文",
+    "showMore": "显示更多",
+    "loadedMore": "已加载的预订：{count}"
   },
   "account": {
     "title": "我的账户",
@@ -415,7 +418,8 @@
       "acik": "待处理",
       "isleniyor": "处理中",
       "tamamlandi": "已完成",
-      "reddedildi": "已拒绝"
+      "reddedildi": "已拒绝",
+      "geri_cekildi": "已撤回"
     },
     "typeRequired": "请选择请求类型。",
     "noteHint": "剩余字数：{count}",
@@ -424,9 +428,14 @@
     "listLoading": "正在加载您的请求…",
     "empty": "您还没有请求。",
     "deleteConfirmTitle": "确认删除请求",
-    "deleteConfirmText": "您即将发送删除账户中个人数据的请求。发送后无法在此页面撤回。",
+    "deleteConfirmText": "您即将申请删除账户中的个人数据。我们开始处理后，该请求将无法撤回。",
     "deleteConfirm": "发送删除请求",
-    "keep": "返回"
+    "keep": "返回",
+    "withdraw": "撤回",
+    "withdrawLabel": "撤回请求：{type}",
+    "withdrawn": "您的请求已撤回。",
+    "withdrawHint": "在我们开始处理之前，可以撤回未处理的请求。",
+    "withdrawConfirm": "确认撤回"
   },
   "footer": {
     "legal": "法律信息",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Cookie 政策",
       "text": "我们只使用网站运行所必需的 Cookie：会话 Cookie（记录您是否已登录）和语言偏好。我们不使用广告或跟踪 Cookie，因此不会请求 Cookie 同意。",
-      "list": "ga_at、ga_rt：会话（最长 30 天）。NEXT_LOCALE：语言偏好。"
+      "list": "__Secure-ga_at、__Secure-ga_rt：会话（最长 30 天）。NEXT_LOCALE：语言偏好。"
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "正在发送…",
     "tipPaid": "您的 {amount} 小费已计入总价并转交给司机。新总价：{total}。",
     "tipPending": "正在等待小费付款。",
+    "tipRefunded": "您的小费已退还。",
     "tipFailed": "小费付款未完成。如果银行卡已扣款，款项会自动退回；您可以重试。",
     "extrasTitle": "附加服务",
     "childSeatLabel": "儿童座椅",

@@ -177,7 +177,8 @@
     "mapLabel": "Routenkarte: {from} → {to}",
     "mapPickup": "Abholung",
     "mapDropoff": "Ziel",
-    "mapUnavailable": "Die Karte kann gerade nicht angezeigt werden; Route und Preis bleiben gleich."
+    "mapUnavailable": "Die Karte kann gerade nicht angezeigt werden; Route und Preis bleiben gleich.",
+    "route": "Strecke"
   },
   "daily": {
     "title": "Mietwagen mit Fahrer pro Tag",
@@ -373,7 +374,9 @@
     "finishCancel": "Abbrechen",
     "finishing": "Wird beendet…",
     "finishDone": "Ihre Fahrt ist abgeschlossen. Einen schönen Tag!",
-    "chatOriginal": "Original"
+    "chatOriginal": "Original",
+    "showMore": "Mehr anzeigen",
+    "loadedMore": "Weitere Buchungen geladen: {count}"
   },
   "account": {
     "title": "Mein Konto",
@@ -415,7 +418,8 @@
       "acik": "Offen",
       "isleniyor": "In Bearbeitung",
       "tamamlandi": "Erledigt",
-      "reddedildi": "Abgelehnt"
+      "reddedildi": "Abgelehnt",
+      "geri_cekildi": "Zurückgezogen"
     },
     "typeRequired": "Wählen Sie die Art des Antrags.",
     "noteHint": "Verbleibende Zeichen: {count}",
@@ -424,9 +428,14 @@
     "listLoading": "Ihre Anträge werden geladen…",
     "empty": "Sie haben noch keine Anträge.",
     "deleteConfirmTitle": "Löschantrag bestätigen",
-    "deleteConfirmText": "Sie sind dabei, die Löschung der personenbezogenen Daten in Ihrem Konto zu beantragen. Nach dem Senden können Sie den Antrag auf dieser Seite nicht zurückziehen.",
+    "deleteConfirmText": "Sie sind dabei, die Löschung der personenbezogenen Daten in Ihrem Konto zu beantragen. Sobald wir mit der Bearbeitung beginnen, kann der Antrag nicht mehr zurückgezogen werden.",
     "deleteConfirm": "Löschantrag senden",
-    "keep": "Zurück"
+    "keep": "Zurück",
+    "withdraw": "Zurückziehen",
+    "withdrawLabel": "Antrag zurückziehen: {type}",
+    "withdrawn": "Ihr Antrag wurde zurückgezogen.",
+    "withdrawHint": "Offene Anträge können zurückgezogen werden, bis wir mit der Bearbeitung beginnen.",
+    "withdrawConfirm": "Zurückziehen bestätigen"
   },
   "footer": {
     "legal": "Rechtliches",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Cookie-Richtlinie",
       "text": "Wir verwenden nur technisch notwendige Cookies: Sitzungs-Cookies (Anmeldestatus) und Ihre Spracheinstellung. Werbe- oder Tracking-Cookies verwenden wir nicht, daher fragen wir keine Cookie-Einwilligung ab.",
-      "list": "ga_at, ga_rt: Sitzung (bis zu 30 Tage). NEXT_LOCALE: Spracheinstellung."
+      "list": "__Secure-ga_at, __Secure-ga_rt: Sitzung (bis zu 30 Tage). NEXT_LOCALE: Spracheinstellung."
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "Wird gesendet…",
     "tipPaid": "Ihr Trinkgeld von {amount} wurde zum Gesamtbetrag addiert und an Ihren Fahrer weitergegeben. Neuer Gesamtbetrag: {total}.",
     "tipPending": "Trinkgeldzahlung ausstehend.",
+    "tipRefunded": "Ihr Trinkgeld wurde erstattet.",
     "tipFailed": "Die Trinkgeldzahlung wurde nicht abgeschlossen. Falls Ihre Karte belastet wurde, wird der Betrag automatisch erstattet; Sie können es erneut versuchen.",
     "extrasTitle": "Extras",
     "childSeatLabel": "Kindersitz",

@@ -234,6 +234,11 @@ p {
   font-weight: 400;
 }
 
+.hint.field-error {
+  color: var(--danger);
+  font-size: 0.82rem;
+}
+
 .hint {
   font-weight: 400;
   color: var(--muted);

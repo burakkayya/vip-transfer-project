@@ -177,7 +177,8 @@
     "mapLabel": "Mapa do trajeto: {from} → {to}",
     "mapPickup": "Embarque",
     "mapDropoff": "Destino",
-    "mapUnavailable": "O mapa não pode ser exibido agora; seu trajeto e seu preço não mudam."
+    "mapUnavailable": "O mapa não pode ser exibido agora; seu trajeto e seu preço não mudam.",
+    "route": "Trajeto"
   },
   "daily": {
     "title": "Carro com motorista por dia",
@@ -373,7 +374,9 @@
     "finishCancel": "Agora não",
     "finishing": "Encerrando…",
     "finishDone": "Sua viagem foi concluída. Tenha um ótimo dia.",
-    "chatOriginal": "Original"
+    "chatOriginal": "Original",
+    "showMore": "Mostrar mais",
+    "loadedMore": "Reservas carregadas: {count}"
   },
   "account": {
     "title": "Minha conta",
@@ -415,7 +418,8 @@
       "acik": "Aberta",
       "isleniyor": "Em andamento",
       "tamamlandi": "Concluída",
-      "reddedildi": "Recusada"
+      "reddedildi": "Recusada",
+      "geri_cekildi": "Retirada"
     },
     "typeRequired": "Escolha um tipo de solicitação.",
     "noteHint": "Caracteres restantes: {count}",
@@ -424,9 +428,14 @@
     "listLoading": "Carregando suas solicitações…",
     "empty": "Você ainda não tem solicitações.",
     "deleteConfirmTitle": "Confirme sua solicitação de exclusão",
-    "deleteConfirmText": "Você vai enviar uma solicitação para excluir os dados pessoais da sua conta. Depois de enviada, não será possível retirá-la por esta página.",
+    "deleteConfirmText": "Você está prestes a solicitar a exclusão dos dados pessoais da sua conta. Depois que começarmos a processá-la, a solicitação não poderá ser retirada.",
     "deleteConfirm": "Enviar solicitação de exclusão",
-    "keep": "Voltar"
+    "keep": "Voltar",
+    "withdraw": "Retirar",
+    "withdrawLabel": "Retirar solicitação: {type}",
+    "withdrawn": "Sua solicitação foi retirada.",
+    "withdrawHint": "As solicitações abertas podem ser retiradas até começarmos a processá-las.",
+    "withdrawConfirm": "Confirmar retirada"
   },
   "footer": {
     "legal": "Jurídico",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Política de cookies",
       "text": "Usamos apenas os cookies de que o site precisa para funcionar: cookies de sessão (se você entrou na conta) e sua preferência de idioma. Não usamos cookies de publicidade ou rastreamento, por isso não pedimos consentimento de cookies.",
-      "list": "ga_at, ga_rt: sessão (até 30 dias). NEXT_LOCALE: preferência de idioma."
+      "list": "__Secure-ga_at, __Secure-ga_rt: sessão (até 30 dias). NEXT_LOCALE: preferência de idioma."
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "Enviando…",
     "tipPaid": "Sua gorjeta de {amount} foi somada ao total e repassada ao motorista. Novo total: {total}.",
     "tipPending": "Aguardando o pagamento da gorjeta.",
+    "tipRefunded": "Sua gorjeta foi reembolsada.",
     "tipFailed": "O pagamento da gorjeta não foi concluído. Se o valor foi cobrado no cartão, ele é reembolsado automaticamente; você pode tentar de novo.",
     "extrasTitle": "Extras",
     "childSeatLabel": "Cadeirinha infantil",

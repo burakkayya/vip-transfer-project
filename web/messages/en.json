@@ -177,7 +177,8 @@
     "mapLabel": "Route map: {from} → {to}",
     "mapPickup": "Pickup",
     "mapDropoff": "Drop-off",
-    "mapUnavailable": "The map can’t be shown right now; your route and price are not affected."
+    "mapUnavailable": "The map can’t be shown right now; your route and price are not affected.",
+    "route": "Route"
   },
   "daily": {
     "title": "Chauffeured car by the day",
@@ -373,7 +374,9 @@
     "finishCancel": "Not now",
     "finishing": "Ending…",
     "finishDone": "Your trip is completed. Have a nice day.",
-    "chatOriginal": "Original"
+    "chatOriginal": "Original",
+    "showMore": "Show more",
+    "loadedMore": "New bookings loaded: {count}"
   },
   "account": {
     "title": "My account",
@@ -415,7 +418,8 @@
       "acik": "Open",
       "isleniyor": "In progress",
       "tamamlandi": "Completed",
-      "reddedildi": "Rejected"
+      "reddedildi": "Rejected",
+      "geri_cekildi": "Withdrawn"
     },
     "typeRequired": "Choose a request type.",
     "noteHint": "Characters left: {count}",
@@ -424,9 +428,14 @@
     "listLoading": "Loading your requests…",
     "empty": "You have no requests yet.",
     "deleteConfirmTitle": "Confirm your deletion request",
-    "deleteConfirmText": "You are about to send a request to delete the personal data in your account. Once sent, you cannot withdraw it from this page.",
+    "deleteConfirmText": "You are about to request deletion of the personal data in your account. Once we start processing it, the request cannot be withdrawn.",
     "deleteConfirm": "Send deletion request",
-    "keep": "Go back"
+    "keep": "Go back",
+    "withdraw": "Withdraw",
+    "withdrawLabel": "Withdraw request: {type}",
+    "withdrawn": "Your request has been withdrawn.",
+    "withdrawHint": "Open requests can be withdrawn until we start processing them.",
+    "withdrawConfirm": "Confirm withdrawal"
   },
   "footer": {
     "legal": "Legal",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Cookie policy",
       "text": "We only use cookies that the site needs to work: session cookies (whether you are logged in) and your language preference. We do not use advertising or tracking cookies, so we do not ask for cookie consent.",
-      "list": "ga_at, ga_rt: session (up to 30 days). NEXT_LOCALE: language preference."
+      "list": "__Secure-ga_at, __Secure-ga_rt: session (up to 30 days). NEXT_LOCALE: language preference."
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "Sending…",
     "tipPaid": "Your {amount} tip was added to your total and passed on to your driver. New total: {total}.",
     "tipPending": "Waiting for the tip payment.",
+    "tipRefunded": "Your tip has been refunded.",
     "tipFailed": "The tip payment was not completed. If your card was charged, it is refunded automatically; you can try again.",
     "extrasTitle": "Extras",
     "childSeatLabel": "Child seat",

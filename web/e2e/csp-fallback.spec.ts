@@ -41,6 +41,22 @@ test("csp present on prefetch requests", async () => {
   }
 });
 
+// K-81: noktalı sayfa yolları middleware'e girer (nonce'lı CSP; 404 sayfası boş kalmaz), statik dosyalar girmez.
+for (const path of ["/tr/a.b", "/tr/bookings/GA.123", "/%2e%2e"]) {
+  test(`dotted page path ${path} gets nonce csp`, async () => {
+    const r = await rawGet(path);
+    expect(r.csp, `${path} (${r.status})`).toHaveLength(1);
+    expect(r.csp[0]).toMatch(/'nonce-[A-Za-z0-9+/=]+'/);
+  });
+}
+
+test("static file keeps fallback csp without nonce", async () => {
+  const r = await rawGet("/icon.svg");
+  expect(r.status).toBe(200);
+  expect(r.csp).toHaveLength(1);
+  expect(r.csp[0]).not.toMatch(/'nonce-/);
+});
+
 test("page csp keeps per-request nonce", async () => {
   const r = await rawGet("/tr");
   expect(r.csp).toHaveLength(1);

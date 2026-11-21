@@ -19,6 +19,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import commission
 from app.config import get_settings
 from app.errors import Conflict, DomainError, NotFound
 from app.localtime import LOCAL_TZ, local_date
@@ -39,8 +40,7 @@ RETURN_WINDOW = timedelta(hours=4)
 
 
 def driver_amount(leg: BookingLeg) -> Decimal:
-    b = leg.booking
-    return leg.leg_price - (leg.leg_price * b.commission_rate).quantize(Decimal("0.01"))
+    return commission.leg_split(leg).net
 
 
 # --- Kanıtlı bekleme ve "yolcu gelmedi" ----------------------------------------------

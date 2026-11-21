@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import CustomerForm, { type StaffCustomer } from "@/components/CustomerForm";
 import PlaceInput, { placeBody, type PlaceValue, type Region } from "@/components/PlaceInput";
-import { useCan } from "@/components/Shell";
+import { useCan, useMe } from "@/components/Shell";
 import { ErrorBox, Field, Msg, PageHead, Select, useAction, useData } from "@/components/ui";
 import { ApiError, api, errorMessage, withQuery } from "@/lib/api";
 import { dt, localToIso, money } from "@/lib/format";
@@ -15,6 +15,8 @@ interface Catalog {
   vehicle_types: { code: string; name: string; capacity: number; luggage_capacity: number }[];
   default_payment_hours: number;
   max_payment_hours: number;
+  override_min_percent: number;
+  override_max_percent: number;
 }
 
 interface QuoteRow {
@@ -48,6 +50,7 @@ const PAYMENT_HOURS: Record<string, string> = { "2": "2 saat", "6": "6 saat", "1
 /** K-54: WhatsApp, telefon vb. kanaldan gelen müşteri için manuel rezervasyon. */
 export default function NewBookingPage() {
   const can = useCan();
+  const isAdmin = useMe().roles.includes("admin");
   const catalog = useData<Catalog>("admin/booking-catalog");
 
   // 1. Müşteri
@@ -179,7 +182,7 @@ export default function NewBookingPage() {
           consent_confirmed: consent,
           payment_hours: Number(hours),
           send_sms: sms,
-          payment: payMode === "paid" ? { method, amount: total, reference: reference.trim() || null } : null,
+          payment: payMode === "paid" ? { method, amount: total, reference: reference.trim() } : null,
         };
         if (daily) {
           result = await api<Created>("admin/daily-bookings", { body: { ...trip, ...common, start_at: pickupIso() } });
@@ -203,7 +206,7 @@ export default function NewBookingPage() {
             consent_confirmed: consent,
             payment_hours: Number(hours),
             send_sms: sms,
-            payment: payMode === "paid" ? { method, amount: total, reference: reference.trim() || null } : null,
+            payment: payMode === "paid" ? { method, amount: total, reference: reference.trim() } : null,
           },
         });
       } catch (e) {
@@ -267,9 +270,20 @@ export default function NewBookingPage() {
   }
 
   const canQuote = Boolean(customer && trip && (instant || pickupAt));
+  // BIZ-04 (K-81): fiyat sistem fiyatının belirli yüzdesi içinde değişir (admin hariç); fiyatı değiştiren
+  // personel aynı rezervasyonda "ödeme alındı" kaydı giremez, tahsilatı başka bir personel kaydeder.
+  const limits = selected ? {
+    min: (Number(selected.total) * catalog.data.override_min_percent / 100).toFixed(2),
+    max: (Number(selected.total) * catalog.data.override_max_percent / 100).toFixed(2),
+  } : null;
+  const overrideActive = override && Boolean(overrideTotal) && overrideTotal !== selected?.total;
+  const overrideOutOfRange = Boolean(overrideActive && limits && !isAdmin &&
+    (Number(overrideTotal) < Number(limits.min) || Number(overrideTotal) > Number(limits.max)));
+  const paidBlocked = overrideActive && payMode === "paid" && !isAdmin;
   const canSubmit = Boolean(
     customer && selected && !stale && passenger.trim().length >= 2 && consent &&
-    (!override || (overrideTotal && overrideReason.trim().length >= 3)),
+    (!override || (overrideTotal && overrideReason.trim().length >= 3)) && !overrideOutOfRange && !paidBlocked &&
+    (payMode !== "paid" || reference.trim()),
   );
 
   return (
@@ -428,8 +442,18 @@ export default function NewBookingPage() {
             </label>
             {override && (
               <div className="row end">
-                <Field label={`Yeni toplam (${selected.currency})`} hint={`Sistem fiyatı ${money(selected.total, selected.currency)}`}>
-                  <input type="number" min={1} step="0.01" value={overrideTotal} onChange={(e) => setOverrideTotal(e.target.value)} />
+                <Field
+                  label={`Yeni toplam (${selected.currency})`}
+                  hint={overrideOutOfRange ? undefined : `Sistem fiyatı ${money(selected.total, selected.currency)}` + (limits && !isAdmin
+                    ? `; izin verilen ${money(limits.min, selected.currency)} – ${money(limits.max, selected.currency)}` : "")}
+                  error={overrideOutOfRange && limits
+                    ? `İzin verilen aralık ${money(limits.min, selected.currency)} – ${money(limits.max, selected.currency)}; dışındaki fiyatı yalnızca admin girebilir.`
+                    : undefined}
+                  errorId="override-error"
+                >
+                  <input type="number" min={1} step="0.01" value={overrideTotal} aria-invalid={overrideOutOfRange || undefined}
+                    aria-describedby={overrideOutOfRange ? "override-error" : undefined}
+                    onChange={(e) => setOverrideTotal(e.target.value)} />
                 </Field>
                 <div style={{ flex: 1, minWidth: 260 }}>
                   <Field label="Gerekçe (zorunlu, denetim kaydına yazılır)">
@@ -472,6 +496,12 @@ export default function NewBookingPage() {
             Ödeme alındı (havale, nakit, POS)
           </label>
         </div>
+        {paidBlocked && (
+          <p className="alert error" role="alert">
+            Fiyatı değiştirdiğiniz rezervasyonda &quot;ödeme alındı&quot; kaydını siz giremezsiniz. Ödeme bağlantısı gönderin
+            ya da rezervasyonu oluşturup tahsilatı başka bir personele kaydettirin.
+          </p>
+        )}
         {payMode === "link" ? (
           <div className="row end">
             <Field label="Ödeme süresi" hint="Alıştan en geç 1 saat öncesine kısalır; süre dolarsa iptal">
@@ -482,7 +512,7 @@ export default function NewBookingPage() {
               Müşteriye ödeme bağlantısını SMS ile gönder
             </label>
           </div>
-        ) : (
+        ) : paidBlocked ? null : (
           <div className="row end">
             <Field label="Yöntem">
               <Select value={method} onChange={setMethod} options={MANUAL_PAYMENT_METHOD} />
@@ -490,8 +520,8 @@ export default function NewBookingPage() {
             <Field label="Tutar">
               <input readOnly value={total ? money(total, selected?.currency ?? "EUR") : "—"} />
             </Field>
-            <Field label="Dekont / makbuz no (isteğe bağlı)">
-              <input value={reference} maxLength={100} onChange={(e) => setReference(e.target.value)} />
+            <Field label="Dekont / makbuz / slip no (zorunlu)">
+              <input value={reference} maxLength={100} required aria-required="true" onChange={(e) => setReference(e.target.value)} />
             </Field>
           </div>
         )}
@@ -509,6 +539,9 @@ export default function NewBookingPage() {
             {payMode === "paid" ? "Rezervasyonu oluştur ve onayla" : "Rezervasyonu oluştur"}
           </button>
           {total && selected && <span className="muted">Toplam {money(total, selected.currency)}</span>}
+          {(overrideOutOfRange || paidBlocked) && (
+            <span className="muted">Göndermek için fiyat ve ödeme bölümündeki uyarıyı giderin.</span>
+          )}
         </div>
       </section>
     </div>

@@ -43,5 +43,7 @@ export const config = {
   // next.config.ts'teki nonce'suz politikayı alır. REV-B-9: önekler yalnızca tam yol parçası olarak dışlanır
   // (`/bffx`, `/_nextx` middleware'e girer ve nonce'lı CSP alır). Desen next.config.ts'teki NON_PAGE_SOURCE'un
   // tam tersidir; değiştirirken ikisi birlikte değişmeli.
-  matcher: ["/((?!(?:bff|_next|_vercel)(?:/|$)|.*\\..*).*)"],
+  // K-81: yalnızca bilinen statik dosya uzantıları dışlanır; noktalı başka yollar (`/tr/a.b`) sayfa yoludur,
+  // nonce'lı CSP alır ve 404 sayfası boş kalmaz.
+  matcher: ["/((?!(?:bff|_next|_vercel)(?:/|$)|.*\\.(?:svg|png|jpe?g|gif|webp|avif|ico|txt|xml|webmanifest|json|js|mjs|css|map|woff2?|ttf|otf)$).*)"],
 };

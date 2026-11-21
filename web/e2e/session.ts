@@ -143,3 +143,6 @@ export async function warmUp(browser: Browser, info: TestInfo, paths: string[]) 
     await page.close();
   }
 }
+
+/** K-81: rezervasyon listesi GET adresi (sayfalama sorgusuyla: `me/bookings?limit=…&offset=…`). */
+export const LIST_URL = /\/bff\/me\/bookings(\?.*)?$/;

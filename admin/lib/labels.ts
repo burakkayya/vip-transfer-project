@@ -122,6 +122,7 @@ export const DATA_REQUEST_STATUS: Record<string, string> = {
   isleniyor: "İşleniyor",
   tamamlandi: "Tamamlandı",
   reddedildi: "Reddedildi",
+  geri_cekildi: "Müşteri geri çekti",
 };
 
 export const OFFER_STATUS: Record<string, string> = {
@@ -168,3 +169,6 @@ export const LOCALE: Record<string, string> = {
   tr: "Türkçe", en: "İngilizce", de: "Almanca", es: "İspanyolca", ru: "Rusça", fr: "Fransızca", ar: "Arapça",
   zh: "Çince", ja: "Japonca", it: "İtalyanca", pt: "Portekizce", ko: "Korece",
 };
+
+/** K-81: sürücü profil fotoğrafı onayı. */
+export const PHOTO_STATUS: Record<string, string> = { beklemede: "Onay bekliyor", onaylandi: "Onaylı", reddedildi: "Reddedildi" };

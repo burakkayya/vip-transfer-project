@@ -144,14 +144,14 @@ def test_manual_payment_amount_must_match_and_once(client, db):
                     json=_booking_body(client, ops, c["id"], send_sms=False))
     b = r.json()["booking"]
     wrong = client.post(f"{API}/admin/bookings/{b['id']}/manual-payment", headers=ops,
-                        json={"method": "nakit", "amount": "1.00"})
+                        json={"method": "nakit", "amount": "1.00", "reference": "MAKBUZ-1"})
     assert wrong.status_code == 400 and wrong.json()["error"]["code"] == "amount_mismatch"
     ok = client.post(f"{API}/admin/bookings/{b['id']}/manual-payment", headers=ops,
-                     json={"method": "nakit", "amount": b["total_amount"]})
+                     json={"method": "nakit", "amount": b["total_amount"], "reference": "MAKBUZ-1"})
     assert ok.status_code == 200, ok.text
     assert ok.json()["booking"]["status"] == "onaylandi"
     again = client.post(f"{API}/admin/bookings/{b['id']}/manual-payment", headers=ops,
-                        json={"method": "nakit", "amount": b["total_amount"]})
+                        json={"method": "nakit", "amount": b["total_amount"], "reference": "MAKBUZ-1"})
     assert again.status_code == 409
 
 
@@ -198,7 +198,7 @@ def test_manual_refund_stays_pending_until_finance_completes(client, db):
     finance = staff_headers(client, db, ["muhasebe"])
     c = _new_customer(client, ops)
     body = _booking_body(client, ops, c["id"], hours_ahead=96, send_sms=False)
-    body["payment"] = {"method": "nakit", "amount": body["expected_total"]}
+    body["payment"] = {"method": "nakit", "amount": body["expected_total"], "reference": "MAKBUZ-1"}
     b = client.post(f"{API}/admin/bookings", headers=ops, json=body).json()["booking"]
 
     r = client.post(f"{API}/admin/bookings/{b['id']}/cancel", headers=ops, json={"reason": "müşteri vazgeçti"})
@@ -222,7 +222,7 @@ def test_manual_payment_rules_roles_and_source(client, db):
     c = _new_customer(client, ops)
     b = client.post(f"{API}/admin/bookings", headers=ops,
                     json=_booking_body(client, ops, c["id"], send_sms=False)).json()["booking"]
-    pay = {"method": "havale", "amount": b["total_amount"]}
+    pay = {"method": "havale", "amount": b["total_amount"], "reference": "MAKBUZ-1"}
     assert client.post(f"{API}/admin/bookings/{b['id']}/manual-payment", headers=support, json=pay).status_code == 403
     assert client.post(f"{API}/admin/bookings/{b['id']}/resend-sms", headers=support).status_code == 403
     three = client.post(f"{API}/admin/bookings/{b['id']}/manual-payment", headers=ops,
@@ -233,7 +233,7 @@ def test_manual_payment_rules_roles_and_source(client, db):
     customer = otp_login(client, random_phone())
     own = client.post(f"{API}/me/bookings", headers=customer, json=booking_body(client)).json()
     r = client.post(f"{API}/admin/bookings/{own['id']}/manual-payment", headers=ops,
-                    json={"method": "havale", "amount": own["total_amount"]})
+                    json={"method": "havale", "amount": own["total_amount"], "reference": "MAKBUZ-1"})
     assert r.status_code == 409 and r.json()["error"]["code"] == "manual_payment_not_allowed"
 
 
@@ -248,7 +248,7 @@ def test_late_card_payment_after_manual_is_refunded(client, db):
     r = client.post(f"{API}/me/bookings/{b['booking_code']}/payments", headers=headers)
     oid = r.json()["iframe_url"].rsplit("/", 1)[1]
     ok = client.post(f"{API}/admin/bookings/{b['id']}/manual-payment", headers=ops,
-                     json={"method": "nakit", "amount": b["total_amount"]})
+                     json={"method": "nakit", "amount": b["total_amount"], "reference": "MAKBUZ-1"})
     assert ok.status_code == 200, ok.text
     assert client.post(f"{API}/payments/fake/{oid}/complete", data={"status": "success"}).status_code == 200
     payments = client.get(f"{API}/admin/bookings/{b['id']}", headers=ops).json()["payments"]

@@ -135,6 +135,17 @@ def test_driver_card_photo_languages_and_day_before_job(client, db, ops):
     assert r.json()["error"]["code"] == "invalid_file_type"
     r = client.post(f"{API}/driver/me/photo", headers=driver, files={"file": ("a.png", PNG, "image/png")})
     assert r.status_code == 200 and r.json()["has_photo"] is True, r.text
+    assert r.json()["photo_status"] == "beklemede"
+    # K-81: onaylanmadan müşteriye gösterilmez; sürücü kendi fotoğrafını görür.
+    brief = client.get(f"{API}/me/bookings/{code}", headers=customer).json()["legs"][0]["driver"]
+    assert brief["has_photo"] is False
+    assert client.get(f"{API}/me/bookings/{code}/driver-photo", headers=customer).status_code == 404
+    assert client.get(f"{API}/driver/me/photo", headers=driver).status_code == 200
+    driver_id = client.get(f"{API}/driver/me", headers=driver).json()["id"]
+    version = client.get(f"{API}/admin/drivers/{driver_id}", headers=ops).json()["photo_version"]
+    r = client.post(f"{API}/admin/drivers/{driver_id}/photo/review", headers=ops,
+                    json={"approve": True, "photo_version": version})
+    assert r.status_code == 200 and r.json()["photo_status"] == "onaylandi", r.text
 
     brief = client.get(f"{API}/me/bookings/{code}", headers=customer).json()["legs"][0]["driver"]
     assert brief == {"first_name": "Mehmet", "vehicle": "Mercedes Vito", "plate": brief["plate"], "color": "Siyah",

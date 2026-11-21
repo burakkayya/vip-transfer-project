@@ -19,7 +19,7 @@ from app.api.admin.common import Page, page
 from app.api.deps import AdminOnly, ClientIp, DbSession, FinanceStaff, Now
 from app.csv_safe import csv_safe
 from app.errors import Conflict, NotFound, ServiceUnavailable
-from app.models import BookingLeg, Driver, DriverLedger, DriverPayout, Invoice, Payment, Refund
+from app.models import Booking, BookingLeg, Driver, DriverLedger, DriverPayout, Invoice, Payment, Refund
 from app.models.enums import (
     InvoiceStatus,
     LedgerStatus,
@@ -29,10 +29,12 @@ from app.models.enums import (
     RoleCode,
 )
 from app.providers.payments import get_payment_provider
-from app.services import audit, bookings
+from app.services import audit, bookings, payments
 from app.services.quotes import latest_exchange_rate
 
 router = APIRouter(tags=["admin:finance"])
+
+MAX_REVIEW_ROWS = 200
 
 
 @router.get("/payments")
@@ -51,6 +53,35 @@ def list_payments(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends
     ]
 
 
+def _refund_out(r: Refund) -> dict:
+    return {"id": str(r.id), "payment_id": str(r.payment_id), "amount": f"{r.amount:.2f}",
+            "refund_percent": r.refund_percent, "status": r.status.value, "reason": r.reason,
+            "provider_ref": r.provider_ref, "created_at": r.created_at,
+            "manual": r.payment.provider.value == "elle"}
+
+
+@router.get("/payments/under-review")
+def list_payments_under_review(staff: FinanceStaff, db: DbSession):
+    """K-74: tutar ya da para birimi denetimine takılan başarılı bildirimler. Kart çekilmiş olabilir; iadesi
+    tamamlanana kadar rezervasyon incelemede bekler (yeni ödeme sayfası açılmaz, otomatik iptal olmaz).
+    Liste küçük kalır (yalnızca iadesi tamamlanmamış satırlar), sayfalanmaz; en eski önce."""
+    rows = db.execute(
+        select(Payment, Booking.booking_code, Booking.status)
+        .join(Booking, Booking.id == Payment.booking_id)
+        .where(payments.rejected_charge_filter())
+        .order_by(Payment.created_at)
+        .limit(MAX_REVIEW_ROWS)
+    ).all()
+    return [
+        {"id": str(x.id), "booking_id": str(x.booking_id), "booking_code": code,
+         "booking_status": status.value, "merchant_oid": x.merchant_oid,
+         "amount": f"{x.amount:.2f}", "currency": x.currency.value, "failure_reason": x.failure_reason,
+         "created_at": x.created_at,
+         "refunds": [_refund_out(r) for r in sorted(x.refunds, key=lambda r: r.created_at)]}
+        for x, code, status in rows
+    ]
+
+
 @router.get("/refunds")
 def list_refunds(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends(page)],
                  status: RefundStatus | None = None):
@@ -58,13 +89,7 @@ def list_refunds(staff: FinanceStaff, db: DbSession, p: Annotated[Page, Depends(
     if status:
         q = q.where(Refund.status == status)
     rows = db.scalars(q.order_by(Refund.created_at.desc()).limit(p.limit).offset(p.offset))
-    return [
-        {"id": str(r.id), "payment_id": str(r.payment_id), "amount": f"{r.amount:.2f}",
-         "refund_percent": r.refund_percent, "status": r.status.value, "reason": r.reason,
-         "provider_ref": r.provider_ref, "created_at": r.created_at,
-         "manual": r.payment.provider.value == "elle"}
-        for r in rows
-    ]
+    return [_refund_out(r) for r in rows]
 
 
 class RefundRetryIn(BaseModel):

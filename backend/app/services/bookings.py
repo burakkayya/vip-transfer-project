@@ -8,7 +8,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -75,6 +75,27 @@ class AdminEntry:
     # Boşsa sistem fiyatı. Doluysa toplam tutar (müşteri para biriminde) bu olur, gerekçe zorunludur.
     override_total: Decimal | None = None
     override_reason: str | None = None
+    # BIZ-04: admin rolü sınır dışı fiyat girebilir; operasyon personeli giremez.
+    may_exceed_override_limit: bool = False
+
+
+def check_override_limit(db: Session, system_total: Decimal, override_total: Decimal, *, allowed: bool) -> None:
+    """BIZ-04 (K-81): ezilen toplam, sistem toplamının `price_override_min_percent` ile
+    `price_override_max_percent` yüzdesi arasında olmalı."""
+    lo = int(system_settings.get(db, "price_override_min_percent"))
+    hi = int(system_settings.get(db, "price_override_max_percent"))
+    percent = override_total * 100 / system_total
+    if allowed or lo <= percent <= hi:
+        return
+    raise DomainError(
+        "fiyat sistem fiyatına göre izin verilen aralığın dışında; yalnızca admin girebilir",
+        code="override_out_of_range",
+        details={
+            "min_percent": lo, "max_percent": hi,
+            "min_total": str((system_total * lo / 100).quantize(Decimal("0.01"), rounding=ROUND_CEILING)),
+            "max_total": str((system_total * hi / 100).quantize(Decimal("0.01"), rounding=ROUND_FLOOR)),
+        },
+    )
 
 
 def override_quote(quote: Quote, total: Decimal) -> Quote:
@@ -166,6 +187,7 @@ def create_booking(
     if admin is not None and admin.override_total is not None and admin.override_total != quote.total:
         if not (admin.override_reason and admin.override_reason.strip()):
             raise DomainError("fiyat değişikliği için gerekçe yazılmalı", code="override_reason_required")
+        check_override_limit(db, quote.total, admin.override_total, allowed=admin.may_exceed_override_limit)
         quote = override_quote(quote, admin.override_total)
     first_pickup = quote.legs[0].pickup_at
     daily = quote.service_type is ServiceType.DAILY

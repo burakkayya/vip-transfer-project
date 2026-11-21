@@ -13,6 +13,9 @@ import { ErrorState } from "./ErrorState";
 import OtpLogin from "./OtpLogin";
 import { EmptyState, LoadingState } from "./States";
 
+/** K-81: liste sayfa sayfa gelir; bir fazlası istenir, gelirse "Daha fazla göster" görünür. */
+const PAGE = 20;
+
 /** Ekran 8: rezervasyon sorgulama (kod ve telefon) ve girişliyse rezervasyon listesi. */
 export default function BookingsHome() {
   const t = useTranslations("bookings");
@@ -33,17 +36,39 @@ export default function BookingsHome() {
   const errorText = useApiError();
   const [list, setList] = useState<Booking[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadedMore, setLoadedMore] = useState<number | null>(null);
+  /** "Daha fazla göster"den sonra odak yeni gelen ilk kayda taşınır (klavye ve ekran okuyucu yerini kaybetmez). */
+  const firstNew = useRef<HTMLAnchorElement>(null);
+  const focusIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (focusIndex.current === null) return;
+    focusIndex.current = null;
+    firstNew.current?.focus();
+  });
 
   // Liste alınamazsa "rezervasyonunuz yok" denmez: hata ve yeniden dene; oturum düştüyse giriş.
-  const loadList = useCallback(async () => {
+  const loadList = useCallback(async (offset = 0) => {
     setListError(null);
+    if (offset > 0) setLoadingMore(true);
     try {
-      setList(await api<Booking[]>("me/bookings"));
+      const page = await api<Booking[]>(`me/bookings?limit=${PAGE + 1}&offset=${offset}`);
+      setHasMore(page.length > PAGE);
+      const rows = page.slice(0, PAGE);
+      if (offset > 0) {
+        focusIndex.current = offset;
+        setLoadedMore(rows.length);
+      }
+      setList((prev) => (offset > 0 && prev ? [...prev, ...rows.filter((r) => !prev.some((p) => p.id === r.id))] : rows));
     } catch (e) {
       if (isUnauthorized(e)) {
         setExpired(true);
         setLoggedIn(false);
       } else setListError(errorText(e));
+    } finally {
+      setLoadingMore(false);
     }
   }, [errorText, setLoggedIn]);
 
@@ -176,11 +201,12 @@ export default function BookingsHome() {
             {t("listTitle")}
           </h2>
           <ul className="booking-list" aria-labelledby="bookings-list-title">
-            {list.map((b) => {
+            {list.map((b, i) => {
               const leg = b.legs[0];
               return (
                 <li key={b.id}>
-                  <Link href={`/bookings/${b.booking_code}`} className="card booking-row">
+                  <Link href={`/bookings/${b.booking_code}`} className="card booking-row"
+                    ref={i === focusIndex.current ? firstNew : undefined}>
                     <div className="booking-row-main">
                       <span className="booking-row-head">
                         <strong dir="ltr">{b.booking_code}</strong>
@@ -210,6 +236,15 @@ export default function BookingsHome() {
               );
             })}
           </ul>
+          <p className="sr-only" aria-live="polite">{loadedMore !== null ? t("loadedMore", { count: loadedMore }) : ""}</p>
+          {hasMore && (
+            <div>
+              <button className="btn outline" type="button" disabled={loadingMore} aria-busy={loadingMore || undefined}
+                onClick={() => void loadList(list.length)}>
+                {t("showMore")}
+              </button>
+            </div>
+          )}
         </section>
       )}
     </div>

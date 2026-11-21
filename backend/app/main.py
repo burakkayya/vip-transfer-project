@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError
 
 from app.api import admin, auth, customer, driver, driver_tools, meeting, payments, public, trips
+from app import readiness
 from app.body_limit import UploadBodyLimit
 from app.config import DEV_ENVS, get_settings
 from app.errors import DomainError
@@ -81,6 +82,16 @@ def create_app() -> FastAPI:
     @app.get("/health", include_in_schema=False)
     def health():
         return {"status": "ok"}
+
+    @app.get("/ready", include_in_schema=False)
+    def ready(request: Request):
+        # MON-15 (K-81): yalnızca iç ağdan; dışarıya yolun varlığı bile gösterilmez.
+        if not readiness.is_internal_request(request):
+            return JSONResponse(status_code=404, content={"error": {"code": "not_found", "message": "bulunamadı"}})
+        checks = readiness.check()
+        ok = all(checks.values())
+        return JSONResponse(status_code=200 if ok else 503,
+                            content={"status": "ready" if ok else "not_ready", "checks": checks})
 
     api = "/api/v1"
     for module in (public, auth, customer, payments, driver):

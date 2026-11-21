@@ -177,7 +177,8 @@
     "mapLabel": "Carte du trajet : {from} → {to}",
     "mapPickup": "Prise en charge",
     "mapDropoff": "Arrivée",
-    "mapUnavailable": "La carte ne peut pas s'afficher pour le moment ; votre trajet et votre prix ne changent pas."
+    "mapUnavailable": "La carte ne peut pas s'afficher pour le moment ; votre trajet et votre prix ne changent pas.",
+    "route": "Trajet"
   },
   "daily": {
     "title": "Voiture avec chauffeur à la journée",
@@ -373,7 +374,9 @@
     "finishCancel": "Pas maintenant",
     "finishing": "Fin du trajet…",
     "finishDone": "Votre trajet est terminé. Bonne journée.",
-    "chatOriginal": "Original"
+    "chatOriginal": "Original",
+    "showMore": "Afficher plus",
+    "loadedMore": "Réservations chargées : {count}"
   },
   "account": {
     "title": "Mon compte",
@@ -415,7 +418,8 @@
       "acik": "Ouverte",
       "isleniyor": "En cours",
       "tamamlandi": "Terminée",
-      "reddedildi": "Refusée"
+      "reddedildi": "Refusée",
+      "geri_cekildi": "Retirée"
     },
     "typeRequired": "Choisissez un type de demande.",
     "noteHint": "Caractères restants : {count}",
@@ -424,9 +428,14 @@
     "listLoading": "Chargement de vos demandes…",
     "empty": "Vous n'avez pas encore de demande.",
     "deleteConfirmTitle": "Confirmez votre demande de suppression",
-    "deleteConfirmText": "Vous allez envoyer une demande de suppression des données personnelles de votre compte. Une fois envoyée, vous ne pourrez pas la retirer depuis cette page.",
+    "deleteConfirmText": "Vous êtes sur le point de demander la suppression des données personnelles de votre compte. Une fois le traitement commencé, la demande ne pourra plus être retirée.",
     "deleteConfirm": "Envoyer la demande de suppression",
-    "keep": "Revenir"
+    "keep": "Revenir",
+    "withdraw": "Retirer",
+    "withdrawLabel": "Retirer la demande : {type}",
+    "withdrawn": "Votre demande a été retirée.",
+    "withdrawHint": "Les demandes ouvertes peuvent être retirées tant que leur traitement n'a pas commencé.",
+    "withdrawConfirm": "Confirmer le retrait"
   },
   "footer": {
     "legal": "Mentions légales",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Politique relative aux cookies",
       "text": "Nous n'utilisons que les cookies nécessaires au fonctionnement du site : cookies de session (si vous êtes connecté) et votre préférence de langue. Nous n'utilisons pas de cookies publicitaires ni de suivi ; nous ne demandons donc pas de consentement aux cookies.",
-      "list": "ga_at, ga_rt : session (jusqu'à 30 jours). NEXT_LOCALE : préférence de langue."
+      "list": "__Secure-ga_at, __Secure-ga_rt : session (jusqu'à 30 jours). NEXT_LOCALE : préférence de langue."
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "Envoi…",
     "tipPaid": "Votre pourboire de {amount} a été ajouté au total et reversé à votre chauffeur. Nouveau total : {total}.",
     "tipPending": "En attente du paiement du pourboire.",
+    "tipRefunded": "Votre pourboire a été remboursé.",
     "tipFailed": "Le paiement du pourboire n'a pas abouti. Si votre carte a été débitée, le montant est remboursé automatiquement ; vous pouvez réessayer.",
     "extrasTitle": "Options",
     "childSeatLabel": "Siège enfant",

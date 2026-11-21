@@ -188,6 +188,11 @@ def require_staff(*allowed: RoleCode) -> Callable[[Principal], Principal]:
     return dependency
 
 
+def is_admin(principal: Principal) -> bool:
+    """Admin rolü (K-21): bazı sınırlar (ör. fiyat ezme aralığı, BIZ-04) yalnızca onda gevşer."""
+    return RoleCode.ADMIN.value in principal.user.role_codes
+
+
 AnyStaff = Annotated[
     Principal,
     Depends(require_staff(RoleCode.OPERATIONS, RoleCode.ACCOUNTING, RoleCode.SUPPORT)),

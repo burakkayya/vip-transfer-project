@@ -423,6 +423,18 @@ def _check_document_list(key: str, value: Any) -> None:
             raise DomainError(f"{item} bu listeye eklenemez", code="invalid_setting_value")
 
 
+_OVERRIDE_KEYS = ("price_override_min_percent", "price_override_max_percent")
+
+
+def _check_override_percents(db, key: str, value: Any) -> None:
+    """BIZ-04: alt sınır 1-100, üst sınır 100-1000 arasında; alt sınır üst sınırı geçemez."""
+    if key not in _OVERRIDE_KEYS:
+        return
+    lo, hi = (value if k == key else system_settings.get(db, k) for k in _OVERRIDE_KEYS)
+    if not (1 <= lo <= 100 <= hi <= 1000):
+        raise DomainError("alt sınır 1-100, üst sınır 100-1000 arasında olmalı", code="invalid_setting_value")
+
+
 @router.put("/settings/{key}")
 def put_setting(key: str, body: SettingIn, staff: AdminOnly, db: DbSession, ip: ClientIp):
     default = system_settings.DEFAULTS.get(key)
@@ -431,6 +443,7 @@ def put_setting(key: str, body: SettingIn, staff: AdminOnly, db: DbSession, ip: 
     if type(body.value) is not type(default):
         raise DomainError(f"değer türü {type(default).__name__} olmalı", code="invalid_setting_type")
     _check_document_list(key, body.value)
+    _check_override_percents(db, key, body.value)
     system_settings.put(db, key, body.value, staff.id, ip)
     db.commit()
     return {"key": key, "value": body.value}

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from app import commission
 from app.api.deps import CurrentCustomer, CurrentDriver, DbSession, Now
 from app.api.driver import TripOut, _trip_out, approach_route
 from app.api.customer import _own_booking
@@ -61,6 +62,9 @@ class JobOut(BaseModel):
     preview_polyline: str | None = None
     # K-29: transfer | gunluk. Günlük kiralamada `duration_minutes` paket saati, `distance_km` km sınırıdır.
     service_type: str = "transfer"
+    # K-81: günlük kiralamada kimseye atanmamış gün sayısı ve o günlerin toplam kazancı ("bütün günleri kabul et").
+    open_days: int | None = None
+    open_days_amount: MoneyStr | None = None
 
 
 def _job_out(db, leg: BookingLeg, driver, *, at: Point | None, detail: bool, now: datetime) -> JobOut:
@@ -94,13 +98,22 @@ def _job_out(db, leg: BookingLeg, driver, *, at: Point | None, detail: bool, now
         vehicle_type=b.vehicle_type.name,
         distance_km=leg.distance_km,
         duration_minutes=leg.duration_minutes,
-        driver_amount=leg.leg_price - (leg.leg_price * b.commission_rate).quantize(Decimal("0.01")),
+        driver_amount=commission.leg_split(leg).net,
         currency=b.currency.value,
         pickup_distance_km=distance,
         offer_expires_at=offer.expires_at if offer else None,
         preview_polyline=route_line.preview_polyline(leg) if detail else None,
         service_type=b.service_type.value,
+        **_open_days(db, leg, driver),
     )
+
+
+def _open_days(db, leg: BookingLeg, driver) -> dict:
+    if not leg.booking.is_daily:
+        return {}
+    days = dispatch.open_days_for_driver(db, leg.booking, driver)
+    return {"open_days": len(days),
+            "open_days_amount": sum((commission.leg_split(d).net for d in days), Decimal("0"))}
 
 
 def _point(lat: float | None, lng: float | None) -> Point | None:
@@ -134,6 +147,19 @@ def accept_job(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession, now: Now
     leg = dispatch.accept_job(db, driver, leg_id, now=now)
     db.commit()
     return _trip_out(leg, with_route=True)
+
+
+class AcceptAllOut(BaseModel):
+    trip: TripOut  # ilk alınan gün (yolculuk ekranı bununla açılır)
+    accepted_days: list[int]
+
+
+@driver_router.post("/jobs/{leg_id}/accept-all", response_model=AcceptAllOut)
+def accept_all_days(leg_id: uuid.UUID, driver: CurrentDriver, db: DbSession, now: Now):
+    """K-81: günlük kiralamanın kimseye atanmamış bütün günlerini tek seferde al (hepsi ya da hiçbiri)."""
+    days = dispatch.accept_all_days(db, driver, leg_id, now=now)
+    db.commit()
+    return AcceptAllOut(trip=_trip_out(days[0], with_route=True), accepted_days=[d.leg_order for d in days])
 
 
 @driver_router.post("/jobs/{leg_id}/decline", status_code=204)

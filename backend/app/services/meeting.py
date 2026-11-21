@@ -187,8 +187,9 @@ def photo_leg(booking: Booking, now: datetime) -> BookingLeg:
     return leg
 
 
-def driver_photo(driver: Driver | None) -> tuple[str, str]:
-    if driver is None or not driver.photo_key:
+def driver_photo(driver: Driver | None, *, own: bool = False) -> tuple[str, str]:
+    """Müşteriye yalnızca onaylı fotoğraf verilir (K-81). `own`: sürücü kendi fotoğrafını her durumda görür."""
+    if driver is None or not driver.photo_key or not (own or driver.photo_visible):
         raise NotFound("fotoğraf yok", code="photo_missing")
     return driver.photo_key, driver.photo_content_type or "image/jpeg"
 

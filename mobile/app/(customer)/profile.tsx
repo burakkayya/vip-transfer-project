@@ -7,7 +7,7 @@ import { Alert, Avatar, Button, Card, Divider, Eyebrow, Hero, Input, ListRow, P,
 import { api } from "@/lib/api";
 import { WEB_URL } from "@/lib/config";
 import { LOCALE, errorText, t } from "@/lib/i18n";
-import { useSession } from "@/lib/session";
+import { notifyIfServerLogoutFailed, useSession } from "@/lib/session";
 import type { Profile } from "@/lib/types";
 
 const MARKETING_CONSENT_VERSION = "1.0";
@@ -123,7 +123,11 @@ export default function ProfileScreen() {
       </Card>
 
       <Card delay={180} style={{ paddingVertical: 8 }}>
-        <ListRow icon="log-out-outline" title={t("logout")} danger onPress={async () => { await signOut(); router.replace("/login"); }} />
+        <ListRow icon="log-out-outline" title={t("logout")} danger onPress={async () => {
+          const result = await signOut();
+          router.replace("/login");
+          notifyIfServerLogoutFailed(result);
+        }} />
       </Card>
       <T style={[s.hint, { textAlign: "center" }]}>Getaway Transfers · 0.1.0</T>
     </Screen>

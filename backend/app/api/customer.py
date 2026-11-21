@@ -14,7 +14,7 @@ from typing import Literal
 
 import anyio
 import anyio.to_thread
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -42,7 +42,7 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.currency import currency_for_country
 from app.db import SessionLocal
-from app.errors import DomainError, NotFound
+from app.errors import Conflict, DomainError, NotFound
 from app.models import Booking, Consent, DataRequest
 from app.models.enums import BookingType, ConsentType, DataRequestStatus, DataRequestType, LegStatus
 from app.providers.payments import get_payment_provider
@@ -136,9 +136,12 @@ def create_daily_booking(body: DailyBookingCreateIn, customer: CurrentCustomer, 
 
 
 @router.get("/bookings", response_model=list[BookingOut])
-def list_bookings(customer: CurrentCustomer, db: DbSession):
+def list_bookings(customer: CurrentCustomer, db: DbSession,
+                  limit: int = Query(default=100, ge=1, le=100), offset: int = Query(default=0, ge=0, le=10_000)):
+    """En yeni önce. K-81: web listesi sayfa sayfa ister (`limit`, `offset`); varsayılan son 100 kayıt."""
     rows = db.scalars(
-        select(Booking).where(Booking.customer_id == customer.id).order_by(Booking.created_at.desc()).limit(100)
+        select(Booking).where(Booking.customer_id == customer.id)
+        .order_by(Booking.created_at.desc(), Booking.id).limit(limit).offset(offset)
         # K-29: günlük kiralama koşulları için fiyat sürümü ve kur tek sorguda (N+1 olmasın).
         .options(selectinload(Booking.daily_rate), selectinload(Booking.exchange_rate))
     )
@@ -318,9 +321,27 @@ def create_data_request(body: DataRequestIn, customer: CurrentCustomer, db: DbSe
     return _dr_out(req)
 
 
+@router.post("/data-requests/{request_id}/withdraw", response_model=DataRequestOut)
+def withdraw_data_request(request_id: uuid.UUID, customer: CurrentCustomer, db: DbSession, ip: ClientIp, now: Now):
+    """K-81: müşteri açık talebini işleme alınana kadar geri çekebilir."""
+    req = db.scalar(select(DataRequest).where(DataRequest.id == request_id, DataRequest.customer_id == customer.id)
+                    .with_for_update())
+    if req is None:
+        raise NotFound("talep bulunamadı")
+    if req.status is not DataRequestStatus.OPEN:
+        raise Conflict("yalnızca işleme alınmamış talep geri çekilebilir", code="data_request_not_open")
+    req.status = DataRequestStatus.WITHDRAWN
+    req.completed_at = now
+    audit.record(db, actor_id=customer.user_id, action="data_request.withdraw", entity_type="data_request",
+                 entity_id=req.id, ip=ip)
+    db.commit()
+    return _dr_out(req)
+
+
 @router.get("/data-requests", response_model=list[DataRequestOut])
 def list_data_requests(customer: CurrentCustomer, db: DbSession):
-    rows = db.scalars(select(DataRequest).where(DataRequest.customer_id == customer.id))
+    rows = db.scalars(select(DataRequest).where(DataRequest.customer_id == customer.id)
+                      .order_by(DataRequest.created_at.desc()))
     return [_dr_out(r) for r in rows]
 
 

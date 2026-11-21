@@ -36,6 +36,8 @@ const tr = {
   saved: "Kaydedildi.",
   retry: "Tekrar dene",
   logout: "Çıkış yap",
+  logoutPartialTitle: "Çıkış yapıldı",
+  logoutPartialText: "Bu cihazda çıkış yapıldı ama sunucuya ulaşılamadı. Bildirimler bir süre daha bu cihaza gelebilir.",
   "login.title": "Telefonla giriş",
   "login.text": "Rezervasyonlarınız telefon numaranızla ilişkilendirilir. Şifre gerekmez.",
   "login.country": "Ülke",
@@ -121,6 +123,7 @@ const tr = {
   "meet.rateAndTip": "Puanla ve bahşiş öde",
   "meet.tipPaid": "{amount} bahşiş toplamınıza eklendi ve sürücünüze iletildi. Yeni toplam: {total}.",
   "meet.tipPending": "Bahşiş ödemesi bekleniyor.",
+  "meet.tipRefunded": "Bahşişiniz iade edildi.",
   "meet.extrasTitle": "Ekstralar",
   "meet.childSeats": "Çocuk koltuğu",
   "meet.childSeatHint": "Ücretsiz. Sürücünüz aracı buna göre hazırlar.",
@@ -317,6 +320,8 @@ const en: Dict = {
   saved: "Saved.",
   retry: "Try again",
   logout: "Log out",
+  logoutPartialTitle: "Signed out",
+  logoutPartialText: "You are signed out on this device, but the server could not be reached. Notifications may still arrive on this device for a while.",
   "login.title": "Log in with your phone",
   "login.text": "Your bookings are linked to your phone number. No password needed.",
   "login.country": "Country",
@@ -402,6 +407,7 @@ const en: Dict = {
   "meet.rateAndTip": "Rate and pay tip",
   "meet.tipPaid": "Your {amount} tip was added to your total and passed on to your driver. New total: {total}.",
   "meet.tipPending": "Waiting for the tip payment.",
+  "meet.tipRefunded": "Your tip has been refunded.",
   "meet.extrasTitle": "Extras",
   "meet.childSeats": "Child seats",
   "meet.childSeatHint": "Free of charge. Your driver prepares the vehicle.",
@@ -596,6 +602,8 @@ const de: Dict = {
   saved: "Gespeichert.",
   retry: "Erneut versuchen",
   logout: "Abmelden",
+  logoutPartialTitle: "Abgemeldet",
+  logoutPartialText: "Sie sind auf diesem Gerät abgemeldet, aber der Server war nicht erreichbar. Benachrichtigungen können noch eine Weile auf diesem Gerät ankommen.",
   "login.title": "Mit Telefonnummer anmelden",
   "login.text": "Ihre Buchungen sind mit Ihrer Telefonnummer verknüpft. Kein Passwort nötig.",
   "login.country": "Land",
@@ -681,6 +689,7 @@ const de: Dict = {
   "meet.rateAndTip": "Bewerten und Trinkgeld zahlen",
   "meet.tipPaid": "Ihr Trinkgeld von {amount} wurde zum Gesamtbetrag addiert und an Ihren Fahrer weitergegeben. Neuer Gesamtbetrag: {total}.",
   "meet.tipPending": "Trinkgeldzahlung ausstehend.",
+  "meet.tipRefunded": "Ihr Trinkgeld wurde erstattet.",
   "meet.extrasTitle": "Extras",
   "meet.childSeats": "Kindersitze",
   "meet.childSeatHint": "Kostenlos. Ihr Fahrer bereitet das Fahrzeug vor.",
@@ -875,6 +884,8 @@ const ru: Dict = {
   saved: "Сохранено.",
   retry: "Повторить",
   logout: "Выйти",
+  logoutPartialTitle: "Вы вышли",
+  logoutPartialText: "Вы вышли на этом устройстве, но сервер недоступен. Уведомления могут ещё какое-то время приходить на это устройство.",
   "login.title": "Вход по номеру телефона",
   "login.text": "Бронирования привязаны к номеру телефона. Пароль не нужен.",
   "login.country": "Страна",
@@ -960,6 +971,7 @@ const ru: Dict = {
   "meet.rateAndTip": "Оценить и оплатить чаевые",
   "meet.tipPaid": "Чаевые {amount} добавлены к сумме и переданы водителю. Новая сумма: {total}.",
   "meet.tipPending": "Ожидается оплата чаевых.",
+  "meet.tipRefunded": "Чаевые возвращены.",
   "meet.extrasTitle": "Дополнительно",
   "meet.childSeats": "Детские кресла",
   "meet.childSeatHint": "Бесплатно. Водитель подготовит машину.",
@@ -1217,6 +1229,11 @@ export function errorText(e: unknown): string {
     return key in dict ? dict[key] : e.code === "network" ? dict["errors.network"] : dict["errors.unknown"];
   }
   return dict["errors.unknown"];
+}
+
+/** Sürücü uygulaması Türkçedir: anahtarın Türkçe metni. */
+export function tTr(key: Key): string {
+  return tr[key];
 }
 
 /** Sürücü uygulaması için Türkçe hata metni: backend mesajı zaten Türkçedir. */

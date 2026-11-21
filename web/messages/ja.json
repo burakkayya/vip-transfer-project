@@ -177,7 +177,8 @@
     "mapLabel": "ルートマップ：{from} → {to}",
     "mapPickup": "乗車地",
     "mapDropoff": "降車地",
-    "mapUnavailable": "現在地図を表示できません。ルートと料金に影響はありません。"
+    "mapUnavailable": "現在地図を表示できません。ルートと料金に影響はありません。",
+    "route": "ルート"
   },
   "daily": {
     "title": "ドライバー付き日単位貸切",
@@ -373,7 +374,9 @@
     "finishCancel": "今はしない",
     "finishing": "終了中…",
     "finishDone": "乗車が完了しました。良い一日をお過ごしください。",
-    "chatOriginal": "原文"
+    "chatOriginal": "原文",
+    "showMore": "さらに表示",
+    "loadedMore": "読み込んだ予約：{count}"
   },
   "account": {
     "title": "マイアカウント",
@@ -415,7 +418,8 @@
       "acik": "受付",
       "isleniyor": "対応中",
       "tamamlandi": "完了",
-      "reddedildi": "却下"
+      "reddedildi": "却下",
+      "geri_cekildi": "取り下げ済み"
     },
     "typeRequired": "請求の種類を選んでください。",
     "noteHint": "残り文字数：{count}",
@@ -424,9 +428,14 @@
     "listLoading": "請求を読み込み中…",
     "empty": "まだ請求はありません。",
     "deleteConfirmTitle": "削除請求の確認",
-    "deleteConfirmText": "アカウントの個人データの削除を請求しようとしています。送信後はこのページから取り消せません。",
+    "deleteConfirmText": "アカウントの個人データの削除を請求しようとしています。対応を開始した後は、請求を取り下げることはできません。",
     "deleteConfirm": "削除請求を送信",
-    "keep": "戻る"
+    "keep": "戻る",
+    "withdraw": "取り下げる",
+    "withdrawLabel": "請求を取り下げる：{type}",
+    "withdrawn": "請求を取り下げました。",
+    "withdrawHint": "対応を開始するまでは、受付中の請求を取り下げることができます。",
+    "withdrawConfirm": "取り下げを確定"
   },
   "footer": {
     "legal": "法的情報",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Cookie ポリシー",
       "text": "サイトの動作に必要な Cookie のみを使用します：セッション Cookie（ログイン状態）と言語設定。広告やトラッキングの Cookie は使用しないため、Cookie の同意はお願いしていません。",
-      "list": "ga_at、ga_rt：セッション（最長 30 日）。NEXT_LOCALE：言語設定。"
+      "list": "__Secure-ga_at、__Secure-ga_rt：セッション（最長 30 日）。NEXT_LOCALE：言語設定。"
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "送信中…",
     "tipPaid": "{amount} のチップを合計に加算し、ドライバーに渡しました。新しい合計：{total}。",
     "tipPending": "チップのお支払いを待っています。",
+    "tipRefunded": "チップは返金されました。",
     "tipFailed": "チップのお支払いが完了しませんでした。カードに請求された場合は自動的に返金されます。もう一度お試しください。",
     "extrasTitle": "オプション",
     "childSeatLabel": "チャイルドシート",

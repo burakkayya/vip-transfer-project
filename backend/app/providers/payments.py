@@ -75,9 +75,15 @@ class CheckoutRequest:
     purpose: str = "booking"
 
 
-def result_path(purpose: str) -> str:
-    """Ödeme sağlayıcısının iFrame içinde döndüğü web sayfası (sonuç sunucu bildirimiyle kesinleşir)."""
-    return "/booking/tip-result" if purpose == "tip" else "/booking/payment-result"
+# Web sitesinin dil önekleri (app.api.schemas.SUPPORTED_LOCALES ile aynı; sağlayıcı katmanı API'ye bağlanmasın).
+WEB_LOCALES = ("tr", "en", "de", "es", "ru", "fr", "ar", "zh", "ja", "it", "pt", "ko")
+
+
+def result_path(purpose: str, locale: str | None = None) -> str:
+    """Ödeme sağlayıcısının iFrame içinde döndüğü web sayfası (sonuç sunucu bildirimiyle kesinleşir).
+    K-81: rezervasyonun dili verilirse adres dil önekiyle başlar (sayfa ara katmanda dil tahmin etmez)."""
+    path = "/booking/tip-result" if purpose == "tip" else "/booking/payment-result"
+    return f"/{locale}{path}" if locale in WEB_LOCALES else path
 
 
 @dataclass(frozen=True)
@@ -154,8 +160,8 @@ class PaytrProvider:
     base_url: str = "https://www.paytr.com"
 
     @staticmethod
-    def _return_url(url: str, purpose: str) -> str:
-        return url.replace("/booking/payment-result", result_path(purpose), 1)
+    def _return_url(url: str, purpose: str, locale: str | None = None) -> str:
+        return url.replace("/booking/payment-result", result_path(purpose, locale), 1)
 
     def create_checkout(self, req: CheckoutRequest) -> Checkout:
         payment_amount = str(int((req.amount * 100).to_integral_value()))  # kuruş/cent
@@ -184,8 +190,8 @@ class PaytrProvider:
             "user_name": req.customer_name,
             "user_address": "-",
             "user_phone": req.customer_phone,
-            "merchant_ok_url": self._return_url(self.ok_url, req.purpose),
-            "merchant_fail_url": self._return_url(self.fail_url, req.purpose),
+            "merchant_ok_url": self._return_url(self.ok_url, req.purpose, req.locale),
+            "merchant_fail_url": self._return_url(self.fail_url, req.purpose, req.locale),
             "timeout_limit": str(PAYTR_TIMEOUT_LIMIT_MINUTES),
             "currency": currency,
             "test_mode": test_mode,

@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { api, clearTokens, loadSession, saveTokens, setSignedOutHandler } from "./api";
+import { t, tTr } from "./i18n";
 import { endActiveLiveTrip } from "./liveTrip";
 import { serverLogout, type ServerLogoutResult } from "./logout";
 import { clearRegisteredPushToken, registeredPushToken } from "./notify";
@@ -80,6 +82,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return <Ctx.Provider value={{ ready, signedIn, signIn, signOut }}>{children}</Ctx.Provider>;
+}
+
+/** MOB-07 (K-81): sunucu çıkışı başarısızsa kullanıcı bilgilendirilir (yerel oturum yine kapanmıştır).
+ * Sürücü uygulaması Türkçe olduğu için `driver` ile Türkçe metin kullanılır. */
+export function notifyIfServerLogoutFailed(result: SignOutResult, app: "customer" | "driver" = "customer"): void {
+  if (result.server !== "failed") return;
+  const text = app === "driver" ? tTr : t;
+  Alert.alert(text("logoutPartialTitle"), text("logoutPartialText"));
 }
 
 export function useSession(): Session {

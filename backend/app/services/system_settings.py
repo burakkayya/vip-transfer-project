@@ -20,6 +20,10 @@ DEFAULTS: dict[str, Any] = {
     # K-79: günlük kiralama gününden önce ve sonra sürücünün başka işe başlamadan dinlenme süresi (saat).
     # Aynı rezervasyonun ardışık günleri arasında uygulanmaz. Operasyonla teyit edilecek.
     "daily_rest_hours": 9,
+    # BIZ-04 (K-81): admin fiyat ezmesi sistem fiyatının yüzde kaçı ile yüzde kaçı arasında olabilir.
+    # Sınır dışı tutarı yalnızca admin rolü girebilir.
+    "price_override_min_percent": 50,
+    "price_override_max_percent": 150,
     # Ödenmeyen rezervasyon kaç dakika sonra iptal edilir.
     "pending_payment_minutes": 30,
     "try_rounding_step": 5,

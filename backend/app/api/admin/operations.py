@@ -23,7 +23,7 @@ from app.models.enums import BookingSource, BookingStatus, LegStatus, PaymentSta
 from app.providers.routing import Point, haversine_km
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
-from app.services import bookings, daily_rental, dispatch, eta, live_location
+from app.services import bookings, daily_rental, dispatch, eta, live_location, ratings
 
 router = APIRouter(tags=["admin:operations"])
 
@@ -196,7 +196,7 @@ def booking_detail(booking_id: uuid.UUID, staff: OpsOrSupport, db: DbSession):
             {"id": str(x.id), "provider": x.provider.value, "merchant_oid": x.merchant_oid,
              "amount": f"{x.amount:.2f}", "currency": x.currency.value, "status": x.status.value,
              "paid_at": x.paid_at, "manual_method": x.manual_method.value if x.manual_method else None,
-             "provider_ref": x.provider_ref, "note": x.note,
+             "provider_ref": x.provider_ref, "note": x.note, "purpose": x.purpose,
              "refundable": f"{bookings.refundable_amount(db, x):.2f}"
              if x.status in (PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED) else "0.00",
              "refunds": [{"id": str(r.id), "amount": f"{r.amount:.2f}", "percent": r.refund_percent,
@@ -278,6 +278,20 @@ def refund_booking(booking_id: uuid.UUID, body: AdminRefundIn, staff: OpsOrFinan
     b = _booking(db, booking_id)
     refund = bookings.staff_refund(db, b, provider=get_payment_provider(), actor_id=staff.id,
                                    amount=body.amount, reason=body.reason, ip=ip)
+    db.commit()
+    return {"id": str(refund.id), "amount": f"{refund.amount:.2f}", "status": refund.status.value}
+
+
+class TipRefundIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=255)
+
+
+@router.post("/bookings/{booking_id}/tip-refund")
+def refund_tip(booking_id: uuid.UUID, body: TipRefundIn, staff: OpsOrFinance, db: DbSession, ip: ClientIp):
+    """K-81: ödenmiş bahşişin tam iadesi; sürücünün bekleyen bahşiş hakedişi iptal edilir."""
+    b = _booking(db, booking_id)
+    refund = ratings.staff_tip_refund(db, b, provider=get_payment_provider(), actor_id=staff.id,
+                                      reason=body.reason, ip=ip)
     db.commit()
     return {"id": str(refund.id), "amount": f"{refund.amount:.2f}", "status": refund.status.value}
 

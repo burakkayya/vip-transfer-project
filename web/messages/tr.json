@@ -177,7 +177,8 @@
     "mapLabel": "Rota haritası: {from} → {to}",
     "mapPickup": "Alış",
     "mapDropoff": "Varış",
-    "mapUnavailable": "Harita şu an gösterilemiyor; rota ve fiyat etkilenmez."
+    "mapUnavailable": "Harita şu an gösterilemiyor; rota ve fiyat etkilenmez.",
+    "route": "Güzergâh"
   },
   "daily": {
     "title": "Şoförlü günlük kiralama",
@@ -373,7 +374,9 @@
     "finishCancel": "Vazgeç",
     "finishing": "Bitiriliyor…",
     "finishDone": "Yolculuğunuz tamamlandı. İyi günler dileriz.",
-    "chatOriginal": "Aslı"
+    "chatOriginal": "Aslı",
+    "showMore": "Daha fazla göster",
+    "loadedMore": "Yüklenen yeni rezervasyon: {count}"
   },
   "account": {
     "title": "Hesabım",
@@ -415,7 +418,8 @@
       "acik": "Açık",
       "isleniyor": "İşleniyor",
       "tamamlandi": "Tamamlandı",
-      "reddedildi": "Reddedildi"
+      "reddedildi": "Reddedildi",
+      "geri_cekildi": "Geri çekildi"
     },
     "typeRequired": "Talep türünü seçin.",
     "noteHint": "Kalan karakter: {count}",
@@ -424,9 +428,14 @@
     "listLoading": "Talepleriniz yükleniyor…",
     "empty": "Henüz bir talebiniz yok.",
     "deleteConfirmTitle": "Silme talebini onaylayın",
-    "deleteConfirmText": "Hesabınızdaki kişisel verilerin silinmesi talebini göndermek üzeresiniz. Gönderdikten sonra bu ekrandan geri çekemezsiniz.",
+    "deleteConfirmText": "Hesabınızdaki kişisel verilerin silinmesi talebini göndermek üzeresiniz. Talep işleme alındıktan sonra geri çekilemez.",
     "deleteConfirm": "Silme talebini gönder",
-    "keep": "Vazgeç"
+    "keep": "Vazgeç",
+    "withdraw": "Geri çek",
+    "withdrawLabel": "Talebi geri çek: {type}",
+    "withdrawn": "Talebiniz geri çekildi.",
+    "withdrawHint": "Açık talepler işleme alınana kadar geri çekilebilir.",
+    "withdrawConfirm": "Geri çekmeyi onayla"
   },
   "footer": {
     "legal": "Yasal",
@@ -483,7 +492,7 @@
     "cookies": {
       "title": "Çerez politikası",
       "text": "Sitemiz yalnızca hizmetin çalışması için zorunlu çerezleri kullanır: oturum çerezleri (giriş durumunuz) ve dil tercihi. Reklam veya izleme çerezi kullanılmaz, bu nedenle çerez onayı istenmez.",
-      "list": "ga_at, ga_rt: oturum (en çok 30 gün). NEXT_LOCALE: dil tercihi."
+      "list": "__Secure-ga_at, __Secure-ga_rt: oturum (en çok 30 gün). NEXT_LOCALE: dil tercihi."
     }
   },
   "errors": {
@@ -566,6 +575,7 @@
     "sending": "Gönderiliyor…",
     "tipPaid": "{amount} bahşiş toplamınıza eklendi ve sürücünüze iletildi. Yeni toplam: {total}.",
     "tipPending": "Bahşiş ödemesi bekleniyor.",
+    "tipRefunded": "Bahşişiniz iade edildi.",
     "tipFailed": "Bahşiş ödemesi tamamlanmadı. Kartınızdan çekim yapıldıysa otomatik iade edilir; tekrar deneyebilirsiniz.",
     "extrasTitle": "Ekstralar",
     "childSeatLabel": "Çocuk koltuğu",

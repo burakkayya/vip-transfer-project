@@ -58,3 +58,23 @@ def split(gross: Decimal, rate: Decimal) -> Split:
         raise ValueError("komisyon oranı 0 ile 1 arasında olmalı")
     commission = (gross * rate).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
     return Split(gross=gross, commission=commission, net=gross - commission)
+
+
+def earning_base(leg_price: Decimal, total: Decimal, system_total: Decimal | None, guarantee_fee: Decimal) -> Decimal:
+    """BIZ-04 (K-81): admin fiyatı sistem fiyatının üstüne ezdiyse sürücü hakedişi sistem fiyatındaki
+    paydan hesaplanır (min(sistem, ezilen)). Aşağı ezmede bacak fiyatı zaten düşüktür. Garanti ücreti
+    ezmede değişmediği için oran garanti ücreti hariç fiyatlar üzerinden kurulur."""
+    if system_total is None or total <= system_total:
+        return leg_price
+    price = total - guarantee_fee
+    system_price = system_total - guarantee_fee
+    if price <= 0 or system_price <= 0:
+        return leg_price
+    return (leg_price * system_price / price).quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+
+
+def leg_split(leg) -> Split:
+    """Bacağın sürücü hakedişi (komisyon sonrası). `leg.booking` yüklü olmalı."""
+    b = leg.booking
+    base = earning_base(leg.leg_price, b.total_amount, b.system_total_amount, b.guarantee_fee)
+    return split(base, b.commission_rate)

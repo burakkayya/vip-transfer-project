@@ -319,7 +319,7 @@ class DriverBrief(BaseModel):
             plate=leg.vehicle.plate,
             color=leg.vehicle.color,
             languages=leg.driver.language_list,
-            has_photo=bool(leg.driver.photo_key),
+            has_photo=leg.driver.photo_visible,
         )
 
 

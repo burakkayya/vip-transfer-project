@@ -609,6 +609,22 @@ export default function BookingWizard(props: { regions: Region[]; vehicleTypes: 
         {step === "confirm" && finalQuote && (
           <div className="card stack wizard-step" key="confirm">
             {head(t("steps.confirm"), "details")}
+            {/* K-81: telefonda özet kartı formun altında kalır; ödemeden önce güzergâh, tarih ve araç burada da görünür. */}
+            <dl className="confirm-recap">
+              <dt>{t("route")}</dt>
+              <dd dir="auto">{trip.from?.label} → {trip.to?.label}</dd>
+              <dt>{t("when")}</dt>
+              <dd>
+                {details.instant ? t("instant") : dateTime(localInputToIso(trip.at), locale)}
+                {trip.roundTrip && <><br />{tTrip("roundTrip")}: {dateTime(localInputToIso(trip.returnAt), locale)}</>}
+              </dd>
+              {selectedType && (
+                <>
+                  <dt>{t("vehicle")}</dt>
+                  <dd>{vehicleName(selectedType, locale)} · {t("seats", { count: trip.pax })}</dd>
+                </>
+              )}
+            </dl>
             <p className="cancel-tiers">
               <Icon name="refund" size={18} />
               <span>{t("cancelTiers")}</span>

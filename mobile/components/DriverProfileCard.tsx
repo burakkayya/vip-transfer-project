@@ -65,7 +65,10 @@ export default function DriverProfileCard(props: { me: DriverMe; onSaved: (me: D
         <IconBubble name="person-circle-outline" dark />
         <H2>Sürücü kartım</H2>
       </Row>
-      <P muted small>Yolcu, alıştan bir gün önce fotoğrafınızı, aracınızı ve konuştuğunuz dilleri görür.</P>
+      <P muted small>
+        Yolcu, alıştan bir gün önce fotoğrafınızı, aracınızı ve konuştuğunuz dilleri görür. Fotoğrafınız onaylandıktan sonra
+        yolcuya ve yolcunun paylaştığı takip bağlantısını açan kişilere gösterilir.
+      </P>
       <Row gap={14} style={{ flexWrap: "nowrap" }}>
         {props.me.has_photo ? (
           <AuthImage accessibilityIgnoresInvertColors key={photoVersion} path={`driver/me/photo?v=${photoVersion}`}
@@ -75,10 +78,15 @@ export default function DriverProfileCard(props: { me: DriverMe; onSaved: (me: D
             <Ionicons name="camera-outline" size={24} color={colors.muted} />
           </View>
         )}
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, gap: 6 }}>
           <Button title={props.me.has_photo ? "Fotoğrafı değiştir" : "Fotoğraf yükle"} variant="secondary" small busy={busy} onPress={pickPhoto} />
+          {props.me.photo_status === "beklemede" ? <P muted small>Fotoğrafınız onay bekliyor; onaylanınca yolcuya gösterilir.</P> : null}
+          {props.me.photo_status === "onaylandi" ? <P muted small>Fotoğrafınız onaylandı.</P> : null}
         </View>
       </Row>
+      {props.me.photo_status === "reddedildi" ? (
+        <Alert tone="warn" text={`Fotoğrafınız onaylanmadı${props.me.photo_reject_reason ? `: ${props.me.photo_reject_reason}` : ""}. Yeni bir fotoğraf yükleyin.`} />
+      ) : null}
       <T style={{ fontWeight: "700" }}>Konuştuğum diller</T>
       <Row gap={8}>
         {LANGS.map(([code, label]) => {

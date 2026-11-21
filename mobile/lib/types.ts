@@ -127,6 +127,9 @@ export interface DriverMe {
   missing_documents: string[];
   languages?: string[];
   has_photo?: boolean;
+  /** K-81: fotoğraf onayı; onaylanana kadar yolcuya gösterilmez. */
+  photo_status?: "beklemede" | "onaylandi" | "reddedildi" | null;
+  photo_reject_reason?: string | null;
   rating_avg?: string | null;
   rating_count?: number;
   // K-78 sürücü detayları
@@ -261,6 +264,9 @@ export interface Job {
   preview_polyline: string | null;
   /** K-29: "gunluk" ise süre paket saati, mesafe km sınırıdır. */
   service_type?: "transfer" | "gunluk";
+  /** K-81: günlük kiralamada kimseye atanmamış gün sayısı ve toplam kazanç ("bütün günleri kabul et"). */
+  open_days?: number | null;
+  open_days_amount?: string | null;
 }
 
 export interface Approach {

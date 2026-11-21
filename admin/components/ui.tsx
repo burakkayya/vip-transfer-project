@@ -118,12 +118,13 @@ export function usePager(limit = 50) {
   return { limit, offset, setOffset, pager };
 }
 
-export function Field(props: { label: string; children: React.ReactNode; hint?: string }) {
+export function Field(props: { label: string; children: React.ReactNode; hint?: string; error?: string; errorId?: string }) {
   return (
     <label className="field">
       <span>{props.label}</span>
       {props.children}
       {props.hint && <span className="hint">{props.hint}</span>}
+      {props.error && <span className="hint field-error" id={props.errorId} aria-live="polite">{props.error}</span>}
     </label>
   );
 }

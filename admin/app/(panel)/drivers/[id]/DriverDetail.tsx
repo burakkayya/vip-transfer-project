@@ -6,7 +6,7 @@ import DocumentReview, { Doc } from "@/components/DocumentReview";
 import { Badge, ErrorBox, Field, Msg, PageHead, useAction, useData } from "@/components/ui";
 import { api, blobUrl } from "@/lib/api";
 import { d, dt } from "@/lib/format";
-import { DOCUMENT_STATUS, DOCUMENT_TYPE, DRIVER_DOCS, DRIVER_STATUS, VEHICLE_DOCS, VEHICLE_PHOTOS, VEHICLE_STATUS } from "@/lib/labels";
+import { DOCUMENT_STATUS, DOCUMENT_TYPE, DRIVER_DOCS, DRIVER_STATUS, PHOTO_STATUS, VEHICLE_DOCS, VEHICLE_PHOTOS, VEHICLE_STATUS } from "@/lib/labels";
 import type { DriverRow } from "../page";
 
 interface Vehicle {
@@ -91,6 +91,86 @@ function Photo(props: { label: string; doc?: Doc }) {
 }
 
 /**
+ * K-81: sürücünün profil fotoğrafı. Onaylanmadan müşteri kartında ve takip bağlantısında görünmez; reddedilirse
+ * gerekçe sürücüye gösterilir, sürücü yeni fotoğraf yükler.
+ */
+function ProfilePhoto(props: { driverId: string; status: string | null; rejectReason: string | null; version: string | null; onDone: () => void }) {
+  const action = useAction();
+  const [src, setSrc] = useState<string | null>(null);
+  const [why, setWhy] = useState("");
+  const { driverId, status } = props;
+  useEffect(() => {
+    if (!status) return;
+    let url: string | null = null;
+    let live = true;
+    void blobUrl(`admin/drivers/${driverId}/photo`).then((r) => {
+      url = r.url;
+      if (live) setSrc(r.url);
+      else URL.revokeObjectURL(r.url);
+    }).catch(() => {});
+    return () => {
+      live = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [driverId, status, props.version]);
+
+  async function review(approve: boolean) {
+    const ok = await action.run(
+      () => api(`admin/drivers/${driverId}/photo/review`, { body: { approve, reason: approve ? null : why.trim(), photo_version: props.version } }),
+      approve ? "Fotoğraf onaylandı." : "Fotoğraf reddedildi; sürücü gerekçeyi uygulamada görür.",
+    );
+    if (ok) setWhy("");
+    // Başarıda da "fotoğraf değişti" (409) hatasında da yeni fotoğraf ve sürüm yüklenir.
+    props.onDone();
+  }
+
+  if (!status) {
+    return (
+      <div className="card row spread">
+        <strong>Profil fotoğrafı</strong>
+        <span className="badge warn">Yüklenmedi</span>
+      </div>
+    );
+  }
+  return (
+    <div className="card stack">
+      <div className="row spread">
+        <strong>Profil fotoğrafı</strong>
+        <Badge value={status} labels={PHOTO_STATUS} />
+      </div>
+      <div className="row" style={{ alignItems: "flex-start" }}>
+        <figure className="vehicle-photo" style={{ maxWidth: 200 }}>
+          <div className="vehicle-photo-frame">
+            {/* eslint-disable-next-line @next/next/no-img-element -- yetkili uçtan gelen blob önizlemesi */}
+            {src ? <img src={src} alt="Sürücünün profil fotoğrafı" /> : <span className="muted">Yükleniyor…</span>}
+          </div>
+        </figure>
+        <div className="stack" style={{ flex: 1, minWidth: 240 }}>
+          <p className="hint">
+            Onaylanan fotoğraf müşterinin sürücü kartında ve paylaştığı takip bağlantısında görünür. Yüz net görünmeli;
+            gözlük, şapka veya başka kişi olmamalı.
+          </p>
+          {status === "reddedildi" && props.rejectReason && <p className="hint">Ret gerekçesi: {props.rejectReason}</p>}
+          <Field label="Ret gerekçesi (reddederken zorunlu, en az 3 karakter; sürücüye gösterilir)">
+            <input value={why} maxLength={255} onChange={(e) => setWhy(e.target.value)} />
+          </Field>
+          <div className="row">
+            <button className="btn" type="button" disabled={action.busy || status === "onaylandi"} onClick={() => void review(true)}>
+              Onayla
+            </button>
+            <button className="btn secondary" type="button" disabled={action.busy || why.trim().length < 3 || status === "reddedildi"}
+              onClick={() => void review(false)}>
+              Reddet
+            </button>
+          </div>
+          <Msg message={action.message} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * K-78 sürücü detayı: "Sürücü detayları" (iletişim, il, kişisel belgeler) ve her araç için "Araç detayları"
  * (fotoğraflar, ruhsat, muayene, sigorta). Belgeler tek tek onaylanır; sürücü tüm zorunlu belgeler onaylı ve
  * geçerliyken onaylanabilir. `id` sayfa (sunucu) bileşeninde UUID olarak doğrulanmış gelir (WEB-06).
@@ -162,6 +242,8 @@ export default function DriverDetail({ id }: { id: string }) {
             <dt>Çevrimiçi</dt><dd>{data.is_online ? "Evet" : "Hayır"}</dd>
           </dl>
         </div>
+        <ProfilePhoto driverId={data.id} status={data.photo_status} rejectReason={data.photo_reject_reason}
+          version={data.photo_version} onDone={reload} />
         <h3>Kişisel belgeler</h3>
         {DRIVER_DOCS.map((t) => (
           <RequiredDoc key={t} label={DOCUMENT_TYPE[t]} docs={docsOf(data.documents, data.id, t)} onDone={reload} />

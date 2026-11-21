@@ -33,6 +33,8 @@ RATING_WINDOW = timedelta(days=14)
 TIP_REUSE_WINDOW = timedelta(minutes=25)
 TIP_MIN = {Currency.EUR: Decimal("1"), Currency.TRY: Decimal("20")}
 TIP_OPEN, TIP_PENDING, TIP_PAID, TIP_FAILED = "yok", "beklemede", "odendi", "basarisiz"
+# K-81: personel bahşişi iade etti (müşteri yeniden bahşiş açamaz).
+TIP_REFUNDED = "iade_edildi"
 
 
 def rateable_leg(booking: Booking) -> BookingLeg | None:
@@ -102,7 +104,7 @@ def start_tip(db: Session, booking: Booking, customer: Customer, provider: Payme
     if rating is None:
         raise Conflict("önce yolculuğu puanlayın", code="rating_required")
     db.refresh(rating, with_for_update={"of": TripRating})
-    if rating.tip_status == TIP_PAID:
+    if rating.tip_status in (TIP_PAID, TIP_REFUNDED):
         raise Conflict("bahşiş zaten ödendi", code="tip_already_paid")
     if now > leg.pickup_at + RATING_WINDOW:
         raise Conflict("bahşiş süresi doldu", code="rating_closed")
@@ -189,6 +191,46 @@ def on_tip_result(db: Session, payment: Payment, provider: PaymentProvider, *, p
     if leg.driver_id == rating.driver_id:
         trip_updates.to_driver(db, leg, "tip_received", amount=f"{parts.net:.2f}",
                                currency=payment.currency.value)
+
+
+def staff_tip_refund(db: Session, booking: Booking, *, provider: PaymentProvider, actor_id, reason: str,
+                     ip: str | None) -> Refund:
+    """K-81: personel ödenmiş bahşişi müşteriye tam iade eder ve sürücünün bekleyen bahşiş hakedişini iptal eder.
+    Bahşiş hakedişi ödeme kaydına girmiş ya da ödenmişse iade yapılmaz (sürücüden geri alma akışı yok, K-57)."""
+    from app.models.enums import LedgerStatus
+    from app.services import bookings
+
+    payment = db.scalar(select(Payment).where(
+        Payment.booking_id == booking.id, Payment.purpose == "tip",
+        Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED]),
+    ).order_by(Payment.created_at.desc()).limit(1).with_for_update(of=Payment))
+    if payment is None:
+        raise Conflict("bu rezervasyonda iade edilebilecek bahşiş yok", code="no_tip_payment")
+    amount = bookings.refundable_amount(db, payment)
+    if amount <= 0:
+        raise Conflict("bahşiş zaten iade edildi", code="tip_already_refunded")
+    rating = db.scalar(select(TripRating).where(TripRating.tip_payment_id == payment.id).with_for_update())
+    ledger = None
+    if rating is not None:
+        ledger = db.scalar(select(DriverLedger).where(
+            DriverLedger.booking_leg_id == rating.booking_leg_id, DriverLedger.kind == "tip",
+        ).with_for_update(of=DriverLedger))
+    if ledger is not None and (ledger.status is LedgerStatus.PAID or ledger.payout_id is not None):
+        raise Conflict("bahşiş sürücüye ödendi ya da ödeme kaydına girdi; iade edilemez", code="tip_paid_out")
+    refund = Refund(payment_id=payment.id, amount=amount, reason=reason[:255], policy_id=None,
+                    refund_percent=100, created_by=actor_id)
+    db.add(refund)
+    # execute_refund ara commit yapar: hakediş iptali ve bahşiş durumu iadeyle aynı işlemde yazılır.
+    if ledger is not None and ledger.status is not LedgerStatus.CANCELLED:
+        ledger.status = LedgerStatus.CANCELLED
+    if rating is not None:
+        rating.tip_status = TIP_REFUNDED
+    audit.record(db, actor_id=actor_id, action="tip.refund", entity_type="booking", entity_id=booking.id,
+                 changes={"amount": amount, "currency": payment.currency.value, "reason": reason[:255],
+                          "ledger_cancelled": ledger is not None}, ip=ip)
+    db.flush()
+    bookings.execute_refund(db, refund, payment, provider)
+    return refund
 
 
 def get_rating(db: Session, booking: Booking) -> tuple[BookingLeg | None, TripRating | None]:
