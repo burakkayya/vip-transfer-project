@@ -4,7 +4,7 @@
 import Ionicons from "@/components/Icon";
 import { useEffect, useState } from "react";
 import { Alert as NativeAlert, View } from "react-native";
-import { Alert, Button, Card, Row, T, colors, s } from "@/components/ui";
+import { Alert, Button, Card, Input, Row, T, colors, s } from "@/components/ui";
 import type { LatLng } from "@/components/mapTypes";
 import { api } from "@/lib/api";
 import { clock } from "@/lib/format";
@@ -152,5 +152,59 @@ export function CustomerNoteCard(props: { trip: Trip }) {
         </Row>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * K-79 günlük kiralama: gün sonu km kaydı. Gün içinde ya da bittikten sonra 24 saat içinde girilir, düzeltilebilir.
+ * Saat olaylardan hesaplanır; aşım ücreti bu kayda göre admin'de bilgi olarak görünür.
+ */
+export function DayReportCard(props: { trip: Trip; onDone: (t: Trip) => void }) {
+  const { trip } = props;
+  const [km, setKm] = useState(trip.day_km_used != null ? String(trip.day_km_used) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const value = Number(km);
+  const valid = km.trim() !== "" && Number.isInteger(value) && value >= 0 && value <= 3000;
+
+  async function save() {
+    if (!valid) {
+      setError("0 ile 3000 arasında tam sayı girin.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      props.onDone(await api<Trip>(`driver/trips/${trip.leg_id}/day-report`, { body: { km_used: value } }));
+      setSaved(true);
+    } catch (e) {
+      setError(errorTextTr(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <Row gap={8}>
+        <Ionicons name="speedometer-outline" size={20} color={colors.ink} />
+        <T style={{ fontWeight: "700" }}>Gün sonu km</T>
+      </Row>
+      <T style={s.hint}>
+        Bugün müşteriyle yapılan toplam kilometreyi girin (gün bitince ya da bittikten sonra 24 saat içinde). Paket sınırını
+        aşan km ve saat operasyona bildirilir.
+      </T>
+      <Input label="Bugün yapılan km" keyboardType="number-pad" inputMode="numeric" maxLength={4} value={km}
+        onChangeText={(v) => {
+          setKm(v.replace(/[^0-9]/g, ""));
+          setSaved(false);
+        }} />
+      <Alert text={error} />
+      {saved ? <Alert tone="ok" text={`Kaydedildi: ${trip.day_km_used ?? value} km.`} /> : null}
+      <Button title={trip.day_km_used != null ? "Km'yi güncelle" : "Km'yi kaydet"} icon="save-outline" variant="secondary"
+        busy={busy} onPress={save} />
+    </Card>
   );
 }

@@ -210,7 +210,12 @@
     "total1": "1 gün toplam",
     "bookingLine1": "Günlük kiralama · 1 gün · {package}",
     "allUnavailable": "Bu plan için uygun araç bulunamadı. Tarihi veya paketi değiştirip tekrar deneyin.",
-    "changePlan": "Planı değiştir"
+    "changePlan": "Planı değiştir",
+    "cancelDay": "Bu günü iptal et",
+    "cancelDayTitle": "{n}. günü iptal et",
+    "cancelDayText": "Yalnızca bu gün iptal edilir, diğer günler aynen devam eder. İade bu günün başlangıç saatine göre hesaplanır.",
+    "cancelDayConfirm": "Günü iptal et",
+    "dayCancelled": "{n}. gün iptal edildi."
   },
   "otp": {
     "phone": "Telefon numarası",

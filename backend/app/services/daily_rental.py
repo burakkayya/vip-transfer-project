@@ -169,3 +169,77 @@ def check_lead_time(db: Session, start_at: datetime, now: datetime) -> None:
     if start_at < now + timedelta(hours=hours):
         raise DomainError(f"günlük kiralama en az {hours} saat önceden yapılmalı",
                           code="daily_lead_time_too_short", details={"hours": hours})
+
+
+# --- K-79: gün sonu kaydı ve aşım bilgisi --------------------------------------------------------------------------
+
+DAY_REPORT_WINDOW = timedelta(hours=24)
+MAX_DAY_KM = 3000
+
+
+@dataclass(frozen=True)
+class DayUsage:
+    """Bir günün kullanımı. Saat başladı ve bitti olaylarından, km sürücünün beyanından. Aşım tam saate ve tam km'ye
+    yukarı yuvarlanır; tutar bilgi amaçlıdır (tahsil akışı yok)."""
+
+    started_at: datetime | None
+    finished_at: datetime | None
+    minutes_used: int | None
+    km_used: int | None
+    extra_hours: int
+    extra_km: int
+    extra_amount: Decimal
+
+
+def _event_time(db: Session, leg, event) -> datetime | None:
+    from app.models import TripEvent
+
+    return db.scalar(select(TripEvent.occurred_at)
+                     .where(TripEvent.booking_leg_id == leg.id, TripEvent.event_type == event)
+                     .order_by(TripEvent.occurred_at.desc()).limit(1))
+
+
+def day_usage(db: Session, booking, leg) -> DayUsage | None:
+    from app.models.enums import TripEventType
+
+    if not booking.is_daily or booking.daily_rate is None or booking.daily_package is None:
+        return None
+    hours, km, _ = package_limits(booking.daily_rate, booking.daily_package)
+    started = _event_time(db, leg, TripEventType.STARTED)
+    finished = _event_time(db, leg, TripEventType.FINISHED)
+    minutes = int((finished - started).total_seconds() // 60) if started and finished else None
+    extra_minutes = max(0, minutes - hours * 60) if minutes is not None else 0
+    extra_hours = -(-extra_minutes // 60)
+    extra_km = max(0, leg.day_km_used - km) if leg.day_km_used is not None else 0
+    hour_price = extra_price(booking.daily_rate.extra_hour_price, booking.currency, booking.exchange_rate)
+    km_price = extra_price(booking.daily_rate.extra_km_price, booking.currency, booking.exchange_rate)
+    amount = (hour_price * extra_hours + km_price * extra_km).quantize(Decimal("0.01"))
+    return DayUsage(started, finished, minutes, leg.day_km_used, extra_hours, extra_km, amount)
+
+
+def report_day(db: Session, driver, leg, km_used: int, now: datetime) -> None:
+    """Sürücü günün km'sini gün içinde ya da bittikten sonra 24 saat içinde girer (düzeltebilir)."""
+    from app.errors import Conflict
+    from app.models.enums import LegStatus, TripEventType
+    from app.services import audit
+
+    if not leg.booking.is_daily:
+        raise DomainError("gün sonu kaydı yalnızca günlük kiralamada girilir", code="not_daily")
+    if not 0 <= km_used <= MAX_DAY_KM:
+        raise DomainError(f"km 0 ile {MAX_DAY_KM} arasında olmalı", code="invalid_km")
+    if leg.status is LegStatus.STARTED:
+        pass
+    elif leg.status is LegStatus.COMPLETED:
+        finished = _event_time(db, leg, TripEventType.FINISHED)
+        # Bitiş olayı yoksa (yönetimden tamamlanmış) pencere planlanan bitişe göre işler.
+        if finished is None:
+            finished = leg.pickup_at + timedelta(minutes=leg.duration_minutes or 0)
+        if now - finished > DAY_REPORT_WINDOW:
+            raise Conflict("gün sonu kaydı süresi geçti (bitişten sonra 24 saat)", code="day_report_closed")
+    else:
+        raise Conflict("gün başlamadan km girilemez", code="day_not_started")
+    old = leg.day_km_used
+    leg.day_km_used = km_used
+    leg.day_reported_at = now
+    audit.record(db, actor_id=driver.user_id, action="booking_leg.day_report", entity_type="booking_leg",
+                 entity_id=leg.id, changes={"km_used": km_used, "previous": old})

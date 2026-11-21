@@ -210,7 +210,12 @@
     "total1": "Gesamt für 1 Tag",
     "bookingLine1": "Fahrer pro Tag · 1 Tag · {package}",
     "allUnavailable": "Für diesen Plan ist kein Fahrzeug verfügbar. Bitte Datum oder Paket ändern.",
-    "changePlan": "Plan ändern"
+    "changePlan": "Plan ändern",
+    "cancelDay": "Diesen Tag stornieren",
+    "cancelDayTitle": "Tag {n} stornieren",
+    "cancelDayText": "Nur dieser Tag wird storniert, die anderen Tage bleiben gebucht. Die Erstattung richtet sich nach der Startzeit dieses Tages.",
+    "cancelDayConfirm": "Tag stornieren",
+    "dayCancelled": "Tag {n} ist storniert."
   },
   "otp": {
     "phone": "Telefonnummer",

@@ -210,7 +210,12 @@
     "total1": "Total for 1 day",
     "bookingLine1": "Car by the day · 1 day · {package}",
     "allUnavailable": "No vehicle is available for this plan. Change the date or package and try again.",
-    "changePlan": "Change plan"
+    "changePlan": "Change plan",
+    "cancelDay": "Cancel this day",
+    "cancelDayTitle": "Cancel day {n}",
+    "cancelDayText": "Only this day is cancelled; your other days stay as booked. The refund is based on this day's start time.",
+    "cancelDayConfirm": "Cancel day",
+    "dayCancelled": "Day {n} is cancelled."
   },
   "otp": {
     "phone": "Phone number",

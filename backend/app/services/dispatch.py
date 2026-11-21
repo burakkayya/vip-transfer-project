@@ -40,10 +40,12 @@ from app.models.enums import (
     FlightDirection,
     LegStatus,
     OfferStatus,
+    ServiceType,
     TripEventType,
     VehicleStatus,
 )
 from app.config import get_settings
+from app.localtime import LOCAL_TZ
 from app.providers.routing import Point, haversine_km
 from app.services import audit, eta, meeting, notifications, system_settings, trip_updates
 from app.services.quotes import latest_exchange_rate
@@ -92,20 +94,37 @@ def missing_documents(
     return sorted(required - valid)
 
 
-def _is_busy(db: Session, driver_id: uuid.UUID, leg: BookingLeg) -> bool:
+def rest_gap(db: Session) -> timedelta:
+    """K-79: günlük kiralama gününden önce ve sonra sürücünün başka işe başlamadan dinleneceği süre (en az
+    `BUSY_BUFFER`). Aynı günlük rezervasyonun ardışık günleri arasında uygulanmaz (paket saati günü sınırlar)."""
+    hours = Decimal(str(system_settings.get(db, "daily_rest_hours")))
+    return max(BUSY_BUFFER, timedelta(minutes=int(hours * 60)))
+
+
+def _is_busy(db: Session, driver_id: uuid.UUID, leg: BookingLeg, rest: timedelta | None = None) -> bool:
     """Sürücünün başka bir işi bu işle (aralarında `BUSY_BUFFER` payla) zamanca kesişiyor mu? Her iki işin de
-    süresi hesaba katılır (K-29: günlük kiralama bacağı saatler sürer)."""
-    start = leg.pickup_at - BUSY_BUFFER
-    end = leg.pickup_at + timedelta(minutes=leg.duration_minutes or 60) + BUSY_BUFFER
+    süresi hesaba katılır (K-29: günlük kiralama bacağı saatler sürer). İşlerden biri günlük kiralamaysa
+    aradaki boşluk dinlenme süresidir (`daily_rest_hours`, K-79)."""
+    rest = rest if rest is not None else rest_gap(db)
+    leg_end = leg.pickup_at + timedelta(minutes=leg.duration_minutes or 60)
     other_end = BookingLeg.pickup_at + func.make_interval(0, 0, 0, 0, 0, func.coalesce(BookingLeg.duration_minutes, 60))
+
+    def overlaps(gap: timedelta):
+        return and_(BookingLeg.pickup_at < leg_end + gap, other_end > leg.pickup_at - gap)
+
+    same_booking = BookingLeg.booking_id == leg.booking_id
+    if leg.booking.is_daily:
+        cond = or_(and_(same_booking, overlaps(BUSY_BUFFER)), and_(~same_booking, overlaps(rest)))
+    else:
+        other_daily = Booking.service_type == ServiceType.DAILY
+        cond = or_(and_(~other_daily, overlaps(BUSY_BUFFER)), and_(other_daily, overlaps(rest)))
     return (
         db.scalar(
-            select(BookingLeg.id).where(
+            select(BookingLeg.id).join(Booking, Booking.id == BookingLeg.booking_id).where(
                 BookingLeg.driver_id == driver_id,
                 BookingLeg.id != leg.id,
                 BookingLeg.status.in_(ACTIVE_LEG_STATUSES),
-                BookingLeg.pickup_at < end,
-                other_end > start,
+                cond,
             ).limit(1)
         )
         is not None
@@ -113,8 +132,11 @@ def _is_busy(db: Session, driver_id: uuid.UUID, leg: BookingLeg) -> bool:
 
 
 def eligible_candidates(
-    db: Session, leg: BookingLeg, *, require_online: bool, now: datetime, driver_id: uuid.UUID | None = None
+    db: Session, leg: BookingLeg, *, require_online: bool, now: datetime, driver_id: uuid.UUID | None = None,
+    per_vehicle: bool = False,
 ) -> list[Candidate]:
+    """Uygun sürücü ve araçlar. Varsayılan olarak sürücü başına ilk uygun araç; `per_vehicle` ile sürücünün
+    her uygun aracı ayrı aday olur (K-80 toplu atama: bütün günlere uyan ortak aracı bulmak için)."""
     booking = leg.booking
     only = [Driver.id == driver_id] if driver_id is not None else []
     rows = db.execute(
@@ -133,16 +155,17 @@ def eligible_candidates(
         )
     ).all()
     on = leg.pickup_at.date()
+    rest = rest_gap(db)
     result: list[Candidate] = []
     seen: set[uuid.UUID] = set()
     for driver, vehicle in rows:
-        if driver.id in seen:
+        if driver.id in seen and not per_vehicle:
             continue
         if missing_documents(db, DocumentOwner.DRIVER, driver.id, on):
             continue
         if missing_documents(db, DocumentOwner.VEHICLE, vehicle.id, on):
             continue
-        if _is_busy(db, driver.id, leg):
+        if _is_busy(db, driver.id, leg, rest):
             continue
         seen.add(driver.id)
         result.append(Candidate(driver, vehicle))
@@ -176,7 +199,7 @@ def offer_leg(db: Session, leg: BookingLeg, *, now: datetime, resend_closed: boo
         notifications.notify_driver(
             db,
             c.driver,
-            "dispatch_offer",
+            "daily_dispatch_offer" if leg.booking.is_daily else "dispatch_offer",
             {"pickup": leg.pickup_region.name, "dropoff": leg.dropoff_region.name},
             {"type": "offer", "leg_id": str(leg.id)},
         )
@@ -307,6 +330,84 @@ def manual_assign(
     if candidate is None:
         raise Conflict("sürücü bu iş için uygun değil (belge, araç veya zaman çakışması)", code="not_eligible")
     assign(db, leg, candidate, actor_id=actor_id, now=now, ip=ip)
+
+
+OPEN_DAY = (LegStatus.PENDING, LegStatus.ASSIGNED)
+
+
+def _open_days(booking: Booking) -> list[BookingLeg]:
+    return [leg for leg in booking.legs if leg.status in OPEN_DAY]
+
+
+def booking_candidates(db: Session, booking: Booking, now: datetime) -> list[Candidate]:
+    """K-79: günlük kiralamanın açık günlerinin tümüne uygun sürücü ve araçlar (her günün uygunlarının kesişimi).
+    Sürücünün bu rezervasyondaki kendi günleri çakışma sayılmaz."""
+    if not booking.is_daily:
+        raise DomainError("toplu atama yalnızca günlük kiralamada yapılır", code="not_daily")
+    days = _open_days(booking)
+    if not days:
+        return []
+    common: dict[tuple[uuid.UUID, uuid.UUID], Candidate] | None = None
+    for leg in days:
+        found = {(c.driver.id, c.vehicle.id): c
+                 for c in eligible_candidates(db, leg, require_online=False, now=now, per_vehicle=True)}
+        common = found if common is None else {k: v for k, v in common.items() if k in found}
+        if not common:
+            return []
+    return list(common.values())
+
+
+def assign_all_days(
+    db: Session,
+    booking: Booking,
+    driver_id: uuid.UUID,
+    vehicle_id: uuid.UUID | None,
+    *,
+    actor_id: uuid.UUID,
+    now: datetime,
+    ip: str | None,
+) -> list[BookingLeg]:
+    """K-79: günlük kiralamanın açık günlerini (bekleyen ya da atanmış) tek sürücüye atar. Herhangi bir gün için
+    sürücü uygun değilse hiçbiri atanmaz; yanıt uygun olmayan günleri listeler."""
+    if not booking.is_daily:
+        raise DomainError("toplu atama yalnızca günlük kiralamada yapılır", code="not_daily")
+    # BIZ-08 kilit sırası: önce bacaklar (id sırasıyla), sonra teklifler.
+    legs = list(db.scalars(select(BookingLeg).where(BookingLeg.booking_id == booking.id)
+                           .order_by(BookingLeg.id).with_for_update(of=BookingLeg)))
+    for leg in legs:
+        db.refresh(leg)
+    days = sorted((leg for leg in legs if leg.status in OPEN_DAY), key=lambda x: x.leg_order)
+    if not days:
+        raise Conflict("atanabilecek gün yok", code="no_open_days")
+    _assignable_booking(days[0])
+    per_day: list[dict[uuid.UUID, Candidate]] = []
+    missing: list[int] = []
+    for leg in days:
+        found = {c.vehicle.id: c
+                 for c in eligible_candidates(db, leg, require_online=False, now=now, driver_id=driver_id,
+                                              per_vehicle=True)
+                 if vehicle_id is None or c.vehicle.id == vehicle_id}
+        if not found:
+            missing.append(leg.leg_order)
+        per_day.append(found)
+    if missing:
+        raise Conflict("sürücü bazı günler için uygun değil (belge, araç, çakışma veya dinlenme süresi)",
+                       code="not_eligible", details={"days": missing})
+    # Bütün günlerde aynı araç: her gün uygun olan ortak bir araç.
+    common = set(per_day[0]).intersection(*per_day[1:])
+    if not common:
+        raise Conflict("sürücünün bütün günlere uygun tek bir aracı yok", code="not_eligible",
+                       details={"days": []})
+    vid = sorted(common, key=str)[0]
+    for leg, found in zip(days, per_day):
+        if leg.driver_id == driver_id and leg.vehicle_id == vid:
+            continue
+        if leg.driver_id is not None and leg.driver_id != driver_id:
+            # Gün başka sürücüdeydi: eski sürücüye iptal bildirimi gider (tek gün atamasıyla aynı sonuç).
+            trip_updates.to_driver(db, leg, "trip_cancelled",
+                                   pickup_at=leg.pickup_at.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M"))
+        assign(db, leg, found[vid], actor_id=actor_id, now=now, ip=ip)
+    return days
 
 
 def finish_radius_m(leg: BookingLeg) -> int:

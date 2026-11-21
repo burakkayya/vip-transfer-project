@@ -8,7 +8,7 @@ import { useCan } from "@/components/Shell";
 import { ErrorBox, Field, Msg, PageHead, Select, useAction, useData } from "@/components/ui";
 import { ApiError, api, errorMessage, withQuery } from "@/lib/api";
 import { dt, localToIso, money } from "@/lib/format";
-import { BOOKING_CHANNEL, BOOKING_TYPE, LOCALE, MANUAL_PAYMENT_METHOD } from "@/lib/labels";
+import { BOOKING_CHANNEL, BOOKING_TYPE, DAILY_PACKAGE, LOCALE, MANUAL_PAYMENT_METHOD, SERVICE_TYPE } from "@/lib/labels";
 
 interface Catalog {
   regions: Region[];
@@ -21,8 +21,22 @@ interface QuoteRow {
   vehicle_type_code: string;
   error?: string;
   message?: string;
-  quote?: { total: string; price: string; currency: string; legs: { distance_km: string; duration_minutes: number }[] };
+  quote?: {
+    total: string;
+    price: string;
+    currency: string;
+    legs?: { distance_km: string; duration_minutes: number }[];
+    // K-79 günlük kiralama teklifi
+    day_price?: string;
+    days?: number;
+    hours_per_day?: number;
+    km_per_day?: number;
+  };
 }
+
+const DAY_COUNTS: Record<string, string> = Object.fromEntries(
+  Array.from({ length: 14 }, (_, i) => [String(i + 1), `${i + 1} gün`]),
+);
 
 interface Created {
   booking: { id: string; booking_code: string; status: string; total_amount: string; currency: string };
@@ -42,7 +56,10 @@ export default function NewBookingPage() {
   const [lookup, setLookup] = useState<"idle" | "missing">("idle");
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  // 2. Yolculuk
+  // 2. Yolculuk (K-79: hizmet türü transfer ya da günlük kiralama)
+  const [service, setService] = useState("transfer");
+  const [days, setDays] = useState("1");
+  const [pkg, setPkg] = useState("tam");
   const [type, setType] = useState("planli");
   const [pickup, setPickup] = useState<PlaceValue | null>(null);
   const [dropoff, setDropoff] = useState<PlaceValue | null>(null);
@@ -77,8 +94,20 @@ export default function NewBookingPage() {
   const [created, setCreated] = useState<Created | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const instant = type === "anlik";
+  const daily = service === "gunluk";
+  const instant = !daily && type === "anlik";
   const trip = useMemo(() => {
+    if (daily) {
+      if (!pickup || !pickupAt) return null;
+      return {
+        pickup: placeBody(pickup),
+        days: Number(days),
+        package: pkg,
+        passenger_count: Number(pax) || 1,
+        luggage_count: Number(luggage) || 0,
+        country_code: customer?.country_code ?? null,
+      };
+    }
     if (!pickup || !dropoff || (!instant && !pickupAt)) return null;
     return {
       pickup: placeBody(pickup),
@@ -88,7 +117,7 @@ export default function NewBookingPage() {
       luggage_count: Number(luggage) || 0,
       country_code: customer?.country_code ?? null,
     };
-  }, [pickup, dropoff, instant, pickupAt, returnAt, pax, luggage, customer]);
+  }, [daily, days, pkg, pickup, dropoff, instant, pickupAt, returnAt, pax, luggage, customer]);
   const tripKey = JSON.stringify([trip, instant ? "now" : pickupAt]);
   const stale = quotes !== null && quotedKey !== tripKey;
   const selected = quotes?.find((q) => q.vehicle_type_code === vehicle && q.quote)?.quote ?? null;
@@ -122,7 +151,9 @@ export default function NewBookingPage() {
   async function calculate() {
     if (!trip) return;
     const ok = await quoteAction.run(async () => {
-      const rows = await api<QuoteRow[]>("admin/quotes", { body: { ...trip, pickup_at: pickupIso() } });
+      const rows = daily
+        ? await api<QuoteRow[]>("admin/daily-quotes", { body: { ...trip, start_at: pickupIso() } })
+        : await api<QuoteRow[]>("admin/quotes", { body: { ...trip, pickup_at: pickupIso() } });
       setQuotes(rows);
       setQuotedKey(tripKey);
       if (!rows.some((r) => r.vehicle_type_code === vehicle && r.quote)) setVehicle(rows.find((r) => r.quote)?.vehicle_type_code ?? "");
@@ -135,6 +166,25 @@ export default function NewBookingPage() {
     let result: Created | null = null;
     const ok = await submitAction.run(async () => {
       try {
+        const common = {
+          customer_id: customer.id,
+          vehicle_type_code: vehicle,
+          expected_total: selected.total,
+          override_total: override && overrideTotal ? overrideTotal : null,
+          override_reason: override ? overrideReason.trim() : null,
+          passenger_name: passenger.trim(),
+          note: note.trim() || null,
+          locale,
+          channel,
+          consent_confirmed: consent,
+          payment_hours: Number(hours),
+          send_sms: sms,
+          payment: payMode === "paid" ? { method, amount: total, reference: reference.trim() || null } : null,
+        };
+        if (daily) {
+          result = await api<Created>("admin/daily-bookings", { body: { ...trip, ...common, start_at: pickupIso() } });
+          return;
+        }
         result = await api<Created>("admin/bookings", {
           body: {
             ...trip,
@@ -269,6 +319,34 @@ export default function NewBookingPage() {
       <section className="card stack" aria-labelledby="s-trip">
         <h2 id="s-trip">2. Yolculuk</h2>
         <div className="row end">
+          <Field label="Hizmet" hint={daily ? "Her gün ayrı iş; araç ve sürücü gün boyu müşteriyle" : undefined}>
+            <Select value={service} onChange={(v) => { setService(v); setQuotes(null); setVehicle(""); setOverride(false); }} options={SERVICE_TYPE} />
+          </Field>
+        </div>
+        {daily ? (
+          <>
+            <div className="row end">
+              <Field label="İlk gün başlangıcı (Türkiye saati)" hint="Müşteri sitesinde en az 24 saat önce; admin girişinde en az 1 saat">
+                <input type="datetime-local" value={pickupAt} onChange={(e) => setPickupAt(e.target.value)} />
+              </Field>
+              <Field label="Gün sayısı">
+                <Select value={days} onChange={setDays} options={DAY_COUNTS} />
+              </Field>
+              <Field label="Paket">
+                <Select value={pkg} onChange={setPkg} options={DAILY_PACKAGE} />
+              </Field>
+              <Field label="Yolcu">
+                <input type="number" min={1} max={50} value={pax} onChange={(e) => setPax(e.target.value)} />
+              </Field>
+              <Field label="Bagaj">
+                <input type="number" min={0} max={50} value={luggage} onChange={(e) => setLuggage(e.target.value)} />
+              </Field>
+            </div>
+            <PlaceInput label="Başlangıç noktası (otel)" regions={catalog.data.regions} value={pickup} onChange={setPickup} />
+          </>
+        ) : (
+          <>
+        <div className="row end">
           <Field label="Tür" hint={instant ? "Alış zamanı şimdi; ödeme gelince yakın sürücülere teklif gider" : "En az 2 saat sonrası"}>
             <Select value={type} onChange={setType} options={BOOKING_TYPE} />
           </Field>
@@ -296,6 +374,8 @@ export default function NewBookingPage() {
           <PlaceInput label="Alış noktası" regions={catalog.data.regions} value={pickup} onChange={setPickup} />
           <PlaceInput label="Varış noktası" regions={catalog.data.regions} value={dropoff} onChange={setDropoff} />
         </div>
+          </>
+        )}
       </section>
 
       <section className="card stack" aria-labelledby="s-price">
@@ -322,11 +402,18 @@ export default function NewBookingPage() {
                   </span>
                   {q.quote
                     ? <strong>{money(q.quote.total, q.quote.currency)}</strong>
-                    : <span className="muted">{q.error === "luggage_exceeded" ? "Bagaj sığmıyor" : "Kapasite yetmiyor"}</span>}
+                    : <span className="muted">{q.error === "luggage_exceeded" ? "Bagaj sığmıyor"
+                      : q.error === "daily_rate_unavailable" ? "Günlük fiyat tanımlı değil" : "Kapasite yetmiyor"}</span>}
                 </label>
               );
             })}
-            {selected && (
+            {selected?.day_price && (
+              <p className="hint">
+                {money(selected.day_price, selected.currency)} / gün · günde {selected.hours_per_day} saat, {selected.km_per_day} km
+                {" · "}aşım bilgi amaçlı, tahsil edilmez
+              </p>
+            )}
+            {selected?.legs && (
               <p className="hint">
                 {selected.legs.map((l, i) => `${i ? "Dönüş" : "Gidiş"} ${Number(l.distance_km).toFixed(0)} km, ~${l.duration_minutes} dk`).join(" · ")}
               </p>
@@ -368,7 +455,7 @@ export default function NewBookingPage() {
             <Select value={locale} onChange={setLocale} options={LOCALE} />
           </Field>
         </div>
-        <Field label="Not (isteğe bağlı, sürücüye gösterilir)">
+        <Field label={daily ? "Gün planı (isteğe bağlı, sürücüye kabulden sonra gösterilir)" : "Not (isteğe bağlı, sürücüye gösterilir)"}>
           <textarea rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </section>

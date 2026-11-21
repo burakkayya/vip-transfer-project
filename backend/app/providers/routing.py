@@ -115,8 +115,10 @@ class GoogleRouting:
             raise ServiceUnavailable("mesafe hesaplanamadı") from exc
         if not routes:
             raise ServiceUnavailable("bu iki nokta arasında karayolu bulunamadı")
-        meters = routes[0]["distanceMeters"]
-        seconds = int(routes[0]["duration"].rstrip("s"))
+        # Google proto3 JSON sıfır değerli alanları göndermez: başlangıç ve hedef aynıysa (ör. sürücü tam alış
+        # noktasında "yola çıktı" der) `distanceMeters` hiç gelmez, `duration` "0s" olur.
+        meters = routes[0].get("distanceMeters", 0)
+        seconds = int(str(routes[0].get("duration", "0s")).rstrip("s") or 0)
         return Route(
             distance_km=(Decimal(meters) / 1000).quantize(Decimal("0.01")),
             duration_minutes=max(1, round(seconds / 60)),

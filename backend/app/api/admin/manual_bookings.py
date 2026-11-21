@@ -20,11 +20,14 @@ from sqlalchemy import select
 from app.api.deps import ClientIp, DbSession, FinanceStaff, Now, OpsOrSupport, OpsStaff
 from app.api.public import autocomplete as public_autocomplete
 from app.api.public import place_details as public_place_details
-from app.api.public import quote_out, to_quote_input
+from app.api.public import daily_quote_out, quote_out, to_daily_input, to_quote_input
 from app.api.schemas import (
     SUPPORTED_LOCALES,
     BookingCreateIn,
     BookingOut,
+    DailyBookingCreateIn,
+    DailyQuoteIn,
+    DailyQuoteOut,
     PlaceIn,
     PlaceOut,
     PlaceSuggestionOut,
@@ -38,10 +41,10 @@ from app.api.schemas import (
 from app.errors import DomainError, NotFound
 from app.localtime import LOCAL_TZ
 from app.models import Booking, Customer, Refund, Region, User, VehicleType
-from app.models.enums import BookingChannel, BookingStatus, ManualPaymentMethod
+from app.models.enums import BookingChannel, BookingStatus, BookingType, ManualPaymentMethod
 from app.providers.routing import get_routing
 from app.security.crypto import blind_index, mask_email, mask_phone, normalize_email, normalize_phone
-from app.services import audit, auth, bookings, notifications, payments, quotes
+from app.services import audit, auth, bookings, daily_rental, notifications, payments, quotes
 
 router = APIRouter(tags=["admin:manual-booking"])
 
@@ -188,6 +191,30 @@ def admin_quotes(body: AdminQuoteIn, staff: OpsOrSupport, db: DbSession, now: No
     return out
 
 
+class AdminDailyQuoteIn(DailyQuoteIn):
+    """K-79: günlük kiralama için tüm aktif araç tiplerinin fiyatı (müşteri teklifiyle aynı hesap)."""
+
+    vehicle_type_code: str | None = None  # type: ignore[assignment]
+
+
+@router.post("/daily-quotes")
+def admin_daily_quotes(body: AdminDailyQuoteIn, staff: OpsOrSupport, db: DbSession, now: Now):
+    types = db.scalars(select(VehicleType).where(VehicleType.is_active.is_(True))
+                       .order_by(VehicleType.capacity)).all()
+    out: list[dict] = []
+    for vt in types:
+        req = DailyQuoteIn(**body.model_dump(exclude={"vehicle_type_code"}), vehicle_type_code=vt.code)
+        try:
+            q = daily_rental.build_daily_quote(db, to_daily_input(db, req), now=now)
+        except DomainError as exc:
+            if exc.code in ("capacity_exceeded", "luggage_exceeded", "daily_rate_unavailable"):
+                out.append({"vehicle_type_code": vt.code, "error": exc.code, "message": str(exc)})
+                continue
+            raise
+        out.append({"vehicle_type_code": vt.code, "quote": DailyQuoteOut.model_validate(daily_quote_out(db, q))})
+    return out
+
+
 # --- Rezervasyon ---------------------------------------------------------------
 
 
@@ -270,11 +297,19 @@ def share_text(b: Booking) -> str:
     """WhatsApp vb. kanala yapıştırılacak özet (rezervasyon dilinde; desteklenmeyen dilde İngilizce)."""
     loc = b.locale if b.locale in SHARE_LOCALES else "en"
     fmt = "%d.%m.%Y %H:%M"
-    legs = "\n".join(
-        f"{leg.pickup_at.astimezone(LOCAL_TZ).strftime(fmt)} "
-        f"{leg.pickup_address or leg.pickup_region.name} → {leg.dropoff_address or leg.dropoff_region.name}"
-        for leg in b.legs
-    )
+    if b.is_daily:
+        # K-79: her gün aynı yerden başlar; "A → A" yerine gün numarası ve başlangıç noktası.
+        legs = "\n".join(
+            f"{leg.leg_order}) {leg.pickup_at.astimezone(LOCAL_TZ).strftime(fmt)} "
+            f"{leg.pickup_address or leg.pickup_region.name}"
+            for leg in b.legs
+        )
+    else:
+        legs = "\n".join(
+            f"{leg.pickup_at.astimezone(LOCAL_TZ).strftime(fmt)} "
+            f"{leg.pickup_address or leg.pickup_region.name} → {leg.dropoff_address or leg.dropoff_region.name}"
+            for leg in b.legs
+        )
     url = notifications.booking_url(b)
     if b.status is BookingStatus.PENDING_PAYMENT:
         due = b.payment_due_at.astimezone(LOCAL_TZ).strftime(fmt) if b.payment_due_at else "-"
@@ -352,6 +387,71 @@ def create_manual_booking(body: AdminBookingIn, staff: OpsStaff, db: DbSession, 
         notifications.notify_customer(db, booking, "booking_created_admin")
     db.commit()
     return {"booking": BookingOut.build(booking), "manual": manual_info(booking)}
+
+
+class AdminDailyBookingIn(DailyBookingCreateIn):
+    """K-79: admin'in telefon, WhatsApp vb. kanaldan aldığı günlük kiralama. 24 saat ön koşulu uygulanmaz
+    (operasyon sürücü bulabileceğine kendisi karar verir); ödeme ve fiyat değiştirme transferle aynıdır."""
+
+    customer_id: uuid.UUID
+    channel: BookingChannel
+    consent_confirmed: bool
+    override_total: Decimal | None = Field(default=None, gt=0, decimal_places=2)
+    override_reason: str | None = Field(default=None, max_length=500)
+    payment_hours: int = Field(default=DEFAULT_PAYMENT_HOURS, ge=MIN_PAYMENT_HOURS, le=MAX_PAYMENT_HOURS)
+    payment: ManualPaymentIn | None = None
+    send_sms: bool = True
+    accept_disclosure: bool = True
+    accept_distance_sales: bool = True
+
+    @model_validator(mode="after")
+    def _reason(self) -> "AdminDailyBookingIn":
+        if self.override_total is not None and not (self.override_reason and self.override_reason.strip()):
+            raise ValueError("fiyat değiştirildiyse gerekçe yazılmalı")
+        return self
+
+
+def _finish_admin_booking(db, booking: Booking, body, staff, ip, now) -> dict:
+    if body.payment is not None:
+        payments.record_manual_payment(
+            db, booking, staff_id=staff.id, method=body.payment.method, amount=body.payment.amount,
+            reference=body.payment.reference, note=body.payment.note, now=now, ip=ip,
+        )
+    elif body.send_sms:
+        notifications.notify_customer(db, booking, "booking_created_admin")
+    db.commit()
+    return {"booking": BookingOut.build(booking), "manual": manual_info(booking)}
+
+
+@router.post("/daily-bookings", status_code=201)
+def create_manual_daily_booking(body: AdminDailyBookingIn, staff: OpsStaff, db: DbSession, ip: ClientIp, now: Now):
+    if not body.consent_confirmed:
+        raise DomainError(
+            "müşteriye aydınlatma metni ve mesafeli satış bilgilendirmesi iletilip onayı alınmalı",
+            code="consent_required",
+        )
+    customer = db.get(Customer, body.customer_id)
+    if customer is None or customer.deleted_at is not None:
+        raise NotFound("müşteri bulunamadı")
+    req = to_daily_input(db, body)
+    if req.country_code is None:
+        req = dataclasses.replace(req, country_code=customer.country_code)
+    if req.start_at < now + PAYMENT_BEFORE_PICKUP:
+        raise DomainError("ilk gün en az 1 saat sonra başlamalı", code="daily_lead_time_too_short",
+                          details={"hours": 1})
+    q = daily_rental.build_daily_quote(db, req, now=now)
+    entry = bookings.AdminEntry(
+        staff_id=staff.id, channel=body.channel,
+        payment_due_at=payment_due(q.legs[0].pickup_at, now, body.payment_hours),
+        override_total=body.override_total, override_reason=body.override_reason,
+    )
+    booking = bookings.create_booking(
+        db, customer=customer, quote=q, expected_total=body.expected_total, booking_type=BookingType.SCHEDULED,
+        passenger_name=body.passenger_name, passenger_count=body.passenger_count,
+        luggage_count=body.luggage_count, note=body.note, flights=[], locale=body.locale, ip=ip, now=now,
+        admin=entry, child_seat_count=body.child_seat_count,
+    )
+    return _finish_admin_booking(db, booking, body, staff, ip, now)
 
 
 @router.post("/bookings/{booking_id}/manual-payment")

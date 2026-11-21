@@ -393,7 +393,11 @@ def cancel_booking(
         if not 0 <= override_refund_percent <= 100:
             raise DomainError("iade oranı 0-100 arasında olmalı")
         percent = override_refund_percent
-        amount = (booking.quoted_price * percent / Decimal(100)).quantize(Decimal("0.01"))
+        # K-80: günlükte oran yalnızca açık (başlamamış) günlerin payına uygulanır; iptal veya iade edilmiş
+        # günler tabana girmez (aksi halde son gün iptalinde fazla iade olur).
+        base = (sum((leg.leg_price for leg in booking.legs if leg.status in (LegStatus.PENDING, LegStatus.ASSIGNED)),
+                    Decimal("0")) if booking.is_daily else booking.quoted_price)
+        amount = (base * percent / Decimal(100)).quantize(Decimal("0.01"))
     elif booking.is_daily:
         amount = quote.refund_amount  # gün bazlı toplam (oran yuvarlanmış gösterimdir)
 
@@ -462,6 +466,95 @@ def cancel_booking(
         # BIZ-03: iptal, hakediş iptali, denetim kaydı ve PENDING iade birlikte commit edilir; sağlayıcı
         # ancak bundan sonra çağrılır. Böylece commit hatası iadeyi tekrarlatmaz (rezervasyon iptal kalır).
         execute_refund(db, refund, payment, provider)
+    return refund
+
+
+DAY_CANCELLABLE = {BookingStatus.CONFIRMED, BookingStatus.ASSIGNED, BookingStatus.IN_PROGRESS}
+DAY_OPEN = (LegStatus.PENDING, LegStatus.ASSIGNED)
+
+
+def daily_leg(booking: Booking, leg_id: uuid.UUID) -> BookingLeg:
+    if not booking.is_daily:
+        raise DomainError("gün iptali yalnızca günlük kiralamada yapılır", code="not_daily")
+    leg = next((leg for leg in booking.legs if leg.id == leg_id), None)
+    if leg is None:
+        raise NotFound("gün bulunamadı")
+    return leg
+
+
+def day_refund_quote(db: Session, booking: Booking, leg: BookingLeg, now: datetime) -> cancellation.RefundQuote:
+    """K-79: tek günün iadesi, o günün başlangıcına göre K-14 kademesiyle (tam iptaldeki gün hesabıyla aynı)."""
+    if booking.status is BookingStatus.PENDING_PAYMENT or leg.status not in DAY_OPEN:
+        return cancellation.RefundQuote(Decimal("0"), 0, Decimal("0.00"), False)
+    policy = db.get(CancellationPolicy, booking.cancellation_policy_id)
+    tiers = [cancellation.Tier(t.hours_before_pickup, t.refund_percent) for t in policy.tiers]
+    return cancellation.quote_refund(leg.leg_price, leg.pickup_at, now, tiers, booking.has_guarantee)
+
+
+def cancel_day(
+    db: Session,
+    booking: Booking,
+    leg_id: uuid.UUID,
+    *,
+    provider: PaymentProvider,
+    actor_id: uuid.UUID,
+    reason: str,
+    now: datetime,
+    ip: str | None,
+    by_staff: bool = False,
+    override_refund_percent: int | None = None,
+) -> Refund | None:
+    """K-79: günlük kiralamada tek bir günü iptal eder ve o günün payını politikaya göre iade eder.
+    Açık başka gün kalmıyorsa (ve hiç tamamlanan gün yoksa) rezervasyonun tamamı iptal edilir."""
+    from app.services.dispatch import _refresh_booking_status
+
+    daily_leg(booking, leg_id)
+    lock_booking(db, booking)
+    leg = daily_leg(booking, leg_id)
+    if booking.status not in DAY_CANCELLABLE:
+        raise Conflict("bu rezervasyonda gün iptal edilemez", code="not_cancellable")
+    if leg.status not in DAY_OPEN:
+        raise Conflict("bu gün başladı, tamamlandı ya da zaten iptal edildi", code="day_not_cancellable")
+    others = [x for x in booking.legs if x.id != leg.id and x.status is not LegStatus.CANCELLED]
+    if not others:
+        return cancel_booking(db, booking, provider=provider, actor_id=actor_id, reason=reason, now=now, ip=ip,
+                              override_refund_percent=override_refund_percent, by_staff=by_staff)
+
+    quote = day_refund_quote(db, booking, leg, now)
+    percent, amount = quote.refund_percent, quote.refund_amount
+    if override_refund_percent is not None:
+        if not by_staff:
+            raise Forbidden("iade oranını yalnızca personel değiştirebilir")
+        percent = override_refund_percent
+        amount = (leg.leg_price * percent / Decimal(100)).quantize(Decimal("0.01"))
+
+    was_assigned = leg.driver_id is not None
+    leg.status = LegStatus.CANCELLED
+    if was_assigned:
+        trip_updates.to_driver(db, leg, "trip_cancelled",
+                               pickup_at=leg.pickup_at.astimezone(LOCAL_TZ).strftime("%d.%m %H:%M"))
+    for offer in db.scalars(select(DispatchOffer).where(DispatchOffer.booking_leg_id == leg.id,
+                                                        DispatchOffer.status == OfferStatus.SENT)):
+        offer.status = OfferStatus.WITHDRAWN
+    _refresh_booking_status(booking)
+
+    refund = None
+    payment = paid_payment(db, booking, lock=True)
+    if payment is not None:
+        amount = min(amount, refundable_amount(db, payment))
+    if payment is not None and amount > 0:
+        refund = Refund(payment_id=payment.id, amount=amount, reason=reason[:255],
+                        policy_id=booking.cancellation_policy_id, refund_percent=percent, created_by=actor_id)
+        db.add(refund)
+        db.flush()
+    audit.record(
+        db, actor_id=actor_id, action="booking.cancel_day", entity_type="booking", entity_id=booking.id,
+        changes={"leg_id": leg.id, "leg_order": leg.leg_order, "refund_percent": percent, "refund_amount": amount,
+                 "override": override_refund_percent is not None, "reason": reason[:255]},
+        ip=ip,
+    )
+    if refund is not None:
+        execute_refund(db, refund, payment, provider)  # BIZ-03 ile aynı sıra: kayıtlar önce, sağlayıcı sonra
     return refund
 
 

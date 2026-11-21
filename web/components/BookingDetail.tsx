@@ -18,6 +18,7 @@ import Icon from "./Icon";
 import { useSessionExpired } from "./RequireLogin";
 import { LoadingState } from "./States";
 import { DriverCard, MeetingGuidePanel, PassengerStatus, RatingPanel, SharePanel, showPassengerStatus } from "./MeetingTools";
+import { DayCancel, canCancelDay } from "./DayCancel";
 import { CHAT_OPEN, ChatPanel, EtaLine, FinishPanel, useTripEta, useUnread } from "./TripTools";
 
 const TRACKABLE = new Set(["yolda", "vardi", "basladi"]);
@@ -131,6 +132,8 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
+  const [dayNotice, setDayNotice] = useState<string | null>(null);
+  const [dayPanel, setDayPanel] = useState<string | null>(null);
   const busyRef = useRef(false);
   const openRef = useRef<HTMLButtonElement>(null);
   const panelHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -223,6 +226,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
     try {
       setBooking(await api<Booking>(`me/bookings/${props.code}/cancel`, { body: {} }));
       setRefund(null);
+      setDayNotice(null);
       setCancelled(true);
       pendingFocus.current = "notice";
     } catch (e) {
@@ -286,6 +290,11 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
           {t("cancelled")}
         </p>
       )}
+      {dayNotice && (
+        <p className="alert ok" role="status" tabIndex={-1} ref={noticeRef}>
+          {dayNotice}
+        </p>
+      )}
       {finished && (
         <p className="alert ok" role="status" tabIndex={-1} ref={noticeRef}>
           {t("finishDone")}
@@ -344,6 +353,11 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
                 <span>{dateTime(leg.pickup_at, locale)}</span>
               </p>
             </div>
+            {leg.status === "iptal" && (
+              <p className="leg-note">
+                <span className="badge danger">{t("legStatus.iptal")}</span>
+              </p>
+            )}
             {leg.status !== "iptal" && (
               <ol className="timeline" aria-label={t("progress")}>
                 {LEG_FLOW.map((st, i) => (
@@ -364,7 +378,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
                     <dt>
                       <Icon name="pin" size={16} /> {t("address")}
                     </dt>
-                    <dd><span dir="ltr">{[leg.pickup_address, leg.dropoff_address].filter(Boolean).join(" → ")}</span></dd>
+                    <dd><span dir="ltr">{booking.daily ? leg.pickup_address : [leg.pickup_address, leg.dropoff_address].filter(Boolean).join(" → ")}</span></dd>
                   </>
                 )}
                 {leg.flight && (
@@ -405,6 +419,22 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
                 onChange={(st) =>
                   setBooking((b) => b && { ...b, legs: b.legs.map((x) => (x.id === leg.id ? { ...x, passenger_status: st } : x)) })
                 }
+              />
+            )}
+            {canCancelDay(booking, leg) && (
+              <DayCancel
+                code={props.code}
+                booking={booking}
+                leg={leg}
+                openId={dayPanel}
+                onOpen={setDayPanel}
+                onDone={(b, notice) => {
+                  setBooking(b);
+                  setDayPanel(null);
+                  setFinished(false);
+                  setDayNotice(notice);
+                  pendingFocus.current = "notice";
+                }}
               />
             )}
             {leg.pickup_region.type === "havalimani" && leg.status !== "iptal" && leg.status !== "bitti" && (
@@ -451,6 +481,7 @@ export default function BookingDetail(props: { code: string; justPaid?: boolean 
           onDone={(b) => {
             setBooking(b);
             setFinishing(false);
+            setDayNotice(null);
             setFinished(true);
             pendingFocus.current = "notice";
           }}

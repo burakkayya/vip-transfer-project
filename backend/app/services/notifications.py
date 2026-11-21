@@ -57,6 +57,8 @@ def render(db: Session, code: str, locale: str, channel: NotificationChannel, pa
 def booking_params(booking: Booking) -> dict[str, str]:
     leg = booking.legs[0]
     return {
+        # K-29: günlük kiralamada gün sayısı (rezervasyondaki plan).
+        "days": str(len(booking.legs)),
         "booking_code": booking.booking_code,
         "pickup_at": leg.pickup_at.astimezone(LOCAL_TZ).strftime("%d.%m.%Y %H:%M"),
         "pickup": leg.pickup_region.name,
@@ -88,9 +90,17 @@ def _record(db: Session, recipient_type: str, recipient_id, channel, code, ok: b
     )
 
 
+def service_code(db: Session, booking: Booking, code: str, channel: NotificationChannel) -> str:
+    """K-29: günlük kiralamada `daily_<kod>` şablonu varsa o kullanılır (transfer şablonu "Kemer > Kemer" yazar)."""
+    if getattr(booking, "is_daily", False) and _template(db, f"daily_{code}", booking.locale, channel) is not None:
+        return f"daily_{code}"
+    return code
+
+
 def notify_customer(db: Session, booking: Booking, code: str) -> None:
     customer = booking.customer
     phone = customer.user.phone
+    code = service_code(db, booking, code, NotificationChannel.SMS)
     rendered = render(db, code, booking.locale, NotificationChannel.SMS, booking_params(booking))
     if rendered is None or not phone:
         _record(db, "customer", customer.id, NotificationChannel.SMS, code, False, "şablon yok")

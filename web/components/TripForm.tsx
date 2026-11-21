@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { inputFromNow } from "@/lib/format";
 import type { Trip } from "@/lib/trip";
@@ -10,6 +10,7 @@ import type { Region } from "@/lib/types";
 import { useRouter } from "@/i18n/navigation";
 import AddressField from "./AddressField";
 import Icon from "./Icon";
+import Segmented from "./Segmented";
 
 export function useRegions(initial: Region[]) {
   const [regions, setRegions] = useState(initial);
@@ -53,7 +54,6 @@ export default function TripForm(props: { regions: Region[]; initial: Trip; onSu
   const [minAt, setMinAt] = useState<string | undefined>(undefined);
   // Eksik adres yalnızca gönderimde bildirilir (düğme devre dışı bırakılmaz; neyin eksik olduğu söylenir).
   const [missing, setMissing] = useState<{ from: boolean; to: boolean }>({ from: false, to: false });
-  const typeRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const set = <K extends keyof Trip>(k: K, v: Trip[K]) => setTrip((s) => ({ ...s, [k]: v }));
 
   // "Şimdi" istemcide hesaplanır (sunucu çiziminde farklı saat olmasın).
@@ -71,36 +71,10 @@ export default function TripForm(props: { regions: Region[]; initial: Trip; onSu
     else router.push("/book");
   }
 
-  // Radyo grubu: oklar seçimi değiştirir ve odağı taşır (WAI-ARIA radio deseni).
-  function onTypeKey(e: React.KeyboardEvent) {
-    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-    e.preventDefault();
-    const round = !trip.roundTrip;
-    set("roundTrip", round);
-    typeRefs.current[round ? 1 : 0]?.focus();
-  }
-
   return (
     <form onSubmit={submit} className={`trip-form ${props.compact ? "compact" : ""}`}>
-      <div className="segmented" role="radiogroup" aria-label={t("tripType")}>
-        {([false, true] as const).map((round, i) => (
-          <button
-            key={String(round)}
-            ref={(el) => {
-              typeRefs.current[i] = el;
-            }}
-            type="button"
-            role="radio"
-            aria-checked={trip.roundTrip === round}
-            tabIndex={trip.roundTrip === round ? 0 : -1}
-            className={trip.roundTrip === round ? "on" : ""}
-            onClick={() => set("roundTrip", round)}
-            onKeyDown={onTypeKey}
-          >
-            {round ? t("roundTrip") : t("oneWay")}
-          </button>
-        ))}
-      </div>
+      <Segmented label={t("tripType")} value={trip.roundTrip} onChange={(v) => set("roundTrip", v)}
+        options={[{ value: false, label: t("oneWay") }, { value: true, label: t("roundTrip") }]} />
 
       <div className="route-row">
         <span className="route-rail" aria-hidden><i /><b /><i /></span>

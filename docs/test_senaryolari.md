@@ -369,6 +369,12 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 5. **Sürücü:** iş havuzunda "Günlük" rozeti, "Günlük kiralama · 10 sa / 250 km", varış "Gün boyu, müşteriyle"; iş detayında "GÜNLÜK İŞ". Kabulden sonra yolculuk ekranında **Gün planı** notu. Sürücü günü asgari süreden önce bitiremez (`trip_too_short`); müşteri **Yolculuğu bitir** ile günü dilediği an bitirebilir. Bitiş yeri serbesttir.
 6. **İptal:** 3 günlük kiralamada 1. gün 24 saatten yakınsa iade önizlemesi 1. gün %0, 2. gün %50, 3. gün %100 toplamını gösterir.
 7. **Admin:** Fiyatlandırma, **Günlük kiralama fiyatları** (yeni sürüm ekle, kapat; yalnızca admin). Rezervasyonlarda **Hizmet: Günlük kiralama** filtresi; detayda paket, gün ve aşım bilgisi.
+8. **Tek gün iptali (K-80):** ödenmiş 3 günlük kiralamanın detayında her başlamamış günün kartında **Bu günü iptal et**; panel o günün iade tutarını gösterir, **Günü iptal et** ile yalnızca o gün iptal olur ("3. gün iptal edildi. İade: …"), kart "İptal" rozetiyle kalır. Son açık günde bağlantı görünmez (tam iptal kullanılır). Mobilde aynı bağlantı onay penceresiyle.
+9. **SMS:** ödeme sonrası onay SMS'i "Gunluk kiralama rezervasyonunuz onaylandi. Kod: …, 3 gun, ilk gun …" yazar ("Kemer > Kemer" yok).
+10. **Admin manuel günlük:** **Yeni rezervasyon** → müşteri → **Hizmet: Günlük kiralama**; ilk gün, gün sayısı, paket, başlangıç noktası, **Fiyatları hesapla** (her araçta günlük fiyat ve sınırlar), ödeme bağlantısı ya da elle tahsilat. Paylaşım metninde günler "1) tarih otel" diye listelenir.
+11. **Admin günler kartı:** rezervasyon detayında **Günlük kiralama: günler** tablosu (durum, süre, sürücünün km'si, aşım bilgisi). **Uygun sürücüleri getir** → sürücü ve araç → **N günü ata** (bütün açık günler tek sürücüye; bir gün uygun değilse hiçbiri). **Tek gün iptali** (gün, gerekçe, isteğe bağlı iade oranı; politika iadesi önizlenir).
+12. **Dinlenme:** günlük kiralama günü atanmış sürücü, gün bitiminden 9 saat içinde başlayan transferi iş havuzunda görmez (`daily_rest_hours`).
+13. **Sürücü gün sonu km:** günlük işte yolculuk başladıktan sonra yolculuk ekranında **Gün sonu km** kartı; km girilip **Km'yi kaydet** ("Kaydedildi: 268 km."); gün bittikten sonra 24 saat içinde güncellenebilir. Admin günler tablosunda km ve aşım görünür.
 
 ## Popüler yerler ve API kullanımı (K-61)
 

@@ -16,7 +16,7 @@ import { LEG_STATUS, NEXT_STEP, dailyLine, DAILY_DROPOFF } from "@/lib/driverLab
 import { clock, dateTime, money } from "@/lib/format";
 import { errorTextTr, t } from "@/lib/i18n";
 import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
-import { CustomerNoteCard, DepartureCard, WaitCard } from "@/components/DriverTripTools";
+import { CustomerNoteCard, DayReportCard, DepartureCard, WaitCard } from "@/components/DriverTripTools";
 import { apiPath, parseLegId } from "@/lib/routeParams";
 import { backgroundSupported, distanceM, navigationUrls, startBackgroundTracking, stopBackgroundTracking } from "@/lib/tracking";
 import type { Approach, Trip } from "@/lib/types";
@@ -363,9 +363,10 @@ function TripDetail({ legId }: { legId: string }) {
           : "Yolculuk tamamlandı. Hakedişiniz Kazanç sekmesine eklendi."} />}
         {status === "atandi" ? <DepartureCard trip={trip} position={position} /> : null}
         {status === "vardi" ? <WaitCard trip={trip} position={position} onDone={setTrip} /> : null}
+        {daily && (status === "basladi" || status === "bitti") ? <DayReportCard trip={trip} onDone={setTrip} /> : null}
 
         {/* Navigasyon: aşamaya göre hedef */}
-        {open && (
+        {open && !(daily && toDropoff) && (
           <Card elevated delay={40}>
             <Row style={{ flexWrap: "nowrap" }} gap={12}>
               <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>

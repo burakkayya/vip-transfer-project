@@ -23,7 +23,8 @@ declare const __dirname: string;
 const source = fs.readFileSync(path.resolve(__dirname, "../lib/i18n.ts"), "utf8");
 const trBlock = source.slice(source.indexOf("const tr = {"), source.indexOf("export type Key"));
 const trKeys = [...trBlock.matchAll(/^\s+(?:"([^"]+)"|(\w+)):/gm)].map((m) => m[1] ?? m[2]).sort();
-const placeholders = (v: string) => [...v.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
+// `{ad, plural, …}` (K-79 Arapça çoğul) de `ad` yer tutucusu sayılır.
+const placeholders = (v: string) => [...v.matchAll(/\{(\w+)(?:\}|, plural,)/g)].map((m) => m[1]).sort().join(",");
 const trValues: Record<string, string> = Object.fromEntries(
   [...trBlock.matchAll(/^\s+(?:"([^"]+)"|(\w+)): "((?:[^"\\]|\\.)*)",?$/gm)].map((m) => [m[1] ?? m[2], m[3]]),
 );
@@ -76,4 +77,17 @@ test("havalimanı adları uygulama dilinde (Türkçede veritabanındaki ad)", ()
   expect(airportName("AYT", "tr")).toBeNull();
   expect(regionName({ name: "Kemer", iata_code: null }, "en")).toBe("Kemer");
   expect(regionName({ name: "Antalya Havalimanı", iata_code: "AYT" }, "tr")).toBe("Antalya Havalimanı");
+});
+
+test("Arapça gün çoğulları (K-79): 1, 2, 3-10, 11+ ayrı biçim", () => {
+  const { formatPlural, pluralCategory } = require("@/lib/i18n") as typeof import("@/lib/i18n");
+  const text = ar["daily.summary"];
+  expect(text).toContain(", plural,");
+  const f = (n: number) => formatPlural(text, "ar", { days: n }).replace(" · {package}", "");
+  expect(f(1)).toBe("يوم واحد");
+  expect(f(2)).toBe("يومان");
+  expect(f(3)).toBe("3 أيام");
+  expect(f(11)).toBe("11 يومًا");
+  expect(pluralCategory("tr", 1)).toBe("one");
+  expect(pluralCategory("tr", 2)).toBe("other");
 });

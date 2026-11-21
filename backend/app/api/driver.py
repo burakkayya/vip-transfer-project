@@ -47,6 +47,7 @@ from app.providers.storage import get_storage
 from app.providers.routing import Point
 from app.services import (
     audit,
+    daily_rental,
     dispatch,
     documents,
     driver_tools,
@@ -434,6 +435,8 @@ class TripOut(BaseModel):
     duration_minutes: int | None = None
     # K-29: transfer | gunluk (günlük kiralamada süre paket saati, mesafe km sınırı; bitiş yeri serbest).
     service_type: str = "transfer"
+    # K-79: gün sonu km (sürücünün girdiği).
+    day_km_used: int | None = None
 
 
 def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
@@ -475,6 +478,7 @@ def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
         distance_km=leg.distance_km,
         duration_minutes=leg.duration_minutes,
         service_type=b.service_type.value,
+        day_km_used=leg.day_km_used,
     )
 
 
@@ -566,6 +570,21 @@ def trip_event(leg_id: uuid.UUID, body: TripEventIn, driver: CurrentDriver, db: 
         live_location.clear(leg)
     elif at is not None and leg.status in live_location.TRACKABLE:
         live_location.store(leg, float(at.lat), float(at.lng), None, now)
+    return _trip_out(leg, with_route=True)
+
+
+class DayReportIn(BaseModel):
+    km_used: int = Field(ge=0, le=3000)
+
+
+@router.post("/trips/{leg_id}/day-report", response_model=TripOut)
+def day_report(leg_id: uuid.UUID, body: DayReportIn, driver: CurrentDriver, db: DbSession, now: Now):
+    """K-79: günlük kiralamada gün sonu km (gün içinde ya da bitişten sonra 24 saat içinde)."""
+    leg = db.get(BookingLeg, leg_id, with_for_update={"of": BookingLeg})
+    if leg is None or leg.driver_id != driver.id:
+        raise NotFound("yolculuk bulunamadı")
+    daily_rental.report_day(db, driver, leg, body.km_used, now)
+    db.commit()
     return _trip_out(leg, with_route=True)
 
 
