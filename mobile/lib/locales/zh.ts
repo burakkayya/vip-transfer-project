@@ -210,6 +210,7 @@ const zh: Dict = {
   "daily.perDay": "{price} / 天",
   "daily.total": "{days} 天合计",
   "daily.extras": "超出部分：每小时 {hour}，每公里 {km}。如有超出，行程结束后与您确认。",
+  "daily.kmIncluded": "每日价格包含每天最多 {km} 公里。",
   "daily.plan": "当日行程（想去的地方）",
   "daily.planHint": "司机接单后可见。请勿填写护照信息。",
   "daily.leadTime": "请至少提前 24 小时预订。当天可在出发地点或您指定的地点结束。",

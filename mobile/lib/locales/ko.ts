@@ -210,6 +210,7 @@ const ko: Dict = {
   "daily.perDay": "{price} / 일",
   "daily.total": "{days}일 합계",
   "daily.extras": "한도 초과 시: 시간당 {hour}, km당 {km}. 초과분은 운행 후 확인해 드립니다.",
+  "daily.kmIncluded": "일일 요금에는 하루 최대 {km}km 주행이 포함됩니다.",
   "daily.plan": "하루 일정(방문할 곳)",
   "daily.planHint": "기사님이 예약을 수락한 뒤 볼 수 있습니다. 여권 정보는 입력하지 마세요.",
   "daily.leadTime": "최소 24시간 전에 예약하세요. 하루 일정은 출발 장소나 원하는 곳에서 끝납니다.",

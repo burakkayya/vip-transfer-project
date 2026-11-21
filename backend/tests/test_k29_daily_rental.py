@@ -233,3 +233,14 @@ def test_daily_price_eur_matches_rounded_day_price(client, db, ops):  # noqa: F8
     booking = db.scalar(select(Booking).where(Booking.booking_code == code))
     assert booking.total_amount == Decimal("650.00") and booking.price_eur == Decimal("650.00")
     client.post(f"{API}/admin/daily-rates/{r.json()['id']}/deactivate", headers=admin)
+
+
+def test_k82_daily_prices_and_included_km(client):
+    """K-82: kesin tam gün fiyatları (EUR) ve günde 200 km dahil."""
+    expected = {"minivan": "250", "vip_van": "275", "minibus": "300", "vip_minibus": "375"}
+    for code, price in expected.items():
+        r = client.post(f"{API}/daily-quotes", json=_quote_body(client, days=1, vehicle=code))
+        assert r.status_code == 200, r.text
+        q = r.json()
+        assert Decimal(q["day_price"]) == Decimal(price), code
+        assert q["km_per_day"] == 200 and q["hours_per_day"] == 10

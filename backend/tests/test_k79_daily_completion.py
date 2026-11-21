@@ -310,9 +310,10 @@ def test_driver_day_report_and_admin_usage(client, db, ops):  # noqa: F811
     booking = _booking(db, code)
     detail = client.get(f"{API}/admin/bookings/{booking.id}", headers=ops).json()
     day1 = detail["day_usage"][0]
-    assert day1["km_used"] == 290 and day1["extra_km"] == 40 and day1["extra_hours"] == 2
     rate = booking.daily_rate
-    assert Decimal(day1["extra_amount"]) == rate.extra_hour_price * 2 + rate.extra_km_price * 40
+    extra_km = 290 - rate.full_day_km  # K-82: tam gün 200 km
+    assert day1["km_used"] == 290 and day1["extra_km"] == extra_km and day1["extra_hours"] == 2
+    assert Decimal(day1["extra_amount"]) == rate.extra_hour_price * 2 + rate.extra_km_price * extra_km
     assert detail["day_usage"][1]["km_used"] is None
 
 

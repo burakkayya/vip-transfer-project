@@ -213,6 +213,8 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
   const steps: Step[] = loggedIn === true ? ["plan", "vehicle", "details", "confirm"] : ["plan", "vehicle", "details", "verify", "confirm"];
   const stepName = (s: Step) => (s === "plan" ? t("planStep") : tb(`steps.${s}`));
   const quoteList = props.vehicleTypes.map((v) => quotes[v.code]);
+  // K-82: fiyata dahil günlük km (seçilen paketin sınırı; bütün araç tiplerinde aynı).
+  const includedKm = Object.values(quotes).find((q): q is DailyQuote => !(q instanceof ApiError))?.km_per_day ?? null;
   const allUnavailable = !loadingQuotes && quoteList.length > 0 && quoteList.every((q) => q instanceof ApiError);
   const stepIndex = steps.indexOf(step);
   const selectedType = props.vehicleTypes.find((v) => v.code === vehicle);
@@ -363,6 +365,7 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
                 );
               })}
             </div>
+            {includedKm !== null && <p className="hint">{t("kmIncluded", { km: includedKm })}</p>}
           </section>
         )}
 
@@ -479,6 +482,7 @@ export default function DailyWizard(props: { regions: Region[]; vehicleTypes: Ve
             <div className="price-box">
               <div className="row spread"><span>{t("perDay", { price: fmt(shownQuote.day_price, shownQuote.currency) })}</span><span className="amount">× {shownQuote.days}</span></div>
               <div className="row spread"><span>{t("limits", { hours: shownQuote.hours_per_day, km: shownQuote.km_per_day })}</span></div>
+              <p className="hint">{t("kmIncluded", { km: shownQuote.km_per_day })}</p>
               <div className="row spread total-row"><span>{tb("total")}</span><span className="price">{fmt(shownQuote.total, shownQuote.currency)}</span></div>
             </div>
           )}

@@ -210,6 +210,7 @@ const ja: Dict = {
   "daily.perDay": "{price} / 日",
   "daily.total": "{days} 日間の合計",
   "daily.extras": "上限超過分：1時間 {hour}、1km {km}。超過がある場合は乗車後にご確認します。",
+  "daily.kmIncluded": "1日料金には1日 {km} km までの走行が含まれます。",
   "daily.plan": "当日の予定（訪問先）",
   "daily.planHint": "ドライバーが予約を受けた後に表示されます。パスポート情報は入力しないでください。",
   "daily.leadTime": "24時間前までにご予約ください。終了地点は出発地点でもご希望の場所でもかまいません。",

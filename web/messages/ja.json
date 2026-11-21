@@ -216,7 +216,8 @@
     "cancelDayTitle": "{n} 日目をキャンセル",
     "cancelDayText": "キャンセルされるのはこの日のみで、ほかの日はそのままです。返金額はこの日の開始時刻をもとに計算されます。",
     "cancelDayConfirm": "この日をキャンセル",
-    "dayCancelled": "{n} 日目をキャンセルしました。"
+    "dayCancelled": "{n} 日目をキャンセルしました。",
+    "kmIncluded": "1日料金には1日 {km} km までの走行が含まれます。"
   },
   "otp": {
     "phone": "電話番号",
