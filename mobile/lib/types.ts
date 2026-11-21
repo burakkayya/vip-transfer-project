@@ -63,6 +63,36 @@ export interface Booking {
   currency: Currency;
   created_at: string;
   legs: BookingLeg[];
+  /** K-29: hizmet türü ve günlük kiralama koşulları (transferde null). */
+  service_type?: "transfer" | "gunluk";
+  daily?: DailyInfo | null;
+}
+
+export type DailyPackage = "tam" | "yarim";
+
+export interface DailyInfo {
+  package: DailyPackage;
+  days: number;
+  hours_per_day: number;
+  km_per_day: number;
+  extra_hour_price: string;
+  extra_km_price: string;
+}
+
+/** K-29 günlük kiralama teklifi (POST /daily-quotes). */
+export interface DailyQuote {
+  vehicle_type_code: string;
+  package: DailyPackage;
+  days: number;
+  hours_per_day: number;
+  km_per_day: number;
+  day_price: string;
+  price: string;
+  total: string;
+  currency: Currency;
+  extra_hour_price: string;
+  extra_km_price: string;
+  schedule: { day: number; start_at: string; price: string }[];
 }
 
 export interface RefundQuote {
@@ -140,6 +170,8 @@ export interface Trip {
   dropoff_lng?: string | null;
   distance_km?: string | null;
   duration_minutes?: number | null;
+  /** K-29: "gunluk" ise bitiş yeri serbest, süre paket saatidir. */
+  service_type?: "transfer" | "gunluk";
 }
 
 export interface Offer {
@@ -225,6 +257,8 @@ export interface Job {
   pickup_distance_km: string | null;
   offer_expires_at: string | null;
   preview_polyline: string | null;
+  /** K-29: "gunluk" ise süre paket saati, mesafe km sınırıdır. */
+  service_type?: "transfer" | "gunluk";
 }
 
 export interface Approach {

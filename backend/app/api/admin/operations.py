@@ -19,7 +19,7 @@ from app.api.schemas import BookingOut, MoneyStr
 from app.errors import NotFound
 from app.localtime import LOCAL_TZ
 from app.models import Booking, BookingLeg, DispatchOffer, Driver, DriverLedger, Payment, TripEvent
-from app.models.enums import BookingSource, BookingStatus, LegStatus, PaymentStatus, RoleCode, TripEventType
+from app.models.enums import BookingSource, BookingStatus, LegStatus, PaymentStatus, RoleCode, ServiceType, TripEventType
 from app.providers.routing import Point, haversine_km
 from app.providers.payments import get_payment_provider
 from app.security.crypto import mask_phone
@@ -83,6 +83,8 @@ class AdminBookingRow(BaseModel):
     created_at: datetime
     source: str = "musteri"
     channel: str | None = None
+    service_type: str = "transfer"  # K-29
+    days: int = 1
 
 
 @router.get("/bookings", response_model=list[AdminBookingRow])
@@ -93,6 +95,7 @@ def list_bookings(
     status: BookingStatus | None = None,
     code: str | None = None,
     source: BookingSource | None = None,
+    service_type: ServiceType | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
 ):
@@ -103,6 +106,8 @@ def list_bookings(
         q = q.where(Booking.booking_code == code.upper())
     if source:
         q = q.where(Booking.source == source)
+    if service_type:
+        q = q.where(Booking.service_type == service_type)
     if date_from or date_to:
         q = q.join(BookingLeg, (BookingLeg.booking_id == Booking.id) & (BookingLeg.leg_order == 1))
         if date_from:
@@ -114,11 +119,14 @@ def list_bookings(
         AdminBookingRow(
             id=b.id, booking_code=b.booking_code, status=b.status, booking_type=b.booking_type.value,
             pickup_at=b.first_pickup_at,
-            route=f"{b.legs[0].pickup_region.name} → {b.legs[0].dropoff_region.name}",
+            # K-29 günlük kiralamada bırakış yok (gün boyu): yalnızca başlangıç bölgesi.
+            route=(b.legs[0].pickup_region.name if b.is_daily
+                   else f"{b.legs[0].pickup_region.name} → {b.legs[0].dropoff_region.name}"),
             total_amount=b.total_amount, currency=b.currency.value,
             # Müşteri hassas alanları admin panelinde maskeli (ekran 14).
             customer_phone=mask_phone(b.customer.user.phone or ""), created_at=b.created_at,
             source=b.source.value, channel=b.channel.value if b.channel else None,
+            service_type=b.service_type.value, days=len(b.legs) if b.is_daily else 1,
         )
         for b in rows
     ]

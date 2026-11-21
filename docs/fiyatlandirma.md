@@ -42,6 +42,20 @@ olur ve rezervasyon kabul edilir; gidiş-dönüşte indirim bacak başına 30 �
 - Gerçek adres ve koordinat sürücünün navigasyonu için rezervasyonda saklanır.
 - Hesaplanan mesafe ve fiyat rezervasyonla birlikte kaydedilir (`quoted_price`, `distance_km`).
 
+## Şoförlü günlük kiralama (K-29, K-79)
+
+- Fiyat araç tipi başına sürümlü `daily_rates` tablosundan gelir (EUR); admin Fiyatlandırma sayfasında yeni sürüm ekler, rezervasyon hesaplandığı sürümü dondurur.
+- Toplam = gün fiyatı × gün sayısı (1-14). Gün fiyatı 5'in katına yukarı yuvarlanır; TRY'de transferle aynı kur ve yuvarlama adımı. Gidiş-dönüş indirimi ve en düşük ücret kuralı günlükte uygulanmaz.
+
+| Araç | Tam gün (10 sa / 250 km) | Yarım gün (5 sa / 120 km) | Aşım saati | Aşım km |
+|---|---|---|---|---|
+| Minivan | 170 € | 100 € | 20 € | 0,80 € |
+| VIP Van | 220 € | 130 € | 25 € | 1,00 € |
+| Minibüs | 260 € | 150 € | 30 € | 1,20 € |
+| VIP Minibüs | 320 € | 185 € | 35 € | 1,40 € |
+
+Fiyatlar tahminidir (2026-11-21); aşım ücreti bilgi amaçlıdır, otomatik tahsil edilmez. İptal iadesi her güne kendi başlangıcına göre K-14 kademesiyle hesaplanır.
+
 ## Para birimi
 
 | Müşteri ülkesi | Gösterilen ve tahsil edilen para birimi |

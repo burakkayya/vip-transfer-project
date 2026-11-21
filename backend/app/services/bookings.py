@@ -42,6 +42,7 @@ from app.models.enums import (
     PaymentStatus,
     RefundStatus,
     RegionType,
+    ServiceType,
 )
 from app.providers.payments import PaymentProvider, RefundResult
 from app.localtime import LOCAL_TZ
@@ -167,7 +168,20 @@ def create_booking(
             raise DomainError("fiyat değişikliği için gerekçe yazılmalı", code="override_reason_required")
         quote = override_quote(quote, admin.override_total)
     first_pickup = quote.legs[0].pickup_at
-    if booking_type is BookingType.SCHEDULED:
+    daily = quote.service_type is ServiceType.DAILY
+    if daily:
+        # K-29: günlük kiralama yalnızca planlıdır; sürücü planlaması için daha uzun ön süre.
+        if booking_type is not BookingType.SCHEDULED:
+            raise DomainError("günlük kiralama yalnızca planlı yapılır", code="daily_must_be_scheduled")
+        if flights:
+            raise DomainError("günlük kiralamada uçuş bilgisi alınmaz", code="invalid_flight_leg")
+        if market_stop:
+            raise DomainError("günlük kiralamada market molası seçilmez", code="invalid_extra")
+        if admin is None:
+            from app.services import daily_rental
+
+            daily_rental.check_lead_time(db, first_pickup, now)
+    elif booking_type is BookingType.SCHEDULED:
         lead_hours = int(system_settings.get(db, "scheduled_min_lead_hours"))
         if first_pickup < now + timedelta(hours=lead_hours):
             raise DomainError(
@@ -213,6 +227,9 @@ def create_booking(
         total_amount=quote.total,
         currency=quote.currency,
         quoted_at=now,
+        service_type=quote.service_type,
+        daily_rate_id=quote.daily_rate.id if quote.daily_rate else None,
+        daily_package=quote.daily_package,
     )
     if admin is not None:
         booking.source = BookingSource.ADMIN
@@ -274,6 +291,9 @@ def create_booking(
         "total": booking.total_amount,
         "currency": booking.currency,
     }
+    if daily:
+        changes.update(service_type=booking.service_type, daily_package=booking.daily_package,
+                       days=len(booking.legs))
     if admin is not None:
         # Admin girişinde onaylar müşteriden kanal üzerinden alınmıştır; kanal ve fiyat farkı denetimde durur.
         changes.update(source=BookingSource.ADMIN, channel=admin.channel, customer_id=customer.id)
@@ -333,6 +353,15 @@ def refund_quote(db: Session, booking: Booking, now: datetime) -> cancellation.R
     if booking.status is BookingStatus.PENDING_PAYMENT:
         # Ödeme alınmadıysa iade edilecek bir şey yok.
         return cancellation.RefundQuote(Decimal("0"), 0, Decimal("0.00"), False)
+    if booking.is_daily:
+        # K-29: her gün kendi başlangıcına göre K-14 kademesiyle iade edilir; başlamış ve biten günler iade edilmez.
+        open_legs = [leg for leg in booking.legs if leg.status in (LegStatus.PENDING, LegStatus.ASSIGNED)]
+        quotes = [cancellation.quote_refund(leg.leg_price, leg.pickup_at, now, tiers, booking.has_guarantee)
+                  for leg in open_legs]
+        amount = sum((q.refund_amount for q in quotes), Decimal("0.00"))
+        percent = int((amount * 100 / booking.quoted_price).to_integral_value()) if booking.quoted_price else 0
+        hours_left = quotes[0].hours_left if quotes else Decimal("0.00")
+        return cancellation.RefundQuote(hours_left, percent, amount, any(q.guarantee_applied for q in quotes))
     return cancellation.quote_refund(
         booking.quoted_price, booking.first_pickup_at, now, tiers, booking.has_guarantee
     )
@@ -365,6 +394,8 @@ def cancel_booking(
             raise DomainError("iade oranı 0-100 arasında olmalı")
         percent = override_refund_percent
         amount = (booking.quoted_price * percent / Decimal(100)).quantize(Decimal("0.01"))
+    elif booking.is_daily:
+        amount = quote.refund_amount  # gün bazlı toplam (oran yuvarlanmış gösterimdir)
 
     booking.status = BookingStatus.CANCELLED
     booking.cancelled_at = now

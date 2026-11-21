@@ -59,6 +59,8 @@ class JobOut(BaseModel):
     offer_expires_at: datetime | None = None
     # Yalnızca ayrıntıda: uçları kırpılmış rota.
     preview_polyline: str | None = None
+    # K-29: transfer | gunluk. Günlük kiralamada `duration_minutes` paket saati, `distance_km` km sınırıdır.
+    service_type: str = "transfer"
 
 
 def _job_out(db, leg: BookingLeg, driver, *, at: Point | None, detail: bool, now: datetime) -> JobOut:
@@ -97,6 +99,7 @@ def _job_out(db, leg: BookingLeg, driver, *, at: Point | None, detail: bool, now
         pickup_distance_km=distance,
         offer_expires_at=offer.expires_at if offer else None,
         preview_polyline=route_line.preview_polyline(leg) if detail else None,
+        service_type=b.service_type.value,
     )
 
 

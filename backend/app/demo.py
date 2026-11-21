@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.localtime import local_date
 from app.models import Document, Driver, DriverVehicleAssignment, ExchangeRate, User, Vehicle, VehicleType
-from app.models.enums import DocumentOwner, DocumentStatus, DocumentType, DriverStatus, ReviewDecision, VehicleStatus
+from app.models.enums import DocumentOwner, DocumentStatus, DocumentType, DriverStatus, ReviewDecision, UserKind, VehicleStatus
 from app.providers.storage import get_storage
 from app.security.crypto import blind_index
 from app.services import auth, documents, system_settings
@@ -69,7 +69,8 @@ def _complete_documents(db: Session, user: User, owner_type: DocumentOwner, owne
 
 
 def _driver(db: Session, d: DemoDriver, today: date) -> str:
-    user = db.scalar(select(User).where(User.phone_hash == blind_index(d.phone)))
+    # Aynı numarayla müşteri hesabı da olabilir: yalnızca sürücü kullanıcısı aranır.
+    user = db.scalar(select(User).where(User.phone_hash == blind_index(d.phone), User.kind == UserKind.DRIVER))
     driver = db.scalar(select(Driver).where(Driver.user_id == user.id)) if user else None
     if driver is not None:
         vehicle = db.scalar(select(Vehicle).where(Vehicle.plate == d.plate))

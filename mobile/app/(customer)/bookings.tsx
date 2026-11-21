@@ -68,7 +68,17 @@ export default function Bookings() {
                 </View>
                 <Badge text={statusLabel("status", b.status)} tone={statusTone(b.status)} />
               </Row>
-              <RouteStops from={regionName(leg.pickup_region, LOCALE)} to={regionName(leg.dropoff_region, LOCALE)} fromHint={leg.pickup_address ?? undefined} toHint={leg.dropoff_address ?? undefined} compact />
+              {b.daily ? (
+                // K-29 günlük kiralama: başlangıç noktası ve paket özeti (gün boyu, bırakış yok).
+                <View style={{ gap: 2 }}>
+                  <T style={{ fontWeight: "600" }} numberOfLines={1}>{regionName(leg.pickup_region, LOCALE)}</T>
+                  <T style={s.hint}>{b.daily.days === 1
+                    ? t("daily.summary1", { package: b.daily.package === "tam" ? t("daily.full") : t("daily.half") })
+                    : t("daily.summary", { days: b.daily.days, package: b.daily.package === "tam" ? t("daily.full") : t("daily.half") })}</T>
+                </View>
+              ) : (
+                <RouteStops from={regionName(leg.pickup_region, LOCALE)} to={regionName(leg.dropoff_region, LOCALE)} fromHint={leg.pickup_address ?? undefined} toHint={leg.dropoff_address ?? undefined} compact />
+              )}
               <View style={{ height: 1, backgroundColor: colors.line }} />
               <Row spread style={{ flexWrap: "nowrap" }}>
                 <Row gap={10} style={{ flex: 1, flexWrap: "nowrap" }}>

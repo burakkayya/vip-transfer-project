@@ -2930,3 +2930,28 @@ html:lang(ko) * {
   direction: ltr;
   text-align: end;
 }
+
+/* --- K-29 günlük kiralama ------------------------------------------------ */
+
+.field > .field-label {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+
+.page-title + .page-intro {
+  max-width: 62ch;
+  margin: -12px 0 24px;
+}
+
+.daily-terms {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.daily-terms p {
+  margin: 0;
+}

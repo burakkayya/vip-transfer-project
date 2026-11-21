@@ -18,13 +18,14 @@ from app.config import get_settings
 from app.currency import convert_eur_price, currency_for_country
 from app.errors import DomainError, NotFound, ServiceUnavailable, TooManyRequests
 from app.models import (
+    DailyRate,
     ExchangeRate,
     PricingRule,
     Region,
     RoundTripDiscount,
     VehicleType,
 )
-from app.models.enums import Currency
+from app.models.enums import Currency, DailyPackage, ServiceType
 from app.pricing import round_up_to_step
 from app.providers.routing import Point, Route, RoutingProvider, haversine_km
 from app.services import system_settings
@@ -77,10 +78,14 @@ class Quote:
     pricing_rule: PricingRule
     discount: RoundTripDiscount | None
     exchange_rate: ExchangeRate | None
+    # K-29 günlük kiralama: her gün bir bacak; transferde boş.
+    service_type: ServiceType = ServiceType.TRANSFER
+    daily_rate: DailyRate | None = None
+    daily_package: DailyPackage | None = None
 
     @property
     def is_round_trip(self) -> bool:
-        return len(self.legs) == 2
+        return self.service_type is ServiceType.TRANSFER and len(self.legs) == 2
 
 
 def _active_at(model, at: datetime):

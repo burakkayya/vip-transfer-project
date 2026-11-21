@@ -9,7 +9,7 @@ import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
 import { Alert, Avatar, Badge, Button, Card, H2, Loading, P, RouteStops, Row, Screen, T, colors, onDark, s, shadow, statusTone, tap } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
-import { DOC_LABEL, DRIVER_STATUS, LEG_STATUS } from "@/lib/driverLabels";
+import { DOC_LABEL, DRIVER_STATUS, LEG_STATUS, dailyLine, DAILY_DROPOFF } from "@/lib/driverLabels";
 import { dateTime, money } from "@/lib/format";
 import { errorTextTr } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
@@ -101,12 +101,14 @@ function JobCard(props: { job: Job; index: number }) {
             <T style={{ fontSize: 22, fontWeight: "800", letterSpacing: -0.6 }}>{money(j.driver_amount, j.currency)}</T>
             <T style={s.hint}>{dateTime(j.pickup_at)}</T>
           </View>
-          <Badge text={j.booking_type === "anlik" ? "Anlık" : "Planlı"} tone={j.booking_type === "anlik" ? "accent" : "dark"} />
+          <Badge text={j.service_type === "gunluk" ? "Günlük" : j.booking_type === "anlik" ? "Anlık" : "Planlı"} tone={j.booking_type === "anlik" ? "accent" : "dark"} />
         </Row>
-        <RouteStops from={j.pickup_region} to={j.dropoff_region} compact />
+        <RouteStops from={j.pickup_region} to={j.service_type === "gunluk" ? DAILY_DROPOFF : j.dropoff_region} compact />
         <Row spread>
           <T style={s.hint}>
-            {Number(j.distance_km).toFixed(0)} km{j.duration_minutes ? ` · ~${j.duration_minutes} dk` : ""} · {j.passenger_count} yolcu
+            {j.service_type === "gunluk"
+              ? dailyLine(j.duration_minutes, j.distance_km)
+              : `${Number(j.distance_km).toFixed(0)} km${j.duration_minutes ? ` · ~${j.duration_minutes} dk` : ""}`} · {j.passenger_count} yolcu
             {j.pickup_distance_km !== null ? ` · size ${Number(j.pickup_distance_km).toLocaleString("tr-TR")} km` : ""}
           </T>
           <Ionicons name="chevron-forward" size={18} color={colors.muted} />

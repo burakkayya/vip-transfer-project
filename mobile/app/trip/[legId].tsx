@@ -12,7 +12,7 @@ import {
   shadow,
 } from "@/components/ui";
 import { api } from "@/lib/api";
-import { LEG_STATUS, NEXT_STEP } from "@/lib/driverLabels";
+import { LEG_STATUS, NEXT_STEP, dailyLine, DAILY_DROPOFF } from "@/lib/driverLabels";
 import { clock, dateTime, money } from "@/lib/format";
 import { errorTextTr, t } from "@/lib/i18n";
 import { driverLiveProps, endLiveTrip, showLiveTrip } from "@/lib/liveTrip";
@@ -282,6 +282,8 @@ function TripDetail({ legId }: { legId: string }) {
   const next = NEXT_STEP[status];
   const idx = FLOW.indexOf(status);
   const toDropoff = status === "basladi";
+  // K-29 günlük kiralama: gün içinde varış noktası yok; gün istenen yerde bitirilir.
+  const daily = trip.service_type === "gunluk";
   const pickupPt = trip.pickup_lat ? { latitude: Number(trip.pickup_lat), longitude: Number(trip.pickup_lng) } : null;
   const dropoffPt = trip.dropoff_lat ? { latitude: Number(trip.dropoff_lat), longitude: Number(trip.dropoff_lng) } : null;
 
@@ -290,13 +292,13 @@ function TripDetail({ legId }: { legId: string }) {
   const finishDistance = toDropoff && position && dropoffPt
     ? distanceM(position.latitude, position.longitude, dropoffPt.latitude, dropoffPt.longitude)
     : approach?.finish_distance_m ?? null;
-  const canFinish = !toDropoff || (finishDistance !== null && radius !== null && finishDistance <= radius);
+  const canFinish = !toDropoff || daily || (finishDistance !== null && radius !== null && finishDistance <= radius);
 
   // Harita: konum varsa sürücüden hedefe rota (hedef işaretli), yoksa yolculuk rotası.
   const useApproach = open && approach?.polyline;
   const mapRoute = useApproach ? approach?.polyline : trip.route_polyline;
   const stops = useApproach ? (toDropoff ? { dropoff: dropoffPt } : { pickup: pickupPt }) : undefined;
-  const etaText = approach && open
+  const etaText = approach && open && !(daily && toDropoff)
     ? `${toDropoff ? "Varışa" : "Alışa"} ${approach.duration_minutes ?? "—"} dk${approach.distance_km !== null ? ` · ${fmtKm(Math.round(Number(approach.distance_km) * 1000))}` : ""}`
     : null;
 
@@ -424,10 +426,18 @@ function TripDetail({ legId }: { legId: string }) {
 
         <Card delay={120}>
           <H2>Rota</H2>
-          <RouteStops from={trip.pickup_region} to={trip.dropoff_region} fromHint={trip.pickup_address ?? undefined} toHint={trip.dropoff_address ?? undefined} />
+          <RouteStops from={trip.pickup_region} to={trip.service_type === "gunluk" ? DAILY_DROPOFF : trip.dropoff_region} fromHint={trip.pickup_address ?? undefined} toHint={trip.dropoff_address ?? undefined} />
           <Info icon="calendar-outline">{dateTime(trip.pickup_at)}</Info>
+          {/* Müşteri notu kabulden sonra görünür (K-63); günlük kiralamada gün planıdır (K-29). */}
+          {trip.customer_note ? (
+            <Info icon="document-text-outline" label={daily ? "Gün planı" : "Müşteri notu"}>{trip.customer_note}</Info>
+          ) : null}
           {trip.flight_no ? <Info icon="airplane-outline">{driverFlightLine(trip.flight_no, trip.flight_status, trip.flight_estimated_at)}</Info> : null}
-          {trip.distance_km ? <Info icon="speedometer-outline">{Number(trip.distance_km).toFixed(0)} km{trip.duration_minutes ? ` · ~${trip.duration_minutes} dk` : ""}</Info> : null}
+          {daily ? (
+            <Info icon="sunny-outline">{dailyLine(trip.duration_minutes, trip.distance_km)}. Gün, müşterinin istediği yerde bitirilir.</Info>
+          ) : trip.distance_km ? (
+            <Info icon="speedometer-outline">{Number(trip.distance_km).toFixed(0)} km{trip.duration_minutes ? ` · ~${trip.duration_minutes} dk` : ""}</Info>
+          ) : null}
           <View style={{ backgroundColor: colors.canvas, borderRadius: 14, padding: 14 }}>
             <Row spread>
               <T style={s.hint}>Kazancınız</T>

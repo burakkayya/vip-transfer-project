@@ -15,6 +15,8 @@ from app.services import audit
 DEFAULTS: dict[str, Any] = {
     # Planlı rezervasyon için kalkışa en az kaç saat kala rezervasyon alınır.
     "scheduled_min_lead_hours": 2,
+    # K-29: günlük kiralama ilk günün başlangıcından en az kaç saat önce alınır (sürücü planlaması için).
+    "daily_min_lead_hours": 24,
     # Ödenmeyen rezervasyon kaç dakika sonra iptal edilir.
     "pending_payment_minutes": 30,
     "try_rounding_step": 5,

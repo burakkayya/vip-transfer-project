@@ -11,6 +11,7 @@ import ManualBookingPanel, { type ManualInfo } from "@/components/ManualBookingP
 import {
   BOOKING_STATUS,
   BOOKING_TYPE,
+  DAILY_PACKAGE,
   LEDGER_STATUS,
   LEG_STATUS,
   MANUAL_PAYMENT_METHOD,
@@ -18,6 +19,7 @@ import {
   PAYMENT_PROVIDER,
   PAYMENT_STATUS,
   REFUND_STATUS,
+  SERVICE_TYPE,
   TRIP_EVENT,
 } from "@/lib/labels";
 
@@ -50,6 +52,8 @@ interface Detail {
   booking: {
     booking_code: string;
     booking_type: string;
+    service_type?: string;
+    daily?: { package: string; days: number; hours_per_day: number; km_per_day: number; extra_hour_price: string; extra_km_price: string } | null;
     status: string;
     vehicle_type: { name: string };
     passenger_name: string;
@@ -178,7 +182,18 @@ export default function BookingDetail({ id }: { id: string }) {
         <div className="card">
           <h2>Özet</h2>
           <dl className="kv">
-            <dt>Tür</dt><dd>{BOOKING_TYPE[b.booking_type]}</dd>
+            <dt>Tür</dt>
+            <dd>
+              {b.daily
+                ? `${SERVICE_TYPE.gunluk} · ${b.daily.days} gün · ${DAILY_PACKAGE[b.daily.package] ?? b.daily.package} (${b.daily.hours_per_day} sa / ${b.daily.km_per_day} km)`
+                : BOOKING_TYPE[b.booking_type]}
+            </dd>
+            {b.daily && (
+              <>
+                <dt>Aşım (bilgi)</dt>
+                <dd>{money(b.daily.extra_hour_price, b.currency)}/sa · {money(b.daily.extra_km_price, b.currency)}/km</dd>
+              </>
+            )}
             <dt>Araç tipi</dt><dd>{b.vehicle_type.name}</dd>
             <dt>Yolcu</dt><dd>{b.passenger_name} ({b.passenger_count} kişi, {b.luggage_count} bagaj)</dd>
             <dt>Müşteri</dt><dd>{data.customer_name ?? "—"} <span className="mono">{data.customer_phone}</span></dd>
@@ -190,7 +205,7 @@ export default function BookingDetail({ id }: { id: string }) {
         <div className="card">
           <h2>Fiyat</h2>
           <dl className="kv">
-            <dt>Transfer</dt><dd>{money(b.quoted_price, b.currency)}</dd>
+            <dt>{b.daily ? "Kiralama" : "Transfer"}</dt><dd>{money(b.quoted_price, b.currency)}</dd>
             <dt>Garanti</dt><dd>{money(b.guarantee_fee, b.currency)}</dd>
             <dt>Toplam</dt><dd><strong>{money(b.total_amount, b.currency)}</strong></dd>
             <dt>EUR karşılığı</dt><dd>{money(data.price_eur, "EUR")}</dd>

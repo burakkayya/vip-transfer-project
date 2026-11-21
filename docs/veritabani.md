@@ -42,6 +42,7 @@ Belge süresi dolduğunda sürücü otomatik pasif olur (zamanlanmış görev).
 | pricing_rules | id, vehicle_type_id, base_price_per_km (1.10), minimum_price (30), rounding_step (5), valid_from, valid_to, is_active |
 | round_trip_discounts | id, type (yüzde, sabit), value, valid_from, valid_to |
 | cancellation_policies | id, hours_before_pickup, refund_percent, valid_from |
+| daily_rates | id, vehicle_type_id, full_day_price, half_day_price (EUR), full_day_hours (10), half_day_hours (5), full_day_km (250), half_day_km (120), extra_hour_price, extra_km_price, valid_from, valid_to, is_active (K-29/K-79, 0017) |
 | commission_rules | id, scope (genel, bölge, araç tipi), scope_ref_id, rate (0.20, K-75), valid_from |
 
 Fiyat ve komisyon geçmişi tutulur, eski rezervasyonların hangi kuralla hesaplandığı izlenir.
@@ -50,7 +51,7 @@ Fiyat ve komisyon geçmişi tutulur, eski rezervasyonların hangi kuralla hesapl
 
 | Tablo | Ana alanlar |
 |---|---|
-| bookings | id, booking_code, customer_id, booking_type (anlık, planlı), status, vehicle_type_id, passenger_count, luggage_count, is_round_trip, guarantee_fee, cancellation_policy_id (dondurulmuş), quoted_price, currency, quoted_at |
+| bookings | id, booking_code, customer_id, booking_type (anlık, planlı), service_type (transfer, gunluk; 0017), daily_rate_id, daily_package (tam, yarim), status, vehicle_type_id, passenger_count, luggage_count, is_round_trip, guarantee_fee, cancellation_policy_id (dondurulmuş), quoted_price, currency, quoted_at |
 | booking_legs | id, booking_id, leg_order, pickup_region_id, dropoff_region_id, pickup_address, dropoff_address, pickup_at, distance_km, leg_price |
 | flight_infos | id, booking_leg_id, flight_no, direction (geliş, gidiş), scheduled_at, estimated_at, actual_at, purge_at |
 | dispatch_offers | id, booking_leg_id, driver_id, status (gönderildi, kabul, red, süre_doldu), offered_at, responded_at |

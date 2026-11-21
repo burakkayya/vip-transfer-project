@@ -432,6 +432,8 @@ class TripOut(BaseModel):
     dropoff_lng: Decimal | None = None
     distance_km: Decimal | None = None
     duration_minutes: int | None = None
+    # K-29: transfer | gunluk (günlük kiralamada süre paket saati, mesafe km sınırı; bitiş yeri serbest).
+    service_type: str = "transfer"
 
 
 def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
@@ -472,6 +474,7 @@ def _trip_out(leg: BookingLeg, *, with_route: bool = False) -> TripOut:
         dropoff_lng=leg.dropoff_lng if leg.dropoff_lng is not None else leg.dropoff_region.longitude,
         distance_km=leg.distance_km,
         duration_minutes=leg.duration_minutes,
+        service_type=b.service_type.value,
     )
 
 

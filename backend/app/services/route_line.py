@@ -37,6 +37,12 @@ def _redis() -> redis.Redis:
     )
 
 
+def _is_daily(leg: BookingLeg) -> bool:
+    """K-29 günlük kiralama bacağı mı (rezervasyon yüklenmemişse transfer sayılır)."""
+    booking = getattr(leg, "booking", None)
+    return bool(getattr(booking, "is_daily", False))
+
+
 def _key(leg_id: uuid.UUID) -> str:
     return f"route_line:{leg_id}"
 
@@ -68,6 +74,10 @@ def preview_polyline(leg: BookingLeg, trim_m: float | None = None) -> str:
     Rota alınamazsa bölge merkezleri (herkese açık) arasında düz çizgi döner.
     """
     trim = get_settings().job_preview_trim_m if trim_m is None else trim_m
+    if _is_daily(leg):
+        # Başlangıç bölgesinin merkezi (herkese açık); kesin adres kabulden sonra görünür.
+        center = (float(leg.pickup_region.latitude), float(leg.pickup_region.longitude))
+        return encode([center, center])
     line = route_polyline(leg)
     if line:
         points = decode(line)
@@ -105,7 +115,10 @@ def _meters(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 
 def route_polyline(leg: BookingLeg) -> str | None:
-    """Önbellek: başarı 24 saat; sağlayıcı hatası veya boş sonuç 60 sn "olumsuz" kayıt (yavaş sağlayıcıyı yormaz)."""
+    """Önbellek: başarı 24 saat; sağlayıcı hatası veya boş sonuç 60 sn "olumsuz" kayıt (yavaş sağlayıcıyı yormaz).
+    K-29 günlük kiralamada güzergâh müşteriyle gün içinde belirlenir (alış = bırakış): çizgi yoktur."""
+    if _is_daily(leg):
+        return None
     try:
         cached = _redis().get(_key(leg.id))
     except redis.RedisError:

@@ -161,6 +161,9 @@ export interface Booking {
   legs: BookingLeg[];
   /** Ödeme bekleyen rezervasyonun otomatik iptal anı; diğer durumlarda null. */
   payment_due_at?: string | null;
+  /** K-29: hizmet türü ve günlük kiralama koşulları (transferde null). */
+  service_type?: "transfer" | "gunluk";
+  daily?: DailyInfo | null;
 }
 
 export interface RefundQuote {
@@ -269,4 +272,32 @@ export interface TrackInfo {
   eta_minutes: number | null;
   location: { lat: number; lng: number; heading: number | null; at: string } | null;
   locale: string;
+}
+
+export type DailyPackage = "tam" | "yarim";
+
+/** K-29 günlük kiralama koşulları (rezervasyonda). */
+export interface DailyInfo {
+  package: DailyPackage;
+  days: number;
+  hours_per_day: number;
+  km_per_day: number;
+  extra_hour_price: string;
+  extra_km_price: string;
+}
+
+/** K-29 günlük kiralama teklifi (POST /daily-quotes). */
+export interface DailyQuote {
+  vehicle_type_code: string;
+  package: DailyPackage;
+  days: number;
+  hours_per_day: number;
+  km_per_day: number;
+  day_price: string;
+  price: string;
+  total: string;
+  currency: Currency;
+  extra_hour_price: string;
+  extra_km_price: string;
+  schedule: { day: number; start_at: string; price: string }[];
 }
