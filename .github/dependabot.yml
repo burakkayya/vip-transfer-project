@@ -1,5 +1,7 @@
 # Bağımlılık güncellemeleri (INF-07, INF-08). Haftalık; küçük/yama güncellemeleri ekosistem başına tek PR'da
-# toplanır, major sürümler ayrı PR olarak gelir (mobil hariç, aşağıya bakın).
+# toplanır. Major sürüm PR'ı açılmaz (2026-11-22): Next, ESLint, TypeScript, redis-py gibi major geçişler kod
+# uyarlaması ister, planlı iş olarak elle yapılır. İstisna GitHub Actions: action major'ları (ör. Node 24'e geçiş)
+# genelde yalnızca SHA değişikliğidir, tek grup PR olarak gelmeye devam eder.
 # Güvenlik güncellemeleri (Dependabot security updates) depo ayarından açılır ve bu takvimi beklemez.
 version: 2
 updates:
@@ -11,6 +13,9 @@ updates:
       time: "05:00"
       timezone: Europe/Istanbul
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       python-minor-patch:
         patterns: ["*"]
@@ -24,6 +29,9 @@ updates:
       time: "05:00"
       timezone: Europe/Istanbul
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       # Next ve eşlik eden paketler birlikte güncellenir (eslint-config-next sürümü next ile aynı kalmalı).
       next:
@@ -41,6 +49,9 @@ updates:
       time: "05:00"
       timezone: Europe/Istanbul
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       next:
         patterns: ["next", "eslint-config-next", "@next/*"]
@@ -62,6 +73,8 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
     groups:
+      # Birleştirmeden önce `npx expo install --check`: Dependabot react-native-* modüllerini SDK'nın beklediği
+      # sürümün üstüne çıkarabilir; bu durumda `npx expo install --fix` ile SDK sürümüne geri çekilir.
       expo-sdk:
         patterns: ["expo", "expo-*", "@expo/*", "react-native", "react-native-*", "@react-native/*", "react", "react-dom"]
         update-types: [minor, patch]
@@ -77,6 +90,9 @@ updates:
       time: "05:00"
       timezone: Europe/Istanbul
     open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       ui-shots:
         patterns: ["*"]
