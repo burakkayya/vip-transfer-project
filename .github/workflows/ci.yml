@@ -167,6 +167,9 @@ jobs:
       GETAWAY_OTP_MAX_PER_IP_PER_HOUR: "100000"
       GETAWAY_OTP_GLOBAL_MAX_PER_HOUR: "100000"
       GETAWAY_OTP_GLOBAL_HARD_LIMIT_PER_HOUR: "100000"
+      # Paralel e2e testleri tek IP'den çok fiyat sorgusu atar; üretim sınırı (60/dk) burada 429'a yol açar.
+      GETAWAY_QUOTES_RATE_LIMIT_PER_MINUTE: "100000"
+      GETAWAY_QUOTES_GLOBAL_RATE_LIMIT_PER_MINUTE: "100000"
       ALLOWED_ORIGINS: http://localhost:3000 http://localhost:3001
       ADMIN_E2E_EMAIL: e2e-admin@getawaytransfers.com
     steps:

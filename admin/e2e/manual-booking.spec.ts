@@ -58,7 +58,7 @@ test("admin manuel rezervasyon: müşteri ekle, fiyat, oluştur, elle tahsilat",
   // Geliştirme sunucusunda sayfa ilk açılışta derlenir.
   await expect(page.getByRole("heading", { level: 1, name: `Rezervasyon ${code}` })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Admin girişi · WhatsApp")).toBeVisible();
-  await page.getByLabel("Dekont / makbuz no").fill("DEKONT-E2E");
+  await page.getByLabel(/^Dekont \/ makbuz/).fill("DEKONT-E2E");
   page.once("dialog", (d) => void d.accept());
   await page.getByRole("button", { name: "Tahsilatı kaydet" }).click();
   await expect(page.getByText("Tahsilat kaydedildi, rezervasyon onaylandı.")).toBeVisible();

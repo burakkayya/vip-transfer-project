@@ -2,6 +2,10 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-22
+
+- **CI e2e düzeltmeleri.** Admin `manual-booking.spec.ts` yeni tahsilat etiketini (`/^Dekont \/ makbuz/`) arıyor (admin e2e yerelde 19/19 geçti); CI e2e ortamında fiyat sorgusu sınırları yükseltildi (`GETAWAY_QUOTES_RATE_LIMIT_PER_MINUTE`, `GETAWAY_QUOTES_GLOBAL_RATE_LIMIT_PER_MINUTE`; 9 web testi 429 alıyordu). `book.spec.ts` axe `#name-hint` kontrastı yalnızca CI'de, açık konu.
+
 ## 2026-11-21
 
 - **Kesin günlük kiralama fiyatları (K-82).** Tam gün (10 saat, günde 200 km dahil): Standart Vito 250 €, VIP Vito 275 €, Standart Sprinter 300 €, VIP Sprinter 375 €; tam gün km sınırı 250'den 200'e indi. Seed yeni fiyatlarla, mevcut veritabanlarına migration 0020 yeni fiyat sürümü ekler (yarım gün ve aşım ücretleri o anki sürümden taşınır; geri almada eklenen sürüm silinir ya da rezervasyon bağlıysa pasife alınır). Web (`DailyWizard`) ve mobil (`daily.tsx`) araç listesinin altında ve özette "Günlük fiyatlara günde {km} km'ye kadar yol dahildir." notu (`daily.kmIncluded`, 12 dil). CI: e2e adımlarına Playwright `github` raporcusu (düşen test giriş gerektirmeyen açıklama olur), admin e2e web düşse de koşar; ilk CI koşusunda (main `c1536f8`) zorunlu işlerin hepsi geçti, bilgi amaçlı web e2e düştü. Test: `test_k82_daily_prices_and_included_km` ve `test_driver_day_report_and_admin_usage` paket km'sinden hesaplıyor; dev veritabanında migration ileri/geri denendi, API dört araçta 250/275/300/375 EUR ve 200 km döndü.
