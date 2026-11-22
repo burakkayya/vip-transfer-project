@@ -42,7 +42,7 @@ jobs:
     # Digest değişirse üç dosya birlikte güncellenir (Dependabot yalnızca docker-compose.yml'i izler).
     services:
       postgres:
-        image: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
+        image: postgis/postgis:16-3.6@sha256:d07ce3f06f657b6516c7511412232e97174d7e9dcf4c9fe520109b682b44a201
         env:
           POSTGRES_USER: getaway
           POSTGRES_PASSWORD: getaway
@@ -51,7 +51,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U getaway" --health-interval 5s --health-timeout 5s --health-retries 20
       redis:
-        image: redis:7.4.12-alpine@sha256:c5d34a98396a4775e223c74e929162c35c5a2182901ba26b50ade939941ce14b
+        image: redis:7.4.12-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
         ports: ["6379:6379"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
