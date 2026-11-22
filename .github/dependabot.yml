@@ -72,6 +72,28 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # Sürümü Expo SDK'nın belirlediği modüller: Dependabot bunları SDK'nın beklediğinin üstüne çıkarıyor
+      # (2026-11-22, PR #45/#46). SDK yama güncellemesinde `npx expo install --fix` ile birlikte yükseltilir.
+      - dependency-name: "react"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-native-gesture-handler"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-native-reanimated"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-native-worklets"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-native-svg"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-native-screens"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "react-native-safe-area-context"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "@react-native-community/datetimepicker"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
     groups:
       # Birleştirmeden önce `npx expo install --check`: Dependabot react-native-* modüllerini SDK'nın beklediği
       # sürümün üstüne çıkarabilir; bu durumda `npx expo install --fix` ile SDK sürümüne geri çekilir.
