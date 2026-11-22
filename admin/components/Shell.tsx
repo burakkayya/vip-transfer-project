@@ -32,6 +32,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [incidentCounts, setIncidentCounts] = useState<{ active: number; critical: number } | null>(null);
 
   useEffect(() => {
     api<Me>("auth/me")
@@ -41,6 +42,22 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       })
       .catch(() => router.replace("/login"));
   }, [router]);
+
+  // K-83: menüdeki çözülmemiş olay sayısı; dakikada bir yenilenir (yalnızca olayları görebilen roller).
+  useEffect(() => {
+    if (!me || !can(me.roles, ["operasyon"])) return;
+    let alive = true;
+    const load = () =>
+      api<{ active: number; critical: number }>("admin/incidents/count")
+        .then((c) => { if (alive) setIncidentCounts(c); })
+        .catch(() => undefined);
+    void load();
+    const timer = window.setInterval(load, 60_000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [me]);
 
   // Genel panele yetkisi olmayan (ör. yalnızca muhasebe) kullanıcı ilk yetkili sayfasına gider.
   useEffect(() => {
@@ -52,6 +69,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   if (!me) return null;
 
   const nav = allowedNav(me.roles);
+  const counts = incidentCounts;
   const current = itemFor(pathname);
   const allowed = current ? nav.includes(current) : true;
   const groups = [...new Set(nav.map((n) => n.group))];
@@ -74,6 +92,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 .map((n) => (
                   <Link key={n.href} href={n.href} className={current?.href === n.href ? "active" : ""}>
                     {n.label}
+                    {n.href === "/incidents" && counts && counts.active > 0 && (
+                      <span className={`nav-count${counts.critical > 0 ? " critical" : ""}`}
+                        aria-label={`${counts.active} çözülmemiş olay${counts.critical > 0 ? `, ${counts.critical} kritik` : ""}`}>
+                        {counts.active}
+                      </span>
+                    )}
                   </Link>
                 ))}
             </div>

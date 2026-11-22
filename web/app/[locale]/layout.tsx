@@ -3,6 +3,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import { notFound } from "next/navigation";
+import ErrorReporter from "@/components/ErrorReporter";
 import Icon from "@/components/Icon";
 import Logo from "@/components/Logo";
 import SiteHeader from "@/components/SiteHeader";
@@ -89,6 +90,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html lang={locale} dir={dirOf(locale)} className={`${sans.variable} ${arabic.variable}`}>
       <body>
+        <ErrorReporter />
         <NextIntlClientProvider>
           <SiteHeader
             labels={{

@@ -30,6 +30,7 @@ from app.models.fleet import (
     VehicleType,
 )
 from app.models.identity import AuthSession, OtpChallenge, Role, User, user_roles
+from app.models.observability import BookingActivity, Incident, IncidentOccurrence
 from app.models.ops import AuditLog, Notification, NotificationTemplate, SystemSetting
 from app.models.pricing import (
     CancellationPolicy,
@@ -48,6 +49,7 @@ __all__ = [
     "AuthSession",
     "Base",
     "Booking",
+    "BookingActivity",
     "BookingLeg",
     "CancellationPolicy",
     "CancellationPolicyTier",
@@ -62,6 +64,8 @@ __all__ = [
     "DriverLedger",
     "DriverPayout",
     "DriverVehicleAssignment",
+    "Incident",
+    "IncidentOccurrence",
     "ExchangeRate",
     "FlightInfo",
     "Invoice",

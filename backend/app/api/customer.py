@@ -15,6 +15,7 @@ from typing import Literal
 import anyio
 import anyio.to_thread
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -48,7 +49,7 @@ from app.models.enums import BookingType, ConsentType, DataRequestStatus, DataRe
 from app.providers.payments import get_payment_provider
 from app.providers.routing import get_routing
 from app.security import tokens
-from app.services import audit, bookings, daily_rental, live_location, payments, quotes, system_settings
+from app.services import audit, bookings, daily_rental, incidents, live_location, payments, quotes, system_settings
 
 router = APIRouter(prefix="/me", tags=["customer"])
 
@@ -554,8 +555,10 @@ async def ws_location(websocket: WebSocket, code: str):
         return
     except _WsCloseError as exc:
         await _ws_close(websocket, exc.code)
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         log.exception("canlı takip WebSocket'i beklenmedik hatayla kapandı (rezervasyon=%s)", code[:12])
+        await run_in_threadpool(incidents.report_exception, exc,
+                                title="Canlı takip bağlantısı beklenmedik hatayla kapandı")
         await _ws_close(websocket, 1011)
     finally:
         if pending:

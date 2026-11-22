@@ -24,7 +24,7 @@ from app.errors import Conflict, DomainError, NotFound
 from app.models import Booking, BookingLeg, Customer, DriverLedger, Payment, Refund, TripRating
 from app.models.enums import Currency, LegStatus, PaymentStatus
 from app.providers.payments import Checkout, CheckoutRequest, PaymentProvider
-from app.services import audit, trip_updates
+from app.services import activity, audit, trip_updates
 from app.services.quotes import latest_exchange_rate
 
 log = logging.getLogger(__name__)
@@ -91,6 +91,8 @@ def rate(db: Session, booking: Booking, *, stars: int, comment: str | None, now:
     rating = TripRating(booking_leg_id=leg.id, driver_id=leg.driver_id, stars=stars,
                         comment=(comment or "").strip()[:500] or None, currency=booking.currency)
     db.add(rating)
+    activity.record(db, booking, "rating.submitted", actor_type="customer", actor_id=booking.customer.user_id,
+                    leg_id=leg.id, data={"stars": stars, "has_comment": rating.comment is not None})
     trip_updates.to_driver(db, leg, "trip_rated", stars=stars)
     db.flush()
     return rating

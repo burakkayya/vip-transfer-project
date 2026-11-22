@@ -47,7 +47,7 @@ from app.models.enums import (
 from app.config import get_settings
 from app.localtime import LOCAL_TZ
 from app.providers.routing import Point, haversine_km
-from app.services import audit, eta, meeting, notifications, system_settings, trip_updates
+from app.services import activity, audit, eta, meeting, notifications, system_settings, trip_updates
 from app.services.quotes import latest_exchange_rate
 
 log = logging.getLogger(__name__)
@@ -217,6 +217,9 @@ def offer_leg(db: Session, leg: BookingLeg, *, now: datetime, resend_closed: boo
         )
         sent += 1
     db.flush()
+    if sent:
+        activity.record(db, leg.booking_id, "dispatch.offered", actor_type="system", leg_id=leg.id,
+                        data={"driver_count": sent, "online_only": require_online})
     return sent
 
 
@@ -271,6 +274,8 @@ def assign(
         changes={"driver_id": candidate.driver.id, "vehicle_id": candidate.vehicle.id},
         ip=ip,
     )
+    activity.record(db, leg.booking_id, "leg.assigned", leg_id=leg.id,
+                    data={"driver_id": candidate.driver.id, "vehicle_id": candidate.vehicle.id})
 
 
 def _assignable_booking(leg: BookingLeg) -> None:
@@ -317,6 +322,8 @@ def reject_offer(db: Session, driver: Driver, offer_id: uuid.UUID, *, now: datet
     if offer.status is OfferStatus.SENT:
         offer.status = OfferStatus.REJECTED
         offer.responded_at = now
+        leg = db.get(BookingLeg, offer.booking_leg_id)
+        activity.record(db, leg.booking_id, "dispatch.declined", leg_id=leg.id, data={"driver_id": driver.id})
 
 
 def manual_assign(
@@ -724,6 +731,14 @@ def force_advance(
                           "driver_id": leg.driver_id, "reason": reason})
 
 
+_ACTIVITY_EVENTS = {
+    TripEventType.DEPARTED: "leg.departed",
+    TripEventType.ARRIVED: "leg.arrived",
+    TripEventType.STARTED: "leg.started",
+    TripEventType.FINISHED: "leg.finished",
+}
+
+
 def _apply_transition(
     db: Session, leg: BookingLeg, event: TripEventType, target: LegStatus, *, actor_id: uuid.UUID,
     now: datetime, at: Point | None,
@@ -734,6 +749,9 @@ def _apply_transition(
     keep = at is not None and event in (TripEventType.ARRIVED, TripEventType.FINISHED)
     db.add(TripEvent(booking_leg_id=leg.id, event_type=event, actor_id=actor_id,
                      latitude=at.lat if keep else None, longitude=at.lng if keep else None))
+    activity.record(db, leg.booking_id, _ACTIVITY_EVENTS.get(event, f"leg.{event.value}"), leg_id=leg.id,
+                    data={"status": target.value},
+                    latitude=at.lat if keep else None, longitude=at.lng if keep else None)
     if event is TripEventType.DEPARTED:
         eta.on_departed(db, leg, at)
     elif event is TripEventType.ARRIVED:
@@ -770,6 +788,7 @@ def finish_by_customer(db: Session, booking: Booking, actor_id: uuid.UUID, *, no
     _refresh_booking_status(booking)
     audit.record(db, actor_id=actor_id, action="booking_leg.customer_finish", entity_type="booking_leg",
                  entity_id=leg.id)
+    activity.record(db, booking, "leg.customer_finished", leg_id=leg.id)
     return leg
 
 
@@ -877,6 +896,7 @@ def decline_job(db: Session, driver: Driver, leg_id: uuid.UUID, *, now: datetime
     elif offer.status in (OfferStatus.SENT, OfferStatus.EXPIRED):
         offer.status = OfferStatus.REJECTED
         offer.responded_at = now
+    activity.record(db, leg.booking_id, "dispatch.declined", leg_id=leg.id, data={"driver_id": driver.id})
 
 
 # --- Askıya alma (AUTH-06) ------------------------------------------------------
@@ -989,8 +1009,13 @@ def expire_offers(db: Session, now: datetime) -> int:
             )
         )
     )
+    expired_by_leg: dict[uuid.UUID, int] = {}
     for offer in offers:
         offer.status = OfferStatus.EXPIRED
+        expired_by_leg[offer.booking_leg_id] = expired_by_leg.get(offer.booking_leg_id, 0) + 1
+    for leg in db.scalars(select(BookingLeg).where(BookingLeg.id.in_(expired_by_leg))) if expired_by_leg else ():
+        activity.record(db, leg.booking_id, "dispatch.expired", actor_type="system", leg_id=leg.id,
+                        data={"offer_count": expired_by_leg[leg.id]})
     return len(offers)
 
 

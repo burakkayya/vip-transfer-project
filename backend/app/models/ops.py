@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, ForeignKey, Index, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, created_at, str_enum, uuid_pk
@@ -44,6 +44,8 @@ class AuditLog(Base):
     """Yalnızca eklenebilir. UPDATE/DELETE veritabanı tetikleyicisiyle engellenir."""
 
     __tablename__ = "audit_logs"
+    # K-83: rezervasyon geçmişi denetim kayıtlarını varlığa göre okur.
+    __table_args__ = (Index("ix_audit_logs_entity", "entity_type", "entity_id", "created_at"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), index=True)

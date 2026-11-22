@@ -93,16 +93,26 @@ def _phone_sub(m: re.Match) -> str:
     return "[telefon]"
 
 
+def scrub_text(value: str, max_length: int) -> str:
+    """Serbest metinden e-posta, IBAN ve telefon desenlerini temizler ve kırpar (K-83 olay kayıtları da kullanır)."""
+    # REV-C-4: e-posta deseni uzun girdide karesel çalışır; desenlerden önce girdi kırpılır.
+    text = _mask_emails(value[: max_length * 2])
+    text = _IBAN_RE.sub(_iban_sub, text)
+    text = _PHONE_RE.sub(_phone_sub, text)
+    if len(text) > max_length:
+        text = text[:max_length] + "…"
+    return text
+
+
 def scrub_reason(value: Any) -> Any:
     if not isinstance(value, str):
         return _clean(value)
-    # REV-C-4: e-posta deseni uzun girdide karesel çalışır; desenlerden önce girdi kırpılır.
-    text = _mask_emails(value[: REASON_MAX_LENGTH * 2])
-    text = _IBAN_RE.sub(_iban_sub, text)
-    text = _PHONE_RE.sub(_phone_sub, text)
-    if len(text) > REASON_MAX_LENGTH:
-        text = text[:REASON_MAX_LENGTH] + "…"
-    return text
+    return scrub_text(value, REASON_MAX_LENGTH)
+
+
+def clean(value: Any) -> Any:
+    """Hassas anahtarları maskeler, gerekçeleri temizler, değerleri JSON'a uygun hale getirir."""
+    return _clean(value)
 
 
 def _clean_item(key: Any, value: Any) -> Any:

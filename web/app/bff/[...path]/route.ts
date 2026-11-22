@@ -10,6 +10,7 @@ import { resolveBffPath } from "@/lib/bffPath";
 import { bffCookieNames, cookieSecure } from "@/lib/bffCookies";
 import { fetchSiteAllowed, isAllowedOrigin, originConfig, type OriginConfig } from "@/lib/bffGuard";
 import { clientIpConfig, upstreamIpHeaders } from "@/lib/clientIp";
+import { requestIdFor } from "@/lib/requestId";
 
 const API_URL = (process.env.GETAWAY_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 // REV-A-3 / REV-B-1: istemci IP kaynağı açıkça seçilir (BFF_CLIENT_IP_SOURCE, BFF_TRUSTED_HOPS);
@@ -35,6 +36,7 @@ function origins(): OriginConfig {
 const REFRESH_DAYS = 30;
 
 const ALLOWED: RegExp[] = [
+  /^client-errors$/, // K-83: tarayıcı hata raporu (kimliksiz; backend IP başına sınırlar)
   /^regions$/,
   /^vehicle-types$/,
   /^quotes$/,
@@ -104,6 +106,10 @@ async function callApi(req: NextRequest, upstream: URL, body: string | undefined
   const ua = req.headers.get("user-agent");
   if (ua) headers["user-agent"] = ua;
   Object.assign(headers, upstreamIpHeaders((name) => req.headers.get(name), IP_CONFIG));
+  // K-83: istek kimliği ve platform (backend log, olay ve yolculuk geçmişi).
+  headers["x-request-id"] = requestIdFor(req, req.headers.get("x-request-id"));
+  headers["x-client-platform"] = "web";
+  headers["x-client-app"] = "web";
   if (token) headers.authorization = `Bearer ${token}`;
   return fetch(upstream, {
     method: req.method,
@@ -129,6 +135,8 @@ async function relay(upstream: Response): Promise<NextResponse> {
   const binary = type.startsWith("image/");
   const body = upstream.status === 204 ? null : binary ? await upstream.arrayBuffer() : await upstream.text();
   const headers: Record<string, string> = { "content-type": type };
+  const requestId = upstream.headers.get("x-request-id");
+  if (requestId) headers["x-request-id"] = requestId;
   if (binary) headers["cache-control"] = upstream.headers.get("cache-control") ?? "private, max-age=300";
   return new NextResponse(body, { status: upstream.status, headers });
 }

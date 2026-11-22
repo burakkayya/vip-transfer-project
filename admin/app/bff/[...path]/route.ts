@@ -8,6 +8,7 @@ import { bffCookieNames, cookieSecure } from "@/lib/bffCookies";
 import { fetchSiteAllowed, isAllowedOrigin, originConfig, type OriginConfig } from "@/lib/bffGuard";
 import { resolveBffPath } from "@/lib/bffPath";
 import { clientIpConfig, upstreamIpHeaders } from "@/lib/clientIp";
+import { requestIdFor } from "@/lib/requestId";
 
 const API_URL = (process.env.GETAWAY_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 // REV-A-3 / REV-B-1: istemci IP kaynağı açıkça seçilir (BFF_CLIENT_IP_SOURCE, BFF_TRUSTED_HOPS);
@@ -35,7 +36,8 @@ const REFRESH_SECONDS = 12 * 3600;
 // En büyük istek gövdesi: rehber fotoğrafı 5 MB + multipart payı. Aşan istek backend'e gitmez (413).
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
-const ALLOWED: RegExp[] = [/^auth\/staff\/(login|2fa|password)$/, /^auth\/(logout|me)$/, /^admin\/.+$/];
+// K-83: `client-errors` panelin kendi hata raporu (kimliksiz uç; backend IP başına sınırlar).
+const ALLOWED: RegExp[] = [/^auth\/staff\/(login|2fa|password)$/, /^auth\/(logout|me)$/, /^admin\/.+$/, /^client-errors$/];
 const PASS_HEADERS = ["content-type", "content-disposition", "cache-control"];
 
 type Tokens = { access_token: string; refresh_token: string; expires_in: number };
@@ -89,6 +91,10 @@ async function callApi(req: NextRequest, upstream: URL, body: ArrayBuffer | unde
   const ua = req.headers.get("user-agent");
   if (ua) headers["user-agent"] = ua;
   Object.assign(headers, upstreamIpHeaders((name) => req.headers.get(name), IP_CONFIG));
+  // K-83: istek kimliği ve platform (backend log, olay ve yolculuk geçmişi).
+  headers["x-request-id"] = requestIdFor(req, req.headers.get("x-request-id"));
+  headers["x-client-platform"] = "admin";
+  headers["x-client-app"] = "admin";
   if (token) headers.authorization = `Bearer ${token}`;
   return fetch(upstream, {
     method: req.method,
@@ -111,6 +117,8 @@ async function refresh(req: NextRequest, refreshToken: string): Promise<Tokens |
 async function relay(upstream: Response): Promise<NextResponse> {
   const body = upstream.status === 204 ? null : await upstream.arrayBuffer();
   const headers: Record<string, string> = { "cache-control": "no-store" };
+  const requestId = upstream.headers.get("x-request-id");
+  if (requestId) headers["x-request-id"] = requestId;
   for (const h of PASS_HEADERS) {
     const v = upstream.headers.get(h);
     if (v) headers[h] = v;

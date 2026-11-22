@@ -27,7 +27,7 @@ from app.models import BookingLeg, Driver, DriverLedger, TripEvent, TripMessage,
 from app.models.enums import Currency, LedgerStatus, LegStatus, RegionType, TripEventType
 from app.providers import flights as fl
 from app.providers.routing import Point, haversine_km
-from app.services import audit, dispatch, eta, live_location, trip_updates
+from app.services import activity, audit, dispatch, eta, live_location, trip_updates
 from app.services.quotes import latest_exchange_rate
 
 # Yolcu varıştan sonra durum bildirir ya da yazarsa bekleme o andan bu kadar uzar.
@@ -128,6 +128,8 @@ def mark_no_show(db: Session, driver: Driver, leg: BookingLeg, at: Point, now: d
     leg.no_show_at = now
     db.add(TripEvent(booking_leg_id=leg.id, event_type=TripEventType.NO_SHOW, actor_id=driver.user_id,
                      latitude=at.lat, longitude=at.lng))
+    activity.record(db, leg.booking_id, "leg.no_show", leg_id=leg.id, latitude=at.lat, longitude=at.lng,
+                    data={"distance_m": distance, "waited_min": int((now - leg.arrived_at).total_seconds() // 60)})
     dispatch._on_leg_finished(db, leg, now)
     if fi is not None:
         fi.purge_at = now + NO_SHOW_FLIGHT_KEEP  # itiraz incelemesi için uçuş kanıtı bir süre kalır

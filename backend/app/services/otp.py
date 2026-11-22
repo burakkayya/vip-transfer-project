@@ -21,6 +21,7 @@ from app.models import OtpChallenge
 from app.models.enums import OtpPurpose
 from app.providers.sms import SmsSender
 from app.security.crypto import blind_index
+from app.services import incidents
 from app.services.auth import ip_bucket
 
 logger = logging.getLogger(__name__)
@@ -152,6 +153,8 @@ def request_code(
     if total >= s.otp_global_hard_limit_per_hour:
         logger.error("otp küresel sert tavanı aşıldı (%s/saat): tüm OTP istekleri reddediliyor",
                      s.otp_global_hard_limit_per_hour)
+        incidents.alarm("otp_global_hard_limit", "SMS kodu küresel sert tavanı aşıldı: tüm kod istekleri reddediliyor",
+                        level="critical")
         raise TooManyRequests(
             "çok fazla kod istendi, lütfen daha sonra tekrar deneyin",
             retry_after=_retry_after(db, count=total, limit=s.otp_global_hard_limit_per_hour, now=now),
@@ -160,6 +163,8 @@ def request_code(
         # Saatte bir kez ERROR: log toplayıcıdaki alarm kuralı bu kaydı yakalar (ayrı Sentry yok).
         logger.error("GÜVENLİK ALARMI otp küresel saatlik eşiği aşıldı: %s istek (eşik %s, sert tavan %s); "
                      "SMS pompalama olabilir", total, s.otp_global_max_per_hour, s.otp_global_hard_limit_per_hour)
+        incidents.alarm("otp_global_threshold", "SMS kodu küresel saatlik eşiği aşıldı (SMS pompalama olabilir)",
+                        level="critical", context={"hourly_total": total})
 
     code = f"{secrets.randbelow(10 ** s.otp_length):0{s.otp_length}d}"
     challenge = OtpChallenge(

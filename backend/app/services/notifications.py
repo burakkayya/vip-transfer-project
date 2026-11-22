@@ -19,7 +19,7 @@ from app.errors import Conflict, DomainError
 from app.models import Booking, Customer, Driver, Notification, NotificationTemplate
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.providers.sms import get_sms_sender
-from app.services import audit, push_outbox
+from app.services import audit, incidents, push_outbox
 
 log = logging.getLogger(__name__)
 LOCAL_TZ = ZoneInfo("Europe/Istanbul")
@@ -110,6 +110,9 @@ def notify_customer(db: Session, booking: Booking, code: str) -> None:
         _record(db, "customer", customer.id, NotificationChannel.SMS, code, True, None)
     except Exception as exc:  # noqa: BLE001 - bildirim hatası işlemi bozmamalı
         log.exception("SMS bildirimi gönderilemedi")
+        incidents.report_exception(exc, kind="provider", code="sms_notification_failed",
+                                   title="SMS bildirimi gönderilemedi", booking_id=booking.id,
+                                   context={"template": code})
         _record(db, "customer", customer.id, NotificationChannel.SMS, code, False, str(exc)[:255])
 
 

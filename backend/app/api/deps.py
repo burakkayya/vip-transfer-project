@@ -14,6 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import request_context
 from app.config import get_settings
 from app.db import get_db
 from app.errors import Forbidden, Unauthorized
@@ -75,6 +76,9 @@ ClientIp = Annotated[str, Depends(client_ip)]
 Now = Annotated[datetime, Depends(utcnow)]
 
 
+_ACTOR_TYPES = {UserKind.CUSTOMER: "customer", UserKind.DRIVER: "driver", UserKind.STAFF: "staff"}
+
+
 @dataclass
 class Principal:
     user: User
@@ -98,6 +102,8 @@ def current_principal(
     session = get_active_session(db, uuid.UUID(payload["sid"]))
     if str(session.user_id) != payload["sub"]:
         raise Unauthorized("oturum geçersiz")
+    # K-83: log satırı, olay ve yolculuk geçmişi aktörü (UUID; telefon/e-posta değil).
+    request_context.update(actor_type=_ACTOR_TYPES.get(session.user.kind), actor_id=str(session.user.id))
     return Principal(user=session.user, session_id=session.id)
 
 
