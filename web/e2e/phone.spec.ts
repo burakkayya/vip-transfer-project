@@ -33,8 +33,10 @@ const cases: [string, { code: string; dial: string }, ReturnType<typeof ok> | { 
   ["+7 916 123 4567", TR, ok("+79161234567", "RU")],
   // Ülke kodu tekrarı yalnızca kalan kısım tam numara uzunluğundaysa: kısa ulusal numara olduğu gibi kalır.
   ["7172 12345", KZ, ok("+7717212345", "KZ")],
-  // Listede olmayan kod ve çok kısa numara.
-  ["+81 90 1234 5678", TR, { ok: false, reason: "unknown_country" }],
+  // Japonya 12 dil ile listeye girdi (ja → JP).
+  ["+81 90 1234 5678", TR, ok("+819012345678", "JP")],
+  // Listede olmayan kod (Endonezya) ve çok kısa numara.
+  ["+62 812 3456 7890", TR, { ok: false, reason: "unknown_country" }],
   ["532", TR, { ok: false, reason: "short" }],
   ["+90 532", TR, { ok: false, reason: "short" }],
 ];

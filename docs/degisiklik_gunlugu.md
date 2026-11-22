@@ -2,6 +2,10 @@
 
 En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
+## 2026-11-23
+
+- **Web e2e kalan hatalar düzeltildi.** (1) Erişilebilirlik denetimi (`e2e/a11y.ts`) artık sonlu animasyonların bitmesini bekliyor: CI'da rezervasyon adım geçişi (`step-in`) ve kaydırınca belirme (`.reveal`) yarı saydamken ölçülüp sahte kontrast hatası veriyordu (book, daily, Arapça sayfa; masaüstü ve telefon). (2) `phone.spec` "+81" testi eskimişti: Japonya 12 dil ile listeye girdi; listede olmayan kod örneği Endonezya (+62) oldu. Yerel doğrulama üretim derlemesine karşı (CI ile aynı): 482 geçti; yük altında zamanlamaya bağlı 7 test tek işçiyle yeniden koşunca geçti.
+
 ## 2026-11-22
 
 - **Admin e2e güvenlik testi düzeltmesi.** `security.spec.ts` dağıtım sayfası testi, sayfanın her açılışta yaptığı sabit `dispatch/pending/count` isteğini izinli saymıyordu; isteğin zamanlamasına göre ara sıra düşüyordu (CI 9d41b98). İzin listesine eklendi; `leg` değerinin hiçbir isteğe taşınmadığı denetimi aynen duruyor. CI'da web e2e'nin kalan hataları (axe: book, daily, Arapça sayfa; `phone.spec` "+81") önceden bilinen, bu güncellemelerle ilgisiz.
