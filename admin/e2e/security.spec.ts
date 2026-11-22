@@ -81,10 +81,11 @@ test.describe("admin [id] doğrulaması (tarayıcı)", () => {
         await page.waitForLoadState("networkidle");
         expect(calls, p).toEqual([]);
       } else if (p.startsWith("/dispatch")) {
-        // Dağıtım sayfası sabit uçları her açılışta çağırır (bekleyen liste ve sayısı, çevrimiçi sürücüler);
-        // `leg` değeri hiçbir isteğe taşınmamalı.
+        // Dağıtım sayfası sabit uçları her açılışta çağırır (bekleyen liste ve sayısı, çevrimiçi sürücüler; menüdeki
+        // açık olay sayısı, K-83); `leg` değeri hiçbir isteğe taşınmamalı.
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        expect(calls.filter((c) => !/^\/bff\/admin\/(dispatch\/pending(\/count)?|drivers\/online)$/.test(c)), p).toEqual([]);
+        expect(calls.filter((c) => !/^\/bff\/admin\/(dispatch\/pending(\/count)?|drivers\/online|incidents\/count)$/.test(c)), p)
+          .toEqual([]);
       } else {
         await expect(page.getByRole("heading", { name: "Sayfa bulunamadı" })).toBeVisible();
         expect(calls, p).toEqual([]);

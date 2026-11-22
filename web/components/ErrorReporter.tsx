@@ -10,8 +10,16 @@ import { usePathname } from "next/navigation";
  */
 const MAX_REPORTS = 5;
 
+/** Yalnızca küçük harfli kısa parçalar kalır; kod, jeton ve kimlikler `[x]` olur (backend aynı kuralı uygular). */
 function screenOf(pathname: string): string {
-  return pathname.replace(/\/[A-Za-z]{0,3}[0-9][A-Za-z0-9-]*/g, "/#").slice(0, 120) || "/";
+  const parts = pathname.split("/").filter(Boolean).slice(0, 8);
+  return "/" + parts.map((p) => (/^[a-z][a-z-]{0,19}$/.test(p) ? p : "[x]")).join("/");
+}
+
+/** Backend yalnızca `uncaught|unhandled|fatal` + `_HarfAdı` biçimini kabul eder. */
+function codeOf(kind: "uncaught" | "unhandled", name: string | undefined): string {
+  const clean = (name ?? "").replace(/[^A-Za-z]/g, "").slice(0, 40);
+  return clean ? `${kind}_${clean}` : kind;
 }
 
 export default function ErrorReporter() {
@@ -42,12 +50,11 @@ export default function ErrorReporter() {
 
     function onError(e: ErrorEvent) {
       const err = e.error instanceof Error ? e.error : null;
-      report(err?.message ?? e.message ?? "", err?.stack, err?.name ? `uncaught_${err.name}` : "uncaught_error");
+      report(err?.message ?? e.message ?? "", err?.stack, codeOf("uncaught", err?.name));
     }
     function onRejection(e: PromiseRejectionEvent) {
       const err = e.reason instanceof Error ? e.reason : null;
-      report(err?.message ?? String(e.reason ?? ""), err?.stack,
-        err?.name ? `unhandled_${err.name}` : "unhandled_rejection");
+      report(err?.message ?? String(e.reason ?? ""), err?.stack, codeOf("unhandled", err?.name));
     }
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);

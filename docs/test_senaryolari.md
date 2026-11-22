@@ -410,3 +410,16 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 10. **Noktalı yol:** `/tr/a.b` adresi boş sayfa değil 404 sayfasını gösterir.
 11. **Çıkış uyarısı (mobil):** internet kapalıyken çıkış yapın; "Çıkış yapıldı … sunucuya ulaşılamadı" uyarısı görünür, yerel oturum kapanır.
 12. **Hazır olma:** `curl http://127.0.0.1:8000/ready` → `{"status":"ready",...}`; `X-Forwarded-For` başlığıyla 404.
+
+## Olaylar, yolculuk geçmişi ve saklama (K-83)
+
+Admin ve operasyon rolüyle (destek ve muhasebe bu ekranları görmez).
+
+1. **Olay listesi:** Sistem > Olaylar. Beklenen: çözülmemiş olaylar seviye, kaynak (sunucu, zamanlanmış iş, web, admin, müşteri/sürücü uygulaması), tekrar sayısı ve son görülme ile listelenir; menüde açık olay sayısı rozeti (kritik varsa kırmızı).
+2. **Olay ayrıntısı:** bir olaya tıklayın. Beklenen: teknik ayrıntı (kod konumu ya da maskelenmiş hata metni), son tekrarların senaryosu (kullanıcı türü, platform, sürüm, istek yolu şablonu, ilgili rezervasyon bağlantısı, istek kimliği). Telefon ve e-posta `[telefon]`, `[e-posta]` olarak görünür.
+3. **İnceleme ve çözüm:** "İncelemeye al" → "Olay incelemeye alındı." "Çözüldü" not yazılmadan pasif; en az 5 karakterlik notla çözülür. Aynı hata tekrar ederse olay yeniden açılır ve e-posta gider.
+4. **E-posta:** geliştirmede e-posta gönderilmez, backend logunda `E-posta (console)` satırı görünür. Alıcılar `GETAWAY_INCIDENT_ALERT_EMAILS` ile verilir; aynı olay saatte en fazla bir kez bildirilir.
+5. **Hata kodu:** beklenmeyen bir sunucu hatasında yanıt gövdesinde `error.request_id` döner; aynı kimlik olay ayrıntısında "İstek kimliği" sütununda aranabilir.
+6. **Yolculuk geçmişi:** Rezervasyonlar > bir rezervasyon > "Yolculuk geçmişi". Gerekçe 5 karakterden kısayken "Geçmişi göster" pasif. Açınca: rezervasyon oluşturma (platformuyla), ödeme sayfası ve sonucu, sürücü teklifleri, atama, sürücü adımları (varış ve bitişte koordinat; harita servisine gönderilmez), mesaj gönderimi (metin yok), bildirimler, varsa olaylar; zaman sırasıyla. Açılış Denetim kayıtları'nda `booking.timeline_view` olarak görünür.
+7. **Uygulama hatası:** web, admin ya da mobil uygulamada yakalanmamış bir JavaScript hatası Olaylar'da "Uygulama/tarayıcı hatası" olarak, uyarı seviyesinde ve `kaynak: kod (ekran şablonu)` başlığıyla görünür; ileti yalnızca teknik ayrıntıdadır, e-posta gitmez (sayfa başına en fazla 5, mobilde oturum başına 10 rapor).
+8. **Saklama:** günlük görev (`retention.purge`) 2 yıldan eski geçmişi ve denetim kaydını siler, 180 günden eski olay konumlarını boşaltır. Doğrulama: `backend/tests/test_k83_observability.py::test_retention_purge_deletes_and_clears_location`.

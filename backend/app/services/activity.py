@@ -44,7 +44,6 @@ _USER_KIND_ACTOR = {UserKind.CUSTOMER: "customer", UserKind.DRIVER: "driver", Us
 # karşılığı listede tekrar edilmez.
 _AUDIT_EQUIVALENT = {
     "booking.create": "booking.created",
-    "booking.admin_create": "booking.created",
     "payment.paid": "payment.succeeded",
     "booking_leg.assign": "leg.assigned",
     "booking_leg.customer_finish": "leg.customer_finished",
@@ -139,41 +138,30 @@ def timeline(db: Session, booking: Booking) -> list[dict[str, Any]]:
             "data": a.data or {}, "location": location,
         })
 
-    if leg_ids:
+    trip_events = list(db.scalars(select(TripEvent).where(TripEvent.booking_leg_id.in_(leg_ids))
+                                  .order_by(TripEvent.occurred_at).limit(TIMELINE_LIMIT))) if leg_ids else []
+    own_codes = {code for code, _ in own_events}
+    audit_rows = [r for r in db.scalars(select(AuditLog).where(or_(*_entity_filters(db, booking, leg_ids)))
+                                        .order_by(AuditLog.created_at).limit(TIMELINE_LIMIT))
+                  if not _duplicate_audit(r, own_events, own_codes)]
+    # Denetim kaydında ve trip_events'te yalnızca kullanıcı kimliği var; aktör türü kullanıcının türünden okunur.
+    kinds = {u.id: _USER_KIND_ACTOR.get(u.kind, "staff") for u in db.scalars(select(User).where(User.id.in_(
+        {r.actor_id for r in audit_rows if r.actor_id} | {e.actor_id for e in trip_events if e.actor_id})))}
+
+    if trip_events:
         # K-83 öncesi adımlar yalnızca trip_events'te; yeni kayıtta aynı adım geçmişte zaten varsa tekrar edilmez.
-        for e in db.scalars(select(TripEvent).where(TripEvent.booking_leg_id.in_(leg_ids))
-                            .order_by(TripEvent.occurred_at).limit(TIMELINE_LIMIT)):
+        for e in trip_events:
             code = _TRIP_EVENT_CODES.get(e.event_type.value, f"leg.{e.event_type.value}")
             if (code, e.booking_leg_id) in own_events:
                 continue
             items.append({
                 "at": e.occurred_at, "source": "trip_event", "event": code,
-                "actor_type": "driver" if code != "leg.assigned" else "staff",
+                "actor_type": kinds.get(e.actor_id, "system") if e.actor_id else "system",
                 "actor_id": str(e.actor_id) if e.actor_id else None, "leg_order": leg_order.get(e.booking_leg_id),
                 "platform": None, "app_version": None, "request_id": None, "data": {},
                 "location": _loc(e.latitude, e.longitude),
             })
 
-    payment_ids = [str(p) for p in db.scalars(select(Payment.id).where(Payment.booking_id == booking.id))]
-    refund_ids = [str(r) for r in db.scalars(
-        select(Refund.id).join(Payment, Refund.payment_id == Payment.id).where(Payment.booking_id == booking.id))]
-    entity_filters = [
-        (AuditLog.entity_type == "booking") & (AuditLog.entity_id == str(booking.id)),
-    ]
-    if leg_ids:
-        entity_filters.append((AuditLog.entity_type == "booking_leg")
-                              & AuditLog.entity_id.in_([str(i) for i in leg_ids]))
-    if payment_ids:
-        entity_filters.append((AuditLog.entity_type == "payment") & AuditLog.entity_id.in_(payment_ids))
-    if refund_ids:
-        entity_filters.append((AuditLog.entity_type == "refund") & AuditLog.entity_id.in_(refund_ids))
-    own_codes = {code for code, _ in own_events}
-    audit_rows = [r for r in db.scalars(select(AuditLog).where(or_(*entity_filters))
-                                        .order_by(AuditLog.created_at).limit(TIMELINE_LIMIT))
-                  if _AUDIT_EQUIVALENT.get(r.action) not in own_codes]
-    # Denetim kaydında yalnızca kullanıcı kimliği var; aktör türü kullanıcının türünden okunur.
-    kinds = {u.id: _USER_KIND_ACTOR.get(u.kind, "staff") for u in db.scalars(
-        select(User).where(User.id.in_({r.actor_id for r in audit_rows if r.actor_id})))}
     for log_row in audit_rows:
         items.append({
             "at": log_row.created_at, "source": "audit", "event": log_row.action,
@@ -208,4 +196,31 @@ def timeline(db: Session, booking: Booking) -> list[dict[str, Any]]:
             })
 
     items.sort(key=lambda i: i["at"])
-    return items[:TIMELINE_LIMIT]
+    return items[-TIMELINE_LIMIT:]  # sınır aşılırsa en yeni adımlar kalır
+
+
+def _entity_filters(db: Session, booking: Booking, leg_ids: list) -> list:
+    payment_ids = [str(p) for p in db.scalars(select(Payment.id).where(Payment.booking_id == booking.id))]
+    refund_ids = [str(r) for r in db.scalars(
+        select(Refund.id).join(Payment, Refund.payment_id == Payment.id).where(Payment.booking_id == booking.id))]
+    filters = [(AuditLog.entity_type == "booking") & (AuditLog.entity_id == str(booking.id))]
+    if leg_ids:
+        filters.append((AuditLog.entity_type == "booking_leg") & AuditLog.entity_id.in_([str(i) for i in leg_ids]))
+    if payment_ids:
+        filters.append((AuditLog.entity_type == "payment") & AuditLog.entity_id.in_(payment_ids))
+    if refund_ids:
+        filters.append((AuditLog.entity_type == "refund") & AuditLog.entity_id.in_(refund_ids))
+    return filters
+
+
+def _duplicate_audit(row: AuditLog, own_events: set, own_codes: set) -> bool:
+    """Denetim satırının geçmişte karşılığı var mı. Bacak düzeyindeki satırlar aynı bacağın adımıyla eşleşir."""
+    code = _AUDIT_EQUIVALENT.get(row.action)
+    if code is None:
+        return False
+    if row.entity_type == "booking_leg":
+        try:
+            return (code, uuid.UUID(row.entity_id)) in own_events
+        except (TypeError, ValueError):
+            return False
+    return code in own_codes

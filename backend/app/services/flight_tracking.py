@@ -204,10 +204,12 @@ def _check(db: Session, fi: FlightInfo, leg: BookingLeg, provider: fl.FlightProv
     fi.provider_scheduled_at = result.scheduled_at
     fi.estimated_at = result.estimated_at
     if previous != fi.status or previous_estimate != fi.estimated_at:
-        # Uçuş numarası geçmişe yazılmaz (K-31: uçuş verisi yolculuktan sonra silinir); durum ve saat yeter.
+        # K-31: uçuş verisi yolculuktan sonra silinir; geçmişe yalnızca durum ve gecikme dakikası yazılır
+        # (numara, tarih ve saat birlikte seferi belirleyebilir).
         activity.record(db, leg.booking_id, "flight.updated", actor_type="system", leg_id=leg.id,
-                        data={"status": fi.status, "estimated_at": fi.estimated_at,
-                              "scheduled_at": fi.provider_scheduled_at})
+                        data={"status": fi.status, "delay_min": (
+                            int((fi.estimated_at - fi.provider_scheduled_at).total_seconds() // 60)
+                            if fi.estimated_at and fi.provider_scheduled_at else None)})
     _notify(db, leg, fi, previous)
     return True
 

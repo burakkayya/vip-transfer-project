@@ -107,10 +107,10 @@ export default function BookingTimeline({ bookingId }: { bookingId: string }) {
                     </span>
                     {details(item) && <span className="hint">{details(item)}</span>}
                     {item.location && (
-                      <a href={`https://www.google.com/maps?q=${item.location.lat},${item.location.lng}`} target="_blank"
-                        rel="noreferrer noopener">
-                        Konumu haritada aç (yeni sekmede açılır)
-                      </a>
+                      // Koordinat dış servise gönderilmez (K-83); gerekirse kopyalanıp elle açılır.
+                      <span className="hint">
+                        Konum: <span className="mono">{item.location.lat.toFixed(5)}, {item.location.lng.toFixed(5)}</span>
+                      </span>
                     )}
                     {item.source === "incident" && typeof item.data.incident_id === "string" && (
                       <Link href={`/incidents/${encodeURIComponent(item.data.incident_id)}`}>Olayı aç</Link>

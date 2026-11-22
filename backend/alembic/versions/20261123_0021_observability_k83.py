@@ -112,6 +112,22 @@ def upgrade() -> None:
             FOR EACH ROW EXECUTE FUNCTION booking_activities_immutable();
         """
     )
+    op.execute(
+        """
+        CREATE OR REPLACE FUNCTION booking_activities_no_truncate() RETURNS trigger AS $$
+        BEGIN
+            RAISE EXCEPTION 'booking_activities toplu silinemez (TRUNCATE)';
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+    op.execute(
+        """
+        CREATE TRIGGER booking_activities_no_truncate
+            BEFORE TRUNCATE ON booking_activities
+            FOR EACH STATEMENT EXECUTE FUNCTION booking_activities_no_truncate();
+        """
+    )
     # Denetim kaydı: UPDATE yine her zaman engelli; DELETE yalnızca saklama görevinin bayrağıyla.
     op.execute(
         """
@@ -140,6 +156,8 @@ def downgrade() -> None:
     op.drop_index("ix_audit_logs_entity", table_name="audit_logs")
     op.execute("DROP TRIGGER IF EXISTS booking_activities_no_update_delete ON booking_activities")
     op.execute("DROP FUNCTION IF EXISTS booking_activities_immutable()")
+    op.execute("DROP TRIGGER IF EXISTS booking_activities_no_truncate ON booking_activities")
+    op.execute("DROP FUNCTION IF EXISTS booking_activities_no_truncate()")
     op.drop_table("booking_activities")
     op.drop_table("incident_occurrences")
     op.drop_table("incidents")

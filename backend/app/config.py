@@ -341,6 +341,8 @@ class Settings(BaseSettings):
         if self.email_provider != "smtp" or not (self.smtp_host and self.smtp_from):
             raise ValueError("üretimde e-posta sağlayıcısı smtp olmalı, sunucu ve gönderen tanımlı olmalı "
                              "(GETAWAY_EMAIL_PROVIDER, GETAWAY_SMTP_HOST, GETAWAY_SMTP_FROM)")
+        if self.log_format != "json":
+            raise ValueError("üretimde log biçimi json olmalı (GETAWAY_LOG_FORMAT=json; uvicorn --no-access-log)")
         if not self.incident_alert_emails:
             raise ValueError("üretimde olay bildirimi alıcısı boş olamaz (GETAWAY_INCIDENT_ALERT_EMAILS)")
         if not _is_public_https(self.public_admin_url):

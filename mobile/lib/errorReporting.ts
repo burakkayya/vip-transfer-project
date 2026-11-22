@@ -10,7 +10,14 @@ let sent = 0;
 const seen = new Set<string>();
 let installed = false;
 
-export function reportError(error: unknown, code = "uncaught_error", screen?: string): void {
+/** Backend yalnızca `uncaught|unhandled|fatal` + `_HarfAdı` biçimini kabul eder. */
+function codeOf(kind: string, name: string | undefined): string {
+  const clean = (name ?? "").replace(/[^A-Za-z]/g, "").slice(0, 40);
+  return clean ? `${kind}_${clean}` : kind;
+}
+
+export function reportError(error: unknown, code: "uncaught" | "unhandled" | "fatal" = "uncaught",
+                            screen?: string): void {
   const err = error instanceof Error ? error : null;
   const message = (err?.message ?? String(error ?? "")).slice(0, 500) || "bilinmeyen hata";
   const key = code + message;
@@ -22,7 +29,7 @@ export function reportError(error: unknown, code = "uncaught_error", screen?: st
     headers: { "content-type": "application/json", ...clientHeaders(newRequestId()) },
     body: JSON.stringify({
       source: VARIANT === "driver" ? "mobile_driver" : "mobile_customer",
-      code: err?.name ? `${code}_${err.name}`.slice(0, 80) : code,
+      code: codeOf(code, err?.name),
       message,
       stack: err?.stack?.slice(0, 4000),
       screen,

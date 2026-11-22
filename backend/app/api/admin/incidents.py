@@ -136,6 +136,13 @@ def set_incident_status(incident_id: uuid.UUID, body: IncidentStatusIn, staff: O
     return _incident_out(i)
 
 
+def _uuid_or_none(value) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(value)) if value else None
+    except ValueError:
+        return None
+
+
 class TimelineIn(BaseModel):
     # Şikâyet/talep ya da olay referansı; denetim kaydına yazılır (KVKK: amaçla sınırlı erişim).
     reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=300)]
@@ -147,10 +154,11 @@ def booking_timeline(booking_id: uuid.UUID, body: TimelineIn, staff: OpsStaff, d
     if b is None:
         raise NotFound("rezervasyon bulunamadı")
     items = activity.timeline(db, b)
-    names = _names(db, {uuid.UUID(i["actor_id"]) for i in items if i["actor_type"] == "staff" and i["actor_id"]})
+    staff_ids = {sid for i in items if i["actor_type"] == "staff" and (sid := _uuid_or_none(i["actor_id"]))}
+    names = _names(db, staff_ids)
     for item in items:
-        if item["actor_type"] == "staff" and item["actor_id"]:
-            item["actor_name"] = names.get(uuid.UUID(item["actor_id"]))
+        if item["actor_type"] == "staff":
+            item["actor_name"] = names.get(_uuid_or_none(item["actor_id"]))
     audit.record(db, actor_id=staff.id, action="booking.timeline_view", entity_type="booking", entity_id=b.id,
                  changes={"reason": body.reason, "item_count": len(items)}, ip=ip)
     db.commit()

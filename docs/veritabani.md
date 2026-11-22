@@ -80,8 +80,12 @@ Fiyat ve komisyon geçmişi tutulur, eski rezervasyonların hangi kuralla hesapl
 | notification_templates | id, code, locale, body |
 | audit_logs | id, actor_id, action, entity_type, entity_id, changes (hassas alan içermez), ip, created_at |
 | system_settings | id, key, value, updated_by, updated_at |
+| incidents (K-83) | id, fingerprint (tekil), level, source, kind, code, title, detail (şifreli), status, occurrence_count, first_seen_at, last_seen_at, last_notified_at, acknowledged_by/at, resolved_by/at, resolution_note (şifreli) |
+| incident_occurrences (K-83) | id, incident_id, occurred_at, request_id, booking_id (yabancı anahtar yok: ayrı bağlantıda yazılır), context (şifreli JSON) |
+| booking_activities (K-83) | id, booking_id, booking_leg_id, occurred_at, actor_type, actor_id, event, platform, app_version, request_id, data (kişisel veri içermez), location (şifreli, yalnızca varış/bitiş/yolcu gelmedi) |
 
-- `audit_logs` yalnızca eklenebilir. Uygulama kullanıcısına güncelleme ve silme yetkisi verilmez.
+- `audit_logs` yalnızca eklenebilir. Uygulama kullanıcısına güncelleme ve silme yetkisi verilmez. K-83 (0021): silme yalnızca saklama görevinin işlem içi bayrağıyla (`SET LOCAL getaway.retention_purge = 'on'`, 2 yıl).
+- `booking_activities` yalnızca eklenebilir (0021 tetikleyicisi); istisnalar saklama bayrağı ve rezervasyon silinirken yabancı anahtar zinciri (`pg_trigger_depth() > 1`).
 - Kişisel veri alanları (telefon, e-posta, belge yolu) uygulama katmanında alan düzeyinde şifrelenir.
 
 ## Uygulamada yapılan ayrıntılandırmalar

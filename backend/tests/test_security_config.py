@@ -53,6 +53,7 @@ def _prod_kwargs(fcm_file: str) -> dict:
         smtp_from="noreply@getawaytransfers.com",
         incident_alert_emails=["ops@getawaytransfers.com"],
         public_admin_url="https://admin.getawaytransfers.com",
+        log_format="json",
     )
 
 

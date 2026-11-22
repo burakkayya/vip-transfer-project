@@ -21,6 +21,7 @@ Bu dosya hukuki danışmanlık değildir. Maddeler bir hukukçuyla doğrulanmal�
 - Uçuş verisi yolculuk tamamlanınca silinir (K-31). Kuruma bildirim gerekiyorsa bildirimden sonra silinir.
 - Kart verisi tutulmaz, ödeme sağlayıcının sayfası kullanılır.
 - Hassas alanlar (telefon, e-posta, belge yolu, 2FA sırrı) alan düzeyinde şifrelenir. Anahtarlar şu an ortam değişkeninden okunur; KMS ile yönetim hedeftir, henüz kurulmadı (`docs/security/findings.md` MON-10, DB-08, DB-09). Kesin alış ve bırakış koordinatları şifresizdir (DB-04).
+- K-83: hatalar ve alarmlar `incidents` tablosunda (ayrıntı maskelenmiş ve şifreli), rezervasyon adımları `booking_activities` tablosunda (yalnızca eklenebilir, konum yalnızca önemli anda ve şifreli) tutulur. Admin'de yalnızca admin ve operasyon görür; yolculuk geçmişi gerekçeyle açılır ve denetime düşer. Olay e-postası kişisel veri içermez; istemci hata raporları e-posta göndermez ve başlıkları sabittir. Silme talebinde olay anı konumları da boşaltılır. Konum admin'de koordinat olarak gösterilir, harita servisine gönderilmez. Loglarda telefon, e-posta ve gerçek yol yazılmaz; istek kimliği ve yol şablonu yazılır.
 - Yazma işlemleri, girişler, belge ve sohbet görüntüleme ile güvenlik olayları `audit_logs` tablosuna yazılır. Admin rezervasyon detayı gibi okuma işlemlerinin tamamı kayda girmez (PRIV-07). Kayıtlar veritabanı tetikleyicisiyle değiştirilemez; veritabanı sahibi rolü tetikleyiciyi atlatabilir (DB-02).
 - Admin girişi 2FA ile korunur. Paylaşımlı admin hesabı yoktur.
 - Sürücüye yalnızca karşılama için gereken bilgiler gösterilir.
@@ -29,15 +30,25 @@ Bu dosya hukuki danışmanlık değildir. Maddeler bir hukukçuyla doğrulanmal�
 - Yedekleme hedefi: şifreli ve Türkiye'de. Yedekleme yapılandırması ve felaket kurtarma senaryosu henüz yok (DB-12, `acik_konular.md`).
 - Güvenlik denetimi (2026-11-14): tehdit modeli, bulgular ve düzeltme planı `docs/security/` altındadır. Açık bildirimi: kök `SECURITY.md`.
 
-## Veri saklama süreleri (taslak, doğrulanacak)
+## Veri saklama süreleri (K-83, taslak, hukukçu teyidi bekliyor)
 
-| Veri | Süre |
-|---|---|
-| Uçuş bilgisi | Yolculuk tamamlanınca (bildirim gerekiyorsa bildirimden sonra) |
-| Müşteri hesabı | Son rezervasyondan itibaren belirlenen süre (hukukçu teyidi) |
-| Rezervasyon ve fatura kayıtları | Vergi mevzuatına göre (hukukçu teyidi) |
-| Sürücü belgeleri | Sürücü aktif olduğu süre + yasal saklama süresi |
-| Denetim kayıtları | Hukukçu teyidi ile belirlenecek |
+Tek kaynak `backend/app/retention.py`; günlük görev (`retention.purge`) uygular. Şifreleme saklama süresinin yerine
+geçmez (KVKK m.4, GDPR m.5).
+
+| Veri | Süre | İşlem | Dayanak |
+|---|---|---|---|
+| Yolculuk geçmişi (`booking_activities`) | 2 yıl | Silinir | Uyuşmazlık ve şikâyet incelemesi |
+| Olay anındaki konum (geçmiş ve `trip_events`) | 180 gün | Konum boşaltılır | Kanıtlı bekleme ve şikâyet |
+| Denetim kaydı (`audit_logs`) | 2 yıl | Silinir | 5651 erişim kaydı, güvenlik incelemesi |
+| Olay tekrarları (`incident_occurrences`) | 180 gün | Silinir | Teşhis |
+| Olay (`incidents`, açık ya da çözülmüş) | Son görülmeden 1 yıl | Silinir | Teşhis, tekrar analizi |
+| Biten oturumlar (`sessions`, IP içerir) | Bitişten 90 gün | Silinir | Güvenlik incelemesi |
+| Uçuş bilgisi | Yolculuk tamamlanınca (bildirim gerekiyorsa bildirimden sonra) | Silinir | K-31 |
+| Sohbet mesajları | Yolculuktan 30 gün | Silinir | K-50 |
+| SMS doğrulama kodları | 1 gün | Silinir | Kimlik doğrulama |
+| Rezervasyon, ödeme ve fatura | 10 yıl | Saklanır; silme talebinde kişisel alanlar anonimleşir (K-70) | VUK 253, TTK 82 |
+| Müşteri hesabı | Son rezervasyondan itibaren belirlenecek süre | Henüz uygulanmadı | Hukukçu teyidi |
+| Sürücü belgeleri | Sürücü aktif olduğu süre + yasal saklama süresi | Henüz uygulanmadı | Hukukçu teyidi |
 
 ## Müşteri hakları
 

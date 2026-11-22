@@ -7,7 +7,7 @@ test("olaylar: istemci hatası listede, senaryosuyla açılır, incelenir ve ç�
   test.skip(!hasCredentials(), SKIP_MESSAGE);
   test.setTimeout(90_000);
   // Uzun rakam dizisi telefon sanılıp maskelenir (K-83); kimlik harf ağırlıklı.
-  const code = `e2e_${Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 10)}`;
+  const code = `uncaught_Etoe${Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 10)}`;
 
   await page.goto("/incidents");
   await expect(page.getByRole("heading", { level: 1, name: "Olaylar" })).toBeVisible();
@@ -16,19 +16,20 @@ test("olaylar: istemci hatası listede, senaryosuyla açılır, incelenir ve ç�
     const r = await fetch("/bff/client-errors", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ source: "admin", code: c, message: `E2E deneme hatası ${c}`, screen: "/incidents" }),
+      body: JSON.stringify({ source: "admin", code: c, message: "E2E deneme hatası", screen: "/incidents" }),
     });
     return r.status;
   }, code);
   expect(status).toBe(202);
 
   await page.reload();
-  const link = page.getByRole("link", { name: `admin: E2E deneme hatası ${code}` });
+  const link = page.getByRole("link", { name: `admin: ${code} (/incidents)` });
   await expect(link).toBeVisible();
   await expectNoAxeViolations(page);
   await link.click();
 
-  await expect(page.getByRole("heading", { level: 1, name: `admin: E2E deneme hatası ${code}` })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 1, name: `admin: ${code} (/incidents)` })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("E2E deneme hatası")).toBeVisible(); // ileti yalnızca ayrıntıda
   await expect(page.getByRole("heading", { name: /Senaryo/ })).toBeVisible();
   await expect(page.getByText("Admin paneli").first()).toBeVisible();
   await expectNoAxeViolations(page);

@@ -143,29 +143,75 @@ def test_worker_job_failure_becomes_incident(db_app, db, email_outbox):
 def test_incident_report_never_raises(monkeypatch):
     from app.services import incidents
 
-    monkeypatch.setattr("app.db.SessionLocal", lambda: (_ for _ in ()).throw(RuntimeError("db yok")))
+    monkeypatch.setattr(incidents, "_session", lambda: (_ for _ in ()).throw(RuntimeError("db yok")))
     assert incidents.report(source="backend", kind="x", code="y", title="z") is None
+
+
+def test_incident_context_keeps_ids_intact(db):
+    """Kimlikler desen maskesinden geçmez (UUID'deki rakam dizileri telefon sanılıyordu)."""
+    from app import request_context
+    from app.services import incidents
+
+    for _ in range(40):
+        rid, actor = uuid.uuid4().hex, str(uuid.uuid4())
+        token = request_context.set_context(request_context.RequestContext(
+            request_id=rid, actor_type="staff", actor_id=actor))
+        try:
+            incidents.report(source="backend", kind="test", code=f"ids_{_letters()}", title="kimlik testi",
+                             context={"refund_id": str(uuid.uuid4())})
+        finally:
+            request_context.reset(token)
+        occ = db.scalar(select(IncidentOccurrence).where(IncidentOccurrence.request_id == rid))
+        assert occ is not None and json.loads(occ.context)["actor_id"] == actor
+
+
+def test_client_error_new_fingerprints_overflow_into_one_incident(client, db, monkeypatch):
+    from app.api import client_errors
+
+    monkeypatch.setattr(client_errors, "NEW_FINGERPRINTS_PER_HOUR", 0)
+    before = db.scalar(select(Incident.occurrence_count).where(Incident.code == "client_error_overflow")) or 0
+    for _ in range(3):
+        r = client.post(f"{API}/client-errors", json={"source": "web", "code": f"uncaught_X{_letters()}",
+                                                      "message": "m"})
+        assert r.status_code == 202
+    db.expire_all()
+    after = db.scalar(select(Incident.occurrence_count).where(Incident.code == "client_error_overflow"))
+    assert after == before + 3
+
+
+def test_unhandled_error_response_has_cors_header(client, boom_route):
+    r = client.get(boom_route, headers={"Origin": "http://localhost:8081"})
+    assert r.status_code == 500
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:8081"
 
 
 # --- İstemci hata raporu --------------------------------------------------------------------------------------------
 
 
-def test_client_error_report_is_scrubbed_and_rate_limited(client, db, monkeypatch):
+def _letters() -> str:
+    return "".join(chr(97 + b % 26) for b in uuid.uuid4().bytes[:8])
+
+
+def test_client_error_report_is_scrubbed_and_rate_limited(client, db, monkeypatch, email_outbox):
     from app.config import get_settings
 
-    code = f"render_{uuid.uuid4().hex[:6]}"
+    code = f"uncaught_Type{_letters()}"
     r = client.post(f"{API}/client-errors", json={
-        "source": "mobile_customer", "code": code, "screen": "/bookings/[code]",
+        "source": "mobile_customer", "code": code, "screen": "/tr/bookings/GA7K2M9X/track/aB3_xYz-tok",
         "message": "TypeError at user anna@example.com +90 532 123 45 67", "stack": "at render (Booking.tsx:12)",
         "app_version": "2.0.1", "request_id": "client-req-01"})
     assert r.status_code == 202
     inc = _incident(db, code)
-    assert inc.source == "mobile_customer" and inc.kind == "client_error"
-    assert "anna@example.com" not in inc.title + (inc.detail or "")
-    assert "532 123 45 67" not in inc.title + (inc.detail or "")
+    assert inc.source == "mobile_customer" and inc.kind == "client_error" and inc.level == "warning"
+    # Başlık sabit: istemcinin iletisi başlığa (şifresiz sütun, log, e-posta) gitmez; ekran şablona indirgenir.
+    assert inc.title == f"mobile_customer: {code} (/tr/bookings/[x]/track/[x])"
+    assert "anna@example.com" not in inc.detail and "532 123 45 67" not in inc.detail
     assert "Booking.tsx:12" in inc.detail
+    assert email_outbox == []  # istemci raporu tek tek e-posta göndermez
 
-    # Geçersiz kaynak reddedilir.
+    # Serbest kod, geçersiz kaynak reddedilir.
+    assert client.post(f"{API}/client-errors", json={"source": "web", "code": "render_905321234567",
+                                                     "message": "m"}).status_code == 422
     assert client.post(f"{API}/client-errors", json={"source": "x", "message": "m"}).status_code == 422
     monkeypatch.setattr(get_settings(), "client_error_rate_limit_per_10min", 0)
     r = client.post(f"{API}/client-errors", json={"source": "web", "message": "m"})
@@ -284,6 +330,30 @@ def test_retention_purge_deletes_and_clears_location(client, db):
     with pytest.raises(DBAPIError):
         db.execute(text("delete from booking_activities where id = :i"), {"i": row_id})
     db.rollback()
+
+
+@pytest.mark.usefixtures("relaxed_trip_clock")
+def test_deletion_request_clears_event_locations(client, db, ops):
+    """K-70 + K-83: silme talebinde olay anı konumları (fiilen alış/bırakış noktası) boşalır; adımlar kalır."""
+    from app.services import privacy
+
+    driver, customer, code, leg_id = _accepted(client, ops)
+    ayt = _region(client, "ayt")
+    pickup = (float(ayt["latitude"]), float(ayt["longitude"]))
+    assert _event(client, driver, leg_id, "yola_cikti", (pickup[0] + 0.2, pickup[1])).status_code == 200
+    assert _event(client, driver, leg_id, "vardi", pickup).status_code == 200
+    assert _event(client, driver, leg_id, "basladi").status_code == 200
+    assert client.post(f"{API}/me/bookings/{code}/finish", headers=customer).status_code == 200
+    db.expire_all()
+    booking = db.scalar(select(Booking).where(Booking.booking_code == code))
+    assert any(a.location for a in db.scalars(select(BookingActivity).where(BookingActivity.booking_id == booking.id)))
+    privacy.anonymize_customer(db, booking.customer, datetime.now(timezone.utc))
+    db.commit()
+    db.expire_all()
+    acts = db.scalars(select(BookingActivity).where(BookingActivity.booking_id == booking.id)).all()
+    assert acts and all(a.location is None for a in acts)
+    leg_events = db.scalars(select(TripEvent).where(TripEvent.booking_leg_id == booking.legs[0].id)).all()
+    assert leg_events and all(e.latitude is None for e in leg_events)
 
 
 def test_retention_policy_endpoint(client, db, ops):

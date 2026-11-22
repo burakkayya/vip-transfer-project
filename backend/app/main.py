@@ -53,16 +53,6 @@ def create_app() -> FastAPI:
     )
     # API-07: yükleme gövdesi sınırı akış sırasında (en içteki middleware; güvenlik başlıkları 413'e de eklenir).
     app.add_middleware(UploadBodyLimit)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=s.cors_origins,
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        # K-83: istemci bilgisi ve istek kimliği (mobil web önizlemesi tarayıcıdan doğrudan çağırır).
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Client-Platform", "X-Client-App",
-                       "X-Client-Version"],
-        expose_headers=["X-Request-ID"],
-    )
 
     @app.exception_handler(DomainError)
     async def _domain_error(request: Request, exc: DomainError):
@@ -136,6 +126,18 @@ def create_app() -> FastAPI:
         if "frame-ancestors" not in response.headers.get("content-security-policy", ""):
             response.headers.setdefault("X-Frame-Options", "DENY")
         return response
+
+    # CORS en dışta: ara katmanların ürettiği yanıtlar (ör. 500 ve request_id) da CORS başlığı taşır.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=s.cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        # K-83: istemci bilgisi ve istek kimliği (mobil web önizlemesi tarayıcıdan doğrudan çağırır).
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Client-Platform", "X-Client-App",
+                       "X-Client-Version"],
+        expose_headers=["X-Request-ID"],
+    )
 
     @app.get("/health", include_in_schema=False)
     def health():

@@ -41,7 +41,7 @@ KVKK m.4 ve GDPR m.5: veri amaçla sınırlı, ölçülü ve gerektiği kadar sa
 | Olay anındaki konum (geçmiş ve `trip_events`) | 180 gün | Konum boşaltılır | Kanıtlı bekleme / şikâyet; sonra gereksiz |
 | Denetim kaydı (`audit_logs`) | 2 yıl | Silinir | 5651 erişim kayıtları, güvenlik incelemesi |
 | Olay tekrarları (`incident_occurrences`) | 180 gün | Silinir | Teşhis |
-| Çözülmüş olay (`incidents`) | Son görülmeden 1 yıl | Silinir | Teşhis, tekrar analizi |
+| Olay (`incidents`, açık ya da çözülmüş) | Son görülmeden 1 yıl | Silinir | Teşhis, tekrar analizi |
 | Süresi dolmuş oturumlar (`sessions`, IP içerir) | Bitişten 90 gün | Silinir | Güvenlik incelemesi |
 | Uçuş bilgisi | Yolculuk bitince | Silinir | K-31 (değişmedi) |
 | Sohbet mesajları | Yolculuktan 30 gün | Silinir | K-50 (değişmedi) |

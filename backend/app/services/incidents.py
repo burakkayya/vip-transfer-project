@@ -32,6 +32,22 @@ from app.services import audit
 
 log = logging.getLogger(__name__)
 
+_factory = None
+
+
+def _session():
+    """Olay kaydı ayrı ve küçük bir bağlantı havuzu kullanır: kesinti anında istekler kendi bağlantısını tutarken
+    olay kaydı ana havuzu beklemesin (bekleme kısa; dolarsa olay loglanır ve kaybolur, istek gecikmez)."""
+    global _factory
+    if _factory is None:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+
+        engine = create_engine(get_settings().database_url, pool_pre_ping=True, pool_size=2, max_overflow=3,
+                               pool_timeout=3)
+        _factory = sessionmaker(bind=engine, expire_on_commit=False)
+    return _factory()
+
 LEVELS = ("warning", "error", "critical")
 SOURCES = frozenset({"backend", "worker", "web", "admin", "mobile_customer", "mobile_driver"})
 STATUSES = ("open", "acknowledged", "resolved")
@@ -77,7 +93,13 @@ def _context_payload(extra: dict[str, Any] | None) -> dict[str, Any]:
     if extra:
         payload.update(extra)
     cleaned = audit.clean({k: v for k, v in payload.items() if v is not None})
-    return {k: (audit.scrub_text(v, 500) if isinstance(v, str) else v) for k, v in cleaned.items()}
+    # Kimlik alanları (UUID, istek kimliği) desen maskesinden geçmez: rakam dizileri telefon sanılıp bozuluyordu.
+    return {k: (audit.scrub_text(v, 500) if isinstance(v, str) and not _is_id_key(k) else v)
+            for k, v in cleaned.items()}
+
+
+def _is_id_key(key: str) -> bool:
+    return key == "request_id" or key.endswith("_id")
 
 
 def report(
@@ -94,8 +116,6 @@ def report(
     now: datetime | None = None,
 ) -> uuid.UUID | None:
     """Olayı kaydeder ve gerekiyorsa bildirir. Dönüş: olay kimliği (kayıt başarısızsa None)."""
-    from app.db import SessionLocal  # döngüsel içe aktarımı önler
-
     try:
         source = source if source in SOURCES else "backend"
         level = level if level in LEVELS else "error"
@@ -105,7 +125,7 @@ def report(
         safe_detail = audit.scrub_text(detail, DETAIL_MAX) if detail else None
         payload = _context_payload(context)
         booking_uuid = _as_uuid(booking_id)
-        with SessionLocal() as db:
+        with _session() as db:
             # İsteğin kendi işlemi kilit tutuyor olabilir; olay kaydı onu beklerken asılı kalmasın.
             db.execute(text("SET LOCAL lock_timeout = '3s'"))
             previous = db.scalar(select(Incident.status).where(Incident.fingerprint == fp))
@@ -128,20 +148,23 @@ def report(
                         "THEN excluded.level ELSE incidents.level END"
                     ),
                     "status": text("CASE WHEN incidents.status = 'resolved' THEN 'open' ELSE incidents.status END"),
+                    "resolved_by": text("CASE WHEN incidents.status = 'resolved' THEN NULL ELSE incidents.resolved_by END"),
+                    "resolved_at": text("CASE WHEN incidents.status = 'resolved' THEN NULL ELSE incidents.resolved_at END"),
+                    "resolution_note": text(
+                        "CASE WHEN incidents.status = 'resolved' THEN NULL ELSE incidents.resolution_note END"),
                 },
-            ).returning(Incident.id, Incident.occurrence_count, Incident.level, Incident.status)
-            incident_id, count, final_level, _status = db.execute(stmt).one()
+            ).returning(Incident.id, Incident.occurrence_count, Incident.level, text("(xmax = 0) AS inserted"))
+            incident_id, count, final_level, inserted = db.execute(stmt).one()
             db.add(IncidentOccurrence(
                 incident_id=incident_id, occurred_at=now, request_id=payload.get("request_id"),
                 booking_id=booking_uuid, context=json.dumps(payload, ensure_ascii=False, default=str),
             ))
             # Yeni ya da yeniden açılan olay her zaman, tekrar eden açık olay aralıkla bildirilir.
             should_notify = final_level in ("error", "critical") and _claim_notification(
-                db, incident_id, now, force=previous in (None, "resolved"))
+                db, incident_id, now, force=bool(inserted) or previous == "resolved")
             db.commit()
         # Bilgi seviyesinde: kaynağı hatayı zaten kendi seviyesinde logladı; log alarm kuralları iki kez saymasın.
-        log.info("olay [%s/%s] %s (tekrar %d, %s) id=%s", source, code, safe_title, count, final_level,
-                 incident_id)
+        log.info("olay [%s/%s] tekrar %d, %s id=%s", source, code, count, final_level, incident_id)
         if should_notify:
             _notify(incident_id, final_level, source, safe_title, count)
         return incident_id

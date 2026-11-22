@@ -39,7 +39,7 @@ POLICY: tuple[Rule, ...] = (
     Rule("Denetim kaydı (audit_logs)", 730, "silinir", "5651 erişim kaydı ve güvenlik incelemesi",
          "retention.purge"),
     Rule("Olay tekrarları (incident_occurrences)", 180, "silinir", "teşhis", "retention.purge"),
-    Rule("Çözülmüş olay (incidents)", 365, "silinir (son görülmeden)", "teşhis ve tekrar analizi",
+    Rule("Olay (incidents)", 365, "silinir (son görülmeden; açık olay dahil)", "teşhis ve tekrar analizi",
          "retention.purge"),
     Rule("Biten oturumlar (sessions, IP içerir)", 90, "silinir (bitişten)", "güvenlik incelemesi",
          "retention.purge"),
@@ -63,7 +63,7 @@ ACTIVITY_DAYS = _days("Yolculuk geçmişi")
 LOCATION_DAYS = _days("Olay anındaki konum")
 AUDIT_DAYS = _days("Denetim kaydı")
 OCCURRENCE_DAYS = _days("Olay tekrarları")
-RESOLVED_INCIDENT_DAYS = _days("Çözülmüş olay")
+INCIDENT_DAYS = _days("Olay (incidents)")
 SESSION_DAYS = _days("Biten oturumlar")
 
 
@@ -85,8 +85,7 @@ def purge(db: Session, now: datetime) -> int:
         "incident_occurrences": db.execute(delete(IncidentOccurrence).where(
             IncidentOccurrence.occurred_at < now - timedelta(days=OCCURRENCE_DAYS))).rowcount,
         "incidents": db.execute(delete(Incident).where(
-            Incident.status == "resolved",
-            Incident.last_seen_at < now - timedelta(days=RESOLVED_INCIDENT_DAYS))).rowcount,
+            Incident.last_seen_at < now - timedelta(days=INCIDENT_DAYS))).rowcount,
         "sessions": db.execute(delete(AuthSession).where(
             AuthSession.expires_at < now - timedelta(days=SESSION_DAYS))).rowcount,
     }
