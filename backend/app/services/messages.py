@@ -20,7 +20,7 @@ from app.errors import Conflict, DomainError, NotFound, ServiceUnavailable, TooM
 from app.models import Booking, BookingLeg, TripMessage
 from app.models.enums import LegStatus
 from app.providers.translation import get_translator
-from app.services import api_cache, trip_updates
+from app.services import activity, api_cache, incidents, trip_updates
 
 log = logging.getLogger(__name__)
 
@@ -131,6 +131,11 @@ def send(db: Session, leg: BookingLeg, sender: str, text: str, now: datetime,
         if translated:
             msg.translated_body, msg.translated_lang = translated, target
     db.add(msg)
+    # K-83: yalnızca mesajın varlığı; metin geçmişe yazılmaz (sohbet 30 gün sonra silinir, K-50).
+    activity.record(db, leg.booking_id, "chat.message_sent", actor_type=sender, leg_id=leg.id,
+                    actor_id=leg.booking.customer.user_id if sender == "customer" else (
+                        leg.driver.user_id if leg.driver else None),
+                    data={"translated": msg.translated_body is not None})
     shown = msg.translated_body or body
     preview = shown if len(shown) <= 120 else shown[:117] + "…"
     if sender == "customer":
@@ -147,6 +152,8 @@ def translate(text: str, target: str) -> str | None:
         translator = get_translator()
     except RuntimeError as exc:  # anahtar tanımsız: mesaj çevrilmeden gider
         log.error("çeviri yapılandırması hatalı: %s", exc)
+        incidents.alarm("translation_misconfigured", "Sohbet çevirisi yapılandırması hatalı (anahtar eksik)",
+                        kind="provider", level="warning")
         return None
     if translator is None:
         return None

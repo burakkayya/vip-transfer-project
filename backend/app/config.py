@@ -171,6 +171,26 @@ class Settings(BaseSettings):
     # K-62 sürücü kartı alıştan bu kadar saat önce gönderilir (daha geç atanırsa atanınca).
     driver_card_hours_before: int = 24
 
+    # K-83 e-posta: "console" (geliştirme/test; gönderilmez, loglanır) veya "smtp" (üretim; STARTTLS ya da
+    # SMTPS zorunlu). Parola repoda değil, ortam değişkeninde.
+    email_provider: Literal["console", "smtp"] = "console"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_use_ssl: bool = False  # True: SMTPS (465); False: STARTTLS (587)
+    # K-83 olay bildirimi: alıcılar (JSON liste) ve aynı olay için en kısa yeniden bildirim aralığı.
+    incident_alert_emails: list[str] = []
+    incident_alert_min_interval_minutes: int = 60
+    # Bildirim e-postasındaki "Olayı aç" bağlantısı (admin paneli kök adresi).
+    public_admin_url: str = "http://localhost:3001"
+    # K-83 istemci hata raporu (web, admin, mobil): IP başına 10 dakikalık sınır.
+    client_error_rate_limit_per_10min: int = 30
+    client_error_global_rate_limit_per_10min: int = 600
+    # K-83 log biçimi: "json" (üretim; tek satır JSON) veya "text" (geliştirme).
+    log_format: Literal["json", "text"] = "text"
+
     payment_provider: str = "fake"
     paytr_merchant_id: str = ""
     paytr_merchant_key: str = ""
@@ -317,6 +337,16 @@ class Settings(BaseSettings):
             raise ValueError("üretimde CORS kaynakları yalnızca https:// ve localhost dışı olmalı (GETAWAY_CORS_ORIGINS)")
         if not _is_public_https(self.public_web_url):
             raise ValueError("üretimde public_web_url https:// ve localhost dışı olmalı (GETAWAY_PUBLIC_WEB_URL)")
+        # K-83: hata bildirimi üretimde gerçekten birine ulaşmalı.
+        if self.email_provider != "smtp" or not (self.smtp_host and self.smtp_from):
+            raise ValueError("üretimde e-posta sağlayıcısı smtp olmalı, sunucu ve gönderen tanımlı olmalı "
+                             "(GETAWAY_EMAIL_PROVIDER, GETAWAY_SMTP_HOST, GETAWAY_SMTP_FROM)")
+        if self.log_format != "json":
+            raise ValueError("üretimde log biçimi json olmalı (GETAWAY_LOG_FORMAT=json; uvicorn --no-access-log)")
+        if not self.incident_alert_emails:
+            raise ValueError("üretimde olay bildirimi alıcısı boş olamaz (GETAWAY_INCIDENT_ALERT_EMAILS)")
+        if not _is_public_https(self.public_admin_url):
+            raise ValueError("üretimde public_admin_url https:// ve localhost dışı olmalı (GETAWAY_PUBLIC_ADMIN_URL)")
         # REV-A-2: liste boşsa backend BFF'nin ilettiği istemci IP'sini yok sayar; BFF arkasında tüm
         # kullanıcılar tek IP'ye (BFF) düşer ve IP başına sınırlar herkesi birlikte keser.
         if not self.trusted_proxies:

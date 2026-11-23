@@ -46,7 +46,7 @@ from app.models.enums import (
 )
 from app.providers.payments import PaymentProvider, RefundResult
 from app.localtime import LOCAL_TZ
-from app.services import audit, system_settings, trip_updates
+from app.services import activity, audit, incidents, system_settings, trip_updates
 from app.services.quotes import Quote
 
 log = logging.getLogger(__name__)
@@ -329,6 +329,14 @@ def create_booking(
         entity_id=booking.id,
         changes=changes,
         ip=ip,
+    )
+    activity.record(
+        db, booking, "booking.created",
+        actor_type="staff" if admin is not None else "customer",
+        actor_id=admin.staff_id if admin is not None else customer.user_id,
+        data={"source": booking.source.value if booking.source else None, "type": booking_type.value,
+              "legs": len(booking.legs), "total": booking.total_amount, "currency": booking.currency,
+              "channel": admin.channel if admin is not None else None},
     )
     return booking
 
@@ -684,6 +692,8 @@ def execute_refund(db: Session, refund: Refund, payment: Payment, provider: Paym
     except Exception:  # noqa: BLE001 - sağlayıcı istisnası iadeyi belirsiz bırakır, isteği düşürmez
         log.exception("iade sağlayıcı çağrısı beklenmeyen hata verdi: refund=%s", refund_id)
         result = RefundResult(ok=False, unknown=True, error="beklenmeyen sağlayıcı hatası")
+        incidents.alarm("refund_provider_exception", "İade sağlayıcı çağrısı beklenmeyen hata verdi",
+                        kind="refund", level="critical", context={"refund_id": refund_id})
 
     # Kilit sırası diğer iade yollarıyla aynı: önce ödeme, sonra iade.
     db.scalar(select(Payment).where(Payment.id == payment_id).with_for_update(of=Payment)
@@ -701,7 +711,11 @@ def execute_refund(db: Session, refund: Refund, payment: Payment, provider: Paym
     else:
         refund.status = RefundStatus.FAILED
         refund.reason = f"{refund.reason[:150]} | hata: {result.error}"[:255]
+    booking_id, final_status = payment.booking_id, refund.status
     db.commit()
+    if final_status in (RefundStatus.UNKNOWN, RefundStatus.FAILED):
+        incidents.alarm(f"refund_{final_status.value}", "İade tamamlanamadı; mutabakat ya da yeniden deneme gerekli",
+                        kind="refund", level="critical", booking_id=booking_id, context={"refund_id": refund_id})
 
 
 RETRYABLE_REFUND = {RefundStatus.FAILED, RefundStatus.UNKNOWN}

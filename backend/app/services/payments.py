@@ -31,7 +31,7 @@ from app.providers.payments import (
     callback_currency_matches,
     log_safe,
 )
-from app.services import audit, dispatch, notifications, ratings
+from app.services import activity, audit, dispatch, incidents, notifications, ratings
 from app.services.bookings import execute_refund
 
 log = logging.getLogger(__name__)
@@ -107,6 +107,7 @@ def start_payment(
     now = now or datetime.now(timezone.utc)
     existing = _open_payment(db, booking, now)
     if existing is not None:
+        activity.record(db, booking, "payment.page_reopened", data={"payment_id": existing.id})
         return existing, Checkout(iframe_url=existing.checkout_url)
     payment = Payment(
         booking_id=booking.id,
@@ -133,6 +134,9 @@ def start_payment(
         )
     )
     payment.checkout_url = checkout.iframe_url
+    activity.record(db, booking, "payment.started", data={
+        "payment_id": payment.id, "provider": provider.code.value, "amount": payment.amount,
+        "currency": payment.currency})
     return payment, checkout
 
 
@@ -209,6 +213,9 @@ def handle_callback(
     if not result.success:
         payment.status = PaymentStatus.FAILED
         payment.failure_reason = (result.failure_reason or "")[:255]
+        # Sağlayıcının ret iletisi kart sahibine ait bilgi içermez ama serbest metindir: kırpılıp maskelenir.
+        activity.record(db, booking, "payment.failed", actor_type="system", data={
+            "payment_id": payment.id, "reason": audit.scrub_text(payment.failure_reason or "", 120)})
         return
 
     # BIZ-07: imza geçerli olsa da tutar ve para birimi rezervasyonla doğrulanmadan ödeme onaylanmaz.
@@ -216,13 +223,19 @@ def handle_callback(
     # çekilen tutar otomatik iade edilir (K-74).
     reject = _reject_reason(result, payment)
     if reject is not None:
+        activity.record(db, booking, "payment.rejected", actor_type="system",
+                        data={"payment_id": payment.id, "reason": reject})
         _reject_charge(db, payment, provider, result, reject)
+        incidents.alarm("payment_rejected", f"Ödeme bildirimi reddedildi ({reject}); otomatik iade başlatıldı",
+                        kind="payment", booking_id=booking.id)
         return
 
     payment.status = PaymentStatus.PAID
     payment.paid_at = now
     audit.record(db, actor_id=None, action="payment.paid", entity_type="payment",
                  entity_id=payment.id, changes={"amount": payment.amount, "currency": payment.currency})
+    activity.record(db, booking, "payment.succeeded", actor_type="system",
+                    data={"payment_id": payment.id, "amount": payment.amount, "currency": payment.currency})
 
     if booking.status is not BookingStatus.PENDING_PAYMENT:
         # Rezervasyon bu arada iptal edildiyse (ör. ödeme süresi doldu) tamamı iade edilir.

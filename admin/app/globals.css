@@ -883,3 +883,67 @@ fieldset.place legend {
 .vehicle-photo figcaption {
   font-size: 0.85rem;
 }
+
+/* K-83 yolculuk geçmişi: zaman çizelgesi */
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) 1fr;
+  gap: 4px 16px;
+  padding: 10px 0 10px 14px;
+  border-left: 2px solid var(--line);
+  position: relative;
+}
+
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.timeline li.timeline-incident::before {
+  background: var(--danger);
+}
+
+.timeline-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .timeline li {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nav-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 9px;
+  font-size: 0.72rem;
+  line-height: 18px;
+  text-align: center;
+  background: var(--line-strong);
+  color: var(--ink);
+}
+
+.nav-count.critical {
+  background: var(--danger);
+  color: var(--surface);
+}

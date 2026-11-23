@@ -6,6 +6,7 @@ import { useCan } from "@/components/Shell";
 import { Badge, ErrorBox, Field, Msg, PageHead, Table, useAction, useData } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dt, money, pct } from "@/lib/format";
+import BookingTimeline from "@/components/BookingTimeline";
 import ChatReview from "@/components/ChatReview";
 import ManualBookingPanel, { type ManualInfo } from "@/components/ManualBookingPanel";
 import DailyOps, { type DayUsage } from "@/components/DailyOps";
@@ -312,6 +313,8 @@ export default function BookingDetail({ id }: { id: string }) {
       </div>
 
       {b.legs.some((l) => l.driver) && can("operasyon", "destek") && <ChatReview bookingId={id} />}
+
+      {can("operasyon") && <BookingTimeline bookingId={id} />}
 
       <h2>Ödemeler</h2>
       <Table

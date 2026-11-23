@@ -17,7 +17,8 @@ from arq.connections import RedisSettings
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.services import jobs
+from app import retention
+from app.services import incidents, jobs
 
 log = logging.getLogger(__name__)
 
@@ -60,6 +61,10 @@ def _run(job) -> bool:
     except Exception as exc:  # noqa: BLE001 - bir işin hatası diğerlerini durdurmamalı
         log.error("GÜVENLİK ALARMI zamanlanmış iş başarısız: %s (%s) konum: %s", name, type(exc).__name__,
                   _frames(exc))
+        # K-83: admin "Olaylar" ekranına ve e-postaya (aynı iş ve hata tek olayda toplanır).
+        incidents.report_exception(exc, source="worker", kind="job_failure", code=f"{name}:{type(exc).__name__}",
+                                   title=f"Zamanlanmış iş başarısız: {name} ({type(exc).__name__})",
+                                   context={"job": name})
         return False
     if count:
         log.info("%s: %s kayıt", name, count)
@@ -88,6 +93,7 @@ async def evening(ctx) -> None:
 
 async def daily(ctx) -> None:
     _run(jobs.expire_documents)
+    _run(retention.purge)  # K-83 saklama süreleri
 
 
 def _json_default(value: Any) -> Any:

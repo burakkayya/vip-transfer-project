@@ -10,19 +10,21 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict
 from app.models import (
     AuthSession,
     Booking,
+    BookingActivity,
     BookingLeg,
     Customer,
     DataRequest,
     OtpChallenge,
     Payment,
     Refund,
+    TripEvent,
     TripMessage,
     TripUpdate,
 )
@@ -100,6 +102,14 @@ def anonymize_customer(db: Session, c: Customer, now: datetime) -> None:
     leg_ids = select(BookingLeg.id).where(BookingLeg.booking_id.in_(booking_ids))
     db.execute(delete(TripMessage).where(TripMessage.booking_leg_id.in_(leg_ids))
                .execution_options(synchronize_session=False))
+    # K-83: olay anındaki konum (varış, bitiş) fiilen alış/bırakış noktasıdır; adım kalır, konum gider.
+    # Yolculuk geçmişi yalnızca eklenebilir: güncelleme saklama bayrağıyla bu işlem içinde yapılır.
+    db.execute(text("SET LOCAL getaway.retention_purge = 'on'"))
+    db.execute(update(BookingActivity).where(BookingActivity.booking_id.in_(booking_ids),
+                                             BookingActivity.location.is_not(None)).values(location=None)
+               .execution_options(synchronize_session=False))
+    db.execute(update(TripEvent).where(TripEvent.booking_leg_id.in_(leg_ids), TripEvent.latitude.is_not(None))
+               .values(latitude=None, longitude=None).execution_options(synchronize_session=False))
     # Uygulama içi bildirim akışı: müşteriye ve sürücüye giden kayıtlar yolcu adı ve mesaj önizlemesi taşır.
     db.execute(delete(TripUpdate).where(TripUpdate.booking_leg_id.in_(leg_ids))
                .execution_options(synchronize_session=False))

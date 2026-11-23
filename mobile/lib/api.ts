@@ -1,5 +1,6 @@
 // Mobil API istemcisi. Jetonlar cihazın güvenli deposunda (Keychain / Keystore) tutulur.
 import { API_URL } from "./config";
+import { clientHeaders, newRequestId } from "./clientInfo";
 import { storage } from "./storage";
 import { toWsBase } from "./urlPolicy";
 
@@ -90,6 +91,8 @@ export async function expireSession(): Promise<void> {
 async function send(path: string, init: RequestInit): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("accept", "application/json");
+  // K-83: platform, uygulama, sürüm ve istek kimliği (backend log, olay ve yolculuk geçmişi).
+  for (const [name, value] of Object.entries(clientHeaders(newRequestId()))) headers.set(name, value);
   if (access) headers.set("authorization", `Bearer ${access}`);
   try {
     return await fetch(`${API_URL}/api/v1/${path}`, { ...init, headers });

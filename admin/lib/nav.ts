@@ -30,6 +30,8 @@ export const NAV: NavItem[] = [
   { href: "/data-requests", label: "KVKK veri talepleri", roles: ["operasyon", "destek"], group: "Müşteri" },
   { href: "/templates", label: "Bildirim şablonları", roles: ["operasyon"], group: "Sistem" },
   { href: "/users", label: "Kullanıcılar ve roller", roles: [], group: "Sistem" },
+  // K-83: admin ve operasyon (kullanıcı kararı); destek ve muhasebe görmez.
+  { href: "/incidents", label: "Olaylar", roles: ["operasyon"], group: "Sistem" },
   { href: "/audit-logs", label: "Denetim kayıtları", roles: ["operasyon", "muhasebe", "destek"], group: "Sistem" },
   { href: "/settings", label: "Sistem ayarları", roles: [], group: "Sistem" },
 ];

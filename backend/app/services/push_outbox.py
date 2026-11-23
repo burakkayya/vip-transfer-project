@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.models import Customer, Driver, Notification
 from app.models.enums import NotificationChannel, NotificationStatus
 from app.providers.push import PushTokenInvalid, get_push_sender
+from app.services import incidents
 
 log = logging.getLogger(__name__)
 
@@ -81,6 +82,9 @@ def _deliver(job: PushJob) -> None:
     except Exception as exc:  # noqa: BLE001 - bildirim hatası hiçbir işlemi bozmamalı
         log.exception("push bildirimi gönderilemedi")
         ok, error = False, str(exc)[:255]
+        incidents.report_exception(exc, kind="provider", code="push_failed", title="Push bildirimi gönderilemedi",
+                                   level="warning", context={"template": job.code,
+                                                             "recipient_type": job.recipient_type})
     try:
         with SessionLocal() as db:
             db.add(Notification(

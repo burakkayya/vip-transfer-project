@@ -48,6 +48,12 @@ def _prod_kwargs(fcm_file: str) -> dict:
         paytr_merchant_salt="s" * 16,
         paytr_test_mode=False,
         trusted_proxies=["10.0.0.0/8"],
+        email_provider="smtp",
+        smtp_host="smtp.internal",
+        smtp_from="noreply@getawaytransfers.com",
+        incident_alert_emails=["ops@getawaytransfers.com"],
+        public_admin_url="https://admin.getawaytransfers.com",
+        log_format="json",
     )
 
 

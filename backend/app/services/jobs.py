@@ -39,7 +39,7 @@ from app.models.enums import (
     RefundStatus,
     VehicleStatus,
 )
-from app.services import audit, dispatch, driver_tools, flight_tracking, meeting, payments, system_settings
+from app.services import audit, dispatch, driver_tools, flight_tracking, incidents, meeting, payments, system_settings
 
 log = logging.getLogger(__name__)
 
@@ -174,6 +174,8 @@ def mark_stuck_refunds_unknown(db: Session, now: datetime) -> int:
                      entity_id=refund.id, changes={"created_at": refund.created_at,
                                                    "threshold_minutes": STUCK_REFUND_MINUTES})
         log.error("iade PENDING'de takıldı, belirsiz yapıldı; mutabakat gerekli: refund=%s", refund.id)
+        incidents.alarm("refund_stuck_pending", "İade beklemede takıldı, belirsiz işaretlendi; mutabakat gerekli",
+                        kind="refund", level="critical", context={"refund_id": refund.id})
     return len(refunds)
 
 

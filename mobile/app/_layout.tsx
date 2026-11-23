@@ -8,9 +8,12 @@ import { SafeAreaInsetsContext, SafeAreaProvider } from "react-native-safe-area-
 import { T, colors, fonts } from "@/components/ui";
 import UpdatesWatcher from "@/components/UpdatesWatcher";
 import { VARIANT } from "@/lib/config";
+import { installErrorReporting } from "@/lib/errorReporting";
 import { SessionProvider } from "@/lib/session";
 // Arka plan konum görevi modül yüklenirken tanımlanmalı (uygulama arka planda yeniden başlatılabilir).
 import "@/lib/tracking";
+
+installErrorReporting();
 
 /** Web önizlemesi: uygulama gerçek telefon oranında (390×844) bir çerçevede gösterilir. */
 function PhoneFrame({ children }: { children: React.ReactNode }) {

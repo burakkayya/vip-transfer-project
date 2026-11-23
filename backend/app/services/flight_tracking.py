@@ -37,7 +37,7 @@ from app.localtime import LOCAL_TZ, local_date
 from app.models import Booking, BookingLeg, FlightInfo
 from app.models.enums import BookingStatus, FlightDirection, LegStatus
 from app.providers import flights as fl
-from app.services import api_cache, meeting, trip_updates
+from app.services import activity, api_cache, incidents, meeting, trip_updates
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +74,8 @@ def _take_call_budget(now: datetime) -> bool:
             r.expire(key, 2 * 24 * 3600)
         if used == s.flight_daily_call_limit + 1:
             log.error("uçuş takibi: günlük %s sorgu sınırı doldu, bugün takip durdu", s.flight_daily_call_limit)
+            incidents.alarm("flight_daily_limit", "Uçuş takibi günlük sorgu sınırı doldu, bugün takip durdu",
+                            kind="provider", level="warning")
     except redis.RedisError:
         log.warning("uçuş sorgu sayacı okunamadı; sorgu yapılmadı")
         return False
@@ -197,9 +199,17 @@ def _check(db: Session, fi: FlightInfo, leg: BookingLeg, provider: fl.FlightProv
         return False
     fi.miss_count = 0
     previous = fi.status
+    previous_estimate = fi.estimated_at
     fi.status = result.status
     fi.provider_scheduled_at = result.scheduled_at
     fi.estimated_at = result.estimated_at
+    if previous != fi.status or previous_estimate != fi.estimated_at:
+        # K-31: uçuş verisi yolculuktan sonra silinir; geçmişe yalnızca durum ve gecikme dakikası yazılır
+        # (numara, tarih ve saat birlikte seferi belirleyebilir).
+        activity.record(db, leg.booking_id, "flight.updated", actor_type="system", leg_id=leg.id,
+                        data={"status": fi.status, "delay_min": (
+                            int((fi.estimated_at - fi.provider_scheduled_at).total_seconds() // 60)
+                            if fi.estimated_at and fi.provider_scheduled_at else None)})
     _notify(db, leg, fi, previous)
     return True
 
@@ -244,9 +254,11 @@ def refresh_flights(db: Session, now: datetime, provider: fl.FlightProvider | No
         except ServiceUnavailable as exc:
             log.warning("uçuş %s sorgulanamadı (bacak %s): %s", flight_no, leg_id, exc)
             db.commit()  # harcanan sorgu (checked_at) kalır
-        except Exception:
+        except Exception as exc:
             log.exception("uçuş %s takibinde beklenmeyen hata (bacak %s)", flight_no, leg_id)
             db.rollback()
+            incidents.report_exception(exc, kind="provider", title="Uçuş takibinde beklenmeyen hata",
+                                       context={"leg_id": leg_id})
             fi, leg = db.get(FlightInfo, fi_id), db.get(BookingLeg, leg_id)
             if fi is not None:
                 fi.checked_at = now

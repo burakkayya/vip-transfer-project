@@ -172,3 +172,138 @@ export const LOCALE: Record<string, string> = {
 
 /** K-81: sürücü profil fotoğrafı onayı. */
 export const PHOTO_STATUS: Record<string, string> = { beklemede: "Onay bekliyor", onaylandi: "Onaylı", reddedildi: "Reddedildi" };
+
+// K-83: olaylar (incident) ve yolculuk geçmişi.
+export const INCIDENT_LEVEL: Record<string, string> = { warning: "Uyarı", error: "Hata", critical: "Kritik" };
+export const INCIDENT_STATUS: Record<string, string> = {
+  open: "Açık",
+  acknowledged: "İnceleniyor",
+  resolved: "Çözüldü",
+};
+export const INCIDENT_SOURCE: Record<string, string> = {
+  backend: "Sunucu",
+  worker: "Zamanlanmış iş",
+  web: "Web sitesi",
+  admin: "Admin paneli",
+  mobile_customer: "Müşteri uygulaması",
+  mobile_driver: "Sürücü uygulaması",
+};
+export const INCIDENT_KIND: Record<string, string> = {
+  exception: "Beklenmeyen hata",
+  job_failure: "Zamanlanmış iş hatası",
+  client_error: "Uygulama/tarayıcı hatası",
+  security: "Güvenlik alarmı",
+  payment: "Ödeme",
+  refund: "İade",
+  provider: "Dış servis",
+};
+export function incidentTone(level: string, status: string): "ok" | "warn" | "danger" | "" {
+  if (status === "resolved") return "ok";
+  if (level === "critical" || level === "error") return "danger";
+  return "warn";
+}
+
+export const ACTOR_TYPE: Record<string, string> = {
+  customer: "Müşteri",
+  driver: "Sürücü",
+  staff: "Personel",
+  system: "Sistem",
+};
+export const PLATFORM: Record<string, string> = {
+  web: "Web",
+  admin: "Admin paneli",
+  ios: "iOS",
+  android: "Android",
+  system: "Sistem",
+};
+
+/** Yolculuk geçmişi adımları; bilinmeyen kod olduğu gibi gösterilir. */
+export const TIMELINE_EVENT: Record<string, string> = {
+  "booking.created": "Rezervasyon oluşturuldu",
+  // K-83 öncesi rezervasyonlarda aynı adımlar yalnızca denetim kaydında.
+  "booking.create": "Rezervasyon oluşturuldu",
+  "booking.admin_create": "Rezervasyon oluşturuldu (admin girişi)",
+  "payment.paid": "Ödeme alındı",
+  "booking_leg.assign": "Sürücü atandı",
+  "booking_leg.customer_finish": "Müşteri yolculuğu bitirdi",
+  "booking_leg.no_show": "Yolcu gelmedi",
+  "booking.cancel": "Rezervasyon iptal edildi",
+  "booking.cancel_day": "Gün iptal edildi",
+  "booking.refund": "İade başlatıldı",
+  "booking.resend_payment_sms": "Ödeme SMS'i yeniden gönderildi",
+  "booking.chat_view": "Personel mesajları açtı",
+  "booking.timeline_view": "Personel geçmişi açtı",
+  "booking.accept_all_days": "Tüm günler kabul edildi",
+  "payment.started": "Ödeme sayfası açıldı",
+  "payment.page_reopened": "Ödeme sayfası yeniden açıldı",
+  "payment.succeeded": "Ödeme alındı",
+  "payment.failed": "Ödeme başarısız",
+  "payment.rejected": "Ödeme bildirimi reddedildi",
+  "payment.manual": "Elle tahsilat",
+  "payment.auto_refund": "Otomatik iade",
+  "refund.retry": "İade yeniden denendi",
+  "refund.mark_completed": "İade tamamlandı işaretlendi",
+  "refund.manual_complete": "Elle iade tamamlandı",
+  "refund.stuck_pending_unknown": "İade belirsiz kaldı",
+  "dispatch.offered": "Sürücülere teklif gönderildi",
+  "dispatch.declined": "Sürücü teklifi reddetti",
+  "dispatch.expired": "Teklif süresi doldu",
+  "leg.assigned": "Sürücü atandı",
+  "leg.departed": "Sürücü yola çıktı",
+  "leg.arrived": "Sürücü alış noktasına vardı",
+  "leg.started": "Yolcu alındı",
+  "leg.finished": "Yolculuk bitti",
+  "leg.no_show": "Yolcu gelmedi",
+  "leg.customer_finished": "Müşteri yolculuğu bitirdi",
+  "booking_leg.force_advance": "Operasyon adımı zorla ilerletti",
+  "booking_leg.event_rejected": "Sürücü adımı reddedildi",
+  "booking_leg.driver_early_finish": "Erken bitiş",
+  "booking_leg.day_report": "Gün sonu km bildirildi",
+  "booking_leg.release_suspended_driver": "Askıdaki sürücüden alındı",
+  "chat.message_sent": "Mesaj gönderildi",
+  "rating.submitted": "Değerlendirme yapıldı",
+  "tip.paid": "Bahşiş ödendi",
+  "tip.refund": "Bahşiş iade edildi",
+  "flight.updated": "Uçuş bilgisi güncellendi",
+  incident: "Hata / olay",
+};
+/** Geçmiş ve olay ayrıntısındaki veri anahtarları. */
+export const DATA_KEY: Record<string, string> = {
+  booking_code: "Rezervasyon kodu",
+  total: "Tutar",
+  amount: "Tutar",
+  currency: "Para birimi",
+  reason: "Gerekçe",
+  item_count: "Kayıt sayısı",
+  message_count: "Mesaj sayısı",
+  status: "Durum",
+  source: "Kaynak",
+  type: "Tür",
+  legs: "Bacak sayısı",
+  channel: "Kanal",
+  provider: "Ödeme sağlayıcı",
+  driver_count: "Sürücü sayısı",
+  online_only: "Yalnızca çevrimiçi",
+  offer_count: "Teklif sayısı",
+  translated: "Çevrildi",
+  stars: "Puan",
+  has_comment: "Yorum var",
+  estimated_at: "Tahmini iniş",
+  scheduled_at: "Planlanan iniş",
+  distance_m: "Uzaklık (m)",
+  waited_min: "Bekleme (dk)",
+  recipient: "Alıcı",
+  refund_percent: "İade oranı (%)",
+  refund_amount: "İade tutarı",
+  event: "Adım",
+  old_status: "Önceki durum",
+  new_status: "Yeni durum",
+  level: "Seviye",
+  title: "Başlık",
+};
+
+export function timelineLabel(event: string): string {
+  if (TIMELINE_EVENT[event]) return TIMELINE_EVENT[event];
+  if (event.startsWith("notify.")) return `Bildirim: ${event.slice(7).replaceAll("_", " ")}`;
+  return event;
+}
