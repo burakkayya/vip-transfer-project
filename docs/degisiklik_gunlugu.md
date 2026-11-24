@@ -4,6 +4,7 @@ En yeni üstte. Her değişiklikte ilgili `.md` dosyaları da güncellenir.
 
 ## 2026-11-24
 
+- **Sürücü teklif kartında uçuş durumu (K-60).** İş teklifi (`GET /driver/jobs`, ayrıntı) artık `flight_status` ve `flight_estimated_at` döndürür; kart "Uçuş · Rötarlı · tahmini iniş 14:20" gibi gösterir (öncesi yalnızca "Uçuş var"). Uçuş numarası kabul öncesi yine verilmez. Backend ve mobil testleri eklendi.
 - **Uçuş takibi canlı anahtarla çalıştırıldı (K-60).** AeroDataBox (RapidAPI) aboneliği açıldı; anahtar repo dışında (`~/.getaway/aerodatabox.env`) ve git dışı `backend/.env` içinde (`GETAWAY_FLIGHT_PROVIDER=aerodatabox`). Canlı sorgu doğrulandı (bulunan uçuş, yanlış havalimanı ve olmayan uçuş için boş liste). Sağlayıcı HTTP katmanı için test eklendi: istek başlıkları, RapidAPI örnek yanıtı, 204/404, 401/403/429/500 ve zaman aşımı; hata iletisinde anahtar yok.
 
 ## 2026-11-23

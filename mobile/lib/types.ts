@@ -254,6 +254,8 @@ export interface Job {
   child_seat_count?: number;
   market_stop?: boolean;
   has_flight: boolean;
+  flight_status?: string | null;
+  flight_estimated_at?: string | null;
   vehicle_type: string;
   distance_km: string;
   duration_minutes: number | null;

@@ -49,6 +49,9 @@ class JobOut(BaseModel):
     child_seat_count: int = 0
     market_stop: bool = False
     has_flight: bool
+    # K-60: uçuş numarası kabul öncesi verilmez; yalnızca durum ve tahmini iniş (sürücü rötarı görüp karar verir).
+    flight_status: str | None = None
+    flight_estimated_at: datetime | None = None
     vehicle_type: str
     distance_km: Decimal
     duration_minutes: int | None
@@ -95,6 +98,8 @@ def _job_out(db, leg: BookingLeg, driver, *, at: Point | None, detail: bool, now
         child_seat_count=b.child_seat_count,
         market_stop=b.market_stop,
         has_flight=leg.flight is not None,
+        flight_status=leg.flight.status if leg.flight else None,
+        flight_estimated_at=leg.flight.estimated_at if leg.flight else None,
         vehicle_type=b.vehicle_type.name,
         distance_km=leg.distance_km,
         duration_minutes=leg.duration_minutes,
