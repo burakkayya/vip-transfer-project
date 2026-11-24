@@ -8,7 +8,7 @@ import MapCanvas from "@/components/MapCanvas";
 import MapSheet from "@/components/MapSheet";
 import { Alert, Badge, Button, Card, IconButton, Info, Loading, RouteStops, Row, Screen, T, colors, s } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
-import { dailyLine, DAILY_DROPOFF } from "@/lib/driverLabels";
+import { dailyLine, DAILY_DROPOFF, flightChip } from "@/lib/driverLabels";
 import { dateTime, money } from "@/lib/format";
 import { errorTextTr, t } from "@/lib/i18n";
 import { decodePolyline } from "@/lib/polyline";
@@ -224,7 +224,7 @@ function JobDetail({ legId }: { legId: string }) {
           )}
           <Chip icon="people-outline" text={`${job.passenger_count} yolcu`} />
           <Chip icon="briefcase-outline" text={`${job.luggage_count} bagaj`} />
-          {job.has_flight ? <Chip icon="airplane-outline" text="Uçuş var" /> : null}
+          {job.has_flight ? <Chip icon="airplane-outline" text={flightChip(job.flight_status, job.flight_estimated_at)} /> : null}
           {job.child_seat_count ? <Chip icon="happy-outline" text={`${job.child_seat_count} çocuk koltuğu`} /> : null}
           {job.market_stop ? <Chip icon="basket-outline" text="Market molası" /> : null}
         </Row>

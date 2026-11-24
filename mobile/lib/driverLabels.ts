@@ -1,3 +1,4 @@
+import { clock } from "./format";
 /** K-78 sürücü detayları: kişisel belgeler (sıra ekrandaki sıradır). */
 export const DOC_TYPES_DRIVER: Record<string, string> = {
   kimlik: "Kimlik kartı",
@@ -82,4 +83,17 @@ export function dailyLine(durationMinutes: number | null | undefined, km: string
   const hours = durationMinutes ? Number((durationMinutes / 60).toFixed(1)).toLocaleString("tr-TR") : null;
   const parts = [hours ? `${hours} sa` : null, km ? `${Number(km).toFixed(0)} km` : null].filter(Boolean);
   return parts.length ? `Günlük kiralama · ${parts.join(" / ")}` : "Günlük kiralama";
+}
+
+const FLIGHT_CHIP: Record<string, string> = {
+  planlandi: "Zamanında", rotarli: "Rötarlı", havada: "Havada", indi: "İndi",
+  iptal: "İptal edildi", yonlendirildi: "Yönlendirildi", bulunamadi: "Uçuş bulunamadı",
+};
+
+/** Teklif kartındaki uçuş etiketi (K-60). Uçuş numarası kabul öncesi verilmez; durum ve tahmini iniş gösterilir. */
+export function flightChip(status: string | null | undefined, eta: string | null | undefined): string {
+  const label = status ? FLIGHT_CHIP[status] : undefined;
+  if (!label) return "Uçuş var";
+  if (status === "iptal" || status === "yonlendirildi" || status === "bulunamadi" || !eta) return `Uçuş · ${label}`;
+  return `Uçuş · ${label} · ${status === "indi" ? "iniş" : "tahmini iniş"} ${clock(eta)}`;
 }

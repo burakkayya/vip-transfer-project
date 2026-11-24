@@ -395,6 +395,7 @@ Hazırlık: müşterinin web'den açtığı ve ödediği bir rezervasyon; sürü
 4. Admin rezervasyon detayında Uçuş sütununda durum ve saat.
 5. Yanlış uçuş numarasında üç sorgudan sonra sürücüde ve admin'de "Uçuş bulunamadı" görünür, sorgu durur.
 6. Tahmini iniş 15 dk ve üzeri kayarsa sürücüye "Uçuş saati değişti" bildirimi, inişte "Uçuş indi" bildirimi gelir.
+7. Başka bir sürücünün **iş teklifi** kartında (kabul öncesi) uçuş etiketi "Uçuş · Rötarlı · tahmini iniş HH:MM" görünür; uçuş numarası yazmaz. Uçuş henüz sorgulanmadıysa yalnızca "Uçuş var".
 
 ## K-81 iyileştirmeleri (2026-11-21)
 

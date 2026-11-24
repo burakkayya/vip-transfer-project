@@ -261,3 +261,20 @@ def test_aerodatabox_garbage_body_is_unavailable(monkeypatch):
     monkeypatch.setattr(fl.httpx, "get", lambda *a, **k: (_ for _ in ()).throw(httpx.ConnectTimeout("t")))
     with pytest.raises(ServiceUnavailable):
         fl.AeroDataBox("k").arrivals("TK1", date(2026, 11, 25), None)
+
+
+def test_offer_card_shows_flight_status_without_number(client, db, ops):
+    """Kabul öncesi teklif: uçuş numarası yok, durum ve tahmini iniş var (sürücü rötarı görüp karar verir)."""
+    now = datetime.now(timezone.utc)
+    b = _booking(client, ops, "tk 1981", accept=False)
+    job = next(j for j in client.get(f"{API}/driver/jobs", headers=b.driver).json() if j["booking_code"] == b.code)
+    assert job["has_flight"] is True and job["flight_status"] is None  # henüz sorgulanmadı
+    sched = b.pickup - timedelta(minutes=30)
+    fake = fl.FakeFlights({"TK1981": [fl.FlightStatus(fl.DELAYED, sched, sched + timedelta(minutes=40))]})
+    flight_tracking.refresh_flights(db, now, fake)
+    for path in (f"{API}/driver/jobs", f"{API}/driver/jobs/{b.leg_id}"):
+        r = client.get(path, headers=b.driver)
+        job = next(j for j in r.json() if j["booking_code"] == b.code) if isinstance(r.json(), list) else r.json()
+        assert job["flight_status"] == fl.DELAYED
+        assert _dt(job["flight_estimated_at"]) == sched + timedelta(minutes=40)
+        assert "flight_no" not in job and "TK1981" not in str(job)
