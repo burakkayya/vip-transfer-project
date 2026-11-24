@@ -193,3 +193,71 @@ def test_daily_limit_and_unexpected_error(client, db, ops, monkeypatch):
 
 def test_refresh_flights_off_without_provider(db):
     assert flight_tracking.refresh_flights(db, datetime.now(timezone.utc)) == 0
+
+
+# --- AeroDataBox HTTP katmanı (RapidAPI) -----------------------------------------------------------
+
+# Gerçek yanıt biçimi (RapidAPI örneği): ek alanlar, "Basic"/"Live" kalite, yerel saat; yalnızca varış okunur.
+_SAMPLE = [{
+    "greatCircleDistance": {"km": 207.98},
+    "departure": {"airport": {"iata": "SEA", "location": {"lat": 47.4, "lon": -122.3}},
+                  "scheduledTime": {"utc": "2026-11-25 03:56Z", "local": "2026-11-24 19:56-08:00"}, "quality": ["Basic"]},
+    "arrival": {"airport": {"iata": "PDX", "timeZone": "America/Los_Angeles"},
+                "scheduledTime": {"utc": "2026-11-25 04:51Z", "local": "2026-11-24 20:51-08:00"},
+                "revisedTime": {"utc": "2026-11-25 04:35Z", "local": "x"},
+                "predictedTime": {"utc": "2026-11-25 04:54Z", "local": "x"},
+                "runwayTime": {"utc": "2026-11-25 04:35Z", "local": "x"}, "quality": ["Basic", "Live"]},
+    "lastUpdatedUtc": "2026-11-24 10:44Z", "number": "AS 2223", "status": "Expected", "isCargo": False,
+}]
+
+
+def _aero(monkeypatch, status=200, json=None):
+    import httpx
+    seen = {}
+
+    def fake_get(url, headers=None, params=None, timeout=None):
+        seen.update(url=url, headers=headers, params=params, timeout=timeout)
+        return httpx.Response(status, json=json, request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(fl.httpx, "get", fake_get)
+    return seen
+
+
+def test_aerodatabox_request_and_sample_response(monkeypatch):
+    seen = _aero(monkeypatch, 200, _SAMPLE)
+    [got] = fl.AeroDataBox("secret-key").arrivals("AS2223", date(2026, 11, 25), "PDX")
+    assert seen["url"].endswith("/flights/number/AS2223/2026-11-25")
+    assert seen["headers"] == {"X-RapidAPI-Key": "secret-key", "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com"}
+    assert seen["params"]["dateLocalRole"] == "Arrival" and seen["timeout"] <= 10
+    # Pist zamanı revised/predicted'dan önce gelir; sapma 15 dk altında olduğundan durum "planlandı".
+    assert got.status == fl.SCHEDULED
+    assert got.scheduled_at == datetime(2026, 11, 25, 4, 51, tzinfo=timezone.utc)
+    assert got.estimated_at == datetime(2026, 11, 25, 4, 35, tzinfo=timezone.utc)
+    # Başka havalimanı için sorulursa sefer gösterilmez.
+    assert fl.AeroDataBox("k").arrivals("AS2223", date(2026, 11, 25), "SEA") == []
+
+
+@pytest.mark.parametrize("status", [204, 404])
+def test_aerodatabox_not_found_is_empty(monkeypatch, status):
+    _aero(monkeypatch, status, None)
+    assert fl.AeroDataBox("k").arrivals("TK1", date(2026, 11, 25), None) == []
+
+
+@pytest.mark.parametrize("status", [401, 403, 429, 500])
+def test_aerodatabox_errors_raise_unavailable_without_key_in_message(monkeypatch, status):
+    from app.errors import ServiceUnavailable
+    _aero(monkeypatch, status, {"message": "x"})
+    with pytest.raises(ServiceUnavailable) as exc:
+        fl.AeroDataBox("secret-key").arrivals("TK1", date(2026, 11, 25), None)
+    assert "secret-key" not in str(exc.value)
+
+
+def test_aerodatabox_garbage_body_is_unavailable(monkeypatch):
+    from app.errors import ServiceUnavailable
+    _aero(monkeypatch, 200, "not-a-list")
+    # Liste olmayan gövde "bulunamadı" sayılır (boş), çökmez.
+    assert fl.AeroDataBox("k").arrivals("TK1", date(2026, 11, 25), None) == []
+    import httpx
+    monkeypatch.setattr(fl.httpx, "get", lambda *a, **k: (_ for _ in ()).throw(httpx.ConnectTimeout("t")))
+    with pytest.raises(ServiceUnavailable):
+        fl.AeroDataBox("k").arrivals("TK1", date(2026, 11, 25), None)
